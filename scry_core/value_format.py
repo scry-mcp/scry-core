@@ -1,8 +1,7 @@
 """The FORMAT of a watched value: a scalar, an array of scalars, a string or a struct.
 
-A symbol table gives addresses, not types, so a watch declares how its bytes read. The
-first grammar was N scalars of one format (`length` bytes as `u16` values), which renders
-a struct as a row of numbers and a name as a row of bytes. This grammar names the shape:
+A symbol table gives addresses, not types, so a watch declares how its bytes read, and the
+grammar names the shape, so a struct reads as its fields and a name as text:
 
     u16              one scalar; a `length` that is a whole number of them reads a list
     u16[8]           an array, eight of them, the width implied
@@ -38,8 +37,9 @@ SCALARS: dict[str, tuple[str, int]] = {
 }
 Value = int | float | str | list["Value"] | dict[str, "Value"]
 
-_SCALAR = re.compile(r"^(u8|i8|u16|i16|u32|i32|f32|f64)$")
-_ARRAY = re.compile(r"^(u8|i8|u16|i16|u32|i32|f32|f64|char)\[(\d+)\]$")
+# THE SCALAR NAMES ARE `SCALARS`' KEYS AND NOWHERE ELSE: the array's element is read by shape
+# and then looked up there, so a scalar added to the table parses everywhere a scalar may sit.
+_ARRAY = re.compile(r"^([a-z][a-z0-9]*)\[(\d+)\]$")
 _FIELD = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*):(.+)$")
 _POINTER = re.compile(r"^ptr(16|32)(@[^{]*)?(.*)$", re.S)
 _CLASS = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -110,7 +110,7 @@ class Format:
 def parse(spec: str) -> Format:
     """A `Format` from its spec, or a `FormatError` naming what the grammar takes."""
     spec = spec.strip()
-    if _SCALAR.match(spec):
+    if spec in SCALARS:
         return Format(spec, "scalar", None, elem=spec)
     pm = _POINTER.match(spec)
     if pm:
@@ -130,7 +130,7 @@ def parse(spec: str) -> Format:
         return Format(spec, "pointer", bits // 8, elem=f"u{bits}", target=target,
                       target_class=klass)
     m = _ARRAY.match(spec)
-    if m:
+    if m and (m.group(1) in SCALARS or m.group(1) == "char"):
         elem, count = m.group(1), int(m.group(2))
         if count <= 0:
             raise FormatError(f"{spec}: an array or a string needs a count above zero")
@@ -140,7 +140,11 @@ def parse(spec: str) -> Format:
     if spec.startswith("{") and spec.endswith("}"):
         fields: list[tuple[str, Format]] = []
         seen: set[str] = set()
-        for part in (p.strip() for p in spec[1:-1].split(",") if p.strip()):
+        if not spec[1:-1].strip():
+            raise FormatError(f"{spec}: a struct needs at least one field")
+        for part in (p.strip() for p in _fields_of(spec)):
+            if not part:
+                raise FormatError(f"{spec}: an empty field (two commas, or one at an end)")
             fm = _FIELD.match(part)
             if fm is None:
                 raise FormatError(f"{spec}: a struct field is `name:type`; got {part!r}")
@@ -155,13 +159,31 @@ def parse(spec: str) -> Format:
                 raise FormatError(f"{spec}: the field {name!r} appears twice")
             seen.add(name)
             fields.append((name, sub))
-        if not fields:
-            raise FormatError(f"{spec}: a struct needs at least one field")
         return Format(spec, "struct", sum(f.size or 0 for _n, f in fields),
                       fields=tuple(fields))
     raise FormatError(f"{spec!r} is not a format: a scalar ({', '.join(SCALARS)}), an array "
                       "like u16[8], a string like char[16], or a struct like "
                       "{x:i16,y:i16,flags:u8}")
+
+
+def _fields_of(spec: str) -> list[str]:
+    """A struct spec's body cut at its top-level commas: a comma inside a pointed-at struct
+    (`{a:ptr32{x:u8,y:u8}}`) is that struct's. Braces that do not balance are refused."""
+    parts: list[str] = []
+    depth, start = 0, 1
+    for i, ch in enumerate(spec[1:-1], start=1):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth < 0:
+                break
+        elif ch == "," and depth == 0:
+            parts.append(spec[start:i])
+            start = i + 1
+    if depth != 0:
+        raise FormatError(f"{spec}: its braces do not balance")
+    return [*parts, spec[start:-1]]
 
 
 def size_of(spec: str) -> int | None:

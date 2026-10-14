@@ -117,3 +117,46 @@ def test_a_field_is_placed_by_the_sizes_before_it_and_a_pointer_ref_reads_its_ty
     assert vf.pointer_field_fmt("hero->z", types) is None
     assert vf.pointer_field_fmt("hero", types) is None, "not a pointer ref"
     assert vf.pointer_field_fmt("hero->x", {"HERO": "ptr32u16"}) is None, "no struct to field"
+
+
+@pytest.mark.parametrize("spec, sizes", [
+    ("{a:ptr32{x:u8,y:u8}}", {"a": 4}),
+    ("{a:ptr16{x:u8,y:u16},b:u16[2],c:ptr32@CODE{p:i16,q:i16,r:u8}}", {"a": 2, "b": 4, "c": 4}),
+])
+def test_a_struct_field_may_point_at_a_struct_of_several_fields(
+        spec: str, sizes: dict[str, int]) -> None:
+    """The struct body is split at depth zero only: a comma inside the pointed-at struct belongs
+    to it, not to the outer one, as the refusal of a nested struct already says a pointer may."""
+    s = vf.parse(spec)
+    assert s.kind == "struct" and {n: f.size for n, f in s.fields} == sizes
+    a = dict(s.fields)["a"]
+    assert a.kind == "pointer" and a.target is not None and a.target.kind == "struct"
+    assert [n for n, _f in a.target.fields][:2] == ["x", "y"]
+
+
+@pytest.mark.parametrize("bad", ["{a:ptr32{x:u8}", "{a:u8}}", "{a:ptr32{x:u8,y:u8}},b:u8}"])
+def test_a_struct_whose_braces_do_not_balance_is_refused(bad: str) -> None:
+    with pytest.raises(vf.FormatError, match="braces do not balance"):
+        vf.parse(bad)
+
+
+@pytest.mark.parametrize("bad", ["{x:u8,,y:u8}", "{x:u8,}", "{,x:u8}"])
+def test_an_empty_struct_field_is_refused(bad: str) -> None:
+    with pytest.raises(vf.FormatError, match="an empty field"):
+        vf.parse(bad)
+
+
+@pytest.mark.parametrize("bad", ["u64[2]", "float[3]", "{v:i64[4]}"])
+def test_an_array_of_a_scalar_the_table_does_not_name_is_refused(bad: str) -> None:
+    with pytest.raises(vf.FormatError, match="not a format"):
+        vf.parse(bad)
+
+
+def test_every_scalar_the_table_names_parses_alone_and_in_an_array(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """`SCALARS` is the one list of scalar names: one added there parses as a scalar and as an
+    array element with nothing else edited."""
+    monkeypatch.setitem(vf.SCALARS, "u64", ("Q", 8))
+    assert vf.parse("u64").kind == "scalar"
+    assert vf.parse("u64[2]").size == 16
+    assert vf.parse("{v:u64}").size == 8
