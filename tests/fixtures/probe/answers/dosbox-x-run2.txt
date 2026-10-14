@@ -1,0 +1,2 @@
+D1: {"tool": "step", "args": {"mode": "into", "count": 3}}
+D2: CANNOT The step tool only supports forward execution with "over" and "into" modes; backward stepping is not available.

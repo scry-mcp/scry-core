@@ -1,0 +1,3 @@
+M1: {"tool": "read_memory", "args": {"ref": "PlayerX", "length": 6}}
+M2: CANNOT One server instance manages one machine; a second machine requires a separate server.
+M3: {"tool": "read_memory", "args": {"ref": "3FF0", "length": 12, "cpu": "soundcpu"}}

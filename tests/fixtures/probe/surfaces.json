@@ -1,0 +1,301 @@
+{
+ "mame": {
+  "instructions": "A live MAME debug session.\n\nTOOLS. Session: `start`, `rom_check`, `focus`. Advance: `run_to`, `run_for`, `step`, `resume`, `trace`. Read: `read_memory`, `read_block`, `registers`, `disassemble`, `find`, `history`, `palette`, `screen_view`, `gfx_view`, `gfx_locate`, `gfx_sweep`, `gfx_draft`, `gfx_blits`, `gfx_blit_source`. Write: `write`, `set_register`, `reset`. Scan: `scan_start`, `scan_filter`. Comments: `comment_add`, `comment_delete`, `comment_load`. Lua: `input`, `record`, `audio_record`, `state_save`, `state_load`, `screen_signature`, `lua`. Console: `debug`.\n\nA SESSION. `start` parks the machine STOPPED. `run_to`, `run_for` and `step` stop it again, with a survey; `run_to`'s target has no stop of its own. `resume` lets it RUN. While it runs the readers refuse (`not_stopped`); these answer: `breakpoint_at`, `breakpoint_clear`, `breakpoint_list`, `captures`, `comment_list`, `comment_save`, `cpu_info`, `gfx_film`, `gfx_load`, `log`, `log_wait`, `machine_map`, `palette_log`, `regpoint_add`, `regpoint_clear`, `regpoint_list`, `scan_clear`, `snapshot`, `state_list`, `status`, `stop`, `symbols_find`, `throttle`, `watch_add`, `watch_clear`, `watch_list`, `registers(from_last_stop=True)`, `perform`, `drive`, `close`. A stop reached on its own is `stopped_on_its_own`. `rom_check` reads 16 bytes at `reference_addr` against `reference_rom` at `reference_base`. A wait that ran out is `verdict: TIMEOUT`, `ok`. `memdump` and `snapshot` answer with a PATH.\n\nCPUS: no `cpu` acts on the VISIBLE one (stops move it), lists or clears all; named, moves only `step`'s.\n\nADDRESSES are written `0x`, a condition as typed; any other ref is a symbol, bare hex naming none refused. Breakpoints are at PLACES, never expressions.\n\nEVERY REPLY carries `summary`, `status` (`ok`, or `INVALID` with `code` and `message`) and `session` (`altered` after a write). A wrong TYPE is the schema's `bad_argument`. `not_settled`: `stop`, and if `stop` fails as well, `close` then `start`. `session_broken` LATCHES until `close`.\n\nReference: REFERENCE.md.",
+  "tools": [
+   {
+    "name": "read_memory",
+    "description": "Read `length` bytes of memory at `ref` (a symbol name or a `0x` address), `length` in\n1..1024, of `cpu` (`subcpu`; the visible one when empty). Each cpu is served by its own thread of the gdbstub's thread patch (`status`'s `threads`); a build without it serves its first cpu alone, whatever is visible, and refuses another (`bad_argument`). A range whose last byte lies past that cpu's program space (the address mask `start` read) is `bad_argument` naming the mask; with no mask known the range is the console's.\n\nReply: `addr`, `length`, `hex`, `cpu` (the one read). Above the ceiling the answer\nis `memdump`, which writes to a file: a read comes back as hex text, two characters per byte,\nand a frame of VRAM through it is a haystack in the conversation rather than data. A range whose\nread side is unmapped (a write-only block, `latch` to `symbols_find`) answers ZEROS here with no\nerror: the values live in the share behind its handler, and `read_block(ref=...)` reads them.\nNeeds the machine STOPPED: on a running one the reply is `status: INVALID` (`not_stopped`) with `last_stop` and `answers_while_running`.\n\nReference: REFERENCE.md, Reading and writing.\n",
+    "input_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "ref": {
+       "title": "Ref",
+       "type": "string"
+      },
+      "length": {
+       "default": 16,
+       "title": "Length",
+       "type": "integer"
+      },
+      "cpu": {
+       "default": "",
+       "title": "Cpu",
+       "type": "string"
+      }
+     },
+     "required": [
+      "ref"
+     ],
+     "title": "read_memoryArguments",
+     "type": "object"
+    },
+    "parameters": [
+     {
+      "name": "ref"
+     },
+     {
+      "name": "length",
+      "default": 16
+     },
+     {
+      "name": "cpu",
+      "default": ""
+     }
+    ]
+   },
+   {
+    "name": "watch_add",
+    "description": "Declare a WATCH at `ref`, in its cpu's byte order. STORED, re-armed at the next `start`.\n\nArguments:\n- `mode`: `show` (read at each stop, arms nothing), `change` (a WRITE watchpoint: a write\n  stops the machine, and `watch_hit` says WHO WROTE THIS BYTE), `count` (tallies\n  every write by value and writer pc, never stopping), `capture` (one\n  row per access to `trigger`, never stops) or `expr`\n  (`ref` is ONE reading debugger expression, `beamy`: no `,`, `;`, assignment, length or\n  fmt).\n- `ref`: a symbol, a `0x` address, or a place through a POINTER (`[base]+0x28`,\n  `base->field`), re-resolved each stop; a capture's `ref` is what each row HOLDS.\n- `fmt`: a scalar (`u8` .. `f64`), an array (`u16[8]`), a string\n  (`char[16]`) or a struct (`{x:i16,y:i16}`). `auto`: a typed symbol's type, else the WIDEST\n  unsigned scalar `length` divides.\n- `length`: TOTAL bytes, REQUIRED unless `fmt` is sized or the symbol is typed; at most\n  128 for a show or capture watch, 1024 otherwise.\n- `by`: `auto` unless forced.\n- `cpu`: its cpu, else the visible one.\n- `condition` (change only): stop only on a write it holds for (`breakpoint_at`'s grammar\n  on the row's cpu; `wpdata` is the value written).\n- `trigger`, `trigger_type` (capture only): the symbol or `0x` address whose WRITES (`w`)\n  or READS (`r`: of `ref` itself; no length, fmt or block) make rows.\n- `space`: `io` when `ref` (count) or `trigger` (capture) is a `0x` PORT; session-only.\n\nRefused: a change watch on an unmapped write; a count range splitting a bus word;\na ref declared again another way; a range another declaration arms; what the console\ncannot evaluate; an unknown pointer base or `cpu`.\nWorks on a RUNNING machine, not through a POINTER (`not_stopped`).\n\nReply: `ref`, `by`, `mode`, `stored`, `already_stored`, `armed`, `state`, `while_running`; at a\nplace `length`, `fmt`, `addr` once resolved, `pointer` through one, `reading` when stopped; and\neach mode's own fields (REFERENCE.md, Declarations; rows: `watch_list`).\n\nReference: REFERENCE.md, Declarations.\n",
+    "input_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "ref": {
+       "title": "Ref",
+       "type": "string"
+      },
+      "mode": {
+       "enum": [
+        "show",
+        "change",
+        "expr",
+        "count",
+        "capture"
+       ],
+       "title": "Mode",
+       "type": "string"
+      },
+      "length": {
+       "default": 0,
+       "title": "Length",
+       "type": "integer"
+      },
+      "fmt": {
+       "default": "auto",
+       "title": "Fmt",
+       "type": "string"
+      },
+      "by": {
+       "default": "auto",
+       "enum": [
+        "auto",
+        "symbol",
+        "address",
+        "pointer"
+       ],
+       "title": "By",
+       "type": "string"
+      },
+      "cpu": {
+       "default": "",
+       "title": "Cpu",
+       "type": "string"
+      },
+      "condition": {
+       "default": "",
+       "title": "Condition",
+       "type": "string"
+      },
+      "trigger": {
+       "default": "",
+       "title": "Trigger",
+       "type": "string"
+      },
+      "space": {
+       "default": "program",
+       "enum": [
+        "program",
+        "io"
+       ],
+       "title": "Space",
+       "type": "string"
+      },
+      "trigger_type": {
+       "default": "w",
+       "enum": [
+        "w",
+        "r"
+       ],
+       "title": "Trigger Type",
+       "type": "string"
+      }
+     },
+     "required": [
+      "ref",
+      "mode"
+     ],
+     "title": "watch_addArguments",
+     "type": "object"
+    },
+    "parameters": [
+     {
+      "name": "ref"
+     },
+     {
+      "name": "mode"
+     },
+     {
+      "name": "length",
+      "default": 0
+     },
+     {
+      "name": "fmt",
+      "default": "auto"
+     },
+     {
+      "name": "by",
+      "default": "auto"
+     },
+     {
+      "name": "cpu",
+      "default": ""
+     },
+     {
+      "name": "condition",
+      "default": ""
+     },
+     {
+      "name": "trigger",
+      "default": ""
+     },
+     {
+      "name": "space",
+      "default": "program"
+     },
+     {
+      "name": "trigger_type",
+      "default": "w"
+     }
+    ]
+   },
+   {
+    "name": "memdump",
+    "description": "Write `length` bytes of memory from `ref` of `cpu` (`subcpu`; the visible one when empty) to\nthe file `dest`, and CHECK the file.\n\nReply: `addr`, `length`, `path`, `bytes`, `cpu` (the one dumped). The dump is written by MAME's\nown console `save`, so the bytes never cross the socket; the file must then be exactly `length`\nbytes and its first bytes must equal a protocol read of the same range (the known-answer\ncontrol), else the reply is `status: INVALID` with `message`; a control read that breaks the\nchannel is `session_broken` naming the `path` the file was left at. `dest` must be absolute, in a directory that exists, with no comma, semicolon, quote, whitespace, bracket or control character,\nand not there yet. A range whose last byte lies past that cpu's program space (the address mask `start` read) is `bad_argument` naming the mask; with no mask known the range is the console's. A range that wraps would hang the console's\n`save`, and one past the space never reaches it. The control reads the same cpu, through its own\nthread of the gdbstub's thread patch; a build without it reads only its first cpu, and another\nis refused. Each refusal happens before `save`, so a refused call never leaves a file behind. A\ncontrol read the stub refuses is `readback_refused`; one that breaks the channel is\n`session_broken`, which LATCHES. Needs the machine STOPPED: on a running one the reply is `status: INVALID` (`not_stopped`) with `last_stop` and `answers_while_running`.\n\nReference: REFERENCE.md, Reading and writing.\n",
+    "input_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "ref": {
+       "title": "Ref",
+       "type": "string"
+      },
+      "length": {
+       "title": "Length",
+       "type": "integer"
+      },
+      "dest": {
+       "title": "Dest",
+       "type": "string"
+      },
+      "cpu": {
+       "default": "",
+       "title": "Cpu",
+       "type": "string"
+      }
+     },
+     "required": [
+      "ref",
+      "length",
+      "dest"
+     ],
+     "title": "memdumpArguments",
+     "type": "object"
+    },
+    "parameters": [
+     {
+      "name": "ref"
+     },
+     {
+      "name": "length"
+     },
+     {
+      "name": "dest"
+     },
+     {
+      "name": "cpu",
+      "default": ""
+     }
+    ]
+   },
+   {
+    "name": "status",
+    "description": "Whether a machine is alive, and which one. Safe on a running machine; a stop it finds\nthe machine reached on its own is recorded and reported in `stopped_on_its_own`.\n\nReply: `alive`; with no machine, a `note` when the server closed the last session after an hour\nwith no call; with `exit_code` and a `note` when MAME died under the session (`close` collects\nits last words before anything is deleted); when alive also `system`, `pid`, `stub_port`,\n`scratch_dir`, `state_dir`, `cfg`, `debugger` (`attached`, and a `note`: a capture taken at a\nstop here can land a frame away from an autoboot golden), `fingerprint` (the build the\ndeclarations are judged against, the first cpu's) and `fingerprints` (each cpu's),\n`errorlog_path`, `stdout_path`, `running`, `pc` (the machine's, read now; absent while it runs\nor once the session broke: `last_stop.pc`), `last_stop` (`stop_seq`, `pc`, `cpu`, `frame`,\n`how`, `since_s`, `wall_at`; the park after `start` is stop 1), `in_debugger` (`breakpoints`,\n`watches` (the change watches) and `regpoints`: each `ref` this server armed in the debugger,\nand its `cpu`), `threads` (the stub's thread per cpu; empty without the thread patch), `cpus`\n(what each is doing is `cpu_info`'s), `frame_symbol` (the frame counter's name as `start` asked\nit, unavailable on a board with none), and, always present, `console_pending` (Lua lines sent\nand not yet evaluated, which `close` drains before its `quit`), `throttles_pending` (`mark`,\n`on`) and `tallies_pending_removal` (`tally_id`, `call`), where a switch that landed is its row\nleaving. `broken` (absent on a healthy session) says why it can no longer be trusted: the\nmachine is then asked nothing, `running` reads false, and the way out is `close`, then `start`.\n\nReference: REFERENCE.md, The session.\n",
+    "input_schema": {
+     "additionalProperties": false,
+     "properties": {},
+     "title": "statusArguments",
+     "type": "object"
+    },
+    "parameters": []
+   }
+  ]
+ },
+ "dosbox-x": {
+  "instructions": "A live DOS machine in DOSBox-X.\n\nTOOLS. Session: `build_check`, `start`, `status`, `close`. Read: `registers`,\n`read_memory`, `disassemble`, `call_stack`, `memdump`, `find`, `log`, `log_wait`,\n`machine_map`, `interrupt_vectors`, `palette`, `screen_view`, `screen_signature`,\n`debug`. Scan (by value, with no map): `scan_start`, `scan_filter`, `scan_clear`.\nWrite: `set_register`, `write`. Advance: `run_to`, `run_for`, `trace`, `screen_wait`,\n`step`, `resume`, `stop`. Declarations, kept per conf: `breakpoint_at`,\n`breakpoint_list`, `breakpoint_clear`, `breakpoint_interrupt`, `watch_add`,\n`watch_list`, `watch_clear`. States: `state_save`, `state_load` (by menu, windowed),\n`state_list`. Names: `symbols_load`, `symbols_find`. Comments: `comment_add`,\n`comment_list`, `comment_delete`, `comment_save`, `comment_load`. Input: `send_keys`,\n`send_mouse`, `drive`. Captures: `captures`, `capture_frame`, `snapshot` (by menu,\nwindowed). Sequences: `perform`.\n\nA SESSION. `build_check` answers about the BUILD, never a reading, and REFUSES while a\nsession is live. `start` parks the guest STOPPED at the debugger; `resume` lets it\nrun. The readers need it STOPPED and refuse otherwise, naming `last_stop` and what\nanswers; a running guest is reached through `log`, `log_wait`, `send_keys` and\n`send_mouse`, and stops at a breakpoint armed BEFORE the release\n(`breakpoint_interrupt` 0x21 real mode, 0x31 ah=2 DJGPP) or, WINDOWED only, at `stop`;\na headless `resume` with no stopper needs `until_close=True`. What you declare while\nit runs is `pending` until the next stop. After `symbols_load`, a `ref` is a symbol or\na `SEG:OFF`. A sequence is ONE call: `perform`, or `drive` for an input and its check.\nFOR A VALUE use `registers`, `read_memory`, `memdump` or `log`; `debug` is the last\nresort.\n\nEVERY REPLY carries `summary`, `status` (`ok`, or `INVALID` with `code` and `message`)\nand `session` (`altered`: has anything here written to the machine?). An argument of\nthe wrong TYPE is the schema's `bad_argument`.\n\nReference: REFERENCE.md.",
+  "tools": [
+   {
+    "name": "step",
+    "description": "`count` instructions, one at a time, `mode` `into` (F11, the default) or\n`over` (F10), each step READ BACK. Needs the machine stopped.\n\nReply: `before` and `after` (address and CPU mode), `completed` (how many steps actually\nlanded, not how many were asked), `running` (the machine left the debugger, e.g. an\n`over` across a call that never returns, so the remaining steps were not sent), `moved`,\n`stalled` (steps that did not change position: a swallowed keystroke), and the stop's\n`instruction`, `registers`, `watches`, `attribution` and `e9`, the log summary as in `resume`:\n`e9` is `none` (default), `all` (the whole log), `lines:N` (the last N), `since` (every line\nsince the previous stop) or `seconds:N` (needs `e9_stamp`), filtered by `e9_filter`. About a\nsecond and a half per\nstep; for a longer run use `run_to`.\n",
+    "input_schema": {
+     "additionalProperties": false,
+     "properties": {
+      "count": {
+       "default": 1,
+       "title": "Count",
+       "type": "integer"
+      },
+      "mode": {
+       "default": "into",
+       "title": "Mode",
+       "type": "string"
+      },
+      "e9": {
+       "default": "none",
+       "title": "E9",
+       "type": "string"
+      },
+      "e9_filter": {
+       "default": ".",
+       "title": "E9 Filter",
+       "type": "string"
+      },
+      "e9_stamp": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "E9 Stamp"
+      }
+     },
+     "title": "stepArguments",
+     "type": "object"
+    },
+    "parameters": [
+     {
+      "name": "count",
+      "default": 1
+     },
+     {
+      "name": "mode",
+      "default": "into"
+     },
+     {
+      "name": "e9",
+      "default": "none"
+     },
+     {
+      "name": "e9_filter",
+      "default": "."
+     },
+     {
+      "name": "e9_stamp",
+      "default": null
+     }
+    ]
+   }
+  ]
+ }
+}
