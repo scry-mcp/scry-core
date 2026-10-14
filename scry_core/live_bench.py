@@ -1,13 +1,15 @@
 """The bench a server's live tier runs on: files copied once from their source checkouts, each
-pinned by its sha256 in the server's manifest, so a live run reads no other repository.
+pinned by its sha256 in the bench's manifest, so a live run reads no other repository.
 
-    python -m scry_core.live_bench check --server mame --manifest <bench>/bench.json
-    python -m scry_core.live_bench fill --server mame --manifest <bench>/bench.json \
-        --from some-project=/path/to/checkout ...
+    python -m scry_core.live_bench check --bench <bench>
+    python -m scry_core.live_bench fill --bench <bench> --from some-project=/path/to/checkout ...
     python -m scry_core.live_bench fill ... --from some-project=... --record
 
-THE MANIFEST IS NAMED, NEVER FOUND: this module belongs to no server's tree, and a default
-resolved from where it happens to be installed would read some other tree's manifest in silence.
+THE BENCH IS NAMED, NEVER FOUND, and its manifest is `<bench>/bench.json` by contract. This module
+belongs to no server and knows none: each server's live tier resolves its own bench (its own
+variable, its own default) and hands the directory here, so a new consumer needs no release of
+this package and a default resolved from where it happens to be installed cannot read some other
+tree's bench in silence.
 
 WHY A COPY AND NOT THE CHECKOUT ITSELF: a tier that drives another project's working tree
 measures whatever that tree holds today, and a session working there can change it under the
@@ -17,19 +19,23 @@ when somebody fills it again, and the hash says whether it is still the copy tha
 `fill` copies the manifest's entries from the checkouts named by `--from <source_repo>=<path>`
 and refuses a source whose bytes are not the ones pinned; `--record` writes the pins instead,
 from the copies it just made, with each source's `HEAD`. An entry with a `capture` holds the
-output of a program run once in its checkout (`capture` is its argv, `source_path` the program),
+output of a program run once in its checkout (`capture` is its argv, run there; `source_path`
+names that program in the reports),
 which is how a known answer is taken from a real run without the tier running it again. A
 capture runs with `PYTHONDONTWRITEBYTECODE` set, so its checkout gains no `__pycache__`.
 
 Exit codes: 0 the bench matches (or was filled), 1 a file is missing or does not match, or a
 source was refused, 2 a usage error, 3 INVALID (an empty manifest, a bench root that does not
 exist, a manifest that is not one, a `--from` the manifest does not name or that is not a
-directory, `--record` on a checkout with no `HEAD`).
+directory, `--record` on a checkout with no `HEAD`, and anything else that stopped the action
+before its verdict, such as a copy that cannot be read: 1 is a verdict about the bench, so an
+error never answers it).
 """
 
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import json
 import os
@@ -37,13 +43,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
-EXIT_OK, EXIT_FAILED, EXIT_USAGE, EXIT_INVALID = 0, 1, 2, 3
+EXIT_OK, EXIT_FAILED, EXIT_INVALID = 0, 1, 3
 
-# One root per server, each overridable by its own variable.
-ROOT_VARS = {"mame": "MAME_LIVE_BENCH", "dosbox-x": "DOSBOX_X_LIVE_BENCH"}
+#: The manifest's name inside its bench: the contract, so no caller names it.
+MANIFEST = "bench.json"
 KEYS = ("path", "sha256", "source_repo", "source_path", "source_commit")
 CAPTURE_TIMEOUT_S = 600
 
@@ -66,14 +72,6 @@ class Entry:
         if self.capture is not None:
             doc["capture"] = list(self.capture)
         return doc
-
-
-def root(server: str) -> Path:
-    """The bench of `server`: its variable when set, else `~/.local/share/scry-bench/<server>`."""
-    held = os.environ.get(ROOT_VARS[server], "")
-    if held:
-        return Path(held).expanduser().absolute()
-    return Path.home() / ".local" / "share" / "scry-bench" / server
 
 
 def _relative(text: object, what: str) -> str:
@@ -129,18 +127,18 @@ def _under(path: str, prefix: str) -> bool:
     return not head or path == head or path.startswith(head + "/")
 
 
-def problems(server: str, manifest: Path, prefix: str = "") -> list[str]:
-    """One line per entry under `prefix` (a directory or one file of the bench, every entry when
-    empty) that is absent from the bench or does not match its pin.
+def problems(at: Path, prefix: str = "") -> list[str]:
+    """One line per entry under `prefix` (a directory or one file of the bench at `at`, every entry
+    when empty) that is absent from the bench or does not match its pin.
 
     `Invalid` when the bench root does not exist or nothing lies under `prefix`: neither
     examined a file, so neither may read as a match."""
+    if not at.is_dir():
+        raise Invalid(f"the bench does not exist: {at} is not a directory")
+    manifest = at / MANIFEST
     entries = [e for e in load(manifest) if _under(e.path, prefix)]
     if not entries:
-        raise Invalid(f"the manifest of {server} names no file under {prefix!r}")
-    at = root(server)
-    if not at.is_dir():
-        raise Invalid(f"the bench of {server} does not exist: {at} is not a directory")
+        raise Invalid(f"{manifest} names no file under {prefix!r}")
     lines = []
     for e in entries:
         here = at / e.path
@@ -151,26 +149,62 @@ def problems(server: str, manifest: Path, prefix: str = "") -> list[str]:
     return lines
 
 
-def missing(server: str, manifest: Path, prefix: str) -> str:
-    """Why the files under `prefix` cannot be used, naming the first file and the remedy, or
-    empty when every one matches its pin: the reason a live board is BLOCKED with."""
-    try:
-        found = problems(server, manifest, prefix)
-    except (Invalid, OSError) as e:
-        found = [str(e)]
-    if not found:
-        return ""
-    more = f" (and {len(found) - 1} more)" if len(found) > 1 else ""
-    return (f"bench {found[0]}{more}; run `python -m scry_core.live_bench check --server "
-            f"{server} --manifest {manifest}`, then `fill` from the source checkouts")
+def check_command(at: Path) -> str:
+    """The command that judges the bench at `at`, as a reason's remedy names it."""
+    return f"python -m scry_core.live_bench check --bench {at}"
 
 
-def _check(server: str, manifest: Path) -> int:
-    found = problems(server, manifest)
+@dataclass(frozen=True)
+class Bench:
+    """A server's bench, at the `root` its live tier resolved, with its manifest inside it.
+
+    What a live tier asks of it is worked out once per `Bench` and per question: why the files
+    under a prefix cannot be used (`missing`), and the paths the manifest pins (`pinned`). A run
+    asks the same question for every cell of a board, and the answer cannot change under it
+    except by somebody filling the bench, which is a new run."""
+
+    root: Path
+    _reasons: dict[str, str] = field(default_factory=dict, init=False, repr=False,
+                                     compare=False)
+
+    @property
+    def manifest(self) -> Path:
+        return self.root / MANIFEST
+
+    def missing(self, prefix: str) -> str:
+        """Why the files under `prefix` cannot be used, naming the first file and the remedy, or
+        empty when every one matches its pin: the reason a live board is BLOCKED with."""
+        if prefix not in self._reasons:
+            self._reasons[prefix] = self._why(prefix)
+        return self._reasons[prefix]
+
+    def _why(self, prefix: str) -> str:
+        if self.root.is_dir() and not self.manifest.is_file():
+            # `fill` copies what the manifest names, so it cannot make the manifest itself.
+            return (f"bench manifest ABSENT: {self.manifest} pins every copy and is kept only in "
+                    f"the bench; restore it there, then `{check_command(self.root)}`")
+        try:
+            found = problems(self.root, prefix)
+        except (Invalid, OSError) as e:
+            found = [str(e)]
+        if not found:
+            return ""
+        more = f" (and {len(found) - 1} more)" if len(found) > 1 else ""
+        return (f"bench {found[0]}{more}; run `{check_command(self.root)}`, then `fill` from the "
+                "source checkouts")
+
+    @functools.cached_property
+    def pinned(self) -> frozenset[str]:
+        """Every path the manifest pins; `Invalid` when it is not a manifest."""
+        return frozenset(e.path for e in load(self.manifest))
+
+
+def _check(at: Path) -> int:
+    found = problems(at)
     for line in found:
         print(line)
     if not found:
-        print(f"OK {server}: {len(load(manifest))} files match the manifest")
+        print(f"OK {at}: {len(load(at / MANIFEST))} files match the manifest")
     return EXIT_FAILED if found else EXIT_OK
 
 
@@ -208,17 +242,17 @@ def _take(e: Entry, checkout: Path, into: Path) -> str:
     return ""
 
 
-def _fill(server: str, manifest: Path, sources: dict[str, Path], record: bool) -> int:
+def _fill(at: Path, sources: dict[str, Path], record: bool) -> int:
+    manifest = at / MANIFEST
     entries = load(manifest)
     known = {e.source_repo for e in entries}
     for name, checkout in sources.items():
         if name not in known:
-            raise Invalid(f"--from {name}: the manifest of {server} names no file from it "
+            raise Invalid(f"--from {name}: {manifest} names no file from it "
                           f"(it names {', '.join(sorted(known))})")
         if not checkout.is_dir():
             raise Invalid(f"--from {name}={checkout}: not a directory")
     heads = {name: _head(checkout) for name, checkout in sources.items()} if record else {}
-    at = root(server)
     copied = kept = refused = 0
     out: list[Entry] = []
     for e in entries:
@@ -256,7 +290,7 @@ def _fill(server: str, manifest: Path, sources: dict[str, Path], record: bool) -
             json.dumps([e.as_json() for e in out], indent=2) + "\n", encoding="utf-8")
     recorded = ("" if not record else "; manifest recorded" if not refused else
                 "; manifest NOT recorded, so the copies made now are off their old pins")
-    print(f"fill {server}: {copied} copied, {kept} already in place, {refused} refused, "
+    print(f"fill {at}: {copied} copied, {kept} already in place, {refused} refused, "
           f"{others} from sources not named{recorded}")
     return EXIT_FAILED if refused else EXIT_OK
 
@@ -268,20 +302,21 @@ def _source(text: str) -> tuple[str, Path]:
     return name, Path(path).expanduser()
 
 
+def _bench(text: str) -> Path:
+    return Path(text).expanduser().absolute()
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m scry_core.live_bench",
                                 description=__doc__.split("\n\n")[0], allow_abbrev=False)
     sub = p.add_subparsers(dest="action", required=True, metavar="{check,fill}")
-    check = sub.add_parser("check", help="verify the bench against the manifest",
+    check = sub.add_parser("check", help="verify the bench against its manifest",
                            allow_abbrev=False)
-    check.add_argument("--server", required=True, choices=sorted(ROOT_VARS))
-    check.add_argument("--manifest", required=True, type=Path,
-                       help="the server's manifest of the bench's files and their pins")
     fill = sub.add_parser("fill", help="copy the manifest's files from their checkouts",
                           allow_abbrev=False)
-    fill.add_argument("--server", required=True, choices=sorted(ROOT_VARS))
-    fill.add_argument("--manifest", required=True, type=Path,
-                      help="the server's manifest of the bench's files and their pins")
+    for action in (check, fill):
+        action.add_argument("--bench", required=True, type=_bench,
+                            help=f"the bench's directory; its manifest is <bench>/{MANIFEST}")
     fill.add_argument("--from", dest="sources", required=True, action="append", type=_source,
                       metavar="SOURCE_REPO=CHECKOUT",
                       help="a checkout the manifest's entries of SOURCE_REPO are copied from")
@@ -293,16 +328,18 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     p = parser()
     args = p.parse_args(argv)
+    if args.action == "fill" and len(dict(args.sources)) != len(args.sources):
+        p.error("--from names one source twice")
     try:
         if args.action == "check":
-            return _check(args.server, args.manifest)
-        sources = dict(args.sources)
-        if len(sources) != len(args.sources):
-            p.error("--from names one source twice")
-        return _fill(args.server, args.manifest, sources, args.record)
+            return _check(args.bench)
+        return _fill(args.bench, dict(args.sources), args.record)
     except Invalid as e:
         print(f"INVALID: {e}", file=sys.stderr)
-        return EXIT_INVALID
+    except Exception as e:  # noqa: BLE001 -- anything else stopped it before a verdict
+        print(f"INVALID: {args.action} stopped before its verdict, so nothing here is one: "
+              f"{type(e).__name__}: {e}", file=sys.stderr)
+    return EXIT_INVALID
 
 
 if __name__ == "__main__":
