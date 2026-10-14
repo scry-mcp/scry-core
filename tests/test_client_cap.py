@@ -30,3 +30,25 @@ def test_the_measure_is_the_clients_at_the_boundary() -> None:
     long = over_the_cap("s", _server("i", "x" * CLIENT_TEXT_CAP + "y" * 200))
     assert long == [f's t0 {CLIENT_TEXT_CAP + 200} > {CLIENT_TEXT_CAP}: '
                     f'"{"y" * PAST_THE_CUT_SHOWN}"'], long
+
+
+def test_what_the_client_delivers_is_the_prefix_up_to_the_cap_in_its_unit() -> None:
+    """The cut the client makes, at the boundary: a text that fits comes back whole, one past it
+    loses exactly the excess, and a character outside the BMP that straddles the cut is dropped
+    whole rather than left as half a surrogate pair."""
+    from scry_core.client_cap import delivered, utf16_units
+
+    fits = "x" * CLIENT_TEXT_CAP
+    assert delivered(fits) == fits
+    assert delivered(fits + "cut") == fits
+    straddle = "x" * (CLIENT_TEXT_CAP - 1) + "\U0001f600" + "tail"
+    assert delivered(straddle) == "x" * (CLIENT_TEXT_CAP - 1)
+    assert utf16_units(delivered("\U0001f600" * CLIENT_TEXT_CAP)) == CLIENT_TEXT_CAP
+
+
+def test_a_lone_surrogate_counts_one_unit_as_the_client_counts_it() -> None:
+    from scry_core.client_cap import delivered, utf16_units
+
+    assert utf16_units("a\ud800b") == 3
+    assert delivered("\ud800" + "x" * CLIENT_TEXT_CAP) == "x" * (CLIENT_TEXT_CAP - 1)
+

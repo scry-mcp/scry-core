@@ -23,18 +23,20 @@ from typing import Any
 
 import pytest
 
-from scry_core import probe
+from scry_core import probe, probe_checks
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "probe"
 SERVERS_FILE = FIXTURES / "servers.py"
 
-probe.configure(SERVERS_FILE, FIXTURES / "tasks")
-SURFACES = {s: probe.load_surface(s) for s in ("mame", "dosbox-x")}
+REPO = probe.configure(SERVERS_FILE, FIXTURES / "tasks")
+SURFACES = {s: probe.load_surface(REPO, s) for s in ("mame", "dosbox-x")}
+#: The tasks directory a run names, which `probe_env` points at a copy a test may edit.
+TASKS = {"dir": FIXTURES / "tasks"}
 
 
 def _pointed() -> list[str]:
     """The two options every run names: the fixture servers and the tasks the probe reads now."""
-    return ["--servers", str(SERVERS_FILE), "--tasks", str(probe.TASKS_DIR)]
+    return ["--servers", str(SERVERS_FILE), "--tasks", str(TASKS["dir"])]
 
 
 def _tasks(server: str) -> list[dict[str, Any]]:
@@ -44,11 +46,8 @@ def _tasks(server: str) -> list[dict[str, Any]]:
 
 
 def _narrowed(server: str) -> probe.Surface:
-    """The real surface, narrowed to the tools the fixture tasks name: real descriptions, real
-    signatures, the server's real `check`."""
-    names = {probe.on_tool(t) for t in _tasks(server)}
-    whole = SURFACES[server]
-    return dataclasses.replace(whole, tools={n: t for n, t in whole.tools.items() if n in names})
+    """The real surface, narrowed to the tools the fixture tasks name."""
+    return probe_checks.narrowed(SURFACES[server], _tasks(server))
 
 
 @pytest.fixture
@@ -60,16 +59,13 @@ def probe_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     shutil.copytree(FIXTURES / "answers", answers)
     real = probe.configure
 
-    def pointed_here(servers: Path, tasks_dir: Path) -> tuple[str, ...]:
-        names = real(servers, tasks_dir)
-        probe.OUT_ROOT, probe.CAPTURED_ROOT = tmp_path / "out", tmp_path / "captured"
-        return names
+    def pointed_here(servers: Path, tasks_dir: Path) -> probe.ProbeRepo:
+        return dataclasses.replace(real(servers, tasks_dir), out_dir=tmp_path / "out",
+                                   captured_dir=tmp_path / "captured")
 
     monkeypatch.setattr(probe, "configure", pointed_here)
-    monkeypatch.setattr(probe, "TASKS_DIR", tasks)
-    monkeypatch.setattr(probe, "OUT_ROOT", tmp_path / "out")
-    monkeypatch.setattr(probe, "CAPTURED_ROOT", tmp_path / "captured")
-    monkeypatch.setattr(probe, "load_surface", _narrowed)
+    monkeypatch.setitem(TASKS, "dir", tasks)
+    monkeypatch.setattr(probe, "load_surface", lambda _repo, server: _narrowed(server))
     monkeypatch.setenv(probe.ANSWERS_ENV, str(answers))
     return tmp_path
 
@@ -86,8 +82,7 @@ def _edit(path: Path, old: str, new: str) -> None:
 
 
 def _judge(server: str, task_id: str, line: str) -> probe.Verdict:
-    task = next(t for t in _tasks(server) if t["id"] == task_id)
-    return probe.judge(_narrowed(server), task, probe.parse(line, [task_id])[task_id])
+    return probe_checks.judge_line(SURFACES[server], _tasks(server), task_id, line)
 
 
 # ---- a whole run, through the seam ------------------------------------------------------------
@@ -127,7 +122,7 @@ def test_two_runs_in_one_second_keep_two_directories(
     still gets its own. The two runs answer differently, so an overwrite would show in what
     the first one left."""
     real = probe.new_run_dir
-    monkeypatch.setattr(probe, "new_run_dir", lambda _now: real(SAME_SECOND))
+    monkeypatch.setattr(probe, "new_run_dir", lambda repo, _now: real(repo, SAME_SECOND))
     _edit(probe_env / "answers" / "mame-run2.txt", ', "length": 6', "")
     first = _run(["mame"], capsys)[1]
     _edit(probe_env / "answers" / "mame-run2.txt", '"ref": "PlayerX"',
@@ -151,9 +146,9 @@ SAME_SECOND = dt.datetime(2000, 1, 2, 4, 4, 5, tzinfo=dt.timezone(dt.timedelta(h
 def test_a_run_directory_is_made_with_its_missing_parents(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The real root sits under a `tmp/` a fresh clone does not have."""
-    monkeypatch.setattr(probe, "OUT_ROOT", tmp_path / "tmp" / "mcp-probe")
-    out = probe.new_run_dir(SAME_SECOND)
-    assert out.is_dir() and out.parent == tmp_path / "tmp" / "mcp-probe"
+    repo = dataclasses.replace(REPO, out_dir=tmp_path / "tmp" / "mcp_probe")
+    out = probe.new_run_dir(repo, SAME_SECOND)
+    assert out.is_dir() and out.parent == tmp_path / "tmp" / "mcp_probe"
     assert out.name.startswith("20000102T030405Z-"), out.name
 
 
@@ -183,7 +178,7 @@ def _captured_by_hand(tmp_path: Path) -> tuple[Path, Path]:
 
 
 def _problems(captured: Path, tasks_file: Path) -> list[str]:
-    return probe.capture_problems("mame", captured, tasks_file)
+    return probe.capture_problems(REPO, "mame", captured, tasks_file)
 
 
 def test_a_capture_of_every_task_judged_as_it_was_has_no_problem(tmp_path: Path) -> None:
@@ -250,7 +245,7 @@ def test_a_task_edited_from_one_to_true_is_stale(tmp_path: Path) -> None:
 def test_a_capture_whose_tool_left_the_surface_is_named(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     whole = SURFACES["mame"]
-    monkeypatch.setattr(probe, "load_surface", lambda _: dataclasses.replace(
+    monkeypatch.setattr(probe, "load_surface", lambda _repo, _server: dataclasses.replace(
         whole, tools={n: t for n, t in whole.tools.items() if n != "read_memory"}))
     problems = _problems(*_captured_by_hand(tmp_path))
     assert [p.split(":")[0] for p in problems] == ["mame M1", "mame M3"], problems
@@ -312,7 +307,7 @@ def test_the_writer_keeps_every_line_and_the_root_mark(
     answers = probe_env / "answers" / "mame-run2.txt"
     answers.write_text(answers.read_text() + '\nM1: {"tool": "status", "args": {}}\n')
     _edit(probe_env / "answers" / "mame-run3.txt", '"ref": "PlayerX"',
-          f'"ref": "{probe.ROOT}/PlayerX"')
+          f'"ref": "{REPO.root}/PlayerX"')
     run_dir = _a_run(capsys)
     assert _capture(run_dir, "M1", capsys)[0] == probe.EXIT_PASS
     runs = _written(probe_env, "M1")["runs"]
@@ -320,7 +315,7 @@ def test_the_writer_keeps_every_line_and_the_root_mark(
     assert [r["right"] for r in runs] == [True, False, False]
     assert runs[2]["lines"][0].startswith('M1: {"tool": "read_memory", "args": {"ref": '
                                           f'"{probe.ROOT_MARK}/PlayerX"')
-    assert str(probe.ROOT) not in json.dumps(runs)
+    assert str(REPO.root) not in json.dumps(runs)
 
 
 def test_what_the_writer_captures_is_judged_as_it_was(
@@ -329,7 +324,7 @@ def test_what_the_writer_captures_is_judged_as_it_was(
     run_dir = _a_run(capsys)
     assert _capture(run_dir, "M1,M2,M3", capsys)[0] == probe.EXIT_PASS
     assert _written(probe_env, "M1")["runs"][1]["right"] is False
-    assert probe.capture_problems("mame", probe_env / "captured" / "mame",
+    assert probe.capture_problems(REPO, "mame", probe_env / "captured" / "mame",
                                   probe_env / "tasks" / "mame.json") == []
 
 
@@ -414,14 +409,14 @@ def test_a_run_made_on_another_surface_is_not_captured(
     narrowed = _narrowed("mame")
     edited = dataclasses.replace(narrowed.tools["read_memory"],
                                  description=narrowed.tools["read_memory"].description + " More.")
-    monkeypatch.setattr(probe, "load_surface", lambda _: dataclasses.replace(
+    monkeypatch.setattr(probe, "load_surface", lambda _repo, _server: dataclasses.replace(
         narrowed, tools={"read_memory": edited}))
     _invalid(probe_env, run_dir, "M1", "another surface", capsys)
 
 
 def test_a_capture_whose_check_no_longer_knows_its_tool_is_named(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(probe, "load_surface", lambda _: dataclasses.replace(
+    monkeypatch.setattr(probe, "load_surface", lambda _repo, _server: dataclasses.replace(
         _narrowed("mame"), check=_unknown_tool_check))
     problems = _problems(*_captured_by_hand(tmp_path))
     assert [p.split(":")[0] for p in problems] == ["mame M1", "mame M3"], problems
@@ -452,13 +447,13 @@ def test_a_task_naming_the_tree_round_trips_through_the_mark(
     for k in (1, 2, 3):
         answers = probe_env / "answers" / f"mame-run{k}.txt"
         answers.write_text(answers.read_text() + '\nM4: {"tool": "read_memory", "args": '
-                           f'{{"ref": "{probe.ROOT}/x", "length": 6}}}}\n')
+                           f'{{"ref": "{REPO.root}/x", "length": 6}}}}\n')
     run_dir = _a_run(capsys)
     assert _capture(run_dir, "M1,M2,M3,M4", capsys)[0] == probe.EXIT_PASS
     m4 = _written(probe_env, "M4")
-    assert m4["task"] == task and str(probe.ROOT) not in json.dumps(m4)
+    assert m4["task"] == task and str(REPO.root) not in json.dumps(m4)
     assert [r["right"] for r in m4["runs"]] == [True] * 3
-    assert probe.capture_problems("mame", probe_env / "captured" / "mame",
+    assert probe.capture_problems(REPO, "mame", probe_env / "captured" / "mame",
                                   probe_env / "tasks" / "mame.json") == []
 
 
@@ -615,6 +610,31 @@ def test_a_value_the_description_holds_is_contamination(
     assert rc == probe.EXIT_FAIL  # the captured answers say 6: judged, no longer refused
 
 
+def test_the_model_is_shown_only_what_the_client_delivers() -> None:
+    """A text past the client's cap is cut where the client cuts it, in the surface the probe
+    loads and in the prompt it writes, so no task can PASS on words the client never delivers;
+    the server's own cap test still refuses the text in its battery."""
+    from scry_core.client_cap import CLIENT_TEXT_CAP
+
+    long = "x" * CLIENT_TEXT_CAP + " PASTTHECUT"
+    whole = SURFACES["mame"]
+    module = types.ModuleType("long_server")
+    module.read_memory = lambda ref, length=16, cpu="": None  # type: ignore[attr-defined]
+    listed = [types.SimpleNamespace(name="read_memory", description=long,
+                                    input_schema=whole.tools["read_memory"].schema)]
+
+    async def list_tools() -> list[Any]:
+        return listed
+
+    module.mcp = types.SimpleNamespace(instructions=long,  # type: ignore[attr-defined]
+                                       list_tools=list_tools)
+    surface = probe.load_surface(dataclasses.replace(REPO, modules={"long": module}), "long")
+    assert "PASTTHECUT" not in surface.instructions + surface.tools["read_memory"].description
+    by_hand = dataclasses.replace(whole, instructions=long, tools={
+        "read_memory": dataclasses.replace(whole.tools["read_memory"], description=long)})
+    assert "PASTTHECUT" not in probe.prompt_for(by_hand, _tasks("mame"))
+
+
 def test_a_hex_literal_in_the_prompt_is_checked_too() -> None:
     surface = _narrowed("mame")
     task = {"id": "M3", "prompt": "Read at 0x400.", "tool": "read_memory", "args": {"ref": "x"}}
@@ -655,7 +675,7 @@ def test_small_numbers_and_booleans_are_not_contamination() -> None:
     ({"id": "D1", "prompt": "p", "tool": "step", "args": {"count": 3}, "allow": ["count"]},
      "task D1: count both expected and allowed"),
     ({"id": "D1", "prompt": "p", "tool": "step", "args": []},
-     "task D1: `args` is an object and `allow` a list"),
+     "task D1: `args` is an object"),
     ({"id": "D1", "prompt": "p", "tool": "step", "expect": "RIGHT"},
      "task D1: `expect` can only be 'CANNOT'"),
     ({"id": "D1", "prompt": "p", "expect": "CANNOT", "about": "nope"},
@@ -684,18 +704,24 @@ def test_a_task_file_with_nothing_to_examine_is_invalid(
     assert "mame.json" in _refused(probe_env, capsys, "mame")[0]
 
 
-def test_a_server_that_lists_no_tool_is_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
-    class Empty:
-        class mcp:  # noqa: N801 -- the attribute every server module carries
-            instructions = "i"
+def _toy(**tools: Any) -> types.ModuleType:
+    """A server module with `tools` as its attributes, listed by name with a one-word
+    description and a schema offering only `ref`."""
+    async def list_tools() -> list[Any]:
+        return [types.SimpleNamespace(name=n, description="d",
+                                      input_schema={"properties": {"ref": {}}}) for n in tools]
 
-            @staticmethod
-            async def list_tools() -> list[Any]:
-                return []
+    module = types.ModuleType("toy")
+    for name, fn in tools.items():
+        setattr(module, name, fn)
+    module.mcp = types.SimpleNamespace(instructions="i",  # type: ignore[attr-defined]
+                                       list_tools=list_tools)
+    return module
 
-    monkeypatch.setattr(probe, "_modules", lambda: {"mame": Empty})
+
+def test_a_server_that_lists_no_tool_is_invalid() -> None:
     with pytest.raises(probe.Invalid, match="lists no tools"):
-        probe.load_surface("mame")
+        probe.load_surface(dataclasses.replace(REPO, modules={"mame": _toy()}), "mame")
 
 
 @pytest.mark.parametrize("args", [{"any_of": []}, {"ref": {"any_of": []}, "length": 6}])
@@ -753,7 +779,6 @@ def test_the_tally_is_per_tool_across_runs() -> None:
 def test_all_runs_every_server_and_sums_them(
         probe_env: Path, capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(probe, "SERVERS", ("mame", "dosbox-x"))
     _edit(probe_env / "answers" / "dosbox-x-run1.txt", '"count": 3', '"count": 4')
     rc, lines = _run(["all"], capsys)
     assert (rc, lines[:-1]) == (probe.EXIT_FAIL, [
@@ -781,7 +806,6 @@ def test_check_covered_is_0_and_writes_nothing(
         monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(probe.ANSWERS_ENV)  # a model call here would fail: none is made
     monkeypatch.setenv("PATH", str(probe_env))
-    monkeypatch.setattr(probe, "SERVERS", ("mame", "dosbox-x"))
     assert _run(["all", "--check"], capsys) == (probe.EXIT_PASS, [
         "OK mame: 3 tasks cover 1 tools", "OK dosbox-x: 2 tasks cover 1 tools"])
     assert not (probe_env / "out").exists()
@@ -790,7 +814,6 @@ def test_check_covered_is_0_and_writes_nothing(
 def test_check_names_every_refusal_and_is_1(
         probe_env: Path, capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(probe, "SERVERS", ("mame", "dosbox-x"))
     _edit(probe_env / "tasks" / "dosbox-x.json", ', "e9_stamp"]', "]")
     assert _run(["all", "--check"], capsys) == (probe.EXIT_FAIL, [
         "OK mame: 3 tasks cover 1 tools", "REFUSED no task names dosbox-x step.e9_stamp"])
@@ -803,7 +826,7 @@ def test_check_that_cannot_examine_is_3(
     rc, lines = _run(["mame", "--check"], capsys)
     assert rc == probe.EXIT_INVALID and lines[0].startswith("INVALID ") and "mame.json" in lines[0]
 
-    def broken(_: str) -> None:
+    def broken(_repo: probe.ProbeRepo, _server: str) -> None:
         raise KeyError("tools")
 
     monkeypatch.setattr(probe, "load_surface", broken)
@@ -816,6 +839,51 @@ def test_check_names_an_entry_that_is_not_a_task(
     _edit(probe_env / "tasks" / "mame.json", "\n]}", ',\n  "oops"\n]}')
     assert _run(["mame", "--check"], capsys) == (probe.EXIT_FAIL, [
         "REFUSED mame task #3: needs an `id` of letters, digits, `_` or `-`"])
+
+
+@pytest.mark.parametrize(("task", "refused"), [
+    ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": 5}',
+     "mame task M4: `args` is an object"),
+    ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX"}, "allow": 3}',
+     "mame task M4: `allow` is a list of argument names"),
+    ('{"prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX", "length": 1024}}',
+     "mame task #3: needs an `id` of letters, digits, `_` or `-`"),
+    ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX"}, '
+     '"allow": ["length", "cpu"], "grammar": 7}',
+     "mame task M4: `grammar` is a list of strings or numbers"),
+    ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX"}, '
+     '"allow": ["length", "cpu"], "grammar": [[1]]}',
+     "mame task M4: `grammar` is a list of strings or numbers"),
+    ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"any_of": 5}}',
+     "mame task M4: an `any_of` with no alternative accepts nothing"),
+    ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"ref": "x"}, "allow": [3]}',
+     "mame task M4: `allow` is a list of argument names"),
+    ('{"id": "M4", "prompt": "p", "expect": "CANNOT", "about": "read_memory", "allow": 3}',
+     "mame task M4: `allow` is a list of argument names"),
+    ('{"id": "M4", "prompt": "p", "about": "read_memory", "args": {"ref": "x"}}',
+     "mame task M4: `about` belongs to a CANNOT task; a call names its `tool`\n"
+     "mame task M4: `tool` names no tool of this server"),
+])
+def test_a_malformed_task_is_refused_and_never_breaks_the_later_passes(
+        probe_env: Path, capsys: pytest.CaptureFixture[str], task: str, refused: str) -> None:
+    """A task `task_problems` names is not handed to the coverage and contamination passes,
+    which read its `args`, `allow`, `grammar` and `id` as the shapes those must have: the check
+    answers REFUSED, never a traceback (the no-id case carries a value its tool's description
+    holds, so contamination would have reached it)."""
+    _edit(probe_env / "tasks" / "mame.json", "\n]}", f",\n  {task}\n]}}")
+    assert _run(["mame", "--check"], capsys) == (
+        probe.EXIT_FAIL, [f"REFUSED {line}" for line in refused.split("\n")])
+
+
+def test_a_required_argument_left_to_allow_is_not_put_to_the_servers_judge(
+        probe_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """A call the task does not fix whole has no value to judge: the task is taken as it is,
+    never a traceback from binding a call that lacks the argument."""
+    task = ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"length": 6}, '
+            '"allow": ["ref", "cpu"]}')
+    _edit(probe_env / "tasks" / "mame.json", "\n]}", f",\n  {task}\n]}}")
+    assert _run(["mame", "--check"], capsys) == (probe.EXIT_PASS, [
+        "OK mame: 4 tasks cover 1 tools"])
 
 
 def test_a_check_that_cannot_be_imported_is_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1006,44 +1074,22 @@ def test_a_servers_file_the_probe_cannot_use_is_invalid(
         tmp_path: Path, capsys: pytest.CaptureFixture[str], text: str, said: str) -> None:
     servers = tmp_path / "servers.py"
     servers.write_text(text)
-    try:
-        rc = probe.main(["all", "--check", "--servers", str(servers), "--tasks", str(tmp_path)])
-        out = capsys.readouterr().out
-        assert rc == probe.EXIT_INVALID and out.startswith("INVALID ") and said in out, out
-    finally:
-        probe.configure(SERVERS_FILE, FIXTURES / "tasks")
+    rc = probe.main(["all", "--check", "--servers", str(servers), "--tasks", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert rc == probe.EXIT_INVALID and out.startswith("INVALID ") and said in out, out
 
 
 def test_a_servers_file_that_is_not_there_or_breaks_is_invalid(
         tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     broken = tmp_path / "broken.py"
     broken.write_text("raise KeyError('nope')\n")
-    try:
-        for path, said in [(tmp_path / "absent.py", "absent.py"),
-                           (broken, "the servers file broke")]:
-            rc = probe.main(["all", "--check", "--servers", str(path), "--tasks", str(tmp_path)])
-            out = capsys.readouterr().out
-            assert rc == probe.EXIT_INVALID and said in out, out
-        assert probe.main(["all", "--check", "--servers", str(tmp_path / "x.txt"),
-                           "--tasks", str(tmp_path)]) == probe.EXIT_INVALID
-    finally:
-        probe.configure(SERVERS_FILE, FIXTURES / "tasks")
-
-
-def test_a_probe_pointed_nowhere_refuses(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Every path hangs from the repository, so none is guessed: `.` is a real directory, and
-    a probe that read it would answer about whatever the working directory holds."""
-    monkeypatch.setattr(probe, "_LOADER", None)
-    probe._modules.cache_clear()
-    try:
-        for call in (lambda: probe.load_surface("mame"), lambda: probe.resolve_root("{root}/x"),
-                     lambda: probe.mark_root("a.b"), lambda: probe.load_tasks("mame"),
-                     lambda: probe.new_run_dir(SAME_SECOND)):
-            with pytest.raises(probe.Invalid, match="pointed at no repository"):
-                call()
-    finally:
-        monkeypatch.undo()
-        probe._modules.cache_clear()
+    for path, said in [(tmp_path / "absent.py", "absent.py"),
+                       (broken, "the servers file broke")]:
+        rc = probe.main(["all", "--check", "--servers", str(path), "--tasks", str(tmp_path)])
+        out = capsys.readouterr().out
+        assert rc == probe.EXIT_INVALID and said in out, out
+    assert probe.main(["all", "--check", "--servers", str(tmp_path / "x.txt"),
+                       "--tasks", str(tmp_path)]) == probe.EXIT_INVALID
 
 
 def _servers_file(tmp_path: Path, extra: str) -> Path:
@@ -1067,27 +1113,9 @@ def _servers_file(tmp_path: Path, extra: str) -> Path:
 def test_a_servers_file_naming_what_it_does_not_load_is_refused_and_changes_nothing(
         tmp_path: Path, extra: str, said: str) -> None:
     """A judge filed under a misspelt name would leave its server judged by signature alone,
-    in silence; and a refused file leaves the probe pointed where it was."""
-    before = (probe.ROOT, probe.SERVERS, dict(probe.CHECKS), probe.CAPTURED_SERVERS)
+    in silence."""
     with pytest.raises(probe.Invalid, match=said):
         probe.configure(_servers_file(tmp_path, extra), tmp_path)
-    assert (probe.ROOT, probe.SERVERS, dict(probe.CHECKS), probe.CAPTURED_SERVERS) == before
-    assert probe.load_surface("mame").tools
-
-
-def test_a_servers_file_already_loaded_is_not_run_again(tmp_path: Path) -> None:
-    """A suite loads its servers at collection; a later call pointing at the same file reads
-    those objects rather than building a second copy after the shape guard is installed."""
-    runs = tmp_path / "runs"
-    servers = _servers_file(tmp_path, f"open({str(runs)!r}, 'a').write('x')\n")
-    try:
-        probe.configure(servers, tmp_path)
-        first = probe._modules()
-        probe.configure(servers, FIXTURES / "tasks")
-        assert runs.read_text() == "x" and probe._modules() is first
-        assert probe.TASKS_DIR == FIXTURES / "tasks"
-    finally:
-        probe.configure(SERVERS_FILE, FIXTURES / "tasks")
 
 
 @pytest.mark.parametrize("argv", [["mame", "--check", "--runs", "2"],
@@ -1103,7 +1131,7 @@ def test_a_wrong_call_is_usage_before_the_servers_file_runs(
 def test_a_run_directory_that_cannot_be_made_is_invalid(
         probe_env: Path, capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch) -> None:
-    def refused(_now: dt.datetime) -> Path:
+    def refused(_repo: probe.ProbeRepo, _now: dt.datetime) -> Path:
         raise PermissionError("read-only")
 
     monkeypatch.setattr(probe, "new_run_dir", refused)
@@ -1123,18 +1151,14 @@ def test_a_judge_the_servers_file_gives_judges_the_call(tmp_path: Path) -> None:
         f"    if effective['e9'] not in ('none', 'log'):\n"
         f"        raise ValueError(f\"e9={{effective['e9']!r}} is not a route\")\n"
         f"CHECKS = {{'dosbox-x': _step}}\n")
-    try:
-        probe.configure(servers, FIXTURES / "tasks")
-        surface = probe.load_surface("dosbox-x")
-        task = next(t for t in _tasks("dosbox-x") if t["id"] == "D1")
-        good = 'D1: {"tool": "step", "args": {"mode": "into", "count": 3}}'
-        bad = 'D1: {"tool": "step", "args": {"mode": "into", "count": 3, "e9": "sideways"}}'
-        assert probe.judge(surface, task, probe.parse(good, ["D1"])["D1"]).right
-        verdict = probe.judge(surface, task, probe.parse(bad, ["D1"])["D1"])
-        assert (verdict.right, verdict.why) == (
-            False, "the server's check refuses it: e9='sideways' is not a route")
-    finally:
-        probe.configure(SERVERS_FILE, FIXTURES / "tasks")
+    surface = probe.load_surface(probe.configure(servers, FIXTURES / "tasks"), "dosbox-x")
+    task = next(t for t in _tasks("dosbox-x") if t["id"] == "D1")
+    good = 'D1: {"tool": "step", "args": {"mode": "into", "count": 3}}'
+    bad = 'D1: {"tool": "step", "args": {"mode": "into", "count": 3, "e9": "sideways"}}'
+    assert probe.judge(surface, task, probe.parse(good, ["D1"])["D1"]).right
+    verdict = probe.judge(surface, task, probe.parse(bad, ["D1"])["D1"])
+    assert (verdict.right, verdict.why) == (
+        False, "the server's check refuses it: e9='sideways' is not a route")
 
 
 # ---- what the engine hands a server's own judge ---------------------------------------------
@@ -1188,30 +1212,64 @@ def test_a_call_with_no_args_is_a_call_with_none() -> None:
         assert probe.judge(surface, task, probe.parse(line, ["S1"])["S1"]).right, line
 
 
-def test_a_parameter_the_schema_does_not_offer_is_not_the_models_to_pass(
-        monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_parameter_the_schema_does_not_offer_is_not_the_models_to_pass() -> None:
     """`ctx` is injected by the SDK and absent from the schema: the signature the probe binds
     a model's call to is narrowed to what the client was shown."""
     def read(ref: str, ctx: object = None) -> None:
         """unused"""
 
-    async def list_tools() -> list[Any]:
-        return [types.SimpleNamespace(name="read", description="d",
-                                      input_schema={"properties": {"ref": {}}})]
-
-    module = types.SimpleNamespace(read=read, mcp=types.SimpleNamespace(
-        instructions="i", list_tools=list_tools))
-    monkeypatch.setattr(probe, "_modules", lambda: {"toy": module})
-    surface = probe.load_surface("toy")
+    surface = probe.load_surface(dataclasses.replace(REPO, modules={"toy": _toy(read=read)}),
+                                 "toy")
     assert list(surface.tools["read"].signature.parameters) == ["ref"]
     task = {"id": "T1", "prompt": "p", "tool": "read", "args": {"ref": "x"}}
     line = 'T1: {"tool": "read", "args": {"ref": "x", "ctx": 1}}'
     assert not probe.judge(surface, task, probe.parse(line, ["T1"])["T1"]).right
 
 
-def test_the_repository_roots_hang_from_the_servers_file() -> None:
-    assert SERVERS_FILE.parent.resolve() == probe.ROOT
-    assert probe.OUT_ROOT == probe.ROOT / "tmp" / "mcp-probe"
-    assert probe.CAPTURED_ROOT == probe.ROOT / "tests" / "fixtures" / "mcp_probe" / "captured"
-    assert probe.CAPTURED_SERVERS == ("mame",) and probe.SERVERS == ("mame", "dosbox-x")
-    assert probe.CHECKS == {}
+def test_the_repository_is_one_object_and_its_directories_hang_from_its_root() -> None:
+    """Everything the engine reads comes from the object `configure` returns, its two directories
+    derived from the root as `--help` states; frozen, so no call can re-point it."""
+    assert REPO.root == SERVERS_FILE.parent.resolve() and REPO.tasks_dir == FIXTURES / "tasks"
+    assert REPO.out_dir == REPO.root / "tmp" / "mcp_probe"
+    assert REPO.captured_dir == REPO.root / "tests" / "fixtures" / "mcp_probe" / "captured"
+    assert REPO.captured_servers == ("mame",) and REPO.servers == ("mame", "dosbox-x")
+    assert REPO.checks == {}
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        REPO.root = Path()  # type: ignore[misc]
+    with pytest.raises(TypeError):
+        REPO.modules["other"] = types.ModuleType("other")  # type: ignore[index]
+    assert "`ROOT/tmp/mcp_probe/`" in probe.__doc__ and (
+        "`ROOT/tests/fixtures/mcp_probe/captured/<server>/`" in probe.__doc__)
+
+
+def test_two_repositories_are_probed_side_by_side_without_either_moving(
+        tmp_path: Path) -> None:
+    """A second `configure` returns its own object and leaves the first as it was."""
+    servers = _servers_file(tmp_path, "CHECKS = {'dosbox-x': print}\n")
+    other = probe.configure(servers, tmp_path)
+    assert other.root == REPO.root and other.tasks_dir == tmp_path and other.checks
+    assert REPO.tasks_dir == FIXTURES / "tasks" and REPO.checks == {}
+
+
+def test_a_report_that_cannot_be_written_is_invalid(
+        probe_env: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """1 is a verdict, so a run whose report could not be kept answers INVALID, not a FAIL."""
+    real = probe.new_run_dir
+
+    def unwritable(repo: probe.ProbeRepo, now: dt.datetime) -> Path:
+        out = real(repo, now)
+        (out / "report.txt").mkdir()
+        return out
+
+    monkeypatch.setattr(probe, "new_run_dir", unwritable)
+    rc, lines = _run(["mame"], capsys)
+    assert rc == probe.EXIT_INVALID and lines[0].startswith("INVALID the report could not be")
+
+
+def test_a_capture_check_on_a_task_file_with_no_id_is_invalid(tmp_path: Path) -> None:
+    captured, tasks_file = _captured_by_hand(tmp_path)
+    _edit(tasks_file, "\n]}", ',\n  "oops"\n]}')
+    with pytest.raises(probe.Invalid, match="not a task with an `id`"):
+        probe.capture_problems(REPO, "mame", captured, tasks_file)
+

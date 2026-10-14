@@ -2,8 +2,9 @@
 description has to fit it, or the model never reads what is past the cut.
 
 The client compares a JavaScript `.length`, so the unit is the UTF-16 code unit, not the
-character or the byte. This is the one place the cap's value lives; each server's suite calls
-`over_the_cap` on its own servers and fails on any line it returns.
+character or the byte. This is the one place the cap's value lives: each server's suite fails on
+any line `over_the_cap` returns for its servers (through `probe_checks.over_cap`), and the probe
+shows its model only what `delivered` keeps.
 """
 
 from __future__ import annotations
@@ -15,14 +16,26 @@ CLIENT_TEXT_CAP = 2048
 PAST_THE_CUT_SHOWN = 60
 
 
+def _utf16(text: str) -> bytes:
+    # A lone surrogate is one unit to the client's `.length`, so it is encoded, never refused.
+    return text.encode("utf-16-le", errors="surrogatepass")
+
+
 def utf16_units(text: str) -> int:
-    return len(text.encode("utf-16-le")) // 2
+    return len(_utf16(text)) // 2
+
+
+def delivered(text: str) -> str:
+    """The text as the client delivers it: its first `CLIENT_TEXT_CAP` units. A character outside
+    the BMP that straddles the cut is dropped whole, since half a surrogate pair is no character
+    a model could read. The probe shows the model this, so what it measures is what is delivered."""
+    return _utf16(text)[:2 * CLIENT_TEXT_CAP].decode("utf-16-le", errors="ignore")
 
 
 def past_the_cut(text: str) -> str:
     """What the model loses, from the first unit past the cap, measured in the client's unit and
     folded onto one line so each offending text stays one line of the report."""
-    lost = text.encode("utf-16-le")[2 * CLIENT_TEXT_CAP:].decode("utf-16-le", errors="replace")
+    lost = _utf16(text)[2 * CLIENT_TEXT_CAP:].decode("utf-16-le", errors="replace")
     return " ".join(lost[:PAST_THE_CUT_SHOWN].split())
 
 

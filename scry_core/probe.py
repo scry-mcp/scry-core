@@ -5,18 +5,23 @@ Run as `python -m scry_core.probe <server> --servers <file> --tasks <dir> [--run
 model runs judge each task. `--check` asks no model: see CHECK below; `--capture` keeps a run:
 see CAPTURE.
 
-THE REPOSITORY IS NAMED, NEVER FOUND. `--servers` is a Python file that defines `load()`, each
+THE REPOSITORY IS NAMED, NEVER FOUND. `--servers` is a Python file whose `load()` returns each
 server's MODULE by its registered name (`.mcp` is the server, each tool the module attribute of
-the same name), and `ROOT`, the repository's root: `{root}` in a task, the run directories under
-`ROOT/tmp/mcp-probe/` and the captures under `ROOT/tests/fixtures/mcp_probe/captured/` all hang
-from it. It may define `CHECKS`, each server's own pre-gate judge by name, and `CAPTURED`, the
-servers whose real runs the repository keeps. `--tasks` is the directory of `<server>.json`. Both
-are required: this module belongs to no repository, and a default would read another one's.
+the same name), and which defines `ROOT`, the repository's root, which `{root}` in a task stands
+for. It may
+define `CHECKS`, each server's own pre-gate judge by name, and `CAPTURED`, the servers whose real
+runs the repository keeps. `--tasks` is the directory of `<server>.json`. Both are required: this
+module belongs to no repository, and a default would read another one's.
+
+TWO DIRECTORIES ARE DERIVED FROM `ROOT`, and the derivation is the contract (no option moves
+them): a run writes its directory under `ROOT/tmp/mcp_probe/`, and the captures live under
+`ROOT/tests/fixtures/mcp_probe/captured/<server>/`.
 
 WHAT IT ASKS. Per server, ONE prompt: the server's `instructions` and every tool as `list_tools()`
-delivers it (name, description, input schema), then the tasks of `<tasks>/<server>.json`.
+delivers it (name, description, input schema), each text cut where the client cuts it
+(`client_cap.delivered`), then the tasks of `<tasks>/<server>.json`.
 A fresh `claude --print` on haiku at low effort, with no tool, no MCP server, no settings and so no
-CLAUDE.md, answers one line per task:
+project instructions, answers one line per task:
 
     <id>: {"tool": "<name>", "args": {...}}      or      <id>: CANNOT <reason>
 
@@ -40,11 +45,13 @@ REFUSED BEFORE ANY MODEL IS ASKED, each naming what it found (INVALID, exit 3):
     a server with no CANNOT task;
   - contamination: a task value (an expected argument, a hex literal in the prompt) that the
     tool's own description holds as a whole word, unless the task lists it under `grammar`;
-  - a task naming a tool or an argument the server does not have.
+  - a task naming a tool or an argument the server does not have;
+  - a task file that is malformed (an id, a key, a shape the list above does not take), or a
+    task whose own expected call the server's judge refuses.
 
 OUTPUT. One line per tool, `PASS <server> <tool> N/N` or `FAIL <server> <tool> k/N (<task ids>)`,
 k being the runs in which every task on it was right; one summary line; and LAST, the directory
-under `ROOT/tmp/mcp-probe/` that holds the prompts, the raw answers and every per-task verdict.
+under `ROOT/tmp/mcp_probe/` that holds the prompts, the raw answers and every per-task verdict.
 
 EXIT: 0 every tool passes; 1 any FAIL; 2 usage; 3 INVALID: nothing to examine, a refusal above,
 a model call that failed or answered no line for any task, or the probe itself breaking.
@@ -53,7 +60,7 @@ CHECK. `--check` runs only the refusals above, which cost nothing and need no ne
 prints `OK <server>: <n> tasks cover <m> tools` or one `REFUSED <problem>` line each; it writes no
 directory. Exit 0 covered, 1 a refusal found, 2 usage (`--runs` beside it), 3 INVALID (it could
 not examine). A repository's pre-commit can run it, so a task set that no longer fits its servers
-cannot be committed; a CHANGED description it cannot see, which is what running the probe is for.
+cannot be committed. It cannot see a CHANGED description: running the probe is for that.
 
 THE MODEL RUN IS NOT A GATE. Every run costs money and needs the network, and at haiku a miss
 moves between tools from run to run, so a gate on it would block by chance: it is run by hand
@@ -79,7 +86,6 @@ import argparse
 import asyncio
 import concurrent.futures
 import datetime as dt
-import functools
 import importlib.util
 import inspect
 import json
@@ -89,24 +95,18 @@ import subprocess
 import sys
 import tempfile
 import traceback
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from types import ModuleType
+from types import MappingProxyType, ModuleType
 from typing import Any
 
-# WHERE THE REPOSITORY IS, set by `configure` from the servers file and the tasks directory, and
-# read by everything below. Empty until then: a probe that was never pointed at a repository
-# refuses (`Invalid`) rather than reading somewhere it guessed.
-ROOT = Path()
-TASKS_DIR = Path()
-OUT_ROOT = Path()
-CAPTURED_ROOT = Path()
-#: The servers the servers file loads, in its order, and the ones whose real runs it keeps.
-SERVERS: tuple[str, ...] = ()
-CAPTURED_SERVERS: tuple[str, ...] = ()
-_LOADER: Callable[[], dict[str, ModuleType]] | None = None
-_LOADED: Path | None = None
+from scry_core.client_cap import delivered
+
+#: Where a run writes and where the captures live, under the repository's root: the contract
+#: `--help` states, so no option moves them.
+RUNS_UNDER_ROOT = Path("tmp") / "mcp_probe"
+CAPTURED_UNDER_ROOT = Path("tests") / "fixtures" / "mcp_probe" / "captured"
 ANSWERS_ENV = "MCP_PROBE_ANSWERS"
 #: Written in a task file where a path has to EXIST for the server's check (a reference image):
 #: it becomes the repository's root, so the file stays true in any clone.
@@ -115,13 +115,17 @@ CLAUDE_TIMEOUT_S = 600
 DEFAULT_RUNS = 3
 
 #: THE MODEL SEES WHAT THE PROMPT CARRIES AND NOTHING ELSE. `--setting-sources ""` is what keeps
-#: CLAUDE.md and the hooks out (without it the child answers questions only CLAUDE.md can),
+#: project instructions and hooks out (without it the child answers from instructions the prompt
+#: never carried),
 #: `--strict-mcp-config` with no config keeps every MCP server out, and `--tools ""` the built-ins.
 CLAUDE = ["claude", "--print", "--model", "haiku", "--effort", "low", "--max-budget-usd", "1",
           "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"]
 STATIC = [*CLAUDE, "--tools", "", "--output-format", "json"]
 
 EXIT_PASS, EXIT_FAIL, EXIT_INVALID = 0, 1, 3
+#: How `--check` begins each line: a server covered, or one problem it refuses. A caller reading
+#: the check's output (a pre-commit) matches these, never its own spelling of them.
+CHECK_OK, CHECK_REFUSED = "OK ", "REFUSED "
 CANNOT = "CANNOT"
 NO_LINE = "no answer line"
 
@@ -180,6 +184,27 @@ Check = Callable[[str, dict[str, Any], dict[str, Any]], None]
 
 
 @dataclass(frozen=True)
+class ProbeRepo:
+    """The one repository a probe reads, built by `configure` and taken by every engine function,
+    so everything a call reads is what it was handed. `modules` are the servers file's servers in
+    its order; `checks` each one's own pre-gate judge; `captured_servers` the ones whose real runs
+    the repository keeps. `configure` also puts the root on `sys.path`, since the repository's
+    modules import each other by name."""
+
+    root: Path
+    tasks_dir: Path
+    out_dir: Path
+    captured_dir: Path
+    modules: Mapping[str, ModuleType]
+    checks: Mapping[str, Check]
+    captured_servers: tuple[str, ...]
+
+    @property
+    def servers(self) -> tuple[str, ...]:
+        return tuple(self.modules)
+
+
+@dataclass(frozen=True)
 class Surface:
     server: str
     instructions: str
@@ -206,21 +231,12 @@ class Verdict:
 # ---- the servers, as the client sees them -------------------------------------------------
 
 
-#: Each server's own pre-gate judge, by name, as the servers file gives them.
-CHECKS: dict[str, Check] = {}
-
-
-def configure(servers_file: Path, tasks_dir: Path) -> tuple[str, ...]:
-    """Point the probe at one repository: its servers file and its tasks directory. Answers the
-    servers the file loads; `Invalid` when the file is not one the probe can use, and then the
-    probe stays pointed where it was. A file already loaded is not run again, so its servers
-    are the same objects every call reads (a suite loads them at collection)."""
-    global ROOT, TASKS_DIR, OUT_ROOT, CAPTURED_ROOT, SERVERS, CAPTURED_SERVERS, _LOADER, _LOADED
+def configure(servers_file: Path, tasks_dir: Path) -> ProbeRepo:
+    """The repository a servers file and a tasks directory name, or `Invalid` when the file is not
+    one the probe can use. The servers are whatever `load()` hands back: a servers file that
+    imports its server by name hands the module the suite already holds."""
     path = servers_file.resolve()
-    if path == _LOADED and _LOADER is not None:
-        TASKS_DIR = tasks_dir
-        return SERVERS
-    spec = importlib.util.spec_from_file_location("scry_probe_servers", path)
+    spec = importlib.util.spec_from_file_location("mcp_probe_servers", path)
     if spec is None or spec.loader is None:
         raise Invalid(f"--servers {servers_file}: not a Python file the probe can load")
     module = importlib.util.module_from_spec(spec)
@@ -246,34 +262,13 @@ def configure(servers_file: Path, tasks_dir: Path) -> tuple[str, ...]:
     if stray := sorted({*checks, *captured} - set(modules)):
         raise Invalid(f"--servers {servers_file} names {', '.join(stray)} in `CHECKS` or "
                       f"`CAPTURED`, and loads no such server ({', '.join(modules)})")
-    _LOADER, _LOADED = (lambda: modules), path
-    _modules.cache_clear()
-    ROOT = root.resolve()
-    TASKS_DIR = tasks_dir
-    OUT_ROOT = ROOT / "tmp" / "mcp-probe"
-    CAPTURED_ROOT = ROOT / "tests" / "fixtures" / "mcp_probe" / "captured"
-    CHECKS.clear()
-    CHECKS.update(checks)
-    CAPTURED_SERVERS = captured
-    SERVERS = tuple(modules)
-    return SERVERS
+    at = root.resolve()
+    return ProbeRepo(at, tasks_dir, at / RUNS_UNDER_ROOT, at / CAPTURED_UNDER_ROOT,
+                     MappingProxyType(dict(modules)), MappingProxyType(dict(checks)), captured)
 
 
-def _pointed() -> None:
-    """`Invalid` when no repository was configured: every path below hangs from one."""
-    if _LOADER is None:
-        raise Invalid("the probe was pointed at no repository: `configure` it first")
-
-
-@functools.cache
-def _modules() -> dict[str, ModuleType]:
-    _pointed()
-    assert _LOADER is not None
-    return _LOADER()
-
-
-def load_surface(server: str) -> Surface:
-    module = _modules()[server]
+def load_surface(repo: ProbeRepo, server: str) -> Surface:
+    module = repo.modules[server]
     tools: dict[str, Tool] = {}
     for listed in asyncio.run(module.mcp.list_tools()):
         schema = dict(listed.input_schema or {})
@@ -281,38 +276,37 @@ def load_surface(server: str) -> Surface:
         signature = inspect.signature(getattr(module, listed.name))
         signature = signature.replace(parameters=[p for p in signature.parameters.values()
                                                   if p.name in offered])
-        tools[listed.name] = Tool(listed.name, listed.description or "", schema, signature)
+        tools[listed.name] = Tool(listed.name, delivered(listed.description or ""), schema,
+                                  signature)
     if not tools:
         raise Invalid(f"{server} lists no tools, so there is nothing to examine")
-    return Surface(server, module.mcp.instructions or "", tools, CHECKS.get(server))
+    return Surface(server, delivered(module.mcp.instructions or ""), tools,
+                   repo.checks.get(server))
 
 
-def tasks_file(server: str) -> Path:
-    _pointed()
-    return TASKS_DIR / f"{server}.json"
+def tasks_file(repo: ProbeRepo, server: str) -> Path:
+    return repo.tasks_dir / f"{server}.json"
 
 
-def load_tasks(server: str) -> list[dict[str, Any]]:
-    return read_tasks(tasks_file(server))
+def load_tasks(repo: ProbeRepo, server: str) -> list[dict[str, Any]]:
+    return read_tasks(repo, tasks_file(repo, server))
 
 
-def resolve_root(text: str) -> str:
-    _pointed()
-    return text.replace(ROOT_MARK, str(ROOT))
+def resolve_root(repo: ProbeRepo, text: str) -> str:
+    return text.replace(ROOT_MARK, str(repo.root))
 
 
-def mark_root(text: str) -> str:
+def mark_root(repo: ProbeRepo, text: str) -> str:
     """The inverse of `resolve_root`: what a tracked file keeps, true in any clone."""
-    _pointed()
-    return text.replace(str(ROOT), ROOT_MARK)
+    return text.replace(str(repo.root), ROOT_MARK)
 
 
-def read_tasks(path: Path, *, raw: bool = False) -> list[dict[str, Any]]:
+def read_tasks(repo: ProbeRepo, path: Path, *, raw: bool = False) -> list[dict[str, Any]]:
     """The tasks, with `{root}` resolved to the repository, or kept as written with `raw`, which is
     how a capture stores the task it answered."""
     try:
         text = path.read_text(encoding="utf-8")
-        doc = json.loads(text if raw else resolve_root(text))
+        doc = json.loads(text if raw else resolve_root(repo, text))
     except (OSError, json.JSONDecodeError) as e:
         raise Invalid(f"{path}: {e}") from None
     tasks = doc.get("tasks") if isinstance(doc, dict) else None
@@ -331,49 +325,69 @@ def on_tool(task: dict[str, Any]) -> str:
 
 def task_problems(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
     """A task file that names what the server does not have would judge nothing it claims to."""
-    out: list[str] = []
+    return [p for found in _problems_by_task(surface, tasks) for p in found]
+
+
+def _problems_by_task(surface: Surface, tasks: list[dict[str, Any]]) -> list[list[str]]:
+    """`task_problems`, one list per task in order, so a caller can keep the tasks with none."""
+    out: list[list[str]] = []
     seen: set[str] = set()
     for i, task in enumerate(tasks):
+        found: list[str] = []
+        out.append(found)
         tid = task.get("id") if isinstance(task, dict) else None
         where = f"{surface.server} task {tid or f'#{i}'}"
         if not isinstance(task, dict) or not isinstance(tid, str) or not TASK_ID.fullmatch(tid):
-            out.append(f"{where}: needs an `id` of letters, digits, `_` or `-`")
+            found.append(f"{where}: needs an `id` of letters, digits, `_` or `-`")
             continue
         if tid in seen:
-            out.append(f"{where}: the id is used twice")
+            found.append(f"{where}: the id is used twice")
         seen.add(tid)
         if unknown := sorted(set(task) - TASK_KEYS):
-            out.append(f"{where}: unknown key(s) {', '.join(unknown)}")
+            found.append(f"{where}: unknown key(s) {', '.join(unknown)}")
         if not isinstance(task.get("prompt"), str) or not task["prompt"].strip():
-            out.append(f"{where}: needs a `prompt`")
+            found.append(f"{where}: needs a `prompt`")
+        grammar, allow = task.get("grammar", []), task.get("allow", [])
+        if not isinstance(grammar, list) or not all(_is_scalar(g) for g in grammar):
+            found.append(f"{where}: `grammar` is a list of strings or numbers")
+        if not isinstance(allow, list) or not all(isinstance(a, str) for a in allow):
+            found.append(f"{where}: `allow` is a list of argument names")
+            continue
         tool = surface.tools.get(on_tool(task))
         if task.get("expect") == CANNOT:
             if tool is None:
-                out.append(f"{where}: `about` names no tool of this server")
+                found.append(f"{where}: `about` names no tool of this server")
             if "tool" in task or "args" in task:
-                out.append(f"{where}: a CANNOT task carries no `tool` or `args`")
+                found.append(f"{where}: a CANNOT task carries no `tool` or `args`")
             continue
         if "expect" in task:
-            out.append(f"{where}: `expect` can only be {CANNOT!r}")
-        if tool is None:
-            out.append(f"{where}: `tool` names no tool of this server")
+            found.append(f"{where}: `expect` can only be {CANNOT!r}")
+        if "about" in task:
+            found.append(f"{where}: `about` belongs to a CANNOT task; a call names its `tool`")
+        if "tool" not in task or tool is None:
+            found.append(f"{where}: `tool` names no tool of this server")
             continue
-        allow = task.get("allow", [])
         if _has_empty_any_of(task.get("args", {})):
-            out.append(f"{where}: an `any_of` with no alternative accepts nothing")
+            found.append(f"{where}: an `any_of` with no alternative accepts nothing")
             continue
         alternatives = calls(task.get("args", {}))
-        if not all(isinstance(a, dict) for a in alternatives) or not isinstance(allow, list):
-            out.append(f"{where}: `args` is an object and `allow` a list")
+        if not all(isinstance(a, dict) for a in alternatives):
+            found.append(f"{where}: `args` is an object")
             continue
         for args in alternatives:
-            out += _call_problems(surface, tool, where, args, allow)
+            found += _call_problems(surface, tool, where, args, allow)
     return out
 
 
+def _is_scalar(value: Any) -> bool:
+    return value is None or isinstance(value, str | int | float)
+
+
 def _has_empty_any_of(value: Any) -> bool:
+    """Whether an `any_of` anywhere in `value` is not a list of at least one alternative."""
     if _is_any_of(value):
-        return not value["any_of"] or any(_has_empty_any_of(v) for v in value["any_of"])
+        held = value["any_of"]
+        return not isinstance(held, list) or not held or any(_has_empty_any_of(v) for v in held)
     if isinstance(value, dict):
         return any(_has_empty_any_of(v) for v in value.values())
     if isinstance(value, list):
@@ -397,7 +411,10 @@ def _call_problems(surface: Surface, tool: Tool, where: str, args: dict[str, Any
     required = {n for n, p in params.items() if p.default is inspect.Parameter.empty}
     if missing := sorted(required - set(args) - set(allow)):
         out.append(f"{where}: required {', '.join(missing)} neither expected nor allowed")
-    elif not bad and (refusal := _refusal(surface, tool, concrete(args))):
+    # The server's judge is asked only about a call the task fixes whole: a required argument
+    # left to `allow` has no value to judge.
+    elif not bad and required <= set(args) and (
+            refusal := _refusal(surface, tool, concrete(args))):
         out.append(f"{where}: its own expected call is refused: {refusal}")
     return out
 
@@ -495,9 +512,9 @@ def contamination(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
 
 def prompt_for(surface: Surface, tasks: list[dict[str, Any]]) -> str:
     parts = [PROMPT_HEAD.format(server=surface.server), "=== SERVER INSTRUCTIONS ===",
-             surface.instructions, "", "=== TOOLS ==="]
+             delivered(surface.instructions), "", "=== TOOLS ==="]
     for tool in surface.tools.values():
-        parts += [f"--- tool: {tool.name}", tool.description.rstrip(),
+        parts += [f"--- tool: {tool.name}", delivered(tool.description).rstrip(),
                   f"input schema: {json.dumps(tool.schema, ensure_ascii=False)}", ""]
     parts.append(TASKS_HEAD)
     parts += [task_line(t) for t in tasks]
@@ -539,8 +556,8 @@ def ask(server: str, prompt: str, run: int, out: Path) -> str:
 
 
 def _claude(command: list[str], prompt: str, saved: Path) -> str:
-    # A cwd of its own, outside the repository: no project CLAUDE.md above it, no memory directory.
-    with tempfile.TemporaryDirectory(prefix="mcp-probe-") as cwd:
+    # A cwd of its own, outside the repository: no project instructions above it.
+    with tempfile.TemporaryDirectory(prefix="mcp_probe-") as cwd:
         try:
             proc = subprocess.run(command, input=prompt, capture_output=True, text=True,
                                   errors="replace", cwd=cwd, timeout=CLAUDE_TIMEOUT_S,
@@ -746,7 +763,8 @@ def _save_verdicts(out: Path, server: str, verdicts: list[dict[str, Verdict]]) -
 # ---- the per-task capture ----------------------------------------------------------------
 
 
-def capture_problems(server: str, captured: Path, tasks_file: Path) -> list[str]:
+def capture_problems(repo: ProbeRepo, server: str, captured: Path,
+                     tasks_file: Path) -> list[str]:
     """Why the captures in `captured` are not every task of `tasks_file` judged as it was, one
     line per problem: none examined at all, a task with no capture, a file that is not the
     capture of the task its name says, a capture of no task, one answered to another question, one
@@ -755,8 +773,8 @@ def capture_problems(server: str, captured: Path, tasks_file: Path) -> list[str]
     files = sorted(captured.glob("*.json")) if captured.is_dir() else []
     if not files:
         return [f"INVALID: no capture examined ({captured} holds none)"]
-    raw, resolved = _tasks_by_id(tasks_file)
-    surface = load_surface(server)
+    raw, resolved = _tasks_by_id(repo, tasks_file)
+    surface = load_surface(repo, server)
     out: list[str] = []
     if missing := [tid for tid in raw if not (captured / f"{tid}.json").is_file()]:
         out.append(f"{server}: no capture of task {', '.join(missing)}")
@@ -776,7 +794,7 @@ def capture_problems(server: str, captured: Path, tasks_file: Path) -> list[str]
             continue
         for k, run in enumerate(runs, start=1):
             try:
-                now = rejudge(surface, resolved[tid], run["lines"])
+                now = rejudge(repo, surface, resolved[tid], run["lines"])
             except (KeyError, Invalid) as e:
                 out.append(f"{server} {tid}: cannot be judged now: {type(e).__name__} {e}")
                 break
@@ -787,16 +805,24 @@ def capture_problems(server: str, captured: Path, tasks_file: Path) -> list[str]
     return out
 
 
-def _tasks_by_id(tasks_file: Path) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+def _tasks_by_id(repo: ProbeRepo, tasks_file: Path
+                 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     """Each task by id twice: as the file writes it, which a capture stores, and resolved to the
-    repository, which is what was asked and is judged. The ids are `--check`'s to keep unique."""
-    return ({t["id"]: t for t in read_tasks(tasks_file, raw=True)},
-            {t["id"]: t for t in read_tasks(tasks_file)})
+    repository, which is what was asked and is judged. The ids are `--check`'s to keep unique, and
+    a file `--check` would refuse is `Invalid` here."""
+    def by_id(tasks: list[Any]) -> dict[str, dict[str, Any]]:
+        if not all(isinstance(t, dict) and isinstance(t.get("id"), str) for t in tasks):
+            raise Invalid(f"{tasks_file} holds an entry that is not a task with an `id`: "
+                          "`--check` names it")
+        return {t["id"]: t for t in tasks}
+
+    return by_id(read_tasks(repo, tasks_file, raw=True)), by_id(read_tasks(repo, tasks_file))
 
 
-def rejudge(surface: Surface, task: dict[str, Any], lines: list[str]) -> Verdict:
+def rejudge(repo: ProbeRepo, surface: Surface, task: dict[str, Any], lines: list[str]) -> Verdict:
     """A run's stored lines for one task, judged again as the run's whole answer was."""
-    return judge(surface, task, parse(resolve_root("\n".join(lines)), [task["id"]])[task["id"]])
+    answers = parse(resolve_root(repo, "\n".join(lines)), [task["id"]])
+    return judge(surface, task, answers[task["id"]])
 
 
 def _read_capture(f: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -819,12 +845,12 @@ def _read_capture(f: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     return task, runs
 
 
-def capture(server: str, run_dir: Path, ids: list[str]) -> int:
+def capture(repo: ProbeRepo, server: str, run_dir: Path, ids: list[str]) -> int:
     """Write one capture per id from a real run's directory, and nothing when any id cannot be
     proved; a write that fails part-way has printed each file it wrote."""
     try:
-        docs = _capture_docs(server, run_dir, ids)
-        dest = CAPTURED_ROOT / server
+        docs = _capture_docs(repo, server, run_dir, ids)
+        dest = repo.captured_dir / server
         dest.mkdir(parents=True, exist_ok=True)
         for tid, doc in docs.items():
             path = dest / f"{tid}.json"
@@ -841,10 +867,11 @@ def capture(server: str, run_dir: Path, ids: list[str]) -> int:
     return EXIT_PASS
 
 
-def _capture_docs(server: str, run_dir: Path, ids: list[str]) -> dict[str, dict[str, Any]]:
+def _capture_docs(repo: ProbeRepo, server: str, run_dir: Path,
+                  ids: list[str]) -> dict[str, dict[str, Any]]:
     """The capture of each id, built from the run and proved against the task file and surface
     as they are now."""
-    raw, resolved = _tasks_by_id(tasks_file(server))
+    raw, resolved = _tasks_by_id(repo, tasks_file(repo, server))
     if unknown := [tid for tid in ids if tid not in raw]:
         raise Invalid(f"{server}'s task file holds no task {', '.join(unknown)}")
     prompt_path, verdicts_path = prompt_file(run_dir, server), verdicts_file(run_dir, server)
@@ -860,7 +887,7 @@ def _capture_docs(server: str, run_dir: Path, ids: list[str]) -> dict[str, dict[
         texts.append(answer.read_text(encoding="utf-8"))
     surface_said, _, asked = prompt_path.read_text(encoding="utf-8").partition(f"{TASKS_HEAD}\n")
     asked_block = "\n" + asked
-    surface = load_surface(server)
+    surface = load_surface(repo, server)
     if surface_said != prompt_for(surface, []).partition(f"{TASKS_HEAD}\n")[0]:
         raise Invalid(f"the run in {run_dir} was made on another surface than the repository's "
                       "(an instructions text or a tool changed since): run the probe again")
@@ -869,11 +896,12 @@ def _capture_docs(server: str, run_dir: Path, ids: list[str]) -> dict[str, dict[
         if f"\n{task_line(resolved[tid])}\n" not in asked_block:
             raise Invalid(f"{tid} was asked otherwise in {run_dir} than the task file asks now: "
                           "run the probe again")
-        runs = [{"lines": [mark_root(line) for t, line, _ in answer_lines(text) if t == tid],
+        runs = [{"lines": [mark_root(repo, line) for t, line, _ in answer_lines(text)
+                           if t == tid],
                  "right": verdicts[tid]["right"]}
                 for text, verdicts in zip(texts, recorded, strict=True)]
         for k, run in enumerate(runs, start=1):
-            if (now := rejudge(surface, resolved[tid], run["lines"]).right) != run["right"]:
+            if (now := rejudge(repo, surface, resolved[tid], run["lines"]).right) != run["right"]:
                 raise Invalid(f"{tid} run {k} is judged {'right' if now else 'wrong'} now and was "
                               f"{'right' if run['right'] else 'wrong'} in its run: the task or the "
                               "surface changed since; run the probe again")
@@ -899,25 +927,28 @@ def _recorded_verdicts(path: Path, ids: list[str]) -> list[dict[str, Any]]:
 
 
 def refusals(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
-    """Everything refused before a model is asked, for one server. An entry that is not an
-    object is `task_problems`' to name; the other two judge only the tasks that are."""
-    objects = [t for t in tasks if isinstance(t, dict)]
-    return [*task_problems(surface, tasks), *coverage_holes(surface, objects),
-            *contamination(surface, objects)]
+    """Everything refused before a model is asked, for one server. The two later passes read a
+    task's `args`, `allow`, `grammar` and `id` as the shapes `task_problems` holds them to, so
+    they judge only the tasks it accepted: a malformed one is named once, never a traceback."""
+    found = _problems_by_task(surface, tasks)
+    accepted = [t for t, problems in zip(tasks, found, strict=True) if not problems]
+    return [*(p for problems in found for p in problems), *coverage_holes(surface, accepted),
+            *contamination(surface, accepted)]
 
 
-def check(names: tuple[str, ...]) -> int:
+def check(repo: ProbeRepo, names: tuple[str, ...]) -> int:
     """The refusals alone, for the commit path: no model, no network, no directory."""
     lines: list[str] = []
     rc = EXIT_PASS
     try:
         for name in names:
-            surface, tasks = load_surface(name), load_tasks(name)
+            surface, tasks = load_surface(repo, name), load_tasks(repo, name)
             if refused := refusals(surface, tasks):
-                lines += [f"REFUSED {p}" for p in refused]
+                lines += [f"{CHECK_REFUSED}{p}" for p in refused]
                 rc = EXIT_FAIL
             else:
-                lines.append(f"OK {name}: {len(tasks)} tasks cover {len(surface.tools)} tools")
+                lines.append(f"{CHECK_OK}{name}: {len(tasks)} tasks cover "
+                             f"{len(surface.tools)} tools")
     except Invalid as e:
         lines.append(f"INVALID {e}")
         rc = EXIT_INVALID
@@ -952,13 +983,12 @@ def _capture_ids(parser: argparse.ArgumentParser, opts: argparse.Namespace) -> l
     return ids
 
 
-def new_run_dir(now: dt.datetime) -> Path:
-    """A new directory under `OUT_ROOT` for one run, named by the UTC second of `now` (aware).
-    Two runs can share that second; `mkdtemp`'s random tail keeps them apart."""
-    _pointed()
-    OUT_ROOT.mkdir(parents=True, exist_ok=True)
+def new_run_dir(repo: ProbeRepo, now: dt.datetime) -> Path:
+    """A new directory under the repository's `out_dir` for one run, named by the UTC second of
+    `now` (aware). Two runs can share that second; `mkdtemp`'s random tail keeps them apart."""
+    repo.out_dir.mkdir(parents=True, exist_ok=True)
     stamp = now.astimezone(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
-    return Path(tempfile.mkdtemp(prefix=f"{stamp}-", dir=OUT_ROOT))
+    return Path(tempfile.mkdtemp(prefix=f"{stamp}-", dir=repo.out_dir))
 
 
 def main(argv: list[str]) -> int:
@@ -983,35 +1013,35 @@ def main(argv: list[str]) -> int:
     if opts.check and opts.runs is not None:
         parser.error("--runs asks the model and --check asks no model: pass one")
     try:
-        known = configure(opts.servers, opts.tasks)
+        repo = configure(opts.servers, opts.tasks)
     except Invalid as e:
         print(f"INVALID {e}")
         return EXIT_INVALID
     except Exception as e:  # noqa: BLE001 -- see `broke`
         print(broke("servers file", e))
         return EXIT_INVALID
-    if opts.server not in (*known, "all"):
+    if opts.server not in (*repo.servers, "all"):
         parser.error(f"argument server: invalid choice: {opts.server!r} (choose from "
-                     f"{', '.join([*known, 'all'])})")
+                     f"{', '.join([*repo.servers, 'all'])})")
     if capturing:
-        if opts.server not in CAPTURED_SERVERS:
+        if opts.server not in repo.captured_servers:
             parser.error(f"{opts.server} has no capture: --capture takes one of "
-                         f"{', '.join(CAPTURED_SERVERS) or 'none here'}")
-        return capture(opts.server, opts.capture, ids)
-    names = SERVERS if opts.server == "all" else (opts.server,)
+                         f"{', '.join(repo.captured_servers) or 'none here'}")
+        return capture(repo, opts.server, opts.capture, ids)
+    names = repo.servers if opts.server == "all" else (opts.server,)
     if opts.check:
-        return check(names)
+        return check(repo, names)
     runs = opts.runs or DEFAULT_RUNS
 
     try:
-        out = new_run_dir(dt.datetime.now(dt.UTC))
+        out = new_run_dir(repo, dt.datetime.now(dt.UTC))
     except OSError as e:
-        print(f"INVALID no run directory under {OUT_ROOT}: {e}")
+        print(f"INVALID no run directory under {repo.out_dir}: {e}")
         return EXIT_INVALID
     report: list[str] = []
     rc = EXIT_INVALID
     try:
-        prepared = [(load_surface(n), load_tasks(n)) for n in names]
+        prepared = [(load_surface(repo, n), load_tasks(repo, n)) for n in names]
         refused = [p for s, tasks in prepared for p in refusals(s, tasks)]
         if refused:
             report += [f"INVALID {p}" for p in refused]
@@ -1034,7 +1064,11 @@ def main(argv: list[str]) -> int:
         report.append(broke("probe", e))
         rc = EXIT_INVALID
     report.append(str(out))
-    (out / "report.txt").write_text("\n".join(report) + "\n", encoding="utf-8")
+    try:
+        (out / "report.txt").write_text("\n".join(report) + "\n", encoding="utf-8")
+    except OSError as e:
+        report.insert(0, f"INVALID the report could not be written to {out}: {e}")
+        rc = EXIT_INVALID
     print("\n".join(report))
     return rc
 
