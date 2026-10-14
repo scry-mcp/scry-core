@@ -1,10 +1,10 @@
 """The bench a server's live tier runs on: files copied once from their source checkouts, each
-pinned by its sha256 in the server's tracked manifest, so a live run reads no other repository.
+pinned by its sha256 in the server's manifest, so a live run reads no other repository.
 
-    python -m scry_core.live_bench check --server mame --manifest tests/live/bench.json
-    python -m scry_core.live_bench fill --server mame --manifest tests/live/bench.json \
-        --from tch-blitter=/path/to/checkout ...
-    python -m scry_core.live_bench fill ... --from tch-blitter=... --record
+    python -m scry_core.live_bench check --server mame --manifest <bench>/bench.json
+    python -m scry_core.live_bench fill --server mame --manifest <bench>/bench.json \
+        --from some-project=/path/to/checkout ...
+    python -m scry_core.live_bench fill ... --from some-project=... --record
 
 THE MANIFEST IS NAMED, NEVER FOUND: this module belongs to no server's tree, and a default
 resolved from where it happens to be installed would read some other tree's manifest in silence.
@@ -123,8 +123,8 @@ def digest(path: Path) -> str:
 
 
 def _under(path: str, prefix: str) -> bool:
-    """Whether `path` is `prefix` or lies inside it, by whole path segments: `lineup` is not a
-    prefix of `lineup2/x`."""
+    """Whether `path` is `prefix` or lies inside it, by whole path segments: `board` is not a
+    prefix of `board2/x`."""
     head = prefix.rstrip("/")
     return not head or path == head or path.startswith(head + "/")
 
@@ -276,12 +276,12 @@ def parser() -> argparse.ArgumentParser:
                            allow_abbrev=False)
     check.add_argument("--server", required=True, choices=sorted(ROOT_VARS))
     check.add_argument("--manifest", required=True, type=Path,
-                       help="the server's tracked manifest (its tests/live/bench.json)")
+                       help="the server's manifest of the bench's files and their pins")
     fill = sub.add_parser("fill", help="copy the manifest's files from their checkouts",
                           allow_abbrev=False)
     fill.add_argument("--server", required=True, choices=sorted(ROOT_VARS))
     fill.add_argument("--manifest", required=True, type=Path,
-                      help="the server's tracked manifest (its tests/live/bench.json)")
+                      help="the server's manifest of the bench's files and their pins")
     fill.add_argument("--from", dest="sources", required=True, action="append", type=_source,
                       metavar="SOURCE_REPO=CHECKOUT",
                       help="a checkout the manifest's entries of SOURCE_REPO are copied from")

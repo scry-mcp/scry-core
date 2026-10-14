@@ -92,7 +92,7 @@ def test_a_pointer_type_may_name_the_class_of_its_target() -> None:
     q = vf.parse("ptr32@DATA{x:i16,y:i16}")
     assert q.target_class == "DATA" and q.target is not None and q.target.size == 4
     assert vf.parse("ptr32{x:i16}").target_class is None
-    assert vf.parse("ptr16@lup_jukebox").target_class == "LUP_JUKEBOX", "classes are upper-cased"
+    assert vf.parse("ptr16@v30_jukebox").target_class == "V30_JUKEBOX", "classes are upper-cased"
     for bad in ("ptr16@", "ptr16@{x:u8}", "ptr16@1CODE", "ptr16@CO-DE", "ptr16 @CODE"):
         with pytest.raises(vf.FormatError, match="class"):
             vf.parse(bad)

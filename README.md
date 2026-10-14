@@ -20,11 +20,11 @@ dependencies = ["scry-core @ git+https://github.com/scry-mcp/scry-core@<tag>"]
 ```
 
 The two programs take what they act on as required options, so neither reads a tree it was not
-pointed at. The paths below are a server repository's own:
+pointed at. The probe's paths below are a server repository's own; the manifest is the bench's:
 
 ```sh
 python -m scry_core.probe all --check --servers mcp_probe/servers.py --tasks mcp_probe/tasks
-python -m scry_core.live_bench check --server mame --manifest tests/live/bench.json
+python -m scry_core.live_bench check --server mame --manifest <bench>/bench.json
 ```
 
 `--help` on either is its contract. A real probe run asks the `claude` CLI and needs the network;
