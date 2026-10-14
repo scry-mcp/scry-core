@@ -1179,16 +1179,11 @@ wheels = [
 
 [[package]]
 name = "scry-core"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "mcp" },
     { name = "pydantic" },
-]
-
-[package.optional-dependencies]
-pytest = [
-    { name = "pytest" },
 ]
 
 [package.dev-dependencies]
@@ -1203,9 +1198,7 @@ dev = [
 requires-dist = [
     { name = "mcp", specifier = ">=2.1.0,<3" },
     { name = "pydantic", specifier = ">=2,<3" },
-    { name = "pytest", marker = "extra == 'pytest'", specifier = ">=8.0" },
 ]
-provides-extras = ["pytest"]
 
 [package.metadata.requires-dev]
 dev = [
