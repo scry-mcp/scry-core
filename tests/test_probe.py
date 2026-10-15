@@ -675,7 +675,7 @@ def test_small_numbers_and_booleans_are_not_contamination() -> None:
     ({"id": "D1", "prompt": "p", "tool": "step", "args": {"count": 3}, "allow": ["count"]},
      "task D1: count both expected and allowed"),
     ({"id": "D1", "prompt": "p", "tool": "step", "args": []},
-     "task D1: `args` is an object"),
+     "task D1: `args` must be an object, or an `any_of` list of objects"),
     ({"id": "D1", "prompt": "p", "tool": "step", "expect": "RIGHT"},
      "task D1: `expect` can only be 'CANNOT'"),
     ({"id": "D1", "prompt": "p", "expect": "CANNOT", "about": "nope"},
@@ -843,23 +843,23 @@ def test_check_names_an_entry_that_is_not_a_task(
 
 @pytest.mark.parametrize(("task", "refused"), [
     ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": 5}',
-     "mame task M4: `args` is an object"),
+     "mame task M4: `args` must be an object, or an `any_of` list of objects"),
     ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX"}, "allow": 3}',
-     "mame task M4: `allow` is a list of argument names"),
+     "mame task M4: `allow` must be a list of argument names"),
     ('{"prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX", "length": 1024}}',
      "mame task #3: needs an `id` of letters, digits, `_` or `-`"),
     ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX"}, '
      '"allow": ["length", "cpu"], "grammar": 7}',
-     "mame task M4: `grammar` is a list of strings or numbers"),
+     "mame task M4: `grammar` must be a list of strings or numbers"),
     ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX"}, '
      '"allow": ["length", "cpu"], "grammar": [[1]]}',
-     "mame task M4: `grammar` is a list of strings or numbers"),
+     "mame task M4: `grammar` must be a list of strings or numbers"),
     ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"any_of": 5}}',
      "mame task M4: an `any_of` with no alternative accepts nothing"),
     ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"ref": "x"}, "allow": [3]}',
-     "mame task M4: `allow` is a list of argument names"),
+     "mame task M4: `allow` must be a list of argument names"),
     ('{"id": "M4", "prompt": "p", "expect": "CANNOT", "about": "read_memory", "allow": 3}',
-     "mame task M4: `allow` is a list of argument names"),
+     "mame task M4: `allow` must be a list of argument names"),
     ('{"id": "M4", "prompt": "p", "about": "read_memory", "args": {"ref": "x"}}',
      "mame task M4: `about` belongs to a CANNOT task; a call names its `tool`\n"
      "mame task M4: `tool` names no tool of this server"),

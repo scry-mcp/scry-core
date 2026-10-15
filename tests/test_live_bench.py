@@ -302,9 +302,15 @@ def test_missing_names_the_first_problem_and_the_remedy_or_nothing(
     at = bench.Bench(manifest.parent)
     reason = at.missing("board/")
     assert reason.startswith("bench MISSING board/a.bin") and "(and 1 more)" in reason
-    assert (f"`python -m scry_core.live_bench check --bench {manifest.parent}`, then `fill`"
-            in reason)
-    assert "names no file under 'none/'" in at.missing("none/")
+    assert (f"`python -m scry_core.live_bench fill --bench {manifest.parent} --from "
+            "<source_repo>=<checkout>`" in reason)
+    assert f"`python -m scry_core.live_bench check --bench {manifest.parent}`" in reason
+    unusable = at.missing("none/")
+    assert unusable.startswith("bench unusable: ") and "names no file under 'none/'" in unusable
+    assert "fill" not in unusable, "fill cannot make a manifest name a file"
+    gone = bench.Bench(tmp_path / "nowhere").missing("board/")
+    assert gone == ("bench unusable: the bench does not exist: "
+                    f"{tmp_path / 'nowhere'} is not a directory")
     (tmp_path / "bench/other").mkdir()
     (tmp_path / "bench/other/c.bin").write_bytes(DATA)
     assert at.missing("other/") == ""
@@ -348,7 +354,8 @@ def test_a_copy_that_cannot_be_read_is_a_reason_and_not_a_crash(
     copy.write_bytes(DATA)
     copy.chmod(0)
     try:
-        assert bench.Bench(manifest.parent).missing("a.bin").startswith("bench [Errno 13]")
+        assert bench.Bench(manifest.parent).missing("a.bin").startswith(
+            "bench unusable: [Errno 13]")
     finally:
         copy.chmod(0o644)
 

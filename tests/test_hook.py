@@ -129,7 +129,10 @@ def test_an_uncovered_tool_blocks_naming_the_hole_and_how_to_measure_after(
     _probe(repo / "probe", "REFUSED no task on mame frame_grab", 1)
     rc, said = _hook(capsys)
     assert rc == hook.EXIT_BLOCKED and "no task on mame frame_grab" in said
-    assert "python -m scry_core.probe <server> --servers mcp_probe/servers.py" in said
+    assert ("from the repository root: python -m scry_core.probe <server> --check "
+            "--servers mcp_probe/servers.py --tasks mcp_probe/tasks") in said
+    assert "only for a task added for a new or changed tool" in said, (
+        "a typo in a task file is fixed with the free check, never sent to a paid model run")
 
 
 @pytest.mark.parametrize(("printed", "rc", "said"), [
@@ -144,7 +147,7 @@ def test_a_probe_check_that_did_not_judge_is_invalid(
     _probe(repo / "probe", printed, rc)
     code, out = _hook(capsys)
     assert code == hook.EXIT_INVALID and said in out, out
-    assert "Write the tasks" not in out, "a broken check got the task remedy"
+    assert "Fix it in" not in out and "--runs 3" not in out, "a broken check got the task remedy"
 
 
 def test_outside_a_repository_it_is_invalid(

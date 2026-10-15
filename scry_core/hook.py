@@ -116,11 +116,12 @@ def probe_fit() -> str:
         if not any(line.startswith(CHECK_REFUSED) for line in lines):
             raise Invalid(f"the probe check exited 1 naming no refusal:\n{said}")
         raise Blocked(
-            f"{said}\na probe task is missing or wrong (above). Write the tasks in "
-            f"{TASKS_DIR}/<server>.json, then measure the server, through the same `uv run` "
-            "as this hook, with:\n"
-            f"    python -m scry_core.probe <server> --servers {SERVERS_FILE} "
-            f"--tasks {TASKS_DIR} --runs 3")
+            f"{said}\na probe task is missing or wrong (above). Fix it in "
+            f"{TASKS_DIR}/<server>.json and run the free check again, through the same `uv run` "
+            "as this hook, from the repository root: python -m scry_core.probe <server> --check "
+            f"--servers {SERVERS_FILE} --tasks {TASKS_DIR}\n"
+            "The same command with `--runs 3` in place of `--check` drives the model and costs a "
+            "run: it is only for a task added for a new or changed tool.")
     raise Invalid(f"the probe check exited {rc}:\n{said}")
 
 

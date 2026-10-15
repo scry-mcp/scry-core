@@ -349,9 +349,9 @@ def _problems_by_task(surface: Surface, tasks: list[dict[str, Any]]) -> list[lis
             found.append(f"{where}: needs a `prompt`")
         grammar, allow = task.get("grammar", []), task.get("allow", [])
         if not isinstance(grammar, list) or not all(_is_scalar(g) for g in grammar):
-            found.append(f"{where}: `grammar` is a list of strings or numbers")
+            found.append(f"{where}: `grammar` must be a list of strings or numbers")
         if not isinstance(allow, list) or not all(isinstance(a, str) for a in allow):
-            found.append(f"{where}: `allow` is a list of argument names")
+            found.append(f"{where}: `allow` must be a list of argument names")
             continue
         tool = surface.tools.get(on_tool(task))
         if task.get("expect") == CANNOT:
@@ -372,7 +372,7 @@ def _problems_by_task(surface: Surface, tasks: list[dict[str, Any]]) -> list[lis
             continue
         alternatives = calls(task.get("args", {}))
         if not all(isinstance(a, dict) for a in alternatives):
-            found.append(f"{where}: `args` is an object")
+            found.append(f"{where}: `args` must be an object, or an `any_of` list of objects")
             continue
         for args in alternatives:
             found += _call_problems(surface, tool, where, args, allow)

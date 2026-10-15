@@ -186,12 +186,15 @@ class Bench:
         try:
             found = problems(self.root, prefix)
         except (Invalid, OSError) as e:
-            found = [str(e)]
+            # No file was examined, so no copy can be the remedy: the reason is the whole answer.
+            return f"bench unusable: {e}"
         if not found:
             return ""
         more = f" (and {len(found) - 1} more)" if len(found) > 1 else ""
-        return (f"bench {found[0]}{more}; run `{check_command(self.root)}`, then `fill` from the "
-                "source checkouts")
+        return (f"bench {found[0]}{more}; `{check_command(self.root)}` lists them all, and "
+                f"`python -m scry_core.live_bench fill --bench {self.root} --from "
+                "<source_repo>=<checkout>` copies them from a checkout that still matches the pin "
+                "(`--record` re-pins one that moved)")
 
     @functools.cached_property
     def pinned(self) -> frozenset[str]:
