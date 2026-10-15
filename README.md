@@ -14,6 +14,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.probe_checks` | what each server's suite checks on its own probe surface: tasks, captures, the cap |
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, and the probe's tasks |
+| `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, and the README block they generate |
 
 Each server pins it by a release tag, never by a branch:
 
@@ -46,6 +47,14 @@ declares none is refused:
 [tool.pytest.ini_options]
 reply_shapes_anchors = ["scry_core.reply_contract", "server"]
 ```
+
+## Demos
+
+Each server keeps its demos in `demos/<name>/`: a README with the prompt to give an MCP client, a
+`demo.py` making the same calls and checking each answer, and the transcript and `screen.png` that
+`demo.py --update-readme` writes from a run where every step passed, so what the README shows is
+what the server answered. `scry_core.demo` is the runner both servers share, and its module
+docstring is the contract.
 
 ## Trying a server by hand
 

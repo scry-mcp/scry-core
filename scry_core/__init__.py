@@ -5,5 +5,6 @@ part of a tool's contract), `value_format` (the grammar of a watched value), `re
 pytest plugin running `reply_shapes_guard`, which holds one word to one shape), `client_cap` (the
 prefix of a text the MCP client delivers), `probe` (what a model calls from the delivered texts),
 `probe_checks` (what each server's suite checks on its own probe surface), `live_bench` (the pinned
-copies a live tier runs on) and `hook` (the pre-commit of every pinning repository).
+copies a live tier runs on), `hook` (the pre-commit of every pinning repository) and `demo` (the
+runner of a server's demos).
 """

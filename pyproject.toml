@@ -1,15 +1,15 @@
 [project]
 name = "scry-core"
-version = "0.2.1"
+version = "0.3.0"
 description = "What the Scry emulator MCP servers share: the reply contract, the probe, the live bench and the pre-commit"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
-    # UPPER-BOUNDED on purpose: `strict_arguments` rides on `MCPServer`'s internals, which belong
-    # to the pinned major. Without the bound the next major installs cleanly and then fails at
-    # import, which is a broken install that looks like a broken server.
+    # UPPER-BOUNDED on purpose: `strict_arguments` rides on `MCPServer`'s internals and `demo` on
+    # the client's, which belong to the pinned major. Without the bound the next major installs
+    # cleanly and then fails at import, which is a broken install that looks like a broken server.
     "mcp>=2.1.0,<3",
     # `strict_arguments` builds pydantic models itself, so the bound is this package's to state
     # rather than one it inherits through `mcp`.
