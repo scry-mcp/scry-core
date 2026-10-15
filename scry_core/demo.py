@@ -6,9 +6,11 @@ steps and checks) and hands it to `main`:
 
     uv run python demos/<name>/demo.py [--binary PATH] [--transcript PATH] [--update-readme]
 
-plus `--rompath DIR` and `--shared` where the demo `offers` them, because its server's `start`
-takes them under those names. The options given reach the one step declared `options=True`,
-and only the options given: one left out is absent, so the server's own default decides.
+plus `--rompath DIR` and `--shared` where the demo `offers` them. The options given reach the
+step declared `options=True` under their own names, or only those it names when it declares a
+set of them (`options=frozenset({"binary"})`, for a server whose `start` takes no `shared`, the
+demo then reading `run.options` itself); an option left out is absent, so the server's own
+default decides.
 
 stdout is one line per step that ran, `OK <step>: <summary>` or `FAIL <step>: <why>`, then
 `DEMO <name>: <n> steps, <k> OK` and the paths of the two transcripts: the whole one, every call
@@ -135,21 +137,22 @@ class Step:
     """One call: `tool` with `args`, or a function of the run giving them. `check` returns the
     summary printed beside OK; it raises `StepFailed` to say why not, and any other exception in
     the step is that step's FAIL too, named by its type. A reply whose `status` is not `ok`
-    fails before `check` is asked. `options=True` marks the step the command line's options are
-    merged into, which is the server's `start`."""
+    fails before `check` is asked. `options` marks the step the command line's options are
+    merged into, which is the server's `start`: `True` for all of them, or the set it takes."""
 
     name: str
     tool: str
     args: Args
     check: Callable[[Reply, Run], str]
-    options: bool = False
+    options: bool | frozenset[str] = False
 
 
 @dataclass(frozen=True)
 class Demo:
     """A demo as its `demo.py` declares it. `server` is the command that starts the server and
-    `root` the repository it runs in. `offers` names the options of `OFFERABLE` this server's
-    `start` takes. `capture` is the image `--update-readme` copies, a file in `run.dir` that one
+    `root` the repository it runs in. `offers` names the options of `OFFERABLE` the demo accepts,
+    and `reads` those it reads from `run.options` itself rather than a step merging them.
+    `capture` is the image `--update-readme` copies, a file in `run.dir` that one
     step writes. `precheck` answers why the demo cannot run at all, or an empty string. `volatile`
     adds reply keys to `VOLATILE`, each with its reason; `host_args` names the argument keys whose
     values are the host's own rather than the demo's, each with its reason."""
@@ -164,6 +167,7 @@ class Demo:
     precheck: Callable[[Run], str] | None = None
     volatile: Mapping[str, str] = field(default_factory=dict)
     host_args: Mapping[str, str] = field(default_factory=dict)
+    reads: frozenset[str] = frozenset()
 
 
 # ======================================================================== the README block
@@ -394,7 +398,8 @@ async def _step(client: Client, step: Step, run: Run
     try:
         built = dict(step.args(run) if callable(step.args) else step.args)
         if step.options:
-            built.update(run.options)
+            built.update({k: v for k, v in run.options.items()
+                          if step.options is True or k in step.options})
         # Through JSON once, so what is sent is exactly what the transcript shows (a `Path`
         # becomes its text) and a value JSON cannot carry fails here, as this step.
         args = json.loads(json.dumps(built, default=str))
@@ -420,6 +425,34 @@ async def _cleanup(client: Client, out: Outcome) -> None:
         out.transcripts.whole.append(f"Cleanup `{CLEANUP_TOOL}` failed: {_why(e)}")
 
 
+#: Every option a demo can be given: `--binary` always, the rest where it offers them.
+KNOWN_OPTIONS = OFFERABLE | {"binary"}
+
+
+def _declared(demo: Demo) -> None:
+    """Refuse a demo whose declarations name an option the runner does not know, or a step whose
+    `options` is neither a bool nor a set: a typo there would take nothing, in silence."""
+    for step in demo.steps:
+        if not isinstance(step.options, bool | frozenset):
+            raise ValueError(f"step {step.name}: `options` is {step.options!r}, not True, False "
+                             "or a frozenset of option names")
+    named = {("offers", n) for n in demo.offers - OFFERABLE} | {
+        ("reads", n) for n in demo.reads - KNOWN_OPTIONS} | {
+        (f"step {s.name}", n) for s in demo.steps if isinstance(s.options, frozenset)
+        for n in s.options - KNOWN_OPTIONS}
+    if named:
+        raise ValueError(f"the demo {demo.name} names options the runner does not know: "
+                         f"{sorted(named)}; it knows {sorted(KNOWN_OPTIONS)}")
+
+
+def _taken(demo: Demo) -> set[str]:
+    """The options something in the demo takes: a step merging them, or the demo reading them."""
+    taken = set(demo.reads)
+    for step in demo.steps:
+        taken |= KNOWN_OPTIONS if step.options is True else set(step.options or ())
+    return taken
+
+
 def _parser(demo: Demo) -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog=f"demos/{demo.name}/demo.py", allow_abbrev=False,
                                 description=f"Run the {demo.name} demo against its server.",
@@ -440,10 +473,7 @@ def _parser(demo: Demo) -> argparse.ArgumentParser:
 
 def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
     """Run `demo` as its command line asks, print the verdict lines, answer the exit code."""
-    unknown = demo.offers - OFFERABLE
-    if unknown:
-        raise ValueError(f"the demo {demo.name} offers {sorted(unknown)}, not among "
-                         f"{sorted(OFFERABLE)}")
+    _declared(demo)
     ns = _parser(demo).parse_args(argv)
     transcript: Path = (ns.transcript or demo.root / "tmp" / "demos" / demo.name
                         / "transcript.md").resolve()
@@ -465,8 +495,9 @@ def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
 def _main(demo: Demo, run: Run, transcript: Path, update_readme: bool) -> int:
     if not demo.steps:
         raise Invalid(f"the demo {demo.name} declares zero steps, so it demonstrates nothing")
-    if run.options and not any(s.options for s in demo.steps):
-        raise Invalid(f"options {sorted(run.options)} were given and no step of the demo "
+    untaken = set(run.options) - _taken(demo)
+    if untaken:
+        raise Invalid(f"options {sorted(untaken)} were given and nothing in the demo "
                       f"{demo.name} takes them")
     if update_readme:
         block_span(demo.readme.read_text(encoding="utf-8"))

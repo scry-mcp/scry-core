@@ -221,6 +221,35 @@ def test_offered_options_reach_the_options_step_only_when_given(
     assert '"rompath": "/r",\n  "shared": true' in _norm(tmp_path)
 
 
+def test_a_step_takes_only_the_options_it_names(tmp_path: Path, log: Path) -> None:
+    demo = _demo(tmp_path, offers=frozenset({"shared"}), reads=frozenset({"shared"}), steps=[
+        d.Step("boot", "start", lambda run: {"value": 9 if run.options.get("shared") else 7},
+               _said("value"), options=frozenset({"binary"}))])
+    assert _run(demo, tmp_path, "--binary", "/b", "--shared") == d.EXIT_OK
+    (call,) = [c for c in _calls(log) if c["summary"] == "started"]
+    assert (call["binary"], call["value"]) == ("/b", 9), call
+    assert '"shared"' not in _norm(tmp_path).split("```json")[1], "an option it does not take"
+
+
+def test_an_option_given_that_nothing_takes_is_invalid(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    demo = _demo(tmp_path, offers=frozenset({"shared"}), steps=[
+        d.Step("boot", "start", {}, _said("value"), options=frozenset({"binary"}))])
+    assert _run(demo, tmp_path, "--shared") == d.EXIT_INVALID
+    assert capsys.readouterr().out.startswith("INVALID: options ['shared'] were given")
+    assert _calls(log) == []
+
+
+@pytest.mark.parametrize(("options", "reads"), [
+    (frozenset({"binay"}), frozenset()), ("binary", frozenset()), (True, frozenset({"rompth"}))])
+def test_a_demo_naming_an_option_the_runner_does_not_know_is_refused(
+        tmp_path: Path, options: Any, reads: frozenset[str]) -> None:
+    demo = _demo(tmp_path, reads=reads, steps=[d.Step("boot", "start", {}, _said("value"),
+                                                      options=options)])
+    with pytest.raises(ValueError):
+        d.main(demo, [])
+
+
 def test_options_given_with_no_step_to_take_them_are_invalid(
         tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
     demo = _demo(tmp_path, steps=[d.Step("boot", "start", {}, _said("value"))])
