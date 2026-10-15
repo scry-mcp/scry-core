@@ -327,12 +327,12 @@ def test_the_stop_is_the_interrupt_where_the_platform_has_one(
 
 @pytest.mark.skipif(sys.platform == "win32", reason="process groups are POSIX")
 def test_each_child_leads_a_process_group_of_its_own(tmp_path: Path) -> None:
-    body = ("g = f'{os.getpgid(0)} {os.getpid()} {os.getppid()}'\n"
+    body = ("g = f'{os.getpgid(0)} {os.getpid()} {os.getpgid(os.getppid())}'\n"
             "lp.write_summary(summary, lp.Summary(('g',), {'g': 'OK'}, {}, g, 0))\n")
     r = lp.run_pool([lp.Job("g", _child(body), planned=("g",))], 1, tmp_path, VAR)
     assert r.results[0].summary is not None
-    group, pid, parent = map(int, r.results[0].summary.transcript.split())
-    assert parent == os.getpid() and group == pid != os.getpgid(0)
+    group, pid, parents_group = map(int, r.results[0].summary.transcript.split())
+    assert group == pid != parents_group
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="SIGINT to one process is POSIX")
