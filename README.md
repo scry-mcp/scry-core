@@ -16,6 +16,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, and the probe's tasks |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, and the README block they generate |
 | `scry_core.focus_watch` | whether a live run took the owner's focus: the frontmost application sampled from outside the run (macOS) |
+| `scry_core.live_pool` | a live tier's independent jobs run as parallel child processes, merged from the summaries they declare |
 
 Each server pins it by a release tag, never by a branch:
 
@@ -54,6 +55,12 @@ reply_shapes_anchors = ["scry_core.reply_contract", "server"]
 A live tier that runs beside somebody working wraps its run in `scry_core.focus_watch.FocusWatch`
 and judges the samples with `judge`, after a control in the same harness: one start that must be
 seen in front and one that must not. The module docstring is the contract.
+
+## Parallel live tiers
+
+A live tier whose jobs share nothing runs them as child processes of its own script through
+`scry_core.live_pool.run_pool`, each child writing its summary with `write_summary`, and passes
+`default_workers()` to keep half the host free. The module docstring is the contract.
 
 ## Demos
 
