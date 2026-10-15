@@ -47,6 +47,45 @@ declares none is refused:
 reply_shapes_anchors = ["scry_core.reply_contract", "server"]
 ```
 
+## Trying a server by hand
+
+[MCP Inspector](https://github.com/modelcontextprotocol/inspector) calls either server directly
+and shows each raw request and reply. It starts its own copy of the server, so it cannot see a
+session another client holds. One config covers both servers, which is why it lives here. The
+UI labels an entry by its key, and a server given on the command line is labelled by its command,
+`uv`, so save the servers under their names as `inspector.json`:
+
+```json
+{
+  "mcpServers": {
+    "Scry - MAME MCP": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/scry-mame", "python", "server.py"],
+      "env": {"MAME_BINARY": "/path/to/mame"}
+    },
+    "Scry - DOSBox-X MCP": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/scry-dosbox-x", "python", "dosbox_x_server.py"]
+    }
+  }
+}
+```
+
+`MAME_BINARY` is optional: without it `start` takes `mame` from the `PATH`, and either way the
+build needs what the scry-mame README lists. Run this beside the file and open the URL it prints,
+token included; `HOST` keeps the UI on loopback:
+
+```sh
+HOST=127.0.0.1 npx -y @modelcontextprotocol/inspector@2.11.0 --web --config inspector.json
+```
+
+`--cli` starts a fresh server per call, so the emulator a `start` opened dies with it; use the
+web UI for anything that spans calls. `--cli` exits 0 on a refusal: an `INVALID` reply is a
+result, `isError: false`, so read its `status`. A non-zero exit is the call itself failing,
+such as an unknown tool.
+
 ## Developing
 
 ```sh
