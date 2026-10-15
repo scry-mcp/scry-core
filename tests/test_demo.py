@@ -297,11 +297,28 @@ def test_a_demo_declares_its_own_volatile_keys_and_its_arguments_keep_theirs(
     assert '"value": 7' in norm, "the demo's own argument was hidden"
 
 
+def test_a_host_argument_is_hidden_and_the_demos_own_are_not(tmp_path: Path, log: Path) -> None:
+    steps = [d.Step("boot", "start", {"value": 7, "binary": "-set sdl display=1"},
+                    _said("value"))]
+    # The fixture's `start` echoes `binary` in its reply, so the demo declares that key too.
+    demo = _demo(tmp_path, steps, host_args={"binary": "where this host puts a window"},
+                 volatile={"binary": "the reply echoes the host's argument"})
+    assert _run(demo, tmp_path) == d.EXIT_OK
+    norm = _norm(tmp_path)
+    assert "display=1" not in norm, "a host value reached the normalised transcript"
+    assert '"binary": "<host>"' in norm.split("```json")[1], "the call did not hide it"
+    assert '"value": 7' in norm, "the demo's own argument was hidden"
+    assert "display=1" in (tmp_path / "out" / "transcript.md").read_text()
+    n = d.Normaliser(Path("/r"), Path("/h"), {}, {"binary": "x"})
+    assert n.arguments({"a": [{"binary": "p"}], "binary": "q", "c": "/r/f"}) == {
+        "a": [{"binary": "<host>"}], "binary": "<host>", "c": "./f"}
+
+
 def test_the_normaliser_matches_whole_path_prefixes_only() -> None:
     n = d.Normaliser(Path("/Users/m/repo"), Path("/Users/m"), d.VOLATILE)
-    got = n.value({"a": ["/Users/m/repo/x", "/Users/m/y", 3, ("/Users/m",)],
+    got = n.reply({"a": ["/Users/m/repo/x", "/Users/m/y", 3, ("/Users/m",)],
                    "/Users/m/k": {"pid": 9, "b": "/Users/mx/f /Users/m/repo-notes/a"},
-                   "c": "at /Users/m: here"}, hide=True)
+                   "c": "at /Users/m: here"})
     assert got == {"a": ["./x", "~/y", 3, ["~"]],
                    "~/k": {"pid": "<volatile>", "b": "/Users/mx/f ~/repo-notes/a"},
                    "c": "at ~: here"}

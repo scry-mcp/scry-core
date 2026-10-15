@@ -29,8 +29,11 @@ transcript and copies the capture this run wrote to `screen.png` beside the READ
 a run whose every step was OK: a README showing a failed run would be a README that lies.
 
 NORMALISATION hides what differs between two honest runs and nothing else: `$HOME` becomes `~`
-and the repository root `.`, wherever either begins a path, and in a REPLY the value of every
-key in `VOLATILE` becomes `<volatile>`. A value the demo SHOWS (a score, a register, an address
+and the repository root `.`, wherever either begins a path; in a REPLY the value of every key
+in `VOLATILE` becomes `<volatile>`; and in the ARGUMENTS of a call the value of every key a
+demo declares in `host_args` (a window's placement, say) becomes `<host>`. Hiding is by key, so a
+reply that echoes a host argument needs that key in `volatile` too, and a summary must not quote
+one. A value the demo SHOWS (a score, a register, an address
 it found) is never on that list: if it differs between two runs the demo is wrong, and hiding
 it would make the freshness check pass by not looking. A step's summary is the demo's own text
 and is never searched for volatile values, so a summary quotes only what the demo shows.
@@ -59,6 +62,7 @@ EXIT_OK, EXIT_FAILED, EXIT_INVALID = 0, 1, 3
 BEGIN = "<!-- demo-transcript:begin -->"
 END = "<!-- demo-transcript:end -->"
 VOLATILE_MARK = "<volatile>"
+HOST_MARK = "<host>"
 
 #: The tool every Scry server ends a session with.
 CLEANUP_TOOL = "close"
@@ -147,7 +151,8 @@ class Demo:
     `root` the repository it runs in. `offers` names the options of `OFFERABLE` this server's
     `start` takes. `capture` is the image `--update-readme` copies, a file in `run.dir` that one
     step writes. `precheck` answers why the demo cannot run at all, or an empty string. `volatile`
-    adds reply keys to `VOLATILE`, each with its reason."""
+    adds reply keys to `VOLATILE`, each with its reason; `host_args` names the argument keys whose
+    values are the host's own rather than the demo's, each with its reason."""
 
     name: str
     root: Path
@@ -158,6 +163,7 @@ class Demo:
     offers: frozenset[str] = frozenset()
     precheck: Callable[[Run], str] | None = None
     volatile: Mapping[str, str] = field(default_factory=dict)
+    host_args: Mapping[str, str] = field(default_factory=dict)
 
 
 # ======================================================================== the README block
@@ -210,11 +216,13 @@ def readme_drift(readme: Path, normalised: Path) -> str:
 
 @dataclass(frozen=True)
 class Normaliser:
-    """The host's paths, and in a reply the volatile keys' values, spelled for any host."""
+    """The host's paths, a reply's volatile values and the arguments that are the host's own,
+    spelled for any host."""
 
     root: Path
     home: Path
     volatile: Mapping[str, str]
+    host: Mapping[str, str] = field(default_factory=dict)
 
     def text(self, text: str) -> str:
         """`text` with the root as `.` and the home as `~` wherever one BEGINS a path: followed
@@ -226,14 +234,21 @@ class Normaliser:
                 text = re.sub(re.escape(str(prefix)) + r"(?=/|$|[^\w.-])", mark, text)
         return text
 
-    def value(self, value: Any, hide: bool) -> Any:
-        """`value` with every path spelled by `text`, and with `hide` (a reply, never the
-        demo's own arguments) every volatile key's value as `<volatile>`."""
+    def reply(self, value: Any) -> Any:
+        """A reply with its paths spelled by `text` and every volatile key's value hidden."""
+        return self._value(value, self.volatile, VOLATILE_MARK)
+
+    def arguments(self, value: Any) -> Any:
+        """The demo's arguments with their paths spelled by `text` and the host's own hidden;
+        every other value is the demo's choice and is shown."""
+        return self._value(value, self.host, HOST_MARK)
+
+    def _value(self, value: Any, hidden: Mapping[str, str], mark: str) -> Any:
         if isinstance(value, dict):
-            return {self.text(k): VOLATILE_MARK if hide and k in self.volatile
-                    else self.value(v, hide) for k, v in value.items()}
+            return {self.text(k): mark if k in hidden else self._value(v, hidden, mark)
+                    for k, v in value.items()}
         if isinstance(value, list | tuple):
-            return [self.value(v, hide) for v in value]
+            return [self._value(v, hidden, mark) for v in value]
         if isinstance(value, str):
             return self.text(value)
         return value
@@ -271,9 +286,8 @@ class Transcripts:
     def add(self, n: int, tool: str, args: Mapping[str, Any], reply: Reply | None,
             line: str) -> None:
         self.whole.append(_entry(n, tool, args, reply, line))
-        shown = None if reply is None else Reply(self.norm.value(reply.data, hide=True),
-                                                 reply.attachments)
-        self.normalised.append(_entry(n, tool, self.norm.value(dict(args), hide=False), shown,
+        shown = None if reply is None else Reply(self.norm.reply(reply.data), reply.attachments)
+        self.normalised.append(_entry(n, tool, self.norm.arguments(dict(args)), shown,
                                       self.norm.text(line)))
 
 
@@ -463,7 +477,7 @@ def _main(demo: Demo, run: Run, transcript: Path, update_readme: bool) -> int:
     capture = demo.capture(run)
     capture.unlink(missing_ok=True)  # only a picture THIS run wrote may reach the README
     norm = Normaliser(demo.root.resolve(), Path.home().resolve(),
-                      {**VOLATILE, **demo.volatile})
+                      {**VOLATILE, **demo.volatile}, demo.host_args)
     out = asyncio.run(_drive(demo, run, run.dir / "server.stderr", norm))
     normalised = transcript.with_name(transcript.stem + ".normalised.md")
     if out.transcripts.whole:
