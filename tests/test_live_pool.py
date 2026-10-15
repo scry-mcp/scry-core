@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import signal
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -322,3 +323,57 @@ def test_the_stop_is_the_interrupt_where_the_platform_has_one(
     children.stop()
     assert child.calls == [how]
     assert children.start(["x"], {}, None) is None  # type: ignore[arg-type]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="process groups are POSIX")
+def test_each_child_leads_a_process_group_of_its_own(tmp_path: Path) -> None:
+    body = ("g = f'{os.getpgid(0)} {os.getpid()} {os.getppid()}'\n"
+            "lp.write_summary(summary, lp.Summary(('g',), {'g': 'OK'}, {}, g, 0))\n")
+    r = lp.run_pool([lp.Job("g", _child(body), planned=("g",))], 1, tmp_path, VAR)
+    assert r.results[0].summary is not None
+    group, pid, parent = map(int, r.results[0].summary.transcript.split())
+    assert parent == os.getpid() and group == pid != os.getpgid(0)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="SIGINT to one process is POSIX")
+def test_a_second_interrupt_during_the_stop_kills_the_children_left(tmp_path: Path) -> None:
+    """An impatient second Ctrl-C while the stop waits out its grace must not abandon a child
+    that ignores the first: it is killed there and then. The child beats a file while alive."""
+    beat, started = tmp_path / "beat", tmp_path / "started"
+    stubborn = _child("import signal\nsignal.signal(signal.SIGINT, signal.SIG_IGN)\n"
+                      f"Path({str(started)!r}).write_text('y')\n"
+                      f"while True:\n    Path({str(beat)!r}).write_text(str(time.time()))\n"
+                      "    time.sleep(0.05)\n")
+    parent = tmp_path / "parent.py"
+    parent.write_text(
+        "import sys\nfrom pathlib import Path\nfrom scry_core import live_pool as lp\n"
+        f"argv = {stubborn!r}\n"
+        "try:\n"
+        f"    lp.run_pool([lp.Job('s', argv, planned=('s',))], 1, Path({str(tmp_path / 'o')!r}),"
+        f" {VAR!r})\n"
+        "except KeyboardInterrupt:\n    sys.exit(130)\n", encoding="utf-8")
+    proc = subprocess.Popen([sys.executable, str(parent)])
+    try:
+        _wait_for(started)
+        proc.send_signal(signal.SIGINT)
+        time.sleep(1.0)                    # inside the stop's grace
+        proc.send_signal(signal.SIGINT)
+        proc.wait(lp.STOP_GRACE_S / 2)     # back well before the grace runs out
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+    last = beat.read_text()
+    time.sleep(0.5)
+    assert beat.read_text() == last, "the child is still alive after the parent left"
+
+
+def test_an_interrupt_while_the_stop_waits_kills_every_child_and_goes_on() -> None:
+    class Waiting(_Recorded):
+        def wait(self, timeout: float | None = None) -> int:
+            raise KeyboardInterrupt
+
+    children, first, second = lp._Children(), Waiting(), _Recorded()
+    children._live.update({first, second})  # type: ignore[arg-type]
+    with pytest.raises(KeyboardInterrupt):
+        children.stop()
+    assert "kill" in first.calls and "kill" in second.calls

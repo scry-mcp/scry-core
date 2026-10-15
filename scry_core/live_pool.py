@@ -19,8 +19,12 @@ its children's codes mean.
 
 INTERRUPTED, every child is sent the interrupt itself (SIGINT on POSIX, so a Python child unwinds
 through its own cleanup and closes what it launched) and killed if it is still there after
-`STOP_GRACE_S`. Windows has no SIGINT to send to one process, so there the child is terminated
-outright, and anything it launched is left for its owner to reap.
+`STOP_GRACE_S`, or at once on a second interrupt. Windows has no SIGINT to send to one process,
+so there the child is terminated outright, and anything it launched is left for its owner to
+reap. Each child runs in a process group of its own, so a Ctrl-C at the terminal reaches the
+parent alone and the stop is the one interrupt a child gets: a second one is what makes a
+Python child abandon its cleanup. The price is that a signal sent to the parent's group, or a
+parent killed outright, does not reach the children; the parent's stop is what ends them.
 """
 
 from __future__ import annotations
@@ -56,6 +60,10 @@ _JOB_NAME = re.compile(r"[A-Za-z0-9_-]+")
 # a child that is stopped keeps its last lines in the log, and Python's UTF-8 mode, so a child's
 # print of a label is not refused by a Windows code page.
 _CHILD_ENV = {"PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
+# Each child in a process group of its own (the module docstring says why).
+_OWN_GROUP: dict[str, Any] = (
+    {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
+    if sys.platform == "win32" else {"process_group": 0})
 
 
 def default_workers() -> int:
@@ -200,7 +208,7 @@ class _Children:
             if self._stopping:
                 return None
             proc = subprocess.Popen(list(argv), env=env, stdin=subprocess.DEVNULL, stdout=out,
-                                    stderr=subprocess.STDOUT)
+                                    stderr=subprocess.STDOUT, **_OWN_GROUP)
             self._live.add(proc)
             return proc
 
@@ -218,11 +226,17 @@ class _Children:
             else:
                 proc.send_signal(signal.SIGINT)
         deadline = time.monotonic() + STOP_GRACE_S
-        for proc in live:
-            try:
-                proc.wait(max(0.0, deadline - time.monotonic()))
-            except subprocess.TimeoutExpired:
+        try:
+            for proc in live:
+                try:
+                    proc.wait(max(0.0, deadline - time.monotonic()))
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+        except BaseException:
+            # A SECOND INTERRUPT INSIDE THE GRACE: nobody is waiting for a clean end any more.
+            for proc in live:
                 proc.kill()
+            raise
 
 
 def _run_job(job: Job, out_dir: Path, summary_var: str, children: _Children) -> JobResult:
