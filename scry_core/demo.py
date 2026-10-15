@@ -31,14 +31,14 @@ transcript and copies the capture this run wrote to `screen.png` beside the READ
 a run whose every step was OK: a README showing a failed run would be a README that lies.
 
 NORMALISATION hides what differs between two honest runs and nothing else: `$HOME` becomes `~`
-and the repository root `.`, wherever either begins a path; in a REPLY the value of every key
-in `VOLATILE` becomes `<volatile>`; and in the ARGUMENTS of a call the value of every key a
-demo declares in `host_args` (a window's placement, say) becomes `<host>`. Hiding is by key, so a
-reply that echoes a host argument needs that key in `volatile` too, and a summary must not quote
-one. A value the demo SHOWS (a score, a register, an address
-it found) is never on that list: if it differs between two runs the demo is wrong, and hiding
-it would make the freshness check pass by not looking. A step's summary is the demo's own text
-and is never searched for volatile values, so a summary quotes only what the demo shows.
+and the repository root `.`, wherever either begins a path; in a REPLY the value of every key in
+`VOLATILE`, in the demo's `volatile` and in the step's own becomes `<volatile>`; and in the
+ARGUMENTS of a call the value of every key a demo declares in `host_args` (a window's placement,
+say) becomes `<host>`. Hiding is by key, so a reply that echoes a host argument needs that key in
+`volatile` too, and a summary must not quote one. A value the demo SHOWS (a score, a register, an
+address it found) is never on that list: if it differs between two runs the demo is wrong, and
+hiding it would make the freshness check pass by not looking. A step's summary is the demo's own
+text and is never searched for volatile values, so a summary quotes only what the demo shows.
 """
 
 from __future__ import annotations
@@ -77,7 +77,8 @@ CALL_TIMEOUT_S = 900
 OFFERABLE = frozenset({"rompath", "shared"})
 
 #: Reply keys whose values differ between two honest runs, each with the reason. A demo adds
-#: its own through `Demo.volatile`.
+#: its own through `Demo.volatile`, and a step those that vary in it alone through
+#: `Step.volatile`.
 VOLATILE: Mapping[str, str] = {
     "pid": "the operating system's process id, new on every launch",
     "stub_port": "a free port picked at launch",
@@ -138,13 +139,16 @@ class Step:
     summary printed beside OK; it raises `StepFailed` to say why not, and any other exception in
     the step is that step's FAIL too, named by its type. A reply whose `status` is not `ok`
     fails before `check` is asked. `options` marks the step the command line's options are
-    merged into, which is the server's `start`: `True` for all of them, or the set it takes."""
+    merged into, which is the server's `start`: `True` for all of them, or the set it takes.
+    `volatile` adds reply keys hidden in this step alone, each with its reason: a value that
+    varies here (a register at a stop the clock chose) and is shown, stable, in another step."""
 
     name: str
     tool: str
     args: Args
     check: Callable[[Reply, Run], str]
     options: bool | frozenset[str] = False
+    volatile: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -238,9 +242,10 @@ class Normaliser:
                 text = re.sub(re.escape(str(prefix)) + r"(?=/|$|[^\w.-])", mark, text)
         return text
 
-    def reply(self, value: Any) -> Any:
-        """A reply with its paths spelled by `text` and every volatile key's value hidden."""
-        return self._value(value, self.volatile, VOLATILE_MARK)
+    def reply(self, value: Any, also: Mapping[str, str] | None = None) -> Any:
+        """A reply with its paths spelled by `text` and every volatile key's value hidden, those
+        of `also` (one step's own) included."""
+        return self._value(value, {**self.volatile, **(also or {})}, VOLATILE_MARK)
 
     def arguments(self, value: Any) -> Any:
         """The demo's arguments with their paths spelled by `text` and the host's own hidden;
@@ -288,9 +293,10 @@ class Transcripts:
     normalised: list[str] = field(default_factory=list)
 
     def add(self, n: int, tool: str, args: Mapping[str, Any], reply: Reply | None,
-            line: str) -> None:
+            line: str, volatile: Mapping[str, str] | None = None) -> None:
         self.whole.append(_entry(n, tool, args, reply, line))
-        shown = None if reply is None else Reply(self.norm.reply(reply.data), reply.attachments)
+        shown = None if reply is None else Reply(self.norm.reply(reply.data, volatile),
+                                                 reply.attachments)
         self.normalised.append(_entry(n, tool, self.norm.arguments(dict(args)), shown,
                                       self.norm.text(line)))
 
@@ -370,7 +376,7 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                 for n, step in enumerate(demo.steps, start=1):
                     ok, line, args, reply = await _step(client, step, run)
                     out.lines.append(norm.text(line))
-                    out.transcripts.add(n, step.tool, args, reply, line)
+                    out.transcripts.add(n, step.tool, args, reply, line, step.volatile)
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_FAILED
@@ -433,6 +439,9 @@ def _declared(demo: Demo) -> None:
     """Refuse a demo whose declarations name an option the runner does not know, or a step whose
     `options` is neither a bool nor a set: a typo there would take nothing, in silence."""
     for step in demo.steps:
+        if not isinstance(step.volatile, Mapping):
+            raise ValueError(f"step {step.name}: `volatile` is {step.volatile!r}, not a mapping "
+                             "of keys to their reasons")
         if not isinstance(step.options, bool | frozenset):
             raise ValueError(f"step {step.name}: `options` is {step.options!r}, not True, False "
                              "or a frozenset of option names")

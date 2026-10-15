@@ -326,6 +326,20 @@ def test_a_demo_declares_its_own_volatile_keys_and_its_arguments_keep_theirs(
     assert '"value": 7' in norm, "the demo's own argument was hidden"
 
 
+def test_a_step_hides_its_own_volatile_keys_and_no_other_step_does(
+        tmp_path: Path, log: Path) -> None:
+    steps = [d.Step("boot", "start", {}, _said("value"), volatile={"value": "varies here"}),
+             d.Step("look", "read", {}, _said("value"))]
+    assert _run(_demo(tmp_path, steps), tmp_path) == d.EXIT_OK
+    boot, look = _norm(tmp_path).split("**2. ")
+    assert '"value": "<volatile>"' in boot and '"value": 7' not in boot.split("```json")[2]
+    assert '"pid": "<volatile>"' in boot, "the step's keys replaced the module's list"
+    assert '"value": 7' in look, "a step's volatile key was hidden in another step"
+    with pytest.raises(ValueError, match="not a mapping"):
+        d.main(_demo(tmp_path, [d.Step("s", "start", {}, _said("value"),
+                                       volatile={"value"})]), [])  # type: ignore[arg-type]
+
+
 def test_a_host_argument_is_hidden_and_the_demos_own_are_not(tmp_path: Path, log: Path) -> None:
     steps = [d.Step("boot", "start", {"value": 7, "binary": "-set sdl display=1"},
                     _said("value"))]
