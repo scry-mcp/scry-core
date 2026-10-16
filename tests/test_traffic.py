@@ -77,6 +77,44 @@ def test_a_tool_list_counted_by_hand() -> None:
                       "tools": {"ab": {"description": 2, "definition": 49}}}
 
 
+def test_attached_pictures_counted_by_hand(tmp_path: Path) -> None:
+    """Three `image` blocks, counted by hand in tiles of 28 px: a 960x720 picture attached at
+    the top (35 x 26 = 910), a 256x64 one in a `perform` step's reply (10 x 3 = 30), and a
+    3000x3000 one written and NOT attached (`inline: false`), which costs nothing."""
+    shown = {"status": "ok", "image": {"inline": True, "width": 960, "height": 720}}
+    stepped = {"status": "ok", "ran": [{"op": "palette", "reply": {
+        "status": "ok", "image": {"inline": True, "width": 256, "height": 64}}}]}
+    unshown = {"status": "ok", "image": {"inline": False, "width": 3000, "height": 3000}}
+    assert traffic.image_tokens(shown) == 910
+    assert traffic.image_tokens(stepped) == 30
+    assert traffic.image_tokens(unshown) == 0
+    calls = traffic.read_transcripts([_transcript(
+        tmp_path, _line("screen_view", shown), _line("perform", stepped),
+        _line("screen_view", unshown))])
+    assert calls.image_tokens == {"screen_view": [910, 0], "perform": [30]}
+    # The edge of one tile: 28 pixels is one, 29 is two.
+    assert traffic.image_tokens({"image": {"inline": True, "width": 28, "height": 29}}) == 2
+
+
+def test_a_picture_block_with_no_size_is_invalid(tmp_path: Path) -> None:
+    """An attached picture whose size the reply does not state cannot be counted, and a zero
+    in its place would read as a picture that cost nothing."""
+    block = {"status": "ok", "image": {"inline": True, "height": 8}}
+    with pytest.raises(Invalid, match="width"):
+        traffic.image_tokens(block)
+    # A JSON `true` is a Python int, and a picture has at least one pixel a side: neither is a
+    # size, and counting either would read as a picture that cost one tile, or nothing.
+    for w, h in ((True, True), (0, 28), (28, -56), (-56, -56), (28, 2.0)):
+        with pytest.raises(Invalid, match="cannot be counted"):
+            traffic.image_tokens({"image": {"inline": True, "width": w, "height": h}})
+    # Integer tiles: a size past a float's range is still counted, exactly.
+    assert traffic.image_tokens({"image": {"inline": True, "width": 28 * 10**400 + 1,
+                                           "height": 28}}) == 10**400 + 1
+    path = _transcript(tmp_path, _line("status", SMALL), _line("screen_view", block))
+    with pytest.raises(Invalid, match=r"t\.jsonl:2: an attached picture states width=None"):
+        traffic.read_transcripts([path])
+
+
 def test_real_lines_of_both_servers_match_the_clients_count() -> None:
     for server, totals in REAL_TOTALS.items():
         calls = traffic.read_transcripts([REAL / f"{server}.jsonl"])
@@ -151,14 +189,33 @@ def test_the_command_writes_the_table_and_prints_one_line_per_flagged_tool(
     small = traffic.json_units(SMALL)
     assert doc["per_tool"]["watch_add"] == {
         "calls": 3, "max": small + 6, "p50": small, "total": 3 * small + 6,
-        "share": round((3 * small + 6) / doc["replies"]["units"], 4), "review": []}
+        "share": round((3 * small + 6) / doc["replies"]["units"], 4), "review": [],
+        "image_tokens": 0}
     assert doc["per_tool"]["read_memory"]["review"] == ["max", "share"]
     assert doc["replies"] == {"calls": 4, "units": traffic.json_units(BIG) + 3 * small + 6,
-                              "skipped": 0, "foreign": {}, "unmeasured": ["memdump", "status"]}
+                              "image_tokens": 0, "skipped": 0, "foreign": {},
+                              "unmeasured": ["memdump", "status"]}
     reviews = [p for p in printed if p.startswith(traffic.LINE_REVIEW)]
     assert len(reviews) == 1, printed
     assert reviews[0].startswith("REVIEW mame read_memory [max,share] calls=1 ")
     assert printed[-2].startswith("TOTAL mame replies calls=4 ")
+
+
+def test_image_tokens_are_summed_per_tool_and_leave_foreign_calls_out(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Two attached pictures under one tool sum (1 + 4 tiles), a second tool adds its own (2),
+    and a picture under a name the server does not list counts nowhere."""
+    def shown(w: int, h: int) -> dict[str, Any]:
+        return {"status": "ok", "image": {"inline": True, "width": w, "height": h}}
+    path = _transcript(tmp_path, _line("status", shown(28, 28)), _line("status", shown(56, 56)),
+                       _line("read_memory", shown(28, 56)), _line("helper", shown(280, 280)))
+    rc, printed = _run(tmp_path, capsys, "mame", "--transcript", str(path))
+    assert rc == traffic.EXIT_TABLE, printed
+    doc = _table(printed)
+    assert doc["per_tool"]["status"]["image_tokens"] == 5
+    assert doc["per_tool"]["read_memory"]["image_tokens"] == 2
+    assert doc["replies"]["image_tokens"] == 7
+    assert " image_tokens=7 " in printed[-2], printed
 
 
 def test_two_transcripts_are_one_measurement(
@@ -190,7 +247,7 @@ def test_a_name_the_server_does_not_list_is_set_apart_not_measured(
     small = traffic.json_units(SMALL)
     assert doc["replies"]["units"] == small
     assert doc["per_tool"]["status"] == {"calls": 1, "max": small, "p50": small, "total": small,
-                                         "share": 1.0, "review": ["share"]}
+                                         "share": 1.0, "review": ["share"], "image_tokens": 0}
     reviews = [p for p in printed if p.startswith(traffic.LINE_REVIEW)]
     assert len(reviews) == 1 and reviews[0].startswith("REVIEW mame status [share] "), printed
     assert " foreign=2 (start_through_the_schema) " in printed[-2], printed
@@ -206,15 +263,23 @@ def test_before_puts_the_earlier_figures_beside_each_line(
     earlier["list"].update(instructions=1, names=2, descriptions=3, definitions=4)
     # A table written before `foreign` existed is still a valid one to compare against.
     del earlier["replies"]["foreign"]
+    # ... and so is one written before `image_tokens`.
+    del earlier["replies"]["image_tokens"]
+    del earlier["per_tool"]["read_memory"]["image_tokens"]
     first.write_text(json.dumps(earlier))
-    later = _transcript(tmp_path, _line("read_memory", BIG), _line("watch_add", SMALL),
+    # A 28x29 picture is 1 x 2 tiles; the earlier table predates `image_tokens` (was -).
+    pictured = {**BIG, "image": {"inline": True, "width": 28, "height": 29}}
+    later = _transcript(tmp_path, _line("read_memory", pictured), _line("watch_add", SMALL),
                         name="s.jsonl")
     rc, printed = _run(tmp_path, capsys, "mame", "--transcript", str(later), "--before",
                        str(first))
     was = traffic.json_units(BIG)
-    assert rc == traffic.EXIT_TABLE and f"max={was} (was {was})" in printed[0], printed
+    now = traffic.json_units(pictured)
+    assert rc == traffic.EXIT_TABLE and f"max={now} (was {was})" in printed[0], printed
+    assert " image_tokens=2 (was -) " in printed[0], printed
     total = printed[-2]
-    assert f"units={was + traffic.json_units(SMALL)} (was {was})" in total, total
+    assert f"units={now + traffic.json_units(SMALL)} (was {was})" in total, total
+    assert " image_tokens=2 (was -) " in total, total
     for k, n in (("instructions", 1), ("names", 2), ("descriptions", 3), ("definitions", 4)):
         assert f"(was {n})" in total.split(f" {k}=")[1], (k, total)
     # A tool the earlier table never saw says so rather than inventing a figure.

@@ -21,6 +21,12 @@ THE TOOL LIST is the server's `list_tools()`, uncapped: per tool its description
 definition (name, description and input schema, compact JSON, which is what a model is handed),
 and the server's `instructions` and the sum of its tool names.
 
+PICTURES are a second column, never summed with the units: a reply's `image_tokens` is the sum,
+over its `image` blocks with `inline: true` at any depth (a step's reply inside a sequence carries
+its own), of the API's visual tokens for the picture as attached, tiles of `TOKEN_SIDE` pixels a
+side. A block that says `inline: true` without a whole width and height of at least one pixel is
+INVALID rather than free, under any tool name, a foreign one included.
+
 A TOOL IS FLAGGED FOR REVIEW when its largest reply is over `REVIEW_MAX_UNITS` (`max`), or when
 it is among the fewest tools whose replies make `REVIEW_SHARE` of all reply units (`share`).
 A listed tool no transcript called is `unmeasured`.
@@ -28,13 +34,14 @@ A listed tool no transcript called is `unmeasured`.
 OUTPUT. The full table, as JSON (`"format": "scry-traffic/1"`), goes to a new file under the
 servers file's `ROOT/tmp/traffic/`. Stdout, in this order: one line per flagged tool,
 
-    REVIEW <server> <tool> [max,share] calls=N max=N p50=N total=N share=P% description=N
+    REVIEW <server> <tool> [why] calls=N max=N p50=N total=N share=P% image_tokens=N description=N
 
-(`p50` the lower median, `description` its units), one `TOTAL <server> ...` line with the
-replies' figures (`foreign=N` names the unlisted tools it set apart) and the list's, and last
-`TABLE <path>`. With `--before`, an earlier table of the same server, each REVIEW `max`, the
-replies' `units` and each list figure carry ` (was N)`, or ` (was -)` where that table had none;
-a table written before `foreign` existed is a valid one.
+(`why` is `max`, `share` or both, `p50` the lower median, `description` its units), one
+`TOTAL <server> ...` line with the replies' figures (`foreign=N` names the unlisted tools it set
+apart) and the list's, and last `TABLE <path>`. With `--before`, an earlier table of the same
+server, each REVIEW `max`, the replies' `units`, every `image_tokens` and each list figure carry
+` (was N)`, or ` (was -)` where that table had none; a table written before `foreign` or
+`image_tokens` existed is a valid one.
 
 Exit 0 with a table, 2 for a wrong call, 3 INVALID: a transcript or a `--before` that is missing,
 does not parse or does not fit, a server that lists no tools, a table that could not be written,
@@ -53,7 +60,7 @@ import tempfile
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeGuard
 
 from scry_core.client_cap import CLIENT_TEXT_CAP, utf16_units
 from scry_core.probe import EXIT_INVALID, Invalid, broke, configure
@@ -69,6 +76,8 @@ REVIEW_MAX_UNITS = CLIENT_TEXT_CAP
 REVIEW_SHARE = 0.80
 #: Where tables go, under the servers file's `ROOT`; no option moves it, as with the probe's runs.
 TABLES_UNDER_ROOT = Path("tmp") / "traffic"
+#: The side, in pixels, of one visual token's tile in the API's count of an image's cost.
+TOKEN_SIDE = 28
 #: The table's shape, checked on a `--before` so a drifted table is refused, not read as "-".
 TABLE_KEYS = {"replies": ("calls", "units", "skipped", "unmeasured"),
               "list": ("instructions", "names", "descriptions", "definitions", "tools")}
@@ -79,11 +88,39 @@ def json_units(value: Any) -> int:
     return utf16_units(json.dumps(value, separators=(",", ":"), ensure_ascii=False))
 
 
+def _a_side(n: object) -> TypeGuard[int]:
+    """A picture's side: a whole number of pixels, at least one. A JSON `true` is a Python int,
+    and neither it nor zero is a size."""
+    return isinstance(n, int) and not isinstance(n, bool) and n >= 1
+
+
+def image_tokens(value: Any) -> int:
+    """The visual tokens of every attached picture `value` describes, at any depth: a step's
+    reply inside `perform` or `drive` carries its own `image` block."""
+    if isinstance(value, list):
+        return sum(image_tokens(v) for v in value)
+    if not isinstance(value, dict):
+        return 0
+    total = 0
+    for key, v in value.items():
+        if key == "image" and isinstance(v, dict) and v.get("inline") is True:
+            w, h = v.get("width"), v.get("height")
+            if not (_a_side(w) and _a_side(h)):
+                raise Invalid(f"an attached picture states width={w!r} height={h!r}, so its "
+                              "cost cannot be counted")
+            total += -(-w // TOKEN_SIDE) * -(-h // TOKEN_SIDE)
+        else:
+            total += image_tokens(v)
+    return total
+
+
 @dataclass(frozen=True)
 class Calls:
-    """Every reply's units by tool, and how many non-blank transcript lines were not replies."""
+    """Every reply's units and image tokens by tool, and how many non-blank transcript lines
+    were not replies."""
 
     units: dict[str, list[int]]
+    image_tokens: dict[str, list[int]]
     skipped: int
 
 
@@ -96,6 +133,7 @@ def _read(path: Path, flag: str) -> str:
 
 def read_transcripts(paths: Iterable[Path]) -> Calls:
     units: dict[str, list[int]] = {}
+    tokens: dict[str, list[int]] = {}
     skipped = 0
     for path in paths:
         # JSON Lines ends a record at "\n" alone: `splitlines` would also cut at a U+2028 a
@@ -114,10 +152,14 @@ def read_transcripts(paths: Iterable[Path]) -> Calls:
                 skipped += 1
                 continue
             units.setdefault(tool, []).append(json_units(reply))
+            try:
+                tokens.setdefault(tool, []).append(image_tokens(reply))
+            except Invalid as e:
+                raise Invalid(f"{path}:{n}: {e}") from None
     if not units:
         raise Invalid("the transcripts hold no reply, so there is nothing to measure "
                       f"({skipped} line(s) skipped)")
-    return Calls(units, skipped)
+    return Calls(units, tokens, skipped)
 
 
 def for_review(totals: dict[str, int], maxima: dict[str, int]) -> dict[str, list[str]]:
@@ -169,8 +211,10 @@ def table(server: str, calls: Calls | None, listed: dict[str, Any]) -> dict[str,
         for tool, sizes in units.items():
             rows[tool] = {"calls": len(sizes), "max": maxima[tool],
                           "p50": int(statistics.median_low(sizes)), "total": totals[tool],
-                          "share": round(totals[tool] / grand, 4), "review": why.get(tool, [])}
+                          "share": round(totals[tool] / grand, 4), "review": why.get(tool, []),
+                          "image_tokens": sum(calls.image_tokens[tool])}
         replies = {"calls": sum(len(u) for u in units.values()), "units": grand,
+                   "image_tokens": sum(sum(calls.image_tokens[t]) for t in units),
                    "skipped": calls.skipped, "foreign": foreign,
                    "unmeasured": sorted(set(listed["tools"]) - set(units))}
     return {"format": TABLE_FORMAT, "server": server, "replies": replies, "per_tool": rows,
@@ -217,12 +261,16 @@ def report(doc: dict[str, Any], before: dict[str, Any] | None) -> list[str]:
                 f"{LINE_REVIEW}{server} {tool} [{','.join(row['review'])}] calls={row['calls']} "
                 f"max={row['max']}{_was(before, 'per_tool', tool, 'max')} p50={row['p50']} "
                 f"total={row['total']} share={row['share']:.1%} "
+                f"image_tokens={row['image_tokens']}"
+                f"{_was(before, 'per_tool', tool, 'image_tokens')} "
                 f"description={listed['tools'][tool]['description']}")
     measured = ""
     if replies is not None:
         named = f" ({', '.join(sorted(replies['foreign']))})" if replies["foreign"] else ""
         measured = (f"replies calls={replies['calls']} units={replies['units']}"
-                    f"{_was(before, 'replies', 'units')} skipped={replies['skipped']} "
+                    f"{_was(before, 'replies', 'units')} "
+                    f"image_tokens={replies['image_tokens']}"
+                    f"{_was(before, 'replies', 'image_tokens')} skipped={replies['skipped']} "
                     f"foreign={sum(replies['foreign'].values())}{named} "
                     f"unmeasured={len(replies['unmeasured'])}; ")
     figures = " ".join(f"{k}={listed[k]}{_was(before, 'list', k)}"
