@@ -15,7 +15,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, and the probe's tasks |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, and the README block they generate |
-| `scry_core.focus_watch` | whether a live run took the owner's focus: the frontmost application sampled from outside the run (macOS) |
+| `scry_core.focus_watch` | whether a live run took the owner's focus or moved their Space: the frontmost application and each display's Space sampled from outside the run (macOS) |
 | `scry_core.live_pool` | a live tier's independent jobs run as parallel child processes, merged from the summaries they declare |
 
 Each server pins it by a release tag, never by a branch:
@@ -54,7 +54,8 @@ reply_shapes_anchors = ["scry_core.reply_contract", "server"]
 
 A live tier that runs beside somebody working wraps its run in `scry_core.focus_watch.FocusWatch`
 and judges the samples with `judge`, after a control in the same harness: one start that must be
-seen in front and one that must not. The module docstring is the contract.
+seen in front, one that must not, and the owner's Space moved and put back by `move_space`,
+which must be seen moved. The module docstring is the contract.
 
 ## Parallel live tiers
 

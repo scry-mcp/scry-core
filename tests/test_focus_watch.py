@@ -134,6 +134,7 @@ def test_a_moved_pointer_is_recorded_and_not_judged() -> None:
     fw.Sample(11, "Code Helper", 7, None),
     fw.Sample(12, error="osascript did not answer: boom"),
     fw.Sample(13),
+    fw.Sample(14, "Finder", 9, (0, 0), spaces=(1, 4)),
 ])
 def test_a_sample_survives_its_line(sample: fw.Sample) -> None:
     assert fw.parse(sample.line()) == sample
@@ -215,7 +216,7 @@ def test_a_watch_whose_record_cannot_be_opened_refuses_before_sampling(
 def test_the_host_sampler_names_a_frontmost_process_and_the_pointer() -> None:
     s = fw.sample_host()
     assert not s.error, s
-    assert s.app and s.pid and s.pointer is not None
+    assert s.app and s.pid and s.pointer is not None and s.spaces
 
 
 def test_off_macos_every_sample_is_an_error(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -236,10 +237,11 @@ def test_a_named_frontmost_process_is_stamped_inside_the_call(
         monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.setattr(subprocess, "run", _fake_run("dosbox-x\t68339\n"))
+    monkeypatch.setattr(fw, "_spaces", lambda: (1, 4))
     before = int(time.time() * 1000)
     s = fw.sample_host()
     after = int(time.time() * 1000)
-    assert (s.app, s.pid, s.error) == ("dosbox-x", 68339, "")
+    assert (s.app, s.pid, s.error, s.spaces) == ("dosbox-x", 68339, "", (1, 4))
     assert before + 5 <= s.epoch_ms <= after - 5
 
 
@@ -271,3 +273,253 @@ def test_no_coregraphics_means_no_pointer(monkeypatch: pytest.MonkeyPatch) -> No
         assert fw._pointer() is None
     finally:
         fw._graphics.cache_clear()
+
+
+def _on(ms: int, *spaces: int) -> fw.Sample:
+    return fw.Sample(ms, "Finder", 9, (0, 0), spaces=spaces)
+
+
+def test_a_space_that_moved_inside_the_window_is_its_own_verdict() -> None:
+    v = fw.judge([_on(1, 1, 4), _on(2, 1, 4), _on(3, 2, 4)], {"dosbox-x"})
+    assert v.status == "SPACE_CHANGED" and v.sample is not None and v.sample.epoch_ms == 3
+    assert "[1, 4]" in v.reason and "[2, 4]" in v.reason
+    assert fw.judge([_on(1, 1, 4), _on(2, 1, 4)], {"dosbox-x"}).status == "CLEAN"
+
+
+def test_a_space_moved_and_put_back_is_seen_at_its_first_move() -> None:
+    """The control's own shape: along, then back to where the window began."""
+    v = fw.judge([_on(1, 1, 4), _on(2, 2, 4), _on(3, 1, 4)], {"dosbox-x"})
+    assert v.status == "SPACE_CHANGED" and v.sample is not None and v.sample.epoch_ms == 2
+
+
+def test_any_display_s_space_counts_not_only_the_first() -> None:
+    v = fw.judge([_on(1, 1, 4), _on(2, 1, 5)], {"dosbox-x"})
+    assert v.status == "SPACE_CHANGED" and v.sample is not None and v.sample.epoch_ms == 2
+
+
+def test_a_moved_space_is_reported_over_a_later_change_of_displays() -> None:
+    v = fw.judge([_on(1, 1, 4), _on(2, 2, 4), _on(3, 2)], {"dosbox-x"})
+    assert v.status == "SPACE_CHANGED" and v.sample is not None and v.sample.epoch_ms == 2
+
+
+def test_a_moved_space_is_reported_over_a_stretch_unwatched() -> None:
+    far = 1 + fw.MAX_GAP_MS * 4
+    v = fw.judge([_on(1, 1, 4), _on(far, 2, 4)], {"dosbox-x"})
+    assert v.status == "SPACE_CHANGED"
+
+
+def test_the_window_s_own_first_sample_is_the_baseline() -> None:
+    """A Space that moved BEFORE the window opened is not this window's doing."""
+    v = fw.judge([_on(1, 2, 4), _on(5, 1, 4), _on(6, 1, 4)], {"dosbox-x"}, start_ms=5)
+    assert v.status == "CLEAN"
+
+
+def test_a_theft_of_the_focus_is_reported_over_a_moved_space() -> None:
+    front = fw.Sample(3, "dosbox-x", 42, (0, 0), spaces=(2, 4))
+    assert fw.judge([_on(1, 1, 4), front], {"dosbox-x"}).status == "TOOK_FOCUS"
+
+
+def test_a_moved_space_is_reported_over_a_sample_that_failed() -> None:
+    broken = fw.Sample(2, error="System Events did not answer")
+    assert fw.judge([_on(1, 1, 4), broken, _on(3, 2, 4)], {"dosbox-x"}).status == "SPACE_CHANGED"
+
+
+def test_a_record_written_before_spaces_were_read_still_loads() -> None:
+    assert fw.parse("12\tFinder\t9\t0,0") == fw.Sample(12, "Finder", 9, (0, 0))
+
+
+def test_spaces_that_cannot_be_read_make_the_sample_an_error(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(subprocess, "run", _fake_run("Finder\t9\n"))
+    for unread in (None, ()):
+        monkeypatch.setattr(fw, "_spaces", lambda unread=unread: unread)
+        s = fw.sample_host()
+        assert "Spaces could not be read" in s.error
+        assert fw.judge([s], {"dosbox-x"}).status == "INVALID"
+
+
+def test_no_coregraphics_means_no_spaces(monkeypatch: pytest.MonkeyPatch) -> None:
+    fw._graphics.cache_clear()
+    monkeypatch.setattr(ctypes.util, "find_library", lambda _name: None)
+    try:
+        assert fw._spaces() is None
+    finally:
+        fw._graphics.cache_clear()
+
+
+class _Graphics:
+    """CoreGraphics and CoreFoundation as `_spaces` calls them: the managed list, its data,
+    and the bytes, each of which the window server may fail to hand over."""
+
+    def __init__(self, managed: int, data: int, raw: bytes) -> None:
+        self.managed, self.data, self.raw = managed, data, raw
+        self.released: list[int] = []
+        self._buf = ctypes.create_string_buffer(raw, len(raw))
+
+    def CGSMainConnectionID(self) -> int:  # noqa: N802 -- the C name
+        return 1
+
+    def CGSCopyManagedDisplaySpaces(self, _cid: int) -> int:  # noqa: N802
+        return self.managed
+
+    def CFPropertyListCreateData(self, *_a: object) -> int:  # noqa: N802
+        return self.data
+
+    def CFDataGetBytePtr(self, _d: int) -> int:  # noqa: N802
+        return ctypes.addressof(self._buf)
+
+    def CFDataGetLength(self, _d: int) -> int:  # noqa: N802
+        return len(self.raw)
+
+    def CFRelease(self, ref: int) -> None:  # noqa: N802
+        self.released.append(ref)
+
+
+def _plist(*current: int) -> bytes:
+    import plistlib
+    return plistlib.dumps([{"Current Space": {"ManagedSpaceID": n}} for n in current],
+                          fmt=plistlib.FMT_BINARY)
+
+
+@pytest.mark.parametrize(("managed", "data", "raw", "want", "released"), [
+    (7, 8, _plist(1, 4), (1, 4), [8, 7]),
+    (0, 8, _plist(1), None, []),
+    (7, 0, _plist(1), None, [7]),
+    (7, 8, b"not a plist", None, [8, 7]),
+    (7, 8, _plist(), (), [8, 7]),
+])
+def test_spaces_reads_the_window_server_s_list_and_releases_what_it_was_handed(
+        monkeypatch: pytest.MonkeyPatch, managed: int, data: int, raw: bytes,
+        want: tuple[int, ...] | None, released: list[int]) -> None:
+    g = _Graphics(managed, data, raw)
+    monkeypatch.setattr(fw, "_graphics", lambda: (g, g))
+    assert fw._spaces() == want
+    assert g.released == released, "every reference handed over is released, once"
+
+
+def test_spaces_reads_a_capture_of_the_window_server_s_own_list(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """The list as the window server hands it over (two displays, one holding a full-screen app
+    on a Space of its own), anonymised: the shape the double above stands in for."""
+    raw = (CAPTURE.parent / "managed-display-spaces.plist").read_bytes()
+    g = _Graphics(7, 8, raw)
+    monkeypatch.setattr(fw, "_graphics", lambda: (g, g))
+    assert fw._spaces() == (1, 4)
+
+
+class _Desk:
+    """Spaces in a row and the owner on one of them; the shortcuts move along the row. `late`
+    moves the owner and still reports the keystroke as unanswered, as an osascript that timed
+    out after System Events had acted does."""
+
+    def __init__(self, row: int, at: int, refuse: bool = False, lost: bool = False,
+                 late: bool = False) -> None:
+        self.row, self.at, self.refuse, self.lost, self.late = row, at, refuse, lost, late
+        self.pressed: list[int] = []
+        self.events: list[str] = []
+
+    def spaces(self) -> tuple[int, ...]:
+        self.events.append("read")
+        return (self.at, 9)
+
+    def clock(self) -> int:
+        self.events.append("clock")
+        return len(self.events)
+
+    def press(self, key: int) -> str:
+        self.pressed.append(key)
+        self.events.append("press")
+        if self.refuse:
+            return "System Events refused the keystroke: not allowed"
+        step = 1 if key == fw.KEY_RIGHT else -1
+        if 1 <= self.at + step <= self.row and not (self.lost and step < 0):
+            self.at += step
+        return "osascript did not answer: timed out" if self.late else ""
+
+
+@pytest.mark.parametrize(("desk", "keys", "why"), [
+    (_Desk(3, 1), [124, 123], ""),
+    (_Desk(3, 3), [124, 123, 124], ""),
+    (_Desk(1, 1), [124, 123], "no other Space"),
+    (_Desk(3, 1, refuse=True), [124], "refused the keystroke"),
+    (_Desk(3, 1, lost=True), [124, 123], "left on"),
+    (_Desk(3, 1, late=True), [124, 123], "did not answer"),
+    (_Desk(3, 3, late=True), [124], "did not answer"),
+])
+def test_move_space_moves_along_and_back_or_says_why_not(
+        monkeypatch: pytest.MonkeyPatch, desk: _Desk, keys: list[int], why: str) -> None:
+    at = desk.at
+    monkeypatch.setattr(fw, "_spaces", desk.spaces)
+    monkeypatch.setattr(fw, "_press", desk.press)
+    slept: list[float] = []
+    monkeypatch.setattr(time, "sleep", slept.append)
+    monkeypatch.setattr(fw, "_now_ms", desk.clock)
+    began, ended, said = fw.move_space(settle_s=0.5)
+    assert desk.pressed == keys
+    assert (why in said) if why else said == ""
+    if not desk.lost:
+        assert desk.at == at, "the owner is back where they started, whatever a key reported"
+    assert desk.events[0] == "clock" and desk.events[-1] == "clock", \
+        "the window opens before the first key and closes after the last reading"
+    assert began < ended
+    assert slept == [0.5] * len(keys), "each key pressed is given its settle, and only those"
+
+
+def test_move_space_presses_nothing_when_the_spaces_cannot_be_read(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    desk = _Desk(3, 1)
+    monkeypatch.setattr(fw, "_spaces", lambda: None)
+    monkeypatch.setattr(fw, "_press", desk.press)
+    monkeypatch.setattr(time, "sleep", lambda _s: None)
+    _began, _ended, said = fw.move_space(settle_s=0.5)
+    assert desk.pressed == [] and "could not be read" in said
+
+
+def test_move_space_presses_no_way_back_when_a_reading_fails_after_a_key(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    desk = _Desk(3, 1)
+    monkeypatch.setattr(fw, "_spaces", lambda: None if desk.pressed else desk.spaces())
+    monkeypatch.setattr(fw, "_press", desk.press)
+    monkeypatch.setattr(time, "sleep", lambda _s: None)
+    _began, _ended, said = fw.move_space(settle_s=0.5)
+    assert desk.pressed == [fw.KEY_RIGHT], "a key back on a blind reading may move the owner"
+    assert "could not be read after a key" in said and "left on None" in said
+
+
+def test_press_sends_mission_control_s_shortcut_and_survives_any_bytes(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[tuple[list[str], dict[str, object]]] = []
+
+    def run(argv: list[str], **kw: object) -> subprocess.CompletedProcess[str]:
+        seen.append((argv, kw))
+        return subprocess.CompletedProcess(argv, 0, "", "")
+    monkeypatch.setattr(subprocess, "run", run)
+    assert fw._press(fw.KEY_RIGHT) == ""
+    argv, kw = seen[0]
+    assert argv[0] == "osascript" and argv[-1].endswith("key code 124 using control down")
+    assert kw["errors"] == "replace" and kw["timeout"] == fw.OSASCRIPT_TIMEOUT_S
+
+
+def test_press_says_why_a_keystroke_did_not_go(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(subprocess, "run", _fake_run("", 1, "not allowed to send keystrokes"))
+    assert "not allowed" in fw._press(124)
+
+    def hang(*_a: object, **_k: object) -> None:
+        raise subprocess.TimeoutExpired("osascript", 5)
+    monkeypatch.setattr(subprocess, "run", hang)
+    assert "did not answer" in fw._press(124)
+    monkeypatch.setattr(subprocess, "run", _fake_run(""))
+    assert fw._press(123) == ""
+
+
+def test_a_change_in_the_number_of_displays_is_invalid_not_a_move() -> None:
+    v = fw.judge([_on(1, 1, 4), _on(2, 1)], {"dosbox-x"})
+    assert v.status == "INVALID" and "displays changed" in v.reason
+
+
+def test_samples_with_and_without_a_space_reading_cannot_be_judged() -> None:
+    v = fw.judge([_on(1, 1, 4), fw.Sample(2, "Finder", 9, (0, 0))], {"dosbox-x"})
+    assert v.status == "INVALID" and "no Space reading" in v.reason
+    old = fw.judge([fw.Sample(1, "Finder", 9, (0, 0))], {"dosbox-x"})
+    assert old.status == "CLEAN" and "no Space was recorded" in old.reason

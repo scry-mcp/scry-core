@@ -8,27 +8,38 @@ every tool normally. So the question is put from outside, on a clock:
         ...                                   # the run
     v = focus_watch.judge(watch.samples, {"dosbox-x"}, start_ms=t0, end_ms=t1)
 
-`v.status` is `CLEAN` (no sample had one of `names` in front), `TOOK_FOCUS` (`v.sample` is the
-first that did) or `INVALID`: the window holds no sample, a stretch of it went unsampled for
-longer than `MAX_GAP_MS`, or a sample could not be taken. A theft seen is reported over any
-blindness elsewhere in the window; short of one, an instrument that was blind for part of the
-run clears nothing. A stay in front shorter than one sampling period can fall between two
-samples, so this sees an emulator that took the focus and kept it, not a flicker.
+`v.status` is `CLEAN` (no sample had one of `names` in front, and no display's Space moved),
+`TOOK_FOCUS` (`v.sample` is the first that had one in front), `SPACE_CHANGED` (`v.sample` is the
+first whose displays' current Spaces differ from the window's first sample's) or `INVALID`:
+the window holds no sample, a stretch of it went unsampled for longer than `MAX_GAP_MS`, or a
+sample could not be taken. The focus taken, or a Space moved, is reported over a sample that
+failed, a stretch unsampled or a later change of displays; short of one, an instrument that was
+blind for part of the run clears nothing. A stay in front shorter than one sampling period can
+fall between two samples, so this sees an emulator that took the focus and kept it, not a
+flicker; the same holds for a Space that moves and comes back inside one period. A Space move
+is not tied to any process, so the caller reads SPACE_CHANGED as a move nobody can be named for
+(the owner may have made it), never as a theft proven; a change in the number of displays,
+short of a move before it, makes the window INVALID.
 
 THE INSTRUMENT IS SYSTEM EVENTS, asked through `osascript` on every sample, a separate process
 each time, rather than `NSWorkspace` inside this one, whose answer was observed to stay at
 whatever was in front when the process started. It needs the Automation permission for System
 Events, and without it every sample is an ERROR. Each sample also records the host pointer,
-for whoever reads a failed run's TSV, and never judges it: the owner's own hand moves it.
+for whoever reads a failed run's TSV, and never judges it: the owner's own hand moves it. And
+each records the current Space of every display (CoreGraphics' managed-display list, the one
+reading the system has of it), because a run can move the owner to another Space without
+anything of its own coming to the front; a reading that fails is an ERROR sample.
 
 `exclude` takes the stretches a run takes the focus BY DESIGN (a menu clicked through the
 emulator's window), so a section that has to come to the front is named, not hidden.
 
 THE CONTROL IS THE CALLER'S, in the same harness: one start that must be judged `TOOK_FOCUS`
-over its own window and one that must be `CLEAN`, before the run's own verdict is believed.
+over its own window, one that must be `CLEAN`, and the owner's Space moved and put back by
+`move_space`, which must be `SPACE_CHANGED`, before the run's own verdict is believed. That one
+presses keys, so it also needs the Accessibility permission.
 
-The samples go to a TSV as they are taken, `epoch_ms<TAB>app<TAB>pid<TAB>x,y` or
-`epoch_ms<TAB>ERROR<TAB><why>`, so a run that dies keeps its record. macOS only: anywhere else
+The samples go to a TSV as they are taken, `epoch_ms<TAB>app<TAB>pid<TAB>x,y<TAB>space,space`
+or `epoch_ms<TAB>ERROR<TAB><why>`, so a run that dies keeps its record. macOS only: anywhere else
 every sample is an ERROR, so every verdict is INVALID.
 """
 
@@ -37,6 +48,7 @@ from __future__ import annotations
 import ctypes
 import ctypes.util
 import functools
+import plistlib
 import re
 import subprocess
 import sys
@@ -60,7 +72,7 @@ FRONT_SCRIPT = [
     "-e", 'tell application "System Events" to return (name of p) & tab & (unix id of p)']
 _FIELD_BREAKS = re.compile(r"[\t\r\n\v\f\x1c-\x1e\x85  ]")
 
-Status = Literal["CLEAN", "TOOK_FOCUS", "INVALID"]
+Status = Literal["CLEAN", "TOOK_FOCUS", "SPACE_CHANGED", "INVALID"]
 
 
 def _field(text: str) -> str:
@@ -75,28 +87,34 @@ class Sample:
     pid: int | None = None
     pointer: tuple[int, int] | None = None
     error: str = ""
+    # The current Space of each display, in the system's display order.
+    spaces: tuple[int, ...] = ()
 
     def line(self) -> str:
         if self.error:
             return f"{self.epoch_ms}\tERROR\t{_field(self.error)}"
         pid = "" if self.pid is None else str(self.pid)
         where = "" if self.pointer is None else f"{self.pointer[0]},{self.pointer[1]}"
-        return f"{self.epoch_ms}\t{_field(self.app)}\t{pid}\t{where}"
+        spaces = ",".join(str(n) for n in self.spaces)
+        return f"{self.epoch_ms}\t{_field(self.app)}\t{pid}\t{where}\t{spaces}"
 
 
 def parse(line: str) -> Sample:
-    """One TSV line back into its sample; a line in neither shape is ValueError."""
+    """One TSV line back into its sample, a record with no Spaces field included (one written
+    before Spaces were read); a line in none of those shapes is ValueError."""
     fields = line.rstrip("\n").split("\t")
     epoch_ms = int(fields[0])
     if len(fields) == 3 and fields[1] == "ERROR":
         return Sample(epoch_ms, error=fields[2])
-    if len(fields) != 4:
+    if len(fields) not in (4, 5):
         raise ValueError(f"not a focus_watch sample: {line!r}")
     pointer = None
     if fields[3]:
         x, y = fields[3].split(",")
         pointer = (int(x), int(y))
-    return Sample(epoch_ms, fields[1], int(fields[2]) if fields[2] else None, pointer)
+    spaces = tuple(int(n) for n in fields[4].split(",")) if len(fields) == 5 and fields[4] else ()
+    return Sample(epoch_ms, fields[1], int(fields[2]) if fields[2] else None, pointer,
+                  spaces=spaces)
 
 
 def load(path: Path) -> list[Sample]:
@@ -119,6 +137,16 @@ def _graphics() -> tuple[ctypes.CDLL, ctypes.CDLL] | None:
     cg.CGEventCreate.argtypes = [ctypes.c_void_p]
     cg.CGEventGetLocation.restype = _Point
     cg.CGEventGetLocation.argtypes = [ctypes.c_void_p]
+    cg.CGSMainConnectionID.restype = ctypes.c_int
+    cg.CGSCopyManagedDisplaySpaces.restype = ctypes.c_void_p
+    cg.CGSCopyManagedDisplaySpaces.argtypes = [ctypes.c_int]
+    cf.CFPropertyListCreateData.restype = ctypes.c_void_p
+    cf.CFPropertyListCreateData.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long,
+                                            ctypes.c_long, ctypes.c_void_p]
+    cf.CFDataGetLength.restype = ctypes.c_long
+    cf.CFDataGetLength.argtypes = [ctypes.c_void_p]
+    cf.CFDataGetBytePtr.restype = ctypes.c_void_p
+    cf.CFDataGetBytePtr.argtypes = [ctypes.c_void_p]
     cf.CFRelease.argtypes = [ctypes.c_void_p]
     return cg, cf
 
@@ -137,6 +165,37 @@ def _pointer() -> tuple[int, int] | None:
     finally:
         cf.CFRelease(event)
     return round(at.x), round(at.y)
+
+
+# CFPropertyListCreateData's format for a binary plist, which `plistlib` reads.
+_BINARY_PLIST = 200
+
+
+def _spaces() -> tuple[int, ...] | None:
+    """The current Space of every display, or None where it cannot be read. The list is the
+    window server's own (`CGSCopyManagedDisplaySpaces`, private but the one reading there is),
+    serialised to a plist so no CoreFoundation type has to be walked by hand."""
+    libs = _graphics()
+    if libs is None:
+        return None
+    cg, cf = libs
+    managed = cg.CGSCopyManagedDisplaySpaces(cg.CGSMainConnectionID())
+    if not managed:
+        return None
+    try:
+        data = cf.CFPropertyListCreateData(None, managed, _BINARY_PLIST, 0, None)
+        if not data:
+            return None
+        try:
+            raw = ctypes.string_at(cf.CFDataGetBytePtr(data), cf.CFDataGetLength(data))
+        finally:
+            cf.CFRelease(data)
+    finally:
+        cf.CFRelease(managed)
+    try:
+        return tuple(int(d["Current Space"]["ManagedSpaceID"]) for d in plistlib.loads(raw))
+    except (plistlib.InvalidFileException, KeyError, TypeError, ValueError):
+        return None
 
 
 def _now_ms() -> int:
@@ -162,7 +221,69 @@ def sample_host() -> Sample:
     if run.returncode != 0 or not pid.isdigit():
         why = run.stderr.strip() or run.stdout.strip() or f"rc {run.returncode}"
         return Sample(stamp, error=f"System Events did not name the frontmost process: {why}")
-    return Sample(stamp, app, int(pid), _pointer())
+    spaces = _spaces()
+    if not spaces:
+        return Sample(stamp, error="the displays' current Spaces could not be read")
+    return Sample(stamp, app, int(pid), _pointer(), spaces=spaces)
+
+
+# THE SPACE CONTROL'S KEYS: Mission Control's Ctrl+Right and Ctrl+Left, as key codes.
+KEY_RIGHT, KEY_LEFT = 124, 123
+SPACE_KEYS = (KEY_RIGHT, KEY_LEFT)
+SPACE_SETTLE_S = 1.5
+
+
+def _press(key: int) -> str:
+    """One Mission Control shortcut through System Events: "" when it went, else why not."""
+    try:
+        run = subprocess.run(["osascript", "-e", f'tell application "System Events" to key code '
+                              f"{key} using control down"], capture_output=True, text=True,
+                             encoding="utf-8", errors="replace",
+                             timeout=OSASCRIPT_TIMEOUT_S, check=False)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"osascript did not answer: {e}"
+    if run.returncode != 0:
+        return f"System Events refused the keystroke: {run.stderr.strip() or run.returncode}"
+    return ""
+
+
+def move_space(settle_s: float = SPACE_SETTLE_S) -> tuple[int, int, str]:
+    """The owner's Space moved one along and back, by System Events, for a CONTROL that must see
+    SPACE_CHANGED over the window returned (epoch ms). Right then Left, or Left then Right when
+    there is no Space to the right. Whether a key moved the owner is read off the Spaces, never
+    off the keystroke's own answer, since one that timed out may still have acted; so the way
+    back is pressed whenever the owner moved, and the owner is checked to end where they began.
+    The third value is "" when all of that held, else what did not (Spaces that cannot be read,
+    which presses nothing; a keystroke refused, which needs Accessibility for this process; no
+    Space to move to; the owner left elsewhere): the control then fails saying so, which is its
+    job, and never passes for a watch that cannot see."""
+    began = _now_ms()
+    before = _spaces()
+    if not before:
+        return began, _now_ms(), "the displays' Spaces could not be read, so no key was pressed"
+    whys: list[str] = []
+    back = None
+    for go, ret in (SPACE_KEYS, SPACE_KEYS[::-1]):
+        whys.append(_press(go))
+        time.sleep(settle_s)
+        now = _spaces()
+        if now is None:
+            whys.append("the displays' Spaces could not be read after a key")
+            break
+        if now != before:
+            back = ret
+            break
+        if whys[-1]:
+            break
+    if back is not None:
+        whys.append(_press(back))
+        time.sleep(settle_s)
+    elif not any(whys):
+        whys.append("no other Space to move to")
+    after = _spaces()
+    if after != before:
+        whys.append(f"the owner was left on {after}, not {before}")
+    return began, _now_ms(), "; ".join(w for w in whys if w)
 
 
 class FocusWatch:
@@ -222,8 +343,8 @@ class Verdict:
     status: Status
     examined: int
     reason: str
-    # The sample that decided: the first theft (TOOK_FOCUS), the one the instrument could not
-    # take (INVALID), or None.
+    # The sample that decided: the first theft (TOOK_FOCUS), the first move (SPACE_CHANGED), the
+    # one the instrument could not take or whose displays changed (INVALID), or None.
     sample: Sample | None = None
     distinct_pointers: int = 0
 
@@ -269,6 +390,22 @@ def judge(samples: list[Sample], names: Collection[str], *, start_ms: int | None
         return Verdict("TOOK_FOCUS", len(chosen),
                        f"{took.app} (pid {took.pid}) was in front in {hits} of {len(chosen)} "
                        f"samples, first at {took.epoch_ms}", took, pointers)
+    read = [s for s in chosen if not s.error]
+    # A move between readings of the same displays, reported over any blindness after it.
+    moved = next((s for s in read if len(s.spaces) == len(read[0].spaces)
+                  and s.spaces != read[0].spaces), None)
+    if moved is not None:
+        return Verdict("SPACE_CHANGED", len(chosen),
+                       f"the displays' Spaces went from {list(read[0].spaces)} to "
+                       f"{list(moved.spaces)} at {moved.epoch_ms}", moved, pointers)
+    if any(not s.spaces for s in read) and any(s.spaces for s in read):
+        return Verdict("INVALID", len(chosen), "some samples carry no Space reading, so a move "
+                       "between them cannot be judged", None, pointers)
+    resized = next((s for s in read if len(s.spaces) != len(read[0].spaces)), None)
+    if resized is not None:
+        return Verdict("INVALID", len(chosen), f"the displays changed from {len(read[0].spaces)} "
+                       f"to {len(resized.spaces)} at {resized.epoch_ms}, so a Space move cannot "
+                       f"be judged across it", resized, pointers)
     broken = next((s for s in chosen if s.error), None)
     if broken is not None:
         return Verdict("INVALID", len(chosen), f"a sample could not be taken: {broken.error}",
@@ -277,5 +414,6 @@ def judge(samples: list[Sample], names: Collection[str], *, start_ms: int | None
     if gap:
         return Verdict("INVALID", len(chosen), f"the window was not watched throughout: {gap}",
                        None, pointers)
+    unread = "" if read and read[0].spaces else " (no Space was recorded)"
     return Verdict("CLEAN", len(chosen), f"none of {sorted(wanted)} was in front in "
-                                         f"{len(chosen)} samples", None, pointers)
+                                         f"{len(chosen)} samples{unread}", None, pointers)
