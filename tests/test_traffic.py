@@ -154,7 +154,7 @@ def test_the_command_writes_the_table_and_prints_one_line_per_flagged_tool(
         "share": round((3 * small + 6) / doc["replies"]["units"], 4), "review": []}
     assert doc["per_tool"]["read_memory"]["review"] == ["max", "share"]
     assert doc["replies"] == {"calls": 4, "units": traffic.json_units(BIG) + 3 * small + 6,
-                              "skipped": 0, "unmeasured": ["memdump", "status"]}
+                              "skipped": 0, "foreign": {}, "unmeasured": ["memdump", "status"]}
     reviews = [p for p in printed if p.startswith(traffic.LINE_REVIEW)]
     assert len(reviews) == 1, printed
     assert reviews[0].startswith("REVIEW mame read_memory [max,share] calls=1 ")
@@ -173,7 +173,27 @@ def test_two_transcripts_are_one_measurement(
 def test_a_transcript_of_another_server_is_invalid(
         tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     rc, printed = _run(tmp_path, capsys, "dosbox-x", "--transcript", str(REAL / "mame.jsonl"))
-    assert rc == EXIT_INVALID and "which dosbox-x does not list" in printed[0], printed
+    assert rc == EXIT_INVALID and "none of which dosbox-x lists" in printed[0], printed
+
+
+def test_a_name_the_server_does_not_list_is_set_apart_not_measured(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """A live harness records its own helpers by name beside the tools (a start sent through
+    the schema, say): those are counted under `foreign`, outside every figure."""
+    path = _transcript(tmp_path, _line("status", SMALL), _line("start_through_the_schema", BIG),
+                       _line("start_through_the_schema", BIG))
+    rc, printed = _run(tmp_path, capsys, "mame", "--transcript", str(path))
+    assert rc == traffic.EXIT_TABLE, printed
+    doc = _table(printed)
+    assert doc["replies"]["foreign"] == {"start_through_the_schema": 2}
+    assert doc["replies"]["calls"] == 1 and set(doc["per_tool"]) == {"status"}
+    small = traffic.json_units(SMALL)
+    assert doc["replies"]["units"] == small
+    assert doc["per_tool"]["status"] == {"calls": 1, "max": small, "p50": small, "total": small,
+                                         "share": 1.0, "review": ["share"]}
+    reviews = [p for p in printed if p.startswith(traffic.LINE_REVIEW)]
+    assert len(reviews) == 1 and reviews[0].startswith("REVIEW mame status [share] "), printed
+    assert " foreign=2 (start_through_the_schema) " in printed[-2], printed
 
 
 def test_before_puts_the_earlier_figures_beside_each_line(
@@ -184,6 +204,8 @@ def test_before_puts_the_earlier_figures_beside_each_line(
     first = Path(printed[-1].removeprefix(traffic.LINE_TABLE))
     earlier = json.loads(first.read_text())
     earlier["list"].update(instructions=1, names=2, descriptions=3, definitions=4)
+    # A table written before `foreign` existed is still a valid one to compare against.
+    del earlier["replies"]["foreign"]
     first.write_text(json.dumps(earlier))
     later = _transcript(tmp_path, _line("read_memory", BIG), _line("watch_add", SMALL),
                         name="s.jsonl")

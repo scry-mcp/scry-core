@@ -12,9 +12,10 @@ proxy for tokens, never a token count, and it follows Python's serialisation: a 
 THE REPLIES come from live transcripts, JSON Lines with one call per line read for `tool` and
 `reply`; other keys are ignored. A line counts as a reply only when its `reply` is an envelope (an
 object carrying `status`): a harness's own records (an exception it caught, a call that hung, a
-pseudo-tool in parentheses) never reached a client and are counted as `skipped`. INVALID: no
-reply at all, which is a run that examined nothing; and a tool the server does not list, which is
-a transcript of another server.
+pseudo-tool in parentheses) never reached a client and are counted as `skipped`; a call under a
+name the server does not list (a harness's own helper) is counted under `foreign`, outside every
+figure. INVALID: no reply at all, which is a run that examined nothing; and no call the server
+lists, which is a transcript of another server.
 
 THE TOOL LIST is the server's `list_tools()`, uncapped: per tool its description and its
 definition (name, description and input schema, compact JSON, which is what a model is handed),
@@ -30,9 +31,10 @@ servers file's `ROOT/tmp/traffic/`. Stdout, in this order: one line per flagged 
     REVIEW <server> <tool> [max,share] calls=N max=N p50=N total=N share=P% description=N
 
 (`p50` the lower median, `description` its units), one `TOTAL <server> ...` line with the
-replies' and the list's figures, and last `TABLE <path>`. With `--before`, an earlier table of the
-same server, each REVIEW `max` and each TOTAL figure carries ` (was N)`, or ` (was -)` where that
-table had none.
+replies' figures (`foreign=N` names the unlisted tools it set apart) and the list's, and last
+`TABLE <path>`. With `--before`, an earlier table of the same server, each REVIEW `max`, the
+replies' `units` and each list figure carry ` (was N)`, or ` (was -)` where that table had none;
+a table written before `foreign` existed is a valid one.
 
 Exit 0 with a table, 2 for a wrong call, 3 INVALID: a transcript or a `--before` that is missing,
 does not parse or does not fit, a server that lists no tools, a table that could not be written,
@@ -155,20 +157,22 @@ def table(server: str, calls: Calls | None, listed: dict[str, Any]) -> dict[str,
     rows: dict[str, dict[str, Any]] = {}
     replies: dict[str, Any] | None = None
     if calls is not None:
-        if foreign := sorted(set(calls.units) - set(listed["tools"])):
-            raise Invalid(f"the transcripts call {', '.join(foreign)}, which {server} does not "
-                          f"list: a transcript of another server")
-        totals = {t: sum(u) for t, u in calls.units.items()}
-        maxima = {t: max(u) for t, u in calls.units.items()}
+        foreign = {t: len(u) for t, u in calls.units.items() if t not in listed["tools"]}
+        units = {t: u for t, u in calls.units.items() if t not in foreign}
+        if not units:
+            raise Invalid(f"the transcripts call {', '.join(sorted(foreign))}, none of which "
+                          f"{server} lists: a transcript of another server")
+        totals = {t: sum(u) for t, u in units.items()}
+        maxima = {t: max(u) for t, u in units.items()}
         grand = sum(totals.values())
         why = for_review(totals, maxima)
-        for tool, units in calls.units.items():
-            rows[tool] = {"calls": len(units), "max": maxima[tool],
-                          "p50": int(statistics.median_low(units)), "total": totals[tool],
+        for tool, sizes in units.items():
+            rows[tool] = {"calls": len(sizes), "max": maxima[tool],
+                          "p50": int(statistics.median_low(sizes)), "total": totals[tool],
                           "share": round(totals[tool] / grand, 4), "review": why.get(tool, [])}
-        replies = {"calls": sum(len(u) for u in calls.units.values()), "units": grand,
-                   "skipped": calls.skipped,
-                   "unmeasured": sorted(set(listed["tools"]) - set(calls.units))}
+        replies = {"calls": sum(len(u) for u in units.values()), "units": grand,
+                   "skipped": calls.skipped, "foreign": foreign,
+                   "unmeasured": sorted(set(listed["tools"]) - set(units))}
     return {"format": TABLE_FORMAT, "server": server, "replies": replies, "per_tool": rows,
             "list": listed}
 
@@ -214,10 +218,13 @@ def report(doc: dict[str, Any], before: dict[str, Any] | None) -> list[str]:
                 f"max={row['max']}{_was(before, 'per_tool', tool, 'max')} p50={row['p50']} "
                 f"total={row['total']} share={row['share']:.1%} "
                 f"description={listed['tools'][tool]['description']}")
-    measured = ("" if replies is None else
-                f"replies calls={replies['calls']} units={replies['units']}"
-                f"{_was(before, 'replies', 'units')} skipped={replies['skipped']} "
-                f"unmeasured={len(replies['unmeasured'])}; ")
+    measured = ""
+    if replies is not None:
+        named = f" ({', '.join(sorted(replies['foreign']))})" if replies["foreign"] else ""
+        measured = (f"replies calls={replies['calls']} units={replies['units']}"
+                    f"{_was(before, 'replies', 'units')} skipped={replies['skipped']} "
+                    f"foreign={sum(replies['foreign'].values())}{named} "
+                    f"unmeasured={len(replies['unmeasured'])}; ")
     figures = " ".join(f"{k}={listed[k]}{_was(before, 'list', k)}"
                        for k in ("instructions", "names", "descriptions", "definitions"))
     lines.append(f"{LINE_TOTAL}{server} {measured}list tools={len(listed['tools'])} {figures}")
