@@ -16,6 +16,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, and the probe's tasks |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, and the README block they generate |
 | `scry_core.focus_watch` | whether a live run took the owner's focus or moved their Space: the frontmost application and each display's Space sampled from outside the run (macOS) |
+| `scry_core.traffic` | what a server's replies and its tool list cost the model, per tool, in the client's unit, read from `list_tools()` and, when given, live transcripts |
 | `scry_core.live_pool` | a live tier's independent jobs run as parallel child processes, merged from the summaries they declare |
 
 Each server pins it by a release tag, never by a branch:
@@ -24,15 +25,17 @@ Each server pins it by a release tag, never by a branch:
 dependencies = ["scry-core @ git+https://github.com/scry-mcp/scry-core@<tag>"]
 ```
 
-The probe and the bench take what they act on as required options, so neither reads a tree it was
-not pointed at. The probe's paths below are a server repository's own; the bench is the directory a
-server's live tier resolved, and its manifest is `<bench>/bench.json`. The hook takes none: it runs
-from inside a repository that tracks `.jscpd-baseline.json`, has `jscpd` on the path and keeps its
-probe at `mcp_probe/servers.py` and `mcp_probe/tasks/`:
+The probe, the bench and traffic take what they act on as options, so none reads a tree it was
+not pointed at. The probe's paths below, and traffic's servers file, are a server repository's
+own; the bench is the directory a server's live tier resolved, and its manifest is
+`<bench>/bench.json`. The hook takes none: it runs from inside a repository that tracks
+`.jscpd-baseline.json`, has `jscpd` on the path and keeps its probe at `mcp_probe/servers.py` and
+`mcp_probe/tasks/`:
 
 ```sh
 python -m scry_core.probe all --check --servers mcp_probe/servers.py --tasks mcp_probe/tasks
 python -m scry_core.live_bench check --bench <bench>
+python -m scry_core.traffic <server> --servers mcp_probe/servers.py --transcript <jsonl>
 python -m scry_core.hook
 ```
 
