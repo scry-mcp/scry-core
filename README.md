@@ -19,6 +19,14 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.narrowing` | a reply that answers less than everything and says so: `omitted` and `how`, and the `sections` list a caller narrows by |
 | `scry_core.traffic` | what a server's replies and its tool list cost the model, per tool, in the client's unit, and the visual tokens of the pictures replies attach, read from `list_tools()` and, when given, live transcripts |
 | `scry_core.live_pool` | a live tier's independent jobs run as parallel child processes, merged from the summaries they declare |
+| `scry_core.png` | one PNG codec in the standard library: indexed or RGB, a transparent index, APNG, the nearest-neighbour enlargement, and a decoder of every row filter that refuses any other kind by name |
+| `scry_core.picture` | the picture a view tool attaches: the inline ceiling, the integer scale, the file written once, and the attachment beside the JSON |
+| `scry_core.raster` | what a picture is compared by: its crop, its one signature, its difference from another, the region measures |
+| `scry_core.series` | a series of frames on disk (`scry-series/1`): its manifest, and series against series and a region through a series, each with its control |
+| `scry_core.goldens` | files against goldens written by `shasum -a 256`, by name |
+| `scry_core.media_tools` | the tools that read media files and no emulator, one body, description, summary and judge each, registered by each server through its own decorator |
+| `scry_core.judges` | the argument judges the media layer shares: whole numbers, rectangles, shifts, paths, the picture a path names |
+| `scry_core.fresh` | files created new, never over another, never left half written |
 
 Each server pins it by a release tag, never by a branch:
 

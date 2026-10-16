@@ -1,0 +1,83 @@
+"""Files made new: never over an existing one, two writers at once taking two names, and a write
+that fails part-way leaving nothing behind."""
+
+from __future__ import annotations
+
+import threading
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from scry_core import fresh
+from scry_core.reply_contract import Invalid
+
+
+def test_a_file_is_created_once(tmp_path: Path) -> None:
+    fresh.create(tmp_path / "a", b"one", "the file")
+    assert (tmp_path / "a").read_bytes() == b"one"
+    with pytest.raises(Invalid, match="already there") as e:
+        fresh.create(tmp_path / "a", b"two", "the file")
+    assert e.value.code == "bad_argument" and (tmp_path / "a").read_bytes() == b"one"
+    with pytest.raises(Invalid, match="cannot be created") as e:
+        fresh.create(tmp_path / "no" / "a", b"x", "the file")
+    assert e.value.code == "host_failed"
+
+
+def test_numbered_files_skip_taken_names_and_never_collide(tmp_path: Path) -> None:
+    (tmp_path / "f").mkdir()
+    (tmp_path / "f" / "t-1").write_bytes(b"theirs")
+    names: list[Path] = []
+    lock = threading.Lock()
+
+    def take() -> None:
+        path = fresh.numbered(tmp_path / "f", lambda n: f"t-{n}", b"x", "the file")
+        with lock:
+            names.append(path)
+    threads = [threading.Thread(target=take) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(set(names)) == 8 and tmp_path / "f" / "t-1" not in names
+    assert (tmp_path / "f" / "t-1").read_bytes() == b"theirs"
+    assert fresh.numbered(tmp_path / "new" / "deep", lambda n: f"t-{n}", b"x",
+                          "the file").parent == tmp_path / "new" / "deep"
+
+
+def test_a_folder_or_a_file_that_cannot_be_made_is_host_failed(tmp_path: Path) -> None:
+    (tmp_path / "blocked").write_bytes(b"a file where the folder would go")
+    with pytest.raises(Invalid, match="cannot be created") as e:
+        fresh.numbered(tmp_path / "blocked", lambda n: f"t-{n}", b"x", "the file")
+    assert e.value.code == "host_failed"
+    with pytest.raises(Invalid, match="cannot be created"):
+        fresh.numbered(tmp_path, lambda n: f"no/t-{n}", b"x", "the file")
+
+
+class _Full:
+    def __init__(self, real: Any) -> None:
+        self.real = real
+
+    def __enter__(self) -> _Full:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.real.close()
+
+    def write(self, _: bytes) -> int:
+        raise OSError("no space left on device")
+
+
+def test_a_write_that_fails_part_way_leaves_nothing(tmp_path: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    real_open: Any = Path.open
+
+    def opened(self: Path, mode: str = "r") -> Any:
+        return _Full(real_open(self, mode))
+    monkeypatch.setattr(Path, "open", opened)
+    with pytest.raises(Invalid, match="could not be written whole") as e:
+        fresh.create(tmp_path / "half", b"x", "the file")
+    assert e.value.code == "host_failed" and not (tmp_path / "half").exists()
+    with pytest.raises(Invalid, match="could not be written whole"):
+        fresh.numbered(tmp_path, lambda n: f"t-{n}", b"x", "the file")
+    assert list(tmp_path.iterdir()) == []

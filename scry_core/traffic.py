@@ -23,9 +23,9 @@ and the server's `instructions` and the sum of its tool names.
 
 PICTURES are a second column, never summed with the units: a reply's `image_tokens` is the sum,
 over its `image` blocks with `inline: true` at any depth (a step's reply inside a sequence carries
-its own), of the API's visual tokens for the picture as attached, tiles of `TOKEN_SIDE` pixels a
-side. A block that says `inline: true` without a whole width and height of at least one pixel is
-INVALID rather than free, under any tool name, a foreign one included.
+its own), of the API's visual tokens for the picture as attached (`picture.tiles`). A block that
+says `inline: true` without a whole width and height of at least one pixel is INVALID rather than
+free, under any tool name, a foreign one included.
 
 A TOOL IS FLAGGED FOR REVIEW when its largest reply is over `REVIEW_MAX_UNITS` (`max`), or when
 it is among the fewest tools whose replies make `REVIEW_SHARE` of all reply units (`share`).
@@ -60,9 +60,11 @@ import tempfile
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TypeGuard
+from typing import Any
 
 from scry_core.client_cap import CLIENT_TEXT_CAP, utf16_units
+from scry_core.judges import whole
+from scry_core.picture import tiles
 from scry_core.probe import EXIT_INVALID, Invalid, broke, configure
 
 EXIT_TABLE = 0
@@ -76,8 +78,6 @@ REVIEW_MAX_UNITS = CLIENT_TEXT_CAP
 REVIEW_SHARE = 0.80
 #: Where tables go, under the servers file's `ROOT`; no option moves it, as with the probe's runs.
 TABLES_UNDER_ROOT = Path("tmp") / "traffic"
-#: The side, in pixels, of one visual token's tile in the API's count of an image's cost.
-TOKEN_SIDE = 28
 #: The table's shape, checked on a `--before` so a drifted table is refused, not read as "-".
 TABLE_KEYS = {"replies": ("calls", "units", "skipped", "unmeasured"),
               "list": ("instructions", "names", "descriptions", "definitions", "tools")}
@@ -86,12 +86,6 @@ TABLE_KEYS = {"replies": ("calls", "units", "skipped", "unmeasured"),
 def json_units(value: Any) -> int:
     """`value`'s size as compact JSON, non-ASCII as itself, in the client's unit."""
     return utf16_units(json.dumps(value, separators=(",", ":"), ensure_ascii=False))
-
-
-def _a_side(n: object) -> TypeGuard[int]:
-    """A picture's side: a whole number of pixels, at least one. A JSON `true` is a Python int,
-    and neither it nor zero is a size."""
-    return isinstance(n, int) and not isinstance(n, bool) and n >= 1
 
 
 def image_tokens(value: Any) -> int:
@@ -105,10 +99,10 @@ def image_tokens(value: Any) -> int:
     for key, v in value.items():
         if key == "image" and isinstance(v, dict) and v.get("inline") is True:
             w, h = v.get("width"), v.get("height")
-            if not (_a_side(w) and _a_side(h)):
+            if not (whole(w, 1) and whole(h, 1)):
                 raise Invalid(f"an attached picture states width={w!r} height={h!r}, so its "
                               "cost cannot be counted")
-            total += -(-w // TOKEN_SIDE) * -(-h // TOKEN_SIDE)
+            total += tiles(w, h)
         else:
             total += image_tokens(v)
     return total
