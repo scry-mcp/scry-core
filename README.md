@@ -64,10 +64,11 @@ reply_shapes_anchors = ["scry_core.reply_contract", "server"]
 
 ## Focus watch
 
-A live tier that runs beside somebody working wraps its run in `scry_core.focus_watch.FocusWatch`
-and judges the samples with `judge`, after a control in the same harness: one start that must be
-seen in front, one that must not, and the owner's Space moved and put back by `move_space`,
-which must be seen moved. The module docstring is the contract.
+A live tier that runs beside somebody working wraps its run in `scry_core.focus_watch.FocusWatch`,
+takes the `control` in the same harness (one start that must be seen in front, one that must not,
+and the owner's Space moved and put back, which must be seen moved), and judges the run after it
+with `verdict`; each outcome is PASS, FAIL or BLOCKED, mapped onto the tier's own cells. The
+module docstring is the contract.
 
 ## Parallel live tiers
 

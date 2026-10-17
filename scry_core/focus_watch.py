@@ -33,9 +33,10 @@ anything of its own coming to the front; a reading that fails is an ERROR sample
 `exclude` takes the stretches a run takes the focus BY DESIGN (a menu clicked through the
 emulator's window), so a section that has to come to the front is named, not hidden.
 
-THE CONTROL IS THE CALLER'S, in the same harness: one start that must be judged `TOOK_FOCUS`
-over its own window, one that must be `CLEAN`, and the owner's Space moved and put back by
-`move_space`, which must be `SPACE_CHANGED`, before the run's own verdict is believed. That one
+THE CONTROL is `control`, taken in the same harness as the run: one start that must be judged
+`TOOK_FOCUS` over its own window, one that must be `CLEAN`, and the owner's Space moved and put
+back by `move_space`, which must be `SPACE_CHANGED`. Only then does `verdict` judge the run, and
+a window it cannot judge is BLOCKED, never green and never the server's FAIL. The Space control
 presses keys, so it also needs the Accessibility permission.
 
 The samples go to a TSV as they are taken, `epoch_ms<TAB>app<TAB>pid<TAB>x,y<TAB>space,space`
@@ -58,7 +59,7 @@ from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
-from typing import Literal, TextIO
+from typing import Literal, Protocol, TextIO
 
 # The pause between samples; each one also spends an osascript call, so the period is longer.
 INTERVAL_S = 0.25
@@ -198,7 +199,8 @@ def _spaces() -> tuple[int, ...] | None:
         return None
 
 
-def _now_ms() -> int:
+def now_ms() -> int:
+    """The epoch in milliseconds, the clock every sample and window here is stamped on."""
     return int(time.time() * 1000)
 
 
@@ -207,16 +209,16 @@ def sample_host() -> Sample:
     MIDDLE of the System Events call, the instant its answer is closest to describing, so a
     window's edge does not take a sample that saw the moment after it."""
     if sys.platform != "darwin":
-        return Sample(_now_ms(), error=f"the frontmost application is read on macOS only, not "
+        return Sample(now_ms(), error=f"the frontmost application is read on macOS only, not "
                                        f"{sys.platform}")
-    asked = _now_ms()
+    asked = now_ms()
     try:
         run = subprocess.run(["osascript", *FRONT_SCRIPT], capture_output=True, text=True,
                              encoding="utf-8", errors="replace",
                              timeout=OSASCRIPT_TIMEOUT_S, check=False)
     except (OSError, subprocess.TimeoutExpired) as e:
-        return Sample(_now_ms(), error=f"osascript did not answer: {e}")
-    stamp = (asked + _now_ms()) // 2
+        return Sample(now_ms(), error=f"osascript did not answer: {e}")
+    stamp = (asked + now_ms()) // 2
     app, _, pid = run.stdout.strip().partition("\t")
     if run.returncode != 0 or not pid.isdigit():
         why = run.stderr.strip() or run.stdout.strip() or f"rc {run.returncode}"
@@ -257,10 +259,10 @@ def move_space(settle_s: float = SPACE_SETTLE_S) -> tuple[int, int, str]:
     which presses nothing; a keystroke refused, which needs Accessibility for this process; no
     Space to move to; the owner left elsewhere): the control then fails saying so, which is its
     job, and never passes for a watch that cannot see."""
-    began = _now_ms()
+    began = now_ms()
     before = _spaces()
     if not before:
-        return began, _now_ms(), "the displays' Spaces could not be read, so no key was pressed"
+        return began, now_ms(), "the displays' Spaces could not be read, so no key was pressed"
     whys: list[str] = []
     back = None
     for go, ret in (SPACE_KEYS, SPACE_KEYS[::-1]):
@@ -283,7 +285,7 @@ def move_space(settle_s: float = SPACE_SETTLE_S) -> tuple[int, int, str]:
     after = _spaces()
     if after != before:
         whys.append(f"the owner was left on {after}, not {before}")
-    return began, _now_ms(), "; ".join(w for w in whys if w)
+    return began, now_ms(), "; ".join(w for w in whys if w)
 
 
 class FocusWatch:
@@ -306,7 +308,7 @@ class FocusWatch:
         try:
             return self._sample()
         except Exception as e:  # any failure of the instrument is a sample it could not take
-            return Sample(_now_ms(), error=f"the sampler raised {type(e).__name__}: {e}")
+            return Sample(now_ms(), error=f"the sampler raised {type(e).__name__}: {e}")
 
     def _run(self, out: TextIO) -> None:
         try:
@@ -417,3 +419,81 @@ def judge(samples: list[Sample], names: Collection[str], *, start_ms: int | None
     unread = "" if read and read[0].spaces else " (no Space was recorded)"
     return Verdict("CLEAN", len(chosen), f"none of {sorted(wanted)} was in front in "
                                          f"{len(chosen)} samples{unread}", None, pointers)
+
+
+# THE CONTROL AND THE VERDICT a live section takes the watch through, the same flow on every
+# server: a control proves the watch sees what it must (a start in front, none behind, a Space
+# moved on purpose) before its samples may clear anything, and the verdict judges the run after
+# it. Each outcome is a cell's: PASS, FAIL, or BLOCKED when the window could not be judged at all.
+#: How long each control start is held in front, or behind, for the watch to sample it.
+HOLD_S = 4.0
+#: Shorter than this, a judged window says too little about a run to be its verdict.
+MIN_WINDOW_MS = 60_000
+
+Outcome = Literal["PASS", "FAIL", "BLOCKED"]
+
+
+class Watched(Protocol):
+    """What the flow reads off a watch: its samples, its record, and its end."""
+
+    samples: list[Sample]
+    path: Path
+
+    def __exit__(self, kind: type[BaseException] | None, exc: BaseException | None,
+                 tb: TracebackType | None) -> None: ...
+
+
+@dataclass(frozen=True)
+class Judged:
+    status: Outcome
+    reason: str
+
+
+@dataclass(frozen=True)
+class Control:
+    front: Judged
+    behind: Judged
+    space: Judged
+    # The end of the control, where the judged window opens; None when it did not hold.
+    since: int | None
+
+
+def control(watch: Watched, names: Collection[str],
+            hold: Callable[[bool], tuple[int, int]]) -> Control:
+    """The control over `watch`: `hold(background)` launches one start as asked and returns its
+    window (epoch ms); then the owner's Space is moved and put back (`move_space`)."""
+    front_w, behind_w = hold(False), hold(True)
+    seen = judge(watch.samples, names, start_ms=front_w[0], end_ms=front_w[1])
+    front = Judged("PASS" if seen.status == "TOOK_FOCUS" else "FAIL", seen.reason)
+    clean = judge(watch.samples, names, start_ms=behind_w[0], end_ms=behind_w[1])
+    # A Space move names nobody (`verdict` says why), here as there.
+    behind = Judged("BLOCKED" if clean.status == "SPACE_CHANGED"
+                    else "PASS" if clean.status == "CLEAN" else "FAIL", clean.reason)
+    began, ended, why = move_space()
+    moved = judge(watch.samples, names, start_ms=began, end_ms=ended)
+    space = Judged("PASS" if moved.status == "SPACE_CHANGED" and not why else "FAIL",
+                   f"{why}; {moved.reason}" if why else moved.reason)
+    held = all(o.status == "PASS" for o in (front, behind, space))
+    return Control(front, behind, space, ended if held else None)
+
+
+def verdict(watch: Watched, names: Collection[str], since: int | None, end_ms: int) -> Judged:
+    """The run's verdict, the watch ended first: judged only after a control that held
+    (`since`), over a window of at least `MIN_WINDOW_MS`."""
+    watch.__exit__(None, None, None)
+    record = f"record {watch.path}"
+    if since is None:
+        return Judged("BLOCKED", f"the control did not hold, so the watch clears nothing; {record}")
+    if end_ms - since < MIN_WINDOW_MS:
+        return Judged("BLOCKED", f"{end_ms - since} ms ran after the control, too little to "
+                                 f"judge; {record}")
+    v = judge(watch.samples, names, start_ms=since, end_ms=end_ms)
+    if v.status == "INVALID":
+        # THE INSTRUMENT, not the server: a sample it could not take, or a stretch unsampled.
+        return Judged("BLOCKED", f"the watch cannot judge the run: {v.reason}; {record}")
+    if v.status == "SPACE_CHANGED":
+        # A SPACE MOVE NAMES NOBODY: the owner may have made it. Never green, never the
+        # server's FAIL on that alone: the record is there to read.
+        return Judged("BLOCKED", f"a Space moved and nothing names who moved it: {v.reason}; "
+                                 f"{record}")
+    return Judged("PASS" if v.status == "CLEAN" else "FAIL", f"{v.status}: {v.reason}; {record}")

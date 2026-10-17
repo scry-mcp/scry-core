@@ -454,7 +454,7 @@ def test_move_space_moves_along_and_back_or_says_why_not(
     monkeypatch.setattr(fw, "_press", desk.press)
     slept: list[float] = []
     monkeypatch.setattr(time, "sleep", slept.append)
-    monkeypatch.setattr(fw, "_now_ms", desk.clock)
+    monkeypatch.setattr(fw, "now_ms", desk.clock)
     began, ended, said = fw.move_space(settle_s=0.5)
     assert desk.pressed == keys
     assert (why in said) if why else said == ""
@@ -523,3 +523,93 @@ def test_samples_with_and_without_a_space_reading_cannot_be_judged() -> None:
     assert v.status == "INVALID" and "no Space reading" in v.reason
     old = fw.judge([fw.Sample(1, "Finder", 9, (0, 0))], {"dosbox-x"})
     assert old.status == "CLEAN" and "no Space was recorded" in old.reason
+
+
+# THE CONTROL AND THE VERDICT: what each window judged is decided here, and each server maps the
+# outcome onto its own cell call.
+class _Watched:
+    def __init__(self, samples: list[fw.Sample]) -> None:
+        self.samples, self.path, self.exited = samples, Path("w.tsv"), False
+
+    def __exit__(self, *exc: object) -> None:
+        self.exited = True
+
+
+def _app(ms: int, app: str = "Finder", spaces: tuple[int, ...] = (1,)) -> fw.Sample:
+    return fw.Sample(ms, app, 9, (0, 0), spaces=spaces)
+
+
+def _control_case(monkeypatch: pytest.MonkeyPatch, front_app: str, behind_app: str,
+                  moved: bool, why: str = "") -> fw.Control:
+    samples = [_app(ms, front_app if 1000 <= ms <= 2000 else
+                    behind_app if 3000 <= ms <= 4000 else "Finder",
+                    (2,) if moved and 5500 <= ms <= 5600 else (1,))
+               for ms in range(1000, 6001, 100)]
+    windows = iter([(1000, 2000), (3000, 4000)])
+    monkeypatch.setattr(fw, "move_space", lambda: (5000, 6000, why))
+    return fw.control(_Watched(samples), {"mame"}, lambda background: next(windows))
+
+
+def test_a_control_that_holds_passes_its_three_cells_and_opens_the_judged_window(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _control_case(monkeypatch, "mame", "Finder", moved=True)
+    assert [o.status for o in (c.front, c.behind, c.space)] == ["PASS", "PASS", "PASS"]
+    assert c.since == 6000
+
+
+@pytest.mark.parametrize("front, behind, moved, why, want", [
+    ("Finder", "Finder", True, "", ("FAIL", "PASS", "PASS")),
+    ("mame", "mame", True, "", ("PASS", "FAIL", "PASS")),
+    ("mame", "Finder", False, "", ("PASS", "PASS", "FAIL")),
+    ("mame", "Finder", True, "a keystroke was refused", ("PASS", "PASS", "FAIL")),
+])
+def test_a_control_that_does_not_hold_clears_nothing(
+        monkeypatch: pytest.MonkeyPatch, front: str, behind: str, moved: bool, why: str,
+        want: tuple[str, str, str]) -> None:
+    c = _control_case(monkeypatch, front, behind, moved, why)
+    assert (c.front.status, c.behind.status, c.space.status) == want
+    assert c.since is None
+    if why:
+        assert c.space.reason.startswith(why)
+
+
+def test_a_space_move_inside_the_behind_window_blocks_that_cell_and_names_nobody(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    samples = [_app(ms, "mame" if 1000 <= ms <= 2000 else "Finder",
+                    (2,) if ms == 3500 or 5500 <= ms <= 5600 else (1,))
+               for ms in range(1000, 6001, 100)]
+    windows = iter([(1000, 2000), (3000, 4000)])
+    monkeypatch.setattr(fw, "move_space", lambda: (5000, 6000, ""))
+    c = fw.control(_Watched(samples), {"mame"}, lambda background: next(windows))
+    assert c.behind.status == "BLOCKED" and "Spaces" in c.behind.reason
+    assert c.front.status == c.space.status == "PASS" and c.since is None
+
+
+@pytest.mark.parametrize("samples, since, end, status, says", [
+    ([_app(ms) for ms in range(0, 70_001, 500)], 0, 70_000, "PASS", "none of"),
+    ([_app(ms, "mame" if ms == 30_000 else "Finder") for ms in range(0, 70_001, 500)],
+     0, 70_000, "FAIL", "TOOK_FOCUS"),
+    ([_app(ms) for ms in range(0, 70_001, 500)], None, 70_000, "BLOCKED", "did not hold"),
+    ([_app(ms) for ms in range(0, 30_001, 500)], 0, 30_000, "BLOCKED", "too little to judge"),
+    ([_app(ms, spaces=(2,) if ms > 40_000 else (1,)) for ms in range(0, 70_001, 500)],
+     0, 70_000, "BLOCKED", "nothing names who moved it"),
+    ([_app(ms) for ms in range(0, 70_001, 5000)], 0, 70_000, "BLOCKED", "cannot judge the run"),
+])
+def test_the_verdict_is_judged_only_after_a_control_and_a_window_long_enough(
+        samples: list[fw.Sample], since: int | None, end: int, status: str, says: str) -> None:
+    watch = _Watched(samples)
+    v = fw.verdict(watch, {"mame"}, since, end)
+    assert (v.status, watch.exited) == (status, True)
+    assert says in v.reason and "w.tsv" in v.reason
+
+
+@pytest.mark.parametrize("window_ms, status", [(fw.MIN_WINDOW_MS - 1, "BLOCKED"),
+                                               (fw.MIN_WINDOW_MS, "PASS")])
+def test_a_window_is_long_enough_from_its_minimum_on(window_ms: int, status: str) -> None:
+    samples = [_app(ms) for ms in range(0, window_ms + 1, 500)] + [_app(window_ms)]
+    assert fw.verdict(_Watched(samples), {"mame"}, 0, window_ms).status == status
+
+
+def test_now_ms_is_the_epoch_in_milliseconds() -> None:
+    before = int(time.time() * 1000)
+    assert before <= fw.now_ms() <= int(time.time() * 1000)
