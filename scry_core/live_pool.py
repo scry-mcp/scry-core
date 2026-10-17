@@ -33,6 +33,7 @@ import json
 import math
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -64,6 +65,20 @@ _CHILD_ENV = {"PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
 _OWN_GROUP: dict[str, Any] = (
     {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
     if sys.platform == "win32" else {"process_group": 0})
+# A CHILD UNWINDS ON THE POOL'S INTERRUPT WHATEVER ITS LAUNCHER IGNORED: a pool started as a
+# background job of a non-interactive shell has SIGINT ignored, an ignored signal survives exec,
+# and a Python child born so never installs the handler its cleanup runs under. So on POSIX each
+# child starts through this trampoline, which execs the job's own argv with SIGINT at its default,
+# and SIGPIPE and SIGXFSZ too: the trampoline is itself a Python, which ignores those two at
+# startup, undoing what `Popen`'s `restore_signals` did. Isolated (`-I`), so neither a module in the
+# pool's directory nor the job's `PYTHON*` variables reach it. A `preexec_fn` would do it in the
+# parent's fork, which is unsafe beside the threads the pool starts children from.
+_RESTORE_SIGNALS: tuple[str, ...] = () if sys.platform == "win32" else (
+    sys.executable, "-I", "-c",
+    "import os, signal, sys\n"
+    "for name in ('SIGINT', 'SIGPIPE', 'SIGXFSZ'):\n"
+    "    signal.signal(getattr(signal, name), signal.SIG_DFL)\n"
+    "os.execvp(sys.argv[1], sys.argv[1:])")
 
 
 def default_workers() -> int:
@@ -207,8 +222,11 @@ class _Children:
         with self._lock:
             if self._stopping:
                 return None
-            proc = subprocess.Popen(list(argv), env=env, stdin=subprocess.DEVNULL, stdout=out,
-                                    stderr=subprocess.STDOUT, **_OWN_GROUP)
+            if _RESTORE_SIGNALS and shutil.which(argv[0], path=env.get("PATH")) is None:
+                # What the trampoline's exec would fail on, refused here as Popen refuses it.
+                raise FileNotFoundError(f"no program {argv[0]!r}")
+            proc = subprocess.Popen([*_RESTORE_SIGNALS, *argv], env=env, stdin=subprocess.DEVNULL,
+                                    stdout=out, stderr=subprocess.STDOUT, **_OWN_GROUP)
             self._live.add(proc)
             return proc
 

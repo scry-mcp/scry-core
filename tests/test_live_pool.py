@@ -31,10 +31,9 @@ def _child(body: str) -> list[str]:
 
 
 def _writes(labels: tuple[str, ...], outcome: str = "OK", before: str = "",
-            reasons: dict[str, str] | None = None, after: str = "") -> list[str]:
+            reasons: dict[str, str] | None = None) -> list[str]:
     return _child(before + f"lp.write_summary(summary, lp.Summary({labels!r}, "
-                  f"{{l: {outcome!r} for l in {labels!r}}}, {reasons or {}!r}, 'tx', 0.5))\n"
-                  + after)
+                  f"{{l: {outcome!r} for l in {labels!r}}}, {reasons or {}!r}, 'tx', 0.5))\n")
 
 
 def _until(path: Path) -> str:
@@ -52,12 +51,19 @@ def _wait_for(path: Path) -> None:
 def test_two_jobs_merge_in_declared_order_and_each_is_reported_as_it_ends(
         tmp_path: Path) -> None:
     seen: list[str] = []
-    gate = tmp_path / "fast-done"
+    gate = tmp_path / "fast-reported"
+
+    def report(jr: lp.JobResult) -> None:
+        # THE POOL'S OWN REPORT OPENS THE GATE, so the slow job ends after the pool reported the
+        # fast one: a gate the fast child wrote lets the slow child end, in its own worker
+        # thread, before the fast one's report has run.
+        seen.append(jr.job.name)
+        if jr.job.name == "fast":
+            gate.write_text("y")
     jobs = [lp.Job("slow", _writes(("a1", "a2"), before=_until(gate)), planned=("a1", "a2")),
-            lp.Job("fast", _writes(("b1",), "BLOCKED", reasons={"b1": "no bench"},
-                                   after=f"Path({str(gate)!r}).write_text('y')\n"),
+            lp.Job("fast", _writes(("b1",), "BLOCKED", reasons={"b1": "no bench"}),
                    planned=("b1",))]
-    r = lp.run_pool(jobs, 2, tmp_path, VAR, on_done=lambda jr: seen.append(jr.job.name))
+    r = lp.run_pool(jobs, 2, tmp_path, VAR, on_done=report)
     assert r.invalid == ""
     assert [x.job.name for x in r.results] == ["slow", "fast"]
     assert seen == ["fast", "slow"]
@@ -288,9 +294,33 @@ def test_a_summary_is_renamed_into_place_whole(tmp_path: Path,
     assert json.loads(moves[0][2])["outcomes"] == {"a": "OK"}
 
 
-def test_the_sigint_the_pool_sends_is_the_one_python_unwinds_on() -> None:
-    """The stop's premise, on this host: the default SIGINT handler raises KeyboardInterrupt."""
-    assert signal.getsignal(signal.SIGINT) is signal.default_int_handler
+_CHILD_REPORTING_SIGINT = _child(
+    "import signal\nh = signal.getsignal(signal.SIGINT)\n"
+    "lp.write_summary(summary, lp.Summary(('h',), {'h': 'OK' if h is signal.default_int_handler "
+    "else 'FAIL'}, {}, repr(h), 0))\n")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows has no SIGINT for one process")
+@pytest.mark.parametrize("launcher", ["default", "ignored"])
+def test_a_child_unwinds_on_the_sigint_the_pool_sends_whatever_its_launcher_ignored(
+        tmp_path: Path, launcher: str) -> None:
+    """The stop's premise, in the child: Python's handler, the one that raises KeyboardInterrupt,
+    whether the pool itself runs with SIGINT at its default or ignored, as a background job of a
+    non-interactive shell runs it (an ignored signal survives exec)."""
+    parent = tmp_path / "parent.py"
+    parent.write_text(
+        "import signal, sys\nfrom pathlib import Path\nfrom scry_core import live_pool as lp\n"
+        "signal.signal(signal.SIGINT, "
+        f"{'signal.SIG_IGN' if launcher == 'ignored' else 'signal.default_int_handler'})\n"
+        f"r = lp.run_pool([lp.Job('h', {_CHILD_REPORTING_SIGINT!r}, planned=('h',))], 1, "
+        f"Path({str(tmp_path / 'o')!r}), {VAR!r})\n"
+        "print(r.outcomes['h'], r.results[0].summary.transcript if r.results[0].summary else "
+        "r.reasons)\n", encoding="utf-8")
+    (tmp_path / "o").mkdir()
+    run = subprocess.run([sys.executable, str(parent)], capture_output=True, text=True,
+                         timeout=60, check=False)
+    assert run.returncode == 0, run.stderr
+    assert run.stdout.startswith("OK "), run.stdout
 
 
 class _Recorded:
@@ -346,7 +376,9 @@ def test_a_second_interrupt_during_the_stop_kills_the_children_left(tmp_path: Pa
                       "    time.sleep(0.05)\n")
     parent = tmp_path / "parent.py"
     parent.write_text(
-        "import sys\nfrom pathlib import Path\nfrom scry_core import live_pool as lp\n"
+        # A pool at a terminal, which takes Ctrl-C whatever this suite's own launcher ignored.
+        "import signal, sys\nfrom pathlib import Path\nfrom scry_core import live_pool as lp\n"
+        "signal.signal(signal.SIGINT, signal.default_int_handler)\n"
         f"argv = {stubborn!r}\n"
         "try:\n"
         f"    lp.run_pool([lp.Job('s', argv, planned=('s',))], 1, Path({str(tmp_path / 'o')!r}),"
@@ -377,3 +409,26 @@ def test_an_interrupt_while_the_stop_waits_kills_every_child_and_goes_on() -> No
     with pytest.raises(KeyboardInterrupt):
         children.stop()
     assert "kill" in first.calls and "kill" in second.calls
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="SIGPIPE is POSIX")
+def test_a_child_that_is_not_python_starts_with_sigpipe_at_its_default(tmp_path: Path) -> None:
+    """A writer to a closed pipe dies quietly by SIGPIPE, as it does at a shell: the trampoline
+    is a Python, which ignores SIGPIPE for itself, and an ignored signal survives exec."""
+    body = "yes | head -n 1 > /dev/null; echo done"
+    r = lp.run_pool([lp.Job("p", ["/bin/sh", "-c", body], planned=("p",))], 1, tmp_path, VAR)
+    assert (tmp_path / "p.log").read_text(encoding="utf-8").split("\n") == ["done", ""], \
+        "the writer saw a broken pipe instead of dying of it"
+    assert r.outcomes == {"p": "FAIL"}         # no summary: only its log is the point here
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the trampoline is POSIX")
+def test_a_signal_module_in_the_pools_directory_is_not_the_trampolines(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "signal.py").write_text("raise SystemExit('the project signal.py ran')\n")
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "o").mkdir()
+    isolated = _writes(("j",))
+    isolated.insert(1, "-I")                   # the job itself keeps out of the directory too
+    r = lp.run_pool([lp.Job("j", isolated, planned=("j",))], 1, tmp_path / "o", VAR)
+    assert r.outcomes == {"j": "OK"}, r.reasons

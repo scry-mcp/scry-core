@@ -20,15 +20,17 @@ chip rests at is never the top it was clipped against, while a clipped top stays
 cannot tell it from a square wave's); the silences read it through a DC blocker; the onset reads
 how far it moves from the level it starts at (a window opened mid-sound starts at its first
 change). A silent window has no onset and no plateau. The peak reads the samples as written: the
-headroom left. 8- and 16-bit PCM are read (8-bit is unsigned, centred on 128); any other WAV
-is refused by what it is. A comparison of two recordings that are both silent compares nothing, so
-it is `control_silent`, never a match.
+headroom left. 8- and 16-bit PCM are read (8-bit is unsigned, centred on 128), the extensible
+header's PCM subformat included; any other WAV is refused by what it is. A comparison of two
+recordings that are both silent compares nothing, so it is `control_silent`, never a match.
 """
 
 from __future__ import annotations
 
 import hashlib
+import io
 import math
+import struct
 import wave
 from array import array
 from collections.abc import Sequence
@@ -77,11 +79,43 @@ class Recording:
         return len(self.channels[0])
 
 
+# THE EXTENSIBLE HEADER'S PCM subformat: the stdlib reads it only from 3.12 on, so a PCM file that
+# carries it is handed over as the plain PCM it is, the one tag rewritten. The fmt chunk's layout:
+# its tag first, the subformat GUID after the 24 bytes of fields before it.
+_TAG_PCM, _TAG_EXTENSIBLE = 1, 0xFFFE
+_SUBFORMAT = slice(24, 40)
+_PCM_SUBFORMAT = bytes.fromhex("0100000000001000800000aa00389b71")
+
+
+def _as_plain_pcm(path: Path) -> str | io.BytesIO:
+    """`path`, or its bytes with an extensible PCM tag rewritten as plain PCM. Anything else
+    (another subformat, a header this cannot walk) goes to the stdlib as it is, which refuses it
+    by what it is."""
+    with path.open("rb") as f:
+        head = f.read(12)
+        if head[:4] != b"RIFF" or head[8:12] != b"WAVE":
+            return str(path)
+        while len(chunk := f.read(8)) == 8:
+            kind, size = chunk[:4], struct.unpack("<I", chunk[4:])[0]
+            if kind != b"fmt ":
+                f.seek(size + size % 2, io.SEEK_CUR)       # a chunk is padded to an even size
+                continue
+            fmt_at, fmt = f.tell(), f.read(min(size, _SUBFORMAT.stop))
+            if (len(fmt) < _SUBFORMAT.stop or struct.unpack_from("<H", fmt)[0] != _TAG_EXTENSIBLE
+                    or fmt[_SUBFORMAT] != _PCM_SUBFORMAT):
+                return str(path)
+            f.seek(0)
+            whole = bytearray(f.read())
+            whole[fmt_at:fmt_at + 2] = struct.pack("<H", _TAG_PCM)
+            return io.BytesIO(whole)
+    return str(path)
+
+
 def read(name: str, value: object) -> Recording:
     """The WAV at `value`, or the refusal naming what it is when it is not 8- or 16-bit PCM."""
     path = judges.existing_file(name, value)
     try:
-        with wave.open(str(path), "rb") as w:
+        with wave.open(_as_plain_pcm(path), "rb") as w:
             width, count, rate = w.getsampwidth(), w.getnchannels(), w.getframerate()
             raw = w.readframes(w.getnframes())
     except (wave.Error, EOFError) as e:

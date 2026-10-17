@@ -8,6 +8,7 @@ import math
 import struct
 import wave
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -411,3 +412,63 @@ def test_a_sound_rising_from_a_rest_below_zero_is_not_clipped_at_its_rest(
     s = ([-8500] * 60 + swell) * (RATE // 80)
     got = wav.measure(wav.read("p", _write(tmp_path / "r.wav", [s])), None, None)["measures"][0]
     assert got["silent"] is False and got["clipped"] is False, got
+
+
+# THE EXTENSIBLE HEADER (tag 0xFFFE, the PCM subformat GUID): what a recorder writes for more than
+# two channels or more than 16 bits, and what some write always. The stdlib reads it from 3.12 on;
+# 3.11, which `requires-python` still promises, refuses its tag as `unknown format: 65534`. The
+# GUIDs are written out here, not imported, so the header is the format's and not the reader's.
+_PCM_GUID = bytes.fromhex("0100000000001000800000aa00389b71")
+_FLOAT_GUID = bytes.fromhex("0300000000001000800000aa00389b71")
+
+
+def _extensible(path: Path, samples: list[int], guid: bytes = _PCM_GUID,
+                before: bytes = b"") -> str:
+    """An extensible WAV of `samples`, with the chunks `before` ahead of its fmt chunk."""
+    data = struct.pack(f"<{len(samples)}h", *samples)
+    fmt = struct.pack("<HHIIHH", 0xFFFE, 1, RATE, RATE * 2, 2, 16)
+    fmt += struct.pack("<HHI", 22, 16, 0x4) + guid
+    body = b"WAVE" + before + b"fmt " + struct.pack("<I", len(fmt)) + fmt
+    body += b"data" + struct.pack("<I", len(data)) + data
+    path.write_bytes(b"RIFF" + struct.pack("<I", len(body)) + body)
+    return str(path)
+
+
+def _stdlib_without_extensible(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The stdlib reader as 3.11 ships it: an extensible tag is an unknown format."""
+    real: Any = wave.Wave_read._read_fmt_chunk  # type: ignore[attr-defined]  # private, typeshed omits it
+
+    def refuse(self: wave.Wave_read, chunk: Any) -> None:
+        tag = struct.unpack_from("<H", chunk.read(2))[0]
+        chunk.seek(0)
+        if tag != 1:
+            raise wave.Error(f"unknown format: {tag!r}")
+        real(self, chunk)
+    monkeypatch.setattr(wave.Wave_read, "_read_fmt_chunk", refuse)
+
+
+@pytest.mark.parametrize("stdlib", ["this one", "3.11's"])
+def test_an_extensible_pcm_header_reads_as_its_plain_twin(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stdlib: str) -> None:
+    if stdlib == "3.11's":
+        _stdlib_without_extensible(monkeypatch)
+    samples = _sine(RATE // 4)
+    ext = wav.read("p", _extensible(tmp_path / "x.wav", samples))
+    plain = wav.read("p", _write(tmp_path / "p.wav", [samples]))
+    assert (ext.rate, ext.width, ext.raw) == (plain.rate, plain.width, plain.raw)
+    assert list(ext.channels[0]) == samples
+
+
+def test_a_chunk_of_odd_size_before_the_fmt_chunk_is_stepped_over_with_its_pad(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _stdlib_without_extensible(monkeypatch)
+    odd = b"LIST" + struct.pack("<I", 3) + b"abc" + b"\0"
+    got = wav.read("p", _extensible(tmp_path / "x.wav", [5, 6, 7], before=odd))
+    assert list(got.channels[0]) == [5, 6, 7]
+
+
+def test_an_extensible_header_of_another_subformat_is_refused_by_what_it_is(
+        tmp_path: Path) -> None:
+    path = _extensible(tmp_path / "f.wav", [0, 1, 2], guid=_FLOAT_GUID)
+    with pytest.raises(Invalid, match="is not a PCM WAV this reads"):
+        wav.read("p", path)
