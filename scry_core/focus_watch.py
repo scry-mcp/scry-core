@@ -204,11 +204,16 @@ def now_ms() -> int:
     return int(time.time() * 1000)
 
 
+#: Whether this host is macOS, read once into a name: a type checker narrows `sys.platform` and
+#: would call the macOS half unreachable on any other host.
+_MACOS = sys.platform == "darwin"
+
+
 def sample_host() -> Sample:
     """One sample of this host: who is in front, and where the pointer is. STAMPED AT THE
     MIDDLE of the System Events call, the instant its answer is closest to describing, so a
     window's edge does not take a sample that saw the moment after it."""
-    if sys.platform != "darwin":
+    if not _MACOS:
         return Sample(now_ms(), error=f"the frontmost application is read on macOS only, not "
                                        f"{sys.platform}")
     asked = now_ms()
