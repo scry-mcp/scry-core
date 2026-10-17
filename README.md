@@ -7,6 +7,8 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 |---|---|
 | `scry_core.reply_contract` | the refusal contract (`status`, `code`, `message`), its class and its envelope check |
 | `scry_core.envelope` | the MCP boundary's server object: the schema's refusal given the server's envelope, off the event loop, and a tool's picture attached |
+| `scry_core.progress` | the progress line of a bounded wait: one a second, one short line, never backwards, none once the call is cancelled, bridged from the tool's worker thread to the request |
+| `scry_core.cancel` | a cancelled call: the poll every bounded wait makes, the shield its end runs under, how each tool declares it ends, and the record the next reply carries |
 | `scry_core.strict_arguments` | the schema as part of a tool's contract: what it does not declare is refused |
 | `scry_core.value_format` | the grammar of a watched value: scalars, arrays, strings, structs, pointers |
 | `scry_core.reply_shapes` | the pytest plugin running the test-time guard (`reply_shapes_guard`) that holds one word to one shape in every reply |
