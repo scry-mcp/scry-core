@@ -6,6 +6,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | Module | What it holds |
 |---|---|
 | `scry_core.reply_contract` | the refusal contract (`status`, `code`, `message`), its class and its envelope check |
+| `scry_core.envelope` | the MCP boundary's server object: the schema's refusal given the server's envelope, off the event loop, and a tool's picture attached |
 | `scry_core.strict_arguments` | the schema as part of a tool's contract: what it does not declare is refused |
 | `scry_core.value_format` | the grammar of a watched value: scalars, arrays, strings, structs, pointers |
 | `scry_core.reply_shapes` | the pytest plugin running the test-time guard (`reply_shapes_guard`) that holds one word to one shape in every reply |
