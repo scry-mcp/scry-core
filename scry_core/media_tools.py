@@ -206,12 +206,14 @@ def audio_measure(path: str, window: list[float] | None = None,
     `path`: the absolute path of an 8- or 16-bit PCM WAV. `window` [from_s, to_s], seconds
     (default the whole file). `channel` (default every channel).
 
+    A chip resting at a steady level is silent: the RMS reads the window less its mean, the
+    onset, silences and plateau read it against its first sample, and the peak as written.
     Reply, per channel in `measures` (`channel`, 0 the first, the left of a stereo file):
     `peak_dbfs` and `rms_dbfs` (null for zero), `silent` (an RMS under 0.5% of full scale),
     `silence_spans` (`count`, and the `first` [from_s, to_s] quieter than -60 dBFS for 50 ms or
-    more), `onset_s` (the first sample over 2% of the peak, from the file's start; null for all
-    zeros), `clipping_run` (the longest run of flat samples at 95% of the peak or above; a
-    steady level is one too) and `clipped` (a run past 8); then `sample_rate_hz`, `channels`,
+    more), `onset_s` (the first sample over 2% of the peak, from the file's start; null when
+    silent), `clipping_run` (the longest run of flat samples at 95% of the peak or above)
+    and `clipped` (a run past 8); then `sample_rate_hz`, `channels`,
     `bits`, `window` and `pcm_sha256` (the window's frames, every channel's, for an exact
     comparison), and `path`.
     """

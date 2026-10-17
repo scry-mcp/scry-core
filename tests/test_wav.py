@@ -329,3 +329,28 @@ def test_the_worst_channel_grades_the_pair(tmp_path: Path) -> None:
                                                  [v // 2 for v in s]]))
     got = wav.compare(a, b, None, True)
     assert got["class"] == "different" and got["snr_db"] is not None and got["snr_db"] < 30
+
+
+def test_a_steady_offset_is_silence_and_a_tone_on_it_starts_at_its_onset(
+        tmp_path: Path) -> None:
+    """An emulated chip at volume 0 sits at a steady level, not at zero: inaudible, so silent
+    with no onset, though its peak says where it sits. A tone riding that level starts where the
+    tone starts, not at the file's first sample."""
+    dc = wav.read("p", _write(tmp_path / "dc.wav", [[-11000 + (i % 3) for i in range(RATE)]]))
+    m = wav.measure(dc, None, None)["measures"][0]
+    assert m["silent"] is True and m["onset_s"] is None and m["clipped"] is False
+    assert m["peak_dbfs"] == pytest.approx(20 * math.log10(11000 / 32768), abs=0.01)
+    ride = [v - 8000 for v in _sine(RATE, amp=AMP / 2, start=800)]
+    t = wav.measure(wav.read("p", _write(tmp_path / "t.wav", [ride])), None, None)["measures"][0]
+    assert t["silent"] is False and 0.1 <= t["onset_s"] <= 0.1 + 1 / RATE
+    with pytest.raises(Invalid) as e:
+        wav.compare(dc, dc, None, True)
+    assert e.value.code == "control_silent"
+
+
+def test_one_tone_resting_at_two_levels_compares_the_same(tmp_path: Path) -> None:
+    """A steady level is no sound, so one tone over two resting levels is one sound."""
+    s = _sine(RATE, amp=AMP / 2)
+    low = wav.read("a", _write(tmp_path / "a.wav", [[v - 9000 for v in s]]))
+    high = wav.read("b", _write(tmp_path / "b.wav", [[v + 3000 for v in s]]))
+    assert wav.compare(low, high, None, False)["class"] == "inaudible"

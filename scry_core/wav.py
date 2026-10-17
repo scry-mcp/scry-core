@@ -14,9 +14,12 @@ was. Two lengths more than a tenth of a second apart are `different` whatever th
 as in the gate. A channel is compared with its twin, never through a mixdown: a channel in
 antiphase would cancel to silence and two swapped channels would average to one sound.
 
-8- and 16-bit PCM are read (8-bit is unsigned, centred on 128); any other WAV is refused by what
-it is. A comparison of two recordings that are both silent compares nothing, so it is
-`control_silent`, never a match.
+An emulated chip at rest sits at a steady level rather than at zero, and a steady level is no
+sound: the RMS and every comparison read the window less its mean, and the onset, the silences
+and the plateau read it against the level it starts at. A silent window has no onset. The peak
+is read as written, which is the headroom left. 8- and 16-bit PCM are read (8-bit is unsigned,
+centred on 128); any other WAV is refused by what it is. A comparison of two recordings that are
+both silent compares nothing, so it is `control_silent`, never a match.
 """
 
 from __future__ import annotations
@@ -130,7 +133,7 @@ def onset(samples: Sequence[float]) -> int | None:
     return next(i for i, x in enumerate(samples) if abs(x) > floor)
 
 
-def plateau(samples: Sequence[int], full: int) -> int:
+def plateau(samples: Sequence[float], full: int) -> int:
     """The longest run of flat samples at `PEAK_FRACTION` of the peak or above."""
     peak = max((abs(x) for x in samples), default=0)
     if not peak:
@@ -146,7 +149,8 @@ def plateau(samples: Sequence[int], full: int) -> int:
     return longest
 
 
-def silences(samples: Sequence[int], rate: int, full: int, offset: int) -> list[list[float]]:
+def silences(samples: Sequence[float], rate: int, full: int,
+             offset: int) -> list[list[float]]:
     """Every span quieter than `SILENCE_DBFS` lasting `SILENCE_MIN_S` or more, as `[from_s,
     to_s]` from the file's start (`offset` is the window's first sample)."""
     floor = full * 10 ** (SILENCE_DBFS / 20)
@@ -164,6 +168,20 @@ def silences(samples: Sequence[int], rate: int, full: int, offset: int) -> list[
     return out
 
 
+def centred(samples: Sequence[int]) -> list[float]:
+    """`samples` less their mean: the part that is heard, which a level and a comparison read."""
+    mean = math.fsum(samples) / len(samples) if len(samples) else 0.0
+    return [x - mean for x in samples]
+
+
+def from_rest(samples: Sequence[int]) -> list[int]:
+    """`samples` less the level the window starts at, its rest: where a sound starts, stays
+    flat or falls quiet is read against that level, so a chip resting away from zero is at
+    rest."""
+    rest = samples[0] if len(samples) else 0
+    return [x - rest for x in samples]
+
+
 def measure(recording: Recording, window: Sequence[float] | None,
             channel: int | None) -> dict[str, Any]:
     """The measures of each channel (or of `channel`) over `window`, and the window's PCM hash."""
@@ -175,14 +193,16 @@ def measure(recording: Recording, window: Sequence[float] | None,
     chosen = range(count) if channel is None else [channel]
     out = []
     for c in chosen:
-        samples = recording.channels[c][start:end]
-        peak, rms = max(abs(x) for x in samples), _rms(samples)
-        quiet = silences(samples, recording.rate, recording.full, start)
-        first = onset(samples)
-        run = plateau(samples, recording.full)
+        raw = recording.channels[c][start:end]
+        moved = from_rest(raw)
+        peak, rms = max(abs(x) for x in raw), _rms(centred(raw))
+        silent = rms / recording.full < SILENT_RMS
+        quiet = silences(moved, recording.rate, recording.full, start)
+        first = None if silent else onset(moved)
+        run = plateau(moved, recording.full)
         out.append({"channel": c, "peak_dbfs": _dbfs(peak, recording.full),
                     "rms_dbfs": _dbfs(rms, recording.full),
-                    "silent": rms / recording.full < SILENT_RMS,
+                    "silent": silent,
                     "silence_spans": {"count": len(quiet), "first": quiet[0] if quiet else None},
                     "onset_s": None if first is None else round((start + first) / recording.rate,
                                                                 4),
@@ -227,12 +247,15 @@ def _channel(pa: Sequence[float], pb: Sequence[float], full: int) -> tuple[float
 
 def _first_onset(recording: Recording, start: int, end: int) -> int | None:
     """The earliest onset of any channel over `start`..`end`."""
-    found = [o for ch in recording.channels if (o := onset(ch[start:end])) is not None]
+    found = [o for ch in recording.channels
+             if _rms(centred(ch[start:end])) / recording.full >= SILENT_RMS
+             and (o := onset(from_rest(ch[start:end]))) is not None]
     return min(found, default=None)
 
 
 def _silent(recording: Recording, start: int, end: int) -> bool:
-    return all(_rms(ch[start:end]) / recording.full < SILENT_RMS for ch in recording.channels)
+    return all(_rms(centred(ch[start:end])) / recording.full < SILENT_RMS
+               for ch in recording.channels)
 
 
 def compare(a: Recording, b: Recording, window: Sequence[float] | None,
@@ -253,7 +276,7 @@ def compare(a: Recording, b: Recording, window: Sequence[float] | None,
     shift = oa - ob if align and oa is not None and ob is not None else 0
     pairs = []
     for ca, cb in zip(a.channels, b.channels, strict=True):
-        pa, pb = ca[sa:ea], cb[sb:eb]
+        pa, pb = centred(ca[sa:ea]), centred(cb[sb:eb])
         pairs.append(_channel(pa[shift:], pb, a.full) if shift >= 0
                      else _channel(pa, pb[-shift:], a.full))
     known = [snr for snr, _ in pairs if snr is not None]
