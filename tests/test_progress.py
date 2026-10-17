@@ -267,3 +267,44 @@ def test_finish_reports_the_time_it_finished_at(clock: _Clock) -> None:
     clock.at += 3.0                          # a last step after the last poll
     t.finish(4, "done in {elapsed:.1f}s")
     assert said == [(4, 4, "done in 3.0s")], said
+
+
+def test_a_step_reports_through_the_sequence_it_runs_in_under_its_prefix() -> None:
+    """A tool called as a step of a sequence has no request of its own (`bridge(None)`): inside
+    `within` it reports through the sequence's line, prefixed with which step it is."""
+    said: list[tuple[float, float | None, str]] = []
+    outer = progress.RebasedProgress(lambda p, t, m: said.append((p, t, m)))
+    assert progress.bridge(None) is progress.no_progress
+    with progress.within(outer, "perform step 2 of 3 (run_for)"):
+        inner = progress.bridge(None)
+        inner(1.0, 4.0, "run_for 4 frames: frame 1 of 4")
+        with progress.within(outer, "perform step 3 of 3 (resume)"):
+            progress.bridge(None)(1.0, None, "resume: running 1s of 5s")
+        inner(2.0, 4.0, "run_for 4 frames: frame 2 of 4")
+    assert progress.bridge(None) is progress.no_progress
+    assert [m for _, _, m in said] == [
+        "perform step 2 of 3 (run_for): run_for 4 frames: frame 1 of 4",
+        "perform step 3 of 3 (resume): resume: running 1s of 5s",
+        "perform step 2 of 3 (run_for): run_for 4 frames: frame 2 of 4"]
+    values = [p for p, _, _ in said]
+    assert all(b > a for a, b in zip(values, values[1:], strict=False)), values
+
+
+
+def test_a_second_restart_is_based_on_the_value_sent_not_on_the_raw_one() -> None:
+    """After one rebase the value sent and the raw one differ, and only the value sent keeps the
+    line rising: based on the raw one, the third segment would fall below what was sent."""
+    report, sent = _rebased()
+    for raw in (1.0, 2.0, 3.0):
+        report(raw, None, "first")
+    report(1.0, 3.0, "second")                # sent 4.0 of 6.0
+    report(0.5, None, "third")
+    assert sent[-2:] == [(4.0, 6.0, "second"), (4.5, None, "third")], sent
+
+
+
+def test_a_value_not_above_the_last_one_sent_is_not_sent_nor_its_message() -> None:
+    report, sent = _rebased()
+    report(2.0, 4.0, "two")
+    report(2.0, 4.0, "two again")
+    assert sent == [(2.0, 4.0, "two")]

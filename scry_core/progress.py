@@ -12,8 +12,10 @@ must learn stays in the reply.
 
 from __future__ import annotations
 
+import contextlib
+import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import anyio.from_thread
@@ -142,15 +144,46 @@ def line(message: str) -> str:
     return message + "\u2026"
 
 
+# A STEP OF A SEQUENCE HAS NO REQUEST OF ITS OWN: the sequence calls the tool directly, so its
+# `bridge(None)` would report to no one. Inside `within` it reports through the sequence's line.
+_steps = threading.local()
+
+
+@contextlib.contextmanager
+def within(report: Progress, prefix: str, began: float | None = None) -> Iterator[None]:
+    """Make a `bridge(None)` on this thread report through `report`, each line under `prefix`,
+    its value the seconds since `began` (now when not given), so a sequence's line keeps rising
+    whatever count each step keeps."""
+    stack: list[tuple[Progress, str, float]] = _steps.__dict__.setdefault("stack", [])
+    stack.append((report, prefix, time.monotonic() if began is None else began))
+    try:
+        yield
+    finally:
+        stack.pop()
+
+
+def _stepped() -> Progress:
+    """The reporter of a step inside `within`, or `no_progress` outside one."""
+    stack: list[tuple[Progress, str, float]] = getattr(_steps, "stack", [])
+    if not stack:
+        return no_progress
+    report, prefix, began = stack[-1]
+
+    def step(progress: float, total: float | None, message: str) -> None:
+        report(time.monotonic() - began, None, f"{prefix}: {message}")
+    return step
+
+
 def bridge(ctx: Context[Any, Any] | None) -> Progress:
     """The progress of one call, from the worker thread the SDK runs a synchronous tool on to the
     request's `Context` on the event loop: rebased so it never goes back (`RebasedProgress`),
     each line cut to `MESSAGE_MAX_UNITS`, and nothing sent once the call is cancelled. A line
     the client could not be sent (it left, the stream closed) is dropped and the wait goes on:
     the cancellation is what ends a wait, never a notification that failed. With no context (a
-    direct call, a test) nothing is reported."""
+    direct call, a test) nothing is reported, unless the call is a step of a sequence
+    (`within`)."""
     if ctx is None:
-        return no_progress
+        return _stepped()
 
     def report(progress: float, total: float | None, message: str) -> None:
         if cancel.shielding():
