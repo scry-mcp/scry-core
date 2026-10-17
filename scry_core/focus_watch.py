@@ -468,11 +468,13 @@ def control(watch: Watched, names: Collection[str],
     """The control over `watch`: `hold(background)` launches one start as asked and returns its
     window (epoch ms); then the owner's Space is moved and put back (`move_space`)."""
     front_w, behind_w = hold(False), hold(True)
+    # A WINDOW THE INSTRUMENT COULD NOT READ is BLOCKED here as in `verdict`: a sample that
+    # failed says nothing about the start. A Space move names nobody (`verdict` says why).
     seen = judge(watch.samples, names, start_ms=front_w[0], end_ms=front_w[1])
-    front = Judged("PASS" if seen.status == "TOOK_FOCUS" else "FAIL", seen.reason)
+    front = Judged("BLOCKED" if seen.status == "INVALID"
+                   else "PASS" if seen.status == "TOOK_FOCUS" else "FAIL", seen.reason)
     clean = judge(watch.samples, names, start_ms=behind_w[0], end_ms=behind_w[1])
-    # A Space move names nobody (`verdict` says why), here as there.
-    behind = Judged("BLOCKED" if clean.status == "SPACE_CHANGED"
+    behind = Judged("BLOCKED" if clean.status in ("SPACE_CHANGED", "INVALID")
                     else "PASS" if clean.status == "CLEAN" else "FAIL", clean.reason)
     began, ended, why = move_space()
     moved = judge(watch.samples, names, start_ms=began, end_ms=ended)

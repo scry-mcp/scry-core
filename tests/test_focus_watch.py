@@ -545,14 +545,33 @@ def _app(ms: int, app: str = "Finder", spaces: tuple[int, ...] = (1,)) -> fw.Sam
 
 
 def _control_case(monkeypatch: pytest.MonkeyPatch, front_app: str, behind_app: str,
-                  moved: bool, why: str = "") -> fw.Control:
-    samples = [_app(ms, front_app if 1000 <= ms <= 2000 else
+                  moved: bool, why: str = "", blind: tuple[int, int] | None = None) -> fw.Control:
+    """`blind` is a stretch whose samples are errors: the instrument could not read the host."""
+    samples = [fw.Sample(ms, error="osascript did not answer")
+               if blind is not None and blind[0] <= ms <= blind[1] else
+               _app(ms, front_app if 1000 <= ms <= 2000 else
                     behind_app if 3000 <= ms <= 4000 else "Finder",
                     (2,) if moved and 5500 <= ms <= 5600 else (1,))
                for ms in range(1000, 6001, 100)]
-    windows = iter([(1000, 2000), (3000, 4000)])
+    # Each start's window is the one ITS mode was given, so a control that held them the other
+    # way round would judge the front start over the behind window.
+    asked: list[bool] = []
+
+    def hold(background: bool) -> tuple[int, int]:
+        asked.append(background)
+        return (3000, 4000) if background else (1000, 2000)
     monkeypatch.setattr(fw, "move_space", lambda: (5000, 6000, why))
-    return fw.control(_Watched(samples), {"mame"}, lambda background: next(windows))
+    c = fw.control(_Watched(samples), {"mame"}, hold)
+    assert asked == [False, True], asked
+    return c
+
+
+def test_a_control_window_the_instrument_could_not_read_is_blocked_not_failed(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _control_case(monkeypatch, "mame", "Finder", moved=True, blind=(1000, 2000))
+    assert c.front.status == "BLOCKED" and c.since is None, c
+    c = _control_case(monkeypatch, "mame", "Finder", moved=True, blind=(3000, 4000))
+    assert c.behind.status == "BLOCKED" and c.since is None, c
 
 
 def test_a_control_that_holds_passes_its_three_cells_and_opens_the_judged_window(
