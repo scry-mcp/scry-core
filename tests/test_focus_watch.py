@@ -237,6 +237,7 @@ def _fake_run(stdout: str, rc: int = 0, stderr: str = "") -> object:
 def test_a_named_frontmost_process_is_stamped_inside_the_call(
         monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(fw, "_MACOS", True)
     monkeypatch.setattr(subprocess, "run", _fake_run("dosbox-x\t68339\n"))
     monkeypatch.setattr(fw, "_spaces", lambda: (1, 4))
     before = int(time.time() * 1000)
@@ -253,6 +254,7 @@ def test_a_named_frontmost_process_is_stamped_inside_the_call(
 def test_a_system_events_answer_without_a_pid_is_an_error(
         monkeypatch: pytest.MonkeyPatch, stdout: str, rc: int, stderr: str, why: str) -> None:
     monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(fw, "_MACOS", True)
     monkeypatch.setattr(subprocess, "run", _fake_run(stdout, rc, stderr))
     s = fw.sample_host()
     assert why in s.error
@@ -263,6 +265,7 @@ def test_an_osascript_that_never_answers_is_an_error(monkeypatch: pytest.MonkeyP
     def hang(*_a: object, **_k: object) -> None:
         raise subprocess.TimeoutExpired("osascript", fw.OSASCRIPT_TIMEOUT_S)
     monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(fw, "_MACOS", True)
     monkeypatch.setattr(subprocess, "run", hang)
     assert "did not answer" in fw.sample_host().error
 
@@ -332,6 +335,7 @@ def test_a_record_written_before_spaces_were_read_still_loads() -> None:
 def test_spaces_that_cannot_be_read_make_the_sample_an_error(
         monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(fw, "_MACOS", True)
     monkeypatch.setattr(subprocess, "run", _fake_run("Finder\t9\n"))
     for unread in (None, ()):
         monkeypatch.setattr(fw, "_spaces", lambda unread=unread: unread)
