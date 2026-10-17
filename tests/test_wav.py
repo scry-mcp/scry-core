@@ -354,3 +354,34 @@ def test_one_tone_resting_at_two_levels_compares_the_same(tmp_path: Path) -> Non
     low = wav.read("a", _write(tmp_path / "a.wav", [[v - 9000 for v in s]]))
     high = wav.read("b", _write(tmp_path / "b.wav", [[v + 3000 for v in s]]))
     assert wav.compare(low, high, None, False)["class"] == "inaudible"
+
+
+@pytest.mark.parametrize("name, samples", [
+    ("a click at the first sample, then the rest", [0] + [-11000] * (RATE - 1)),
+    ("a one-step settle of the rest", [-11000] * (RATE // 4) + [-10999] * (3 * RATE // 4)),
+])
+def test_a_resting_chip_is_silent_unclipped_and_quiet(tmp_path: Path, name: str,
+                                                       samples: list[int]) -> None:
+    m = wav.measure(wav.read("p", _write(tmp_path / "r.wav", [samples])), None, None)
+    got = m["measures"][0]
+    assert got["silent"] is True and got["onset_s"] is None, name
+    assert got["clipped"] is False and got["clipping_run"] == 0, name
+
+
+def test_a_clipped_top_is_found_wherever_the_window_starts(tmp_path: Path) -> None:
+    """A wave clipped on one side only, its first sample on the flat top: the plateau is the
+    top, not the far side of the first sample."""
+    wave_ = [min(16000, v) if v > 0 else round(0.7 * v) for v in _sine(RATE, amp=20000,
+                                                                      freq=100.0)]
+    rec = wav.read("p", _write(tmp_path / "c.wav", [wave_]))
+    for start in (0.0, 0.0125, 0.003):
+        got = wav.measure(rec, [start, 0.9], None)["measures"][0]
+        assert got["clipped"] is True, start
+
+
+def test_a_rest_that_steps_to_another_level_is_quiet_on_both_sides(tmp_path: Path) -> None:
+    """A step of the resting level is one click, and quiet before and after it."""
+    step = [-11000] * (RATE // 5) + [-5000] * (4 * RATE // 5)
+    got = wav.measure(wav.read("p", _write(tmp_path / "s.wav", [step])), None, None)
+    spans = got["measures"][0]["silence_spans"]
+    assert spans["count"] == 2 and spans["first"] == [0.0, 0.2], spans

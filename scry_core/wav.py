@@ -15,11 +15,13 @@ as in the gate. A channel is compared with its twin, never through a mixdown: a 
 antiphase would cancel to silence and two swapped channels would average to one sound.
 
 An emulated chip at rest sits at a steady level rather than at zero, and a steady level is no
-sound: the RMS and every comparison read the window less its mean, and the onset, the silences
-and the plateau read it against the level it starts at. A silent window has no onset. The peak
-is read as written, which is the headroom left. 8- and 16-bit PCM are read (8-bit is unsigned,
-centred on 128); any other WAV is refused by what it is. A comparison of two recordings that are
-both silent compares nothing, so it is `control_silent`, never a match.
+sound. The RMS and every comparison read the window less its mean; the silences read it through a
+DC blocker; the onset reads how far it moves from the level it starts at (a window opened mid-sound
+starts at its first change). A silent window has no onset and no plateau. The peak and the plateau
+read the samples as written: the headroom left, and a top that is flat, which a plateau cannot tell
+from a square wave's. 8- and 16-bit PCM are read (8-bit is unsigned, centred on 128); any other WAV
+is refused by what it is. A comparison of two recordings that are both silent compares nothing, so
+it is `control_silent`, never a match.
 """
 
 from __future__ import annotations
@@ -51,6 +53,8 @@ SNR_INAUDIBLE_DB, SNR_AUDIBLE_DB = 60.0, 30.0
 LENGTH_TENTHS = 10
 #: An envelope whose deviation is under this fraction of full scale has no shape to correlate.
 FLAT_ENVELOPE = 1e-6
+#: The DC blocker's corner: under any pitch a chip plays, over the drift of a resting level.
+DC_CORNER_HZ = 5.0
 #: The sample widths read, in bytes, with their full scale.
 FULL_SCALE = {1: 128, 2: 32768}
 
@@ -133,7 +137,7 @@ def onset(samples: Sequence[float]) -> int | None:
     return next(i for i, x in enumerate(samples) if abs(x) > floor)
 
 
-def plateau(samples: Sequence[float], full: int) -> int:
+def plateau(samples: Sequence[int], full: int) -> int:
     """The longest run of flat samples at `PEAK_FRACTION` of the peak or above."""
     peak = max((abs(x) for x in samples), default=0)
     if not peak:
@@ -175,11 +179,26 @@ def centred(samples: Sequence[int]) -> list[float]:
 
 
 def from_rest(samples: Sequence[int]) -> list[int]:
-    """`samples` less the level the window starts at, its rest: where a sound starts, stays
-    flat or falls quiet is read against that level, so a chip resting away from zero is at
-    rest."""
+    """`samples` less the level the window starts at, where a sound's onset is read: the first
+    sample over `ONSET_FRACTION` of how far the window moves from that level."""
     rest = samples[0] if len(samples) else 0
     return [x - rest for x in samples]
+
+
+def dc_blocked(samples: Sequence[int], rate: int) -> list[float]:
+    """`samples` through a one-pole DC blocker (`y[n] = x[n] - x[n-1] + R y[n-1]`, its corner at
+    `DC_CORNER_HZ`), primed as if the window's first sample had always been there: a steady
+    level is zeros from the first sample, and a change of level is the click it is heard as.
+    Where a sound falls quiet is read here, so a chip resting away from zero, or settling from one
+    resting level to another, is quiet."""
+    pole = 1 - 2 * math.pi * DC_CORNER_HZ / rate
+    out: list[float] = []
+    prev_x, prev_y = (samples[0] if len(samples) else 0), 0.0
+    for x in samples:
+        prev_y = x - prev_x + pole * prev_y
+        prev_x = x
+        out.append(prev_y)
+    return out
 
 
 def measure(recording: Recording, window: Sequence[float] | None,
@@ -194,12 +213,14 @@ def measure(recording: Recording, window: Sequence[float] | None,
     out = []
     for c in chosen:
         raw = recording.channels[c][start:end]
-        moved = from_rest(raw)
+        heard = dc_blocked(raw, recording.rate)
         peak, rms = max(abs(x) for x in raw), _rms(centred(raw))
         silent = rms / recording.full < SILENT_RMS
-        quiet = silences(moved, recording.rate, recording.full, start)
-        first = None if silent else onset(moved)
-        run = plateau(moved, recording.full)
+        quiet = silences(heard, recording.rate, recording.full, start)
+        first = None if silent else onset(from_rest(raw))
+        # The plateau reads the samples as written, where a clipped top is flat; a silent
+        # window has no top to clip, only the level it rests at.
+        run = 0 if silent else plateau(raw, recording.full)
         out.append({"channel": c, "peak_dbfs": _dbfs(peak, recording.full),
                     "rms_dbfs": _dbfs(rms, recording.full),
                     "silent": silent,

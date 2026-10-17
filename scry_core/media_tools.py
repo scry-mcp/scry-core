@@ -207,7 +207,8 @@ def audio_measure(path: str, window: list[float] | None = None,
     (default the whole file). `channel` (default every channel).
 
     A chip resting at a steady level is silent: the RMS reads the window less its mean, the
-    onset, silences and plateau read it against its first sample, and the peak as written.
+    silences read it through a DC blocker, the onset against its first sample, the peak and
+    plateau as written (a square wave's flat top reads as a plateau too).
     Reply, per channel in `measures` (`channel`, 0 the first, the left of a stereo file):
     `peak_dbfs` and `rms_dbfs` (null for zero), `silent` (an RMS under 0.5% of full scale),
     `silence_spans` (`count`, and the `first` [from_s, to_s] quieter than -60 dBFS for 50 ms or
