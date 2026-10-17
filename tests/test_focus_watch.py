@@ -221,6 +221,7 @@ def test_the_host_sampler_names_a_frontmost_process_and_the_pointer() -> None:
 
 def test_off_macos_every_sample_is_an_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(fw, "_MACOS", False)
     s = fw.sample_host()
     assert "macOS only" in s.error
     assert fw.judge([s], {"dosbox-x"}).status == "INVALID"
