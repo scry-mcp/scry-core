@@ -123,6 +123,22 @@ def test_another_kind_of_wav_is_refused_by_what_it_is(tmp_path: Path) -> None:
     empty = _write(tmp_path / "e.wav", [[]])
     with pytest.raises(Invalid, match="holds no sample"):
         wav.read("path", empty)
+    # A header that says 0 samples a second, which the stdlib reader lets through: every time in
+    # the reply divides by it.
+    still = bytearray(Path(_write(tmp_path / "z.wav", [[1, 2, 3]])).read_bytes())
+    still[24:28] = struct.pack("<I", 0)
+    (tmp_path / "z.wav").write_bytes(still)
+    with pytest.raises(Invalid, match="0 samples a second"):
+        wav.read("path", str(tmp_path / "z.wav"))
+
+
+def test_a_window_that_rounds_past_the_last_sample_is_refused(tmp_path: Path) -> None:
+    """101 samples at 2 Hz: [50.3, 50.75] s round to samples 101 and 102, both past the last
+    (100); the window holds no sample of the file, so it is refused, never measured empty."""
+    rec = wav.read("p", _write(tmp_path / "o.wav", [[16] * 101], rate=2))
+    with pytest.raises(Invalid, match="is not inside"):
+        wav.span(rec, [50.3, 50.75])
+    assert wav.span(rec, [50.0, 50.5]) == (100, 101), "the last sample is still inside"
 
 
 @pytest.mark.parametrize("down_db, grade", [(0.0, "exact"), (0.005, "inaudible"),
@@ -187,7 +203,7 @@ def test_the_two_tools_answer_and_judge_their_arguments(tmp_path: Path) -> None:
     quiet = media_tools.audio_measure(_write(tmp_path / "q.wav", [[0] * 800]))
     assert media_tools._audio_measure_line({}, quiet) == "audio_measure: ch0 silent"
     for check, kw, said in (
-            (media_tools.check_audio_measure, {"path": "s.wav"}, "is an absolute path"),
+            (media_tools.check_audio_measure, {"path": "s.wav"}, "must be an absolute path"),
             (media_tools.check_audio_measure, {"path": "/s", "window": [1, 0]}, "window="),
             (media_tools.check_audio_measure, {"path": "/s", "window": [-1, 2]}, "window="),
             (media_tools.check_audio_measure, {"path": "/s", "channel": True}, "channel="),
@@ -385,3 +401,13 @@ def test_a_rest_that_steps_to_another_level_is_quiet_on_both_sides(tmp_path: Pat
     got = wav.measure(wav.read("p", _write(tmp_path / "s.wav", [step])), None, None)
     spans = got["measures"][0]["silence_spans"]
     assert spans["count"] == 2 and spans["first"] == [0.0, 0.2], spans
+
+
+def test_a_sound_rising_from_a_rest_below_zero_is_not_clipped_at_its_rest(
+        tmp_path: Path) -> None:
+    """A chip resting at -8500 that rises in short swells: the rest is the sample farthest from
+    zero and it is flat, but it is where the sound rests, not a top it was clipped against."""
+    swell = [-8500 + round(1500 * math.sin(math.pi * i / 20)) for i in range(20)]
+    s = ([-8500] * 60 + swell) * (RATE // 80)
+    got = wav.measure(wav.read("p", _write(tmp_path / "r.wav", [s])), None, None)["measures"][0]
+    assert got["silent"] is False and got["clipped"] is False, got

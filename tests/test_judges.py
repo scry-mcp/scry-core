@@ -21,7 +21,7 @@ def test_whole_numbers_and_their_bounds() -> None:
 
 @pytest.mark.parametrize("value", ["a.png", "", None, 3, "/x\x00y"])
 def test_a_path_that_is_not_absolute_is_refused(value: object) -> None:
-    with pytest.raises(Invalid, match="is an absolute path") as e:
+    with pytest.raises(Invalid, match="must be an absolute path") as e:
         judges.absolute("a", value)
     assert e.value.code == "bad_argument"
 

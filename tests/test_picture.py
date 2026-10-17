@@ -139,7 +139,8 @@ def test_a_picture_past_the_ceiling_is_written_and_not_inlined(tmp_path: Path) -
                         ((0, 0, 0),))
     image = picture.publish(raster, 0, None, tmp_path, "screen", Recorded())
     assert image["inline"] is False and Path(image["path"]).is_file()
-    assert "crop" in image["not_inlined"] and image["scale"] == 1
+    assert "a smaller `scale`, or a `crop` where the tool takes one" in image["not_inlined"]
+    assert image["scale"] == 1
 
 
 def test_a_data_file_is_the_raster_unscaled(tmp_path: Path) -> None:

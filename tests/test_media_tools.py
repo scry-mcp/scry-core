@@ -68,6 +68,11 @@ def test_series_diff_region_track_and_golden_check_on_one_series(tmp_path: Path)
     assert track["start"] is None
     assert media_tools._region_track_line({}, track) == (
         "region_track changed_pixels: 2 transitions over 5 frames")
+    cut = media_tools.region_track(one, crop=[0, 0, 1, 1], measure="changed_pixels", limit=1)
+    assert media_tools._region_track_line({}, cut) == (
+        "region_track changed_pixels: 2 transitions over 5 frames, the first 1 listed")
+    assert media_tools._region_track_line({}, {**track, "transitions_total": 1}).endswith(
+        ": 1 transition over 5 frames")
     ref = _png(tmp_path / "ref.png", {(0, 0)}, 1, 1)
     matched = media_tools.region_track(one, crop=[0, 0, 1, 1], measure="match", ref=ref,
                                        threshold=1)
@@ -92,12 +97,12 @@ def test_series_diff_region_track_and_golden_check_on_one_series(tmp_path: Path)
 
 
 @pytest.mark.parametrize("tool, kw, said", [
-    ("image_diff", {"a": "a.png", "b": "/b.png"}, "a='a.png' is an absolute path"),
+    ("image_diff", {"a": "a.png", "b": "/b.png"}, "a='a.png' must be an absolute path"),
     ("image_diff", {"a": "/a", "b": "/b", "crop": [0, 0, 0, 1]}, "crop="),
     ("image_diff", {"a": "/a", "b": "/b", "shift": [1]}, "shift="),
     ("image_diff", {"a": "/a", "b": "/b", "tolerance": 256}, "tolerance=256"),
     ("image_diff", {"a": "/a", "b": "/b", "tolerance": True}, "tolerance=True"),
-    ("series_diff", {"a": "/a", "b": ""}, "b='' is an absolute path"),
+    ("series_diff", {"a": "/a", "b": ""}, "b='' must be an absolute path"),
     ("series_diff", {"a": "/a", "b": "/b", "crop": [1]}, "crop="),
     ("region_track", {"manifest": "/m", "measure": "area"}, "measure='area' is one of"),
     ("region_track", {"manifest": "/m", "measure": "match"}, "`ref` goes with measure"),

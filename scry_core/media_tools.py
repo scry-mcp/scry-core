@@ -206,9 +206,9 @@ def audio_measure(path: str, window: list[float] | None = None,
     `path`: the absolute path of an 8- or 16-bit PCM WAV. `window` [from_s, to_s], seconds
     (default the whole file). `channel` (default every channel).
 
-    A chip resting at a steady level is silent: the RMS reads the window less its mean, the
-    silences read it through a DC blocker, the onset against its first sample, the peak and
-    plateau as written (a square wave's flat top reads as a plateau too).
+    A chip resting at a steady level is silent: the RMS and the plateau read the window less its
+    mean, the silences read it through a DC blocker, the onset against its first sample, the
+    peak as written (a square wave's flat top reads as a plateau too).
     Reply, per channel in `measures` (`channel`, 0 the first, the left of a stereo file):
     `peak_dbfs` and `rms_dbfs` (null for zero), `silent` (an RMS under 0.5% of full scale),
     `silence_spans` (`count`, and the `first` [from_s, to_s] quieter than -60 dBFS for 50 ms or
@@ -286,8 +286,10 @@ def _series_diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
 
 
 def _region_track_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    return (f"region_track {reply['measure']}: {reply['transitions_total']} transitions over "
-            f"{reply['frames']} frames")
+    total = reply["transitions_total"]
+    cut = f", the first {len(reply['transitions'])} listed" if reply.get("omitted") else ""
+    return (f"region_track {reply['measure']}: {total} transition{'' if total == 1 else 's'} "
+            f"over {reply['frames']} frames{cut}")
 
 
 def _golden_check_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
@@ -316,9 +318,9 @@ TOOLS: dict[str, FileTool] = {
                              check_region_track, _region_track_line, False),
     "golden_check": FileTool("Check files against goldens", golden_check, check_golden_check,
                              _golden_check_line, True),
-    "audio_measure": FileTool("Measure a recording", audio_measure, check_audio_measure,
+    "audio_measure": FileTool("Measure a WAV recording", audio_measure, check_audio_measure,
                               _audio_measure_line, True),
-    "audio_diff": FileTool("Compare two recordings", audio_diff, check_audio_diff,
+    "audio_diff": FileTool("Compare two WAV recordings", audio_diff, check_audio_diff,
                            _audio_diff_line, True),
 }
 #: The tools of the image layer, which both servers register.

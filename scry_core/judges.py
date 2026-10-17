@@ -44,7 +44,7 @@ def shift(value: object) -> tuple[int, int]:
 def absolute(name: str, value: object) -> Path:
     """A path argument: a string naming an absolute path, or the refusal naming `name`."""
     if not isinstance(value, str) or not value or "\x00" in value or not Path(value).is_absolute():
-        raise Invalid("bad_argument", f"{name}={value!r} is an absolute path")
+        raise Invalid("bad_argument", f"{name}={value!r} must be an absolute path")
     return Path(value)
 
 

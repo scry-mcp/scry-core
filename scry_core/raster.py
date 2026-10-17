@@ -88,6 +88,18 @@ def cropped(raster: Raster, crop: Sequence[int] | None) -> Raster:
                   raster.palette)
 
 
+def _enlarged(a: Raster, b: Raster) -> str:
+    """What to say when one picture is the other's size times a whole factor: a view's PNG is
+    enlarged by its `scale`, and a crop of it would compare a corner of the enlargement."""
+    for big, small, which in ((a, b, "the first is {}x the second"),
+                              (b, a, "the second is {}x the first")):
+        factor, rest = divmod(big.width, small.width)
+        if factor > 1 and not rest and big.height == small.height * factor:
+            return (f"; {which.format(factor)}, as a view's PNG is enlarged by its `scale`: ask "
+                    "the view at `scale=1`")
+    return ""
+
+
 def diff(a: Raster, b: Raster, crop: Sequence[int] | None = None,
          shift: Sequence[int] = (0, 0), tolerance: int = 0) -> dict[str, Any]:
     """`a` against `b`: pixel (x, y) of `a` against (x + dx, y + dy) of `b`, over the part of
@@ -96,7 +108,8 @@ def diff(a: Raster, b: Raster, crop: Sequence[int] | None = None,
     none differ), `max_delta` per channel, and `compared`, the rectangle of `a` compared."""
     if crop is None and (a.width, a.height) != (b.width, b.height):
         raise Invalid("bad_argument", f"the pictures are {a.width}x{a.height} and "
-                      f"{b.width}x{b.height}: name a `crop` that lies inside both")
+                      f"{b.width}x{b.height}: name a `crop` that lies inside both"
+                      + _enlarged(a, b))
     x0, y0, w, h = inside(crop, a.width, a.height, "the first picture")
     inside(crop, b.width, b.height, "the second picture")
     dx, dy = shift

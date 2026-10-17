@@ -15,11 +15,12 @@ as in the gate. A channel is compared with its twin, never through a mixdown: a 
 antiphase would cancel to silence and two swapped channels would average to one sound.
 
 An emulated chip at rest sits at a steady level rather than at zero, and a steady level is no
-sound. The RMS and every comparison read the window less its mean; the silences read it through a
-DC blocker; the onset reads how far it moves from the level it starts at (a window opened mid-sound
-starts at its first change). A silent window has no onset and no plateau. The peak and the plateau
-read the samples as written: the headroom left, and a top that is flat, which a plateau cannot tell
-from a square wave's. 8- and 16-bit PCM are read (8-bit is unsigned, centred on 128); any other WAV
+sound. The RMS, the plateau and every comparison read the window less its mean, so the level a
+chip rests at is never the top it was clipped against, while a clipped top stays flat (and a plateau
+cannot tell it from a square wave's); the silences read it through a DC blocker; the onset reads
+how far it moves from the level it starts at (a window opened mid-sound starts at its first
+change). A silent window has no onset and no plateau. The peak reads the samples as written: the
+headroom left. 8- and 16-bit PCM are read (8-bit is unsigned, centred on 128); any other WAV
 is refused by what it is. A comparison of two recordings that are both silent compares nothing, so
 it is `control_silent`, never a match.
 """
@@ -87,6 +88,8 @@ def read(name: str, value: object) -> Recording:
         raise Invalid("bad_argument", f"{name}: {path} is not a PCM WAV this reads: {e}") from None
     except OSError as e:
         raise Invalid("bad_argument", f"{name}: {path} cannot be read: {e}") from None
+    if rate < 1:
+        raise Invalid("bad_argument", f"{name}: {path} declares {rate} samples a second")
     if width not in FULL_SCALE:
         raise Invalid("bad_argument", f"{name}: {path} is {8 * width}-bit PCM; this reads 8- and "
                       "16-bit only")
@@ -109,10 +112,12 @@ def span(recording: Recording, window: Sequence[float] | None) -> tuple[int, int
     seconds = judges.window("window", window)
     if seconds is None:
         return 0, recording.length
-    if seconds[1] * recording.rate > recording.length + 0.5:
+    # Judged on the samples it rounds to, which is what is read: a time half a sample past the
+    # last one rounds either way.
+    start, end = (round(t * recording.rate) for t in seconds)
+    if end > recording.length:
         raise Invalid("bad_argument", f"window {list(seconds)} is not inside "
                       f"{recording.path.name}, which is {recording.length / recording.rate:g} s")
-    start, end = (round(t * recording.rate) for t in seconds)
     if start >= end:
         raise Invalid("bad_argument", f"window {list(seconds)} holds no sample at "
                       f"{recording.rate} Hz")
@@ -137,7 +142,7 @@ def onset(samples: Sequence[float]) -> int | None:
     return next(i for i, x in enumerate(samples) if abs(x) > floor)
 
 
-def plateau(samples: Sequence[int], full: int) -> int:
+def plateau(samples: Sequence[float], full: int) -> int:
     """The longest run of flat samples at `PEAK_FRACTION` of the peak or above."""
     peak = max((abs(x) for x in samples), default=0)
     if not peak:
@@ -218,9 +223,9 @@ def measure(recording: Recording, window: Sequence[float] | None,
         silent = rms / recording.full < SILENT_RMS
         quiet = silences(heard, recording.rate, recording.full, start)
         first = None if silent else onset(from_rest(raw))
-        # The plateau reads the samples as written, where a clipped top is flat; a silent
-        # window has no top to clip, only the level it rests at.
-        run = 0 if silent else plateau(raw, recording.full)
+        # The plateau reads the window less its mean, where a clipped top is still flat and the
+        # level a chip rests at is near zero, not a top; a silent window has no top to clip.
+        run = 0 if silent else plateau(centred(raw), recording.full)
         out.append({"channel": c, "peak_dbfs": _dbfs(peak, recording.full),
                     "rms_dbfs": _dbfs(rms, recording.full),
                     "silent": silent,

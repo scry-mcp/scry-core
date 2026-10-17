@@ -140,6 +140,19 @@ def test_pictures_of_two_sizes_need_a_crop_inside_both() -> None:
     assert raster.diff(a, b, crop=[0, 0, 3, 3])["differing_pixels"] == 0
 
 
+def test_a_picture_a_whole_multiple_of_the_other_is_told_it_may_be_an_enlarged_view() -> None:
+    """A view's PNG is enlarged by its `scale`; a crop of it against a golden at the screen's
+    size would compare a corner of the enlargement, so the refusal names the factor."""
+    big, small = _rgb(16, 12, (1, 1, 1)), _rgb(4, 3, (1, 1, 1))
+    for a, b, which in ((big, small, "the first is 4x the second"),
+                        (small, big, "the second is 4x the first")):
+        with pytest.raises(Invalid, match=rf"{which}.*`scale=1`"):
+            raster.diff(a, b)
+    with pytest.raises(Invalid) as plain:
+        raster.diff(_rgb(4, 3, (1, 1, 1)), _rgb(3, 3, (1, 1, 1)))
+    assert "scale" not in str(plain.value), "no factor, no hint"
+
+
 def test_the_region_measures() -> None:
     a = _rgb(4, 3, (0, 0, 0))
     b = _with(a, {(0, 0): (9, 9, 9), (3, 2): (9, 9, 9)})

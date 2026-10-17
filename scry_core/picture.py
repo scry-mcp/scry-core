@@ -118,7 +118,8 @@ def publish(raster: png.Raster, scale: int, dest: Path | None, scratch: Path, st
         block["not_inlined"] = (
             f"{big.width}x{big.height} is past the inline ceiling (a side of "
             f"{INLINE_SIDE_MAX} px, {INLINE_TOKENS_MAX} tiles of {TOKEN_SIDE} px), where the API "
-            "would resample it: the file is written; ask for a crop or a smaller scale")
+            "would resample it: the file is written; ask for a smaller `scale`, or a `crop` where "
+            "the tool takes one")
     return block
 
 
