@@ -60,3 +60,15 @@ def test_the_record_says_which_tool_how_long_and_what_it_left() -> None:
     c = cancel.Cancelled("run_for", 2.04, "stopped")
     assert c.note() == {"tool": "run_for", "after_s": 2.0, "left": "stopped"}
     assert c.summary("status: alive") == "after a cancelled run_for (stopped): status: alive"
+
+
+def test_a_record_kept_over_an_unreported_one_names_the_calls_before_it() -> None:
+    first = cancel.recorded(None, "run_to", 1.0, "stopped")
+    assert first == cancel.Cancelled("run_to", 1.0, "stopped")
+    second = cancel.recorded(first, "run_for", 2.0, "stopped")
+    third = cancel.recorded(second, "log_wait", 0.5, "running")
+    assert third.earlier == ("run_to", "run_for")
+    assert third.note() == {"tool": "log_wait", "after_s": 0.5, "left": "running",
+                            "earlier": ["run_to", "run_for"]}
+    assert third.summary("status: alive") == (
+        "after a cancelled log_wait (running), and run_to, run_for before it: status: alive")

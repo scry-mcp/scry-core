@@ -27,7 +27,7 @@ import anyio.from_thread
 OnCancel = Literal["stop", "kill", "none"]
 ON_CANCEL: tuple[OnCancel, ...] = get_args(OnCancel)
 #: What the machine was left as, in the record.
-Left = Literal["stopped", "running", "closed", "as it was", "unknown"]
+Left = Literal["stopped", "running", "closed", "unknown"]
 
 
 # THE END OF A CANCELLED CALL RUNS SHIELDED: the request stays cancelled while the server stops
@@ -81,16 +81,31 @@ def is_cancellation(e: BaseException) -> bool:
 
 @dataclass(frozen=True)
 class Cancelled:
-    """A call that was cancelled: which tool, how long it had run, and what it left."""
+    """A call that was cancelled: which tool, how long it had run, and what it left, and the
+    cancelled calls before it that no reply reported (`recorded`)."""
 
     tool: str
     after_s: float
     left: Left
+    earlier: tuple[str, ...] = ()
 
     def note(self) -> dict[str, Any]:
-        return {"tool": self.tool, "after_s": round(self.after_s, 1), "left": self.left}
+        note: dict[str, Any] = {"tool": self.tool, "after_s": round(self.after_s, 1),
+                                "left": self.left}
+        if self.earlier:
+            note["earlier"] = list(self.earlier)
+        return note
 
     def summary(self, summary: str) -> str:
         """The next reply's summary, saying first what the cancelled call left."""
-        return f"after a cancelled {self.tool} ({self.left}): {summary}"
+        before = f", and {', '.join(self.earlier)} before it" if self.earlier else ""
+        return f"after a cancelled {self.tool} ({self.left}){before}: {summary}"
+
+
+def recorded(previous: Cancelled | None, tool: str, after_s: float, left: Left) -> Cancelled:
+    """The record of a call just cancelled, keeping the names of those no reply has reported
+    yet: what the machine was left as is the newest call's, but a caller still has to learn
+    that the earlier ones never answered."""
+    earlier = () if previous is None else (*previous.earlier, previous.tool)
+    return Cancelled(tool, after_s, left, earlier)
 
