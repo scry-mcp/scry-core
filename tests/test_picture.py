@@ -128,6 +128,10 @@ def test_a_dest_is_written_once_and_never_over(tmp_path: Path) -> None:
     with pytest.raises(Invalid, match="will not overwrite it") as e:
         picture.publish(png.Raster(1, 1, bytes(3)), 1, dest, tmp_path, "screen", record)
     assert e.value.code == "bad_argument" and record == [dest], "a refused write records nothing"
+    with pytest.raises(Invalid, match="cannot be created") as e:
+        picture.publish(png.Raster(1, 1, bytes(3)), 1, tmp_path / "no" / "x.png", tmp_path,
+                        "screen", record)
+    assert e.value.code == "bad_argument", "a dest the caller named that cannot be opened"
 
 
 def test_a_picture_past_the_ceiling_is_written_and_not_inlined(tmp_path: Path) -> None:
@@ -200,3 +204,9 @@ def test_a_reply_whose_body_is_not_an_object_is_left_alone() -> None:
     bare = CallToolResult(content=[TextContent(type="text", text="x")], structured_content=None)
     assert picture.attached(bare) is bare
     assert picture.attached("not a result") == "not a result"
+
+
+def test_the_shared_sentences_carry_the_constants_that_enforce_them() -> None:
+    for value in (picture.INLINE_SIDE_MAX, picture.INLINE_TOKENS_MAX, picture.TOKEN_SIDE):
+        assert str(value) in picture.DESCRIBED
+    assert str(picture.SCALE_MAX) in picture.ARGUMENTS and "gone at `close`" in picture.ARGUMENTS

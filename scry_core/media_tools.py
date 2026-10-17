@@ -15,7 +15,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
-from scry_core import goldens, judges, raster, series
+from scry_core import goldens, judges, raster, series, wav
 from scry_core.reply_contract import Invalid
 
 Summary = Callable[[dict[str, Any], dict[str, Any]], str]
@@ -190,6 +190,82 @@ def golden_check(manifest: str = "", dir: str = "", checksums: str = "") -> dict
     return {**goldens.compare(files, sums), "checksums": checksums, **where}
 
 
+def check_audio_measure(path: object = "", window: object = None, channel: object = None,
+                        **_: Any) -> None:
+    judges.absolute("path", path)
+    judges.window("window", window)
+    if channel is not None and not judges.whole(channel):
+        raise Invalid("bad_argument", f"channel={channel!r} is a channel number, from 0")
+
+
+def audio_measure(path: str, window: list[float] | None = None,
+                  channel: int | None = None) -> dict[str, Any]:
+    """Measure a WAV (what `audio_record` writes) and answer whether it sounded, how loud, when
+    and whether it clipped, as numbers: the sound itself never comes back.
+
+    `path`: the absolute path of an 8- or 16-bit PCM WAV. `window` [from_s, to_s], seconds
+    (default the whole file). `channel` (default every channel).
+
+    Reply, per channel in `measures` (`channel`, 0 the first, the left of a stereo file):
+    `peak_dbfs` and `rms_dbfs` (null for zero), `silent` (an RMS under 0.5% of full scale),
+    `silence_spans` (`count`, and the `first` [from_s, to_s] quieter than -60 dBFS for 50 ms or
+    more), `onset_s` (the first sample over 2% of the peak, from the file's start; null for all
+    zeros), `clipping_run` (the longest run of flat samples at 95% of the peak or above; a
+    steady level is one too) and `clipped` (a run past 8); then `sample_rate_hz`, `channels`,
+    `bits`, `window` and `pcm_sha256` (the window's frames, every channel's, for an exact
+    comparison), and `path`.
+    """
+    check_audio_measure(path, window, channel)
+    recording = wav.read("path", path)
+    return {**wav.measure(recording, window, channel), "path": str(recording.path)}
+
+
+def check_audio_diff(a: object = "", b: object = "", window: object = None, align: object = True,
+                     **_: Any) -> None:
+    judges.absolute("a", a)
+    judges.absolute("b", b)
+    judges.window("window", window)
+    if not isinstance(align, bool):
+        raise Invalid("bad_argument", f"align={align!r} is true or false")
+
+
+def audio_diff(a: str, b: str, window: list[float] | None = None,
+               align: bool = True) -> dict[str, Any]:
+    """Compare two WAVs of one format, `b` the reference, and answer how close they are as
+    numbers.
+
+    `a`, `b`: absolute paths of 8- or 16-bit PCM WAVs of one rate, channel count and width.
+    `window` [from_s, to_s], seconds, on each. `align` (default true) drops the head of the
+    later one so the two onsets meet, so a recording that starts later is not called different
+    for it. Each channel is compared with its twin and the worst grades. THE CONTROL: two
+    recordings both `silent` (as `audio_measure` says) over the window compare nothing, so that
+    is `control_silent`.
+
+    Reply: `exact` (the windows' bytes equal), `snr_db` (signal to error, the reference's
+    energy over the difference's, the worst channel's; null when equal after alignment),
+    `class` (`exact`, `inaudible` at 60 dB or more, `audible` 30 to 60, `different` under 30 or
+    lengths a tenth of a second apart), `envelope_correlation` (of the 64-window energy
+    envelopes, the worst channel's), `onset_delta_ms` (a's onset minus b's),
+    `length_delta_samples` (a's minus b's), `aligned_by_samples` (positive: a's head dropped;
+    negative: b's), and `a`, `b`.
+    """
+    check_audio_diff(a, b, window, align)
+    one, two = wav.read("a", a), wav.read("b", b)
+    return {**wav.compare(one, two, window, align), "a": str(one.path), "b": str(two.path)}
+
+
+def _audio_measure_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
+    said = ", ".join(f"ch{m['channel']} " + ("silent" if m["silent"] else
+                     f"peak {m['peak_dbfs']} dBFS, onset {m['onset_s']} s"
+                     + (", clipped" if m["clipped"] else "")) for m in reply["measures"])
+    return f"audio_measure: {said}"
+
+
+def _audio_diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
+    snr = "equal" if reply["snr_db"] is None else f"SNR {reply['snr_db']} dB"
+    return f"audio_diff: {reply['class']}, {snr}, envelope {reply['envelope_correlation']}"
+
+
 def _image_diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     x, y, w, h = reply["crop"]
     past = f" past tolerance {reply['tolerance']}" if reply["tolerance"] else ""
@@ -237,9 +313,15 @@ TOOLS: dict[str, FileTool] = {
                              check_region_track, _region_track_line, False),
     "golden_check": FileTool("Check files against goldens", golden_check, check_golden_check,
                              _golden_check_line, True),
+    "audio_measure": FileTool("Measure a recording", audio_measure, check_audio_measure,
+                              _audio_measure_line, True),
+    "audio_diff": FileTool("Compare two recordings", audio_diff, check_audio_diff,
+                           _audio_diff_line, True),
 }
 #: The tools of the image layer, which both servers register.
-IMAGE_TOOLS = tuple(TOOLS)
+IMAGE_TOOLS = ("image_diff", "series_diff", "region_track", "golden_check")
+#: The tools of the sound layer, which a server registers once it records a WAV.
+AUDIO_TOOLS = ("audio_measure", "audio_diff")
 
 
 def register(wrap: Wrap, names: Sequence[str]) -> dict[str, Any]:

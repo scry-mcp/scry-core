@@ -1,0 +1,269 @@
+"""What a recording says, measured on the host from the WAV: whether it sounded, how loud, when,
+whether it clipped, and how close two recordings are. Sound never reaches the model as content:
+it reaches it as these numbers and the file's path.
+
+THE MEASURES are the ones a tracker's own audio gates use, so a server's answer and a project's
+gate agree: a peak and an RMS in dBFS; silence as an RMS under `SILENT_RMS` of full scale; spans
+of silence at `SILENCE_DBFS` lasting `SILENCE_MIN_S` or more; the onset as the first sample over
+`ONSET_FRACTION` of the peak; clipping as the longest run of flat samples near the peak (a
+clipped top is flat at any level, so its signature is the plateau, not the full-scale value);
+and between two recordings, channel by channel with the worst grading, the signal-to-error
+ratio, sorted into `exact`, `inaudible`, `audible` and `different`, beside the correlation of
+their energy envelopes, which gives away a change of shape that leaves the global level where it
+was. Two lengths more than a tenth of a second apart are `different` whatever the overlap says,
+as in the gate. A channel is compared with its twin, never through a mixdown: a channel in
+antiphase would cancel to silence and two swapped channels would average to one sound.
+
+8- and 16-bit PCM are read (8-bit is unsigned, centred on 128); any other WAV is refused by what
+it is. A comparison of two recordings that are both silent compares nothing, so it is
+`control_silent`, never a match.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import math
+import wave
+from array import array
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from scry_core import judges
+from scry_core.reply_contract import Invalid
+
+SILENT_RMS = 0.005
+SILENCE_DBFS = -60.0
+SILENCE_MIN_S = 0.050
+ONSET_FRACTION = 0.02
+#: The plateau detector's constants: two samples within `FLAT_EPS` 16-bit steps are flat; only a
+#: plateau at `PEAK_FRACTION` of the peak or above counts; a run past `CLIP_RUN_MAX` is clipping.
+FLAT_EPS = 2
+PEAK_FRACTION = 0.95
+CLIP_RUN_MAX = 8
+ENVELOPE_WINDOWS = 64
+SNR_INAUDIBLE_DB, SNR_AUDIBLE_DB = 60.0, 30.0
+#: Two lengths more than a tenth of a second apart are different recordings, the tracker's rule.
+LENGTH_TENTHS = 10
+#: An envelope whose deviation is under this fraction of full scale has no shape to correlate.
+FLAT_ENVELOPE = 1e-6
+#: The sample widths read, in bytes, with their full scale.
+FULL_SCALE = {1: 128, 2: 32768}
+
+
+@dataclass(frozen=True)
+class Recording:
+    """A WAV as read: its rate, its channels' samples signed around zero, its full scale, and
+    the raw frames the samples came from."""
+
+    path: Path
+    rate: int
+    channels: list[array[int]]
+    full: int
+    raw: bytes
+    width: int
+
+    @property
+    def length(self) -> int:
+        return len(self.channels[0])
+
+
+def read(name: str, value: object) -> Recording:
+    """The WAV at `value`, or the refusal naming what it is when it is not 8- or 16-bit PCM."""
+    path = judges.existing_file(name, value)
+    try:
+        with wave.open(str(path), "rb") as w:
+            width, count, rate = w.getsampwidth(), w.getnchannels(), w.getframerate()
+            raw = w.readframes(w.getnframes())
+    except (wave.Error, EOFError) as e:
+        raise Invalid("bad_argument", f"{name}: {path} is not a PCM WAV this reads: {e}") from None
+    except OSError as e:
+        raise Invalid("bad_argument", f"{name}: {path} cannot be read: {e}") from None
+    if width not in FULL_SCALE:
+        raise Invalid("bad_argument", f"{name}: {path} is {8 * width}-bit PCM; this reads 8- and "
+                      "16-bit only")
+    # A file cut inside a frame (a run killed mid-write) is read to its last whole frame, so
+    # every channel holds as many samples as the others.
+    raw = raw[:len(raw) // (width * count) * (width * count)]
+    if width == 1:
+        flat = array("h", (b - 128 for b in raw))
+    else:
+        flat = array("h")
+        flat.frombytes(raw)
+    channels = [flat[c::count] for c in range(count)]
+    if not len(channels[0]):
+        raise Invalid("bad_argument", f"{name}: {path} holds no sample")
+    return Recording(path, rate, channels, FULL_SCALE[width], raw, width)
+
+
+def span(recording: Recording, window: Sequence[float] | None) -> tuple[int, int]:
+    """The sample range `window` (`[from_s, to_s]`, seconds) names, judged inside the file."""
+    seconds = judges.window("window", window)
+    if seconds is None:
+        return 0, recording.length
+    if seconds[1] * recording.rate > recording.length + 0.5:
+        raise Invalid("bad_argument", f"window {list(seconds)} is not inside "
+                      f"{recording.path.name}, which is {recording.length / recording.rate:g} s")
+    start, end = (round(t * recording.rate) for t in seconds)
+    if start >= end:
+        raise Invalid("bad_argument", f"window {list(seconds)} holds no sample at "
+                      f"{recording.rate} Hz")
+    return start, end
+
+
+def _dbfs(level: float, full: int) -> float | None:
+    """`level` in dB of full scale, rounded; None for a level of zero, which has none."""
+    return round(20 * math.log10(level / full), 2) if level > 0 else None
+
+
+def _rms(samples: Sequence[float]) -> float:
+    return math.sqrt(math.fsum(x * x for x in samples) / len(samples)) if len(samples) else 0.0
+
+
+def onset(samples: Sequence[float]) -> int | None:
+    """The index of the first sample over `ONSET_FRACTION` of the peak; None for silence."""
+    peak = max((abs(x) for x in samples), default=0)
+    if not peak:
+        return None
+    floor = ONSET_FRACTION * peak
+    return next(i for i, x in enumerate(samples) if abs(x) > floor)
+
+
+def plateau(samples: Sequence[int], full: int) -> int:
+    """The longest run of flat samples at `PEAK_FRACTION` of the peak or above."""
+    peak = max((abs(x) for x in samples), default=0)
+    if not peak:
+        return 0
+    eps, high = FLAT_EPS * full // 32768, PEAK_FRACTION * peak
+    run = longest = 0
+    for prev, x in zip(samples, samples[1:], strict=False):
+        if abs(x) >= high and abs(x - prev) <= eps:
+            run += 1
+            longest = max(longest, run)
+        else:
+            run = 0
+    return longest
+
+
+def silences(samples: Sequence[int], rate: int, full: int, offset: int) -> list[list[float]]:
+    """Every span quieter than `SILENCE_DBFS` lasting `SILENCE_MIN_S` or more, as `[from_s,
+    to_s]` from the file's start (`offset` is the window's first sample)."""
+    floor = full * 10 ** (SILENCE_DBFS / 20)
+    least = round(SILENCE_MIN_S * rate)
+    out: list[list[float]] = []
+    begun: int | None = None
+    for i, x in enumerate([*samples, floor + 1]):
+        if abs(x) < floor:
+            if begun is None:
+                begun = i
+        elif begun is not None:
+            if i - begun >= least:
+                out.append([round((offset + begun) / rate, 4), round((offset + i) / rate, 4)])
+            begun = None
+    return out
+
+
+def measure(recording: Recording, window: Sequence[float] | None,
+            channel: int | None) -> dict[str, Any]:
+    """The measures of each channel (or of `channel`) over `window`, and the window's PCM hash."""
+    start, end = span(recording, window)
+    count = len(recording.channels)
+    if channel is not None and not judges.whole(channel, 0, count - 1):
+        raise Invalid("bad_argument", f"channel={channel!r}: {recording.path.name} has "
+                      f"{count} channel(s), numbered from 0")
+    chosen = range(count) if channel is None else [channel]
+    out = []
+    for c in chosen:
+        samples = recording.channels[c][start:end]
+        peak, rms = max(abs(x) for x in samples), _rms(samples)
+        quiet = silences(samples, recording.rate, recording.full, start)
+        first = onset(samples)
+        run = plateau(samples, recording.full)
+        out.append({"channel": c, "peak_dbfs": _dbfs(peak, recording.full),
+                    "rms_dbfs": _dbfs(rms, recording.full),
+                    "silent": rms / recording.full < SILENT_RMS,
+                    "silence_spans": {"count": len(quiet), "first": quiet[0] if quiet else None},
+                    "onset_s": None if first is None else round((start + first) / recording.rate,
+                                                                4),
+                    "clipping_run": run, "clipped": run > CLIP_RUN_MAX})
+    frame = recording.width * count
+    pcm = recording.raw[start * frame:end * frame]
+    return {"sample_rate_hz": recording.rate, "channels": count, "bits": 8 * recording.width,
+            "window": [round(start / recording.rate, 4), round(end / recording.rate, 4)],
+            "measures": out, "pcm_sha256": hashlib.sha256(pcm).hexdigest()}
+
+
+def envelope(samples: Sequence[float]) -> list[float]:
+    """The RMS of each of `ENVELOPE_WINDOWS` equal windows."""
+    width = max(1, len(samples) // ENVELOPE_WINDOWS)
+    return [_rms(samples[i * width:(i + 1) * width]) for i in range(ENVELOPE_WINDOWS)]
+
+
+def correlation(a: Sequence[float], b: Sequence[float], full: int) -> float:
+    """Pearson's correlation of two equal-length envelopes in samples of `full` scale. An
+    envelope flat to `FLAT_ENVELOPE` of full scale has no shape: two of them correlate 1, and
+    one against a shaped one 0."""
+    n = min(len(a), len(b))
+    ma, mb = math.fsum(a[:n]) / n, math.fsum(b[:n]) / n
+    num = math.fsum((a[i] - ma) * (b[i] - mb) for i in range(n))
+    da = math.sqrt(math.fsum((a[i] - ma) ** 2 for i in range(n)))
+    db = math.sqrt(math.fsum((b[i] - mb) ** 2 for i in range(n)))
+    flat_a, flat_b = da / full < FLAT_ENVELOPE, db / full < FLAT_ENVELOPE
+    if flat_a or flat_b:
+        return 1.0 if flat_a and flat_b else 0.0
+    return round(num / (da * db), 6)
+
+
+def _channel(pa: Sequence[float], pb: Sequence[float], full: int) -> tuple[float | None, float]:
+    """One channel pair, already aligned: the SNR (None when equal) and the envelopes'
+    correlation."""
+    n = min(len(pa), len(pb))
+    signal = math.fsum(x * x for x in pb[:n])
+    error = math.fsum((pa[i] - pb[i]) ** 2 for i in range(n))
+    snr = None if error == 0 else (10 * math.log10(signal / error) if signal else 0.0)
+    return snr, correlation(envelope(pa[:n]), envelope(pb[:n]), full)
+
+
+def _first_onset(recording: Recording, start: int, end: int) -> int | None:
+    """The earliest onset of any channel over `start`..`end`."""
+    found = [o for ch in recording.channels if (o := onset(ch[start:end])) is not None]
+    return min(found, default=None)
+
+
+def _silent(recording: Recording, start: int, end: int) -> bool:
+    return all(_rms(ch[start:end]) / recording.full < SILENT_RMS for ch in recording.channels)
+
+
+def compare(a: Recording, b: Recording, window: Sequence[float] | None,
+            align: bool) -> dict[str, Any]:
+    """`a` against `b`, the reference, over `window` of each, `b` shifted so the onsets meet when
+    `align`; the module docstring says what is answered."""
+    if (a.rate, len(a.channels), a.width) != (b.rate, len(b.channels), b.width):
+        raise Invalid("bad_argument", f"the recordings are {a.rate} Hz x {len(a.channels)} "
+                      f"x {8 * a.width}-bit and {b.rate} Hz x {len(b.channels)} x "
+                      f"{8 * b.width}-bit: compare two of one format")
+    (sa, ea), (sb, eb) = span(a, window), span(b, window)
+    if _silent(a, sa, ea) and _silent(b, sb, eb):
+        raise Invalid("control_silent", "both recordings are silent over the window: two "
+                      "silences compare equal whatever produced them, which is no verdict")
+    frame = len(a.channels) * a.width
+    exact = a.raw[sa * frame:ea * frame] == b.raw[sb * frame:eb * frame]
+    oa, ob = _first_onset(a, sa, ea), _first_onset(b, sb, eb)
+    shift = oa - ob if align and oa is not None and ob is not None else 0
+    pairs = []
+    for ca, cb in zip(a.channels, b.channels, strict=True):
+        pa, pb = ca[sa:ea], cb[sb:eb]
+        pairs.append(_channel(pa[shift:], pb, a.full) if shift >= 0
+                     else _channel(pa, pb[-shift:], a.full))
+    known = [snr for snr, _ in pairs if snr is not None]
+    snr = min(known, default=None)
+    length_delta = (ea - sa) - (eb - sb)
+    grade = ("exact" if exact else "different" if abs(length_delta) > a.rate // LENGTH_TENTHS
+             else "inaudible" if snr is None or snr >= SNR_INAUDIBLE_DB
+             else "audible" if snr >= SNR_AUDIBLE_DB else "different")
+    return {"exact": exact, "snr_db": None if snr is None else round(snr, 2), "class": grade,
+            "envelope_correlation": min(c for _, c in pairs),
+            "onset_delta_ms": None if oa is None or ob is None
+            else round((oa - ob) * 1000 / a.rate, 3),
+            "length_delta_samples": length_delta, "aligned_by_samples": shift}

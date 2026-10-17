@@ -41,6 +41,16 @@ TOKEN_SIDE = 28
 SCALE_MAX = 8
 BORDER_COLOUR = (0x80, 0x80, 0x80)     # a neutral grey: what lies outside the picture's source
 
+#: The two sentences a view tool's description says about its picture, the same on both servers.
+DESCRIBED = (
+    "The PNG is attached after the JSON when within the inline ceiling "
+    f"({INLINE_SIDE_MAX} px a side, {INLINE_TOKENS_MAX} tiles of {TOKEN_SIDE} px); `image` names "
+    "it either way (`path`, `sha256`, `width`, `height`, `scale`, `indexed`, `inline`, "
+    "`not_inlined`)")
+ARGUMENTS = (
+    f"`scale` 0, the largest integer enlargement up to {SCALE_MAX} that fits; `dest` a new "
+    "absolute path, else the scratch, gone at `close`")
+
 #: How a server records a file it wrote for the session, so it is listed and cleaned with it.
 Record = Callable[[Path], None]
 
@@ -127,7 +137,7 @@ def written(data: bytes, dest: Path | None, scratch: Path, stem: str, record: Re
     if dest is None:
         path = fresh.numbered(scratch / "gfx", lambda n: f"{stem}-{n}.png", data, "the picture")
     else:
-        fresh.create(dest, data, "the picture")
+        fresh.create(dest, data, "the picture", named_by_caller=True)
         path = dest
     record(path)
     return path

@@ -6,6 +6,7 @@ tool and a file tool reject one mistake in one voice.
 from __future__ import annotations
 
 import hashlib
+import math
 from pathlib import Path
 from typing import TypeGuard
 
@@ -45,6 +46,19 @@ def absolute(name: str, value: object) -> Path:
     if not isinstance(value, str) or not value or "\x00" in value or not Path(value).is_absolute():
         raise Invalid("bad_argument", f"{name}={value!r} is an absolute path")
     return Path(value)
+
+
+def window(name: str, value: object) -> tuple[float, float] | None:
+    """A span of seconds `[from_s, to_s]`: two finite numbers at or above zero, the first before
+    the second; None for none given."""
+    if value is None:
+        return None
+    if not (isinstance(value, list | tuple) and len(value) == 2 and all(
+            isinstance(t, int | float) and not isinstance(t, bool) and math.isfinite(t)
+            and t >= 0 for t in value) and value[0] < value[1]):
+        raise Invalid("bad_argument", f"{name}={value!r} is [from_s, to_s], finite seconds at or "
+                      "above zero, the first before the second")
+    return float(value[0]), float(value[1])
 
 
 def existing_file(name: str, value: object) -> Path:

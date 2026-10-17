@@ -81,3 +81,17 @@ def test_a_write_that_fails_part_way_leaves_nothing(tmp_path: Path,
     with pytest.raises(Invalid, match="could not be written whole"):
         fresh.numbered(tmp_path, lambda n: f"t-{n}", b"x", "the file")
     assert list(tmp_path.iterdir()) == []
+
+
+def test_numbered_directories_skip_taken_names(tmp_path: Path) -> None:
+    (tmp_path / "s").mkdir()
+    (tmp_path / "s" / "series-1").mkdir()
+    made = [fresh.numbered_dir(tmp_path / "s", lambda n: f"series-{n}", "the series")
+            for _ in range(2)]
+    assert [p.name for p in made] == ["series-2", "series-3"] and all(p.is_dir() for p in made)
+    (tmp_path / "file").write_bytes(b"x")
+    with pytest.raises(Invalid, match="cannot be created") as e:
+        fresh.numbered_dir(tmp_path / "file", lambda n: f"s-{n}", "the series")
+    assert e.value.code == "host_failed"
+    with pytest.raises(Invalid, match="cannot be created"):
+        fresh.numbered_dir(tmp_path, lambda n: f"no/s-{n}", "the series")
