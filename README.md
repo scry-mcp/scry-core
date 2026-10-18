@@ -6,7 +6,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | Module | What it holds |
 |---|---|
 | `scry_core.reply_contract` | the refusal contract (`status`, `code`, `message`), its class and its envelope check |
-| `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, and the reply every path closes with; the server's vocabulary handed in as hooks |
+| `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, and the reply every path closes with; the server's vocabulary handed in as hooks |
 | `scry_core.ends_table` | a server reference's table of how a cancelled call ends, held against what its tools declare |
 | `scry_core.envelope` | the MCP boundary's server object: the schema's refusal given the server's envelope, off the event loop, and a tool's picture attached |
 | `scry_core.progress` | the progress line of a bounded wait: one a second, one short line, never backwards, none once the call is cancelled, bridged from the tool's worker thread to the request |
@@ -20,6 +20,8 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, and the probe's tasks |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, and the README block they generate |
+| `scry_core.recording` | a session as a bench: what a server did, recorded from its `start` through its call boundary, and exported as `perform`'s own document (`perform_export`); the check a replayed step holds to |
+| `scry_core.replay` | the runner of that document: the server over stdio, its steps in one `perform`, with no model |
 | `scry_core.focus_watch` | whether a live run took the owner's focus or moved their Space: the frontmost application and each display's Space sampled from outside the run (macOS) |
 | `scry_core.narrowing` | a reply that answers less than everything and says so: `omitted` and `how`, and the `sections` list a caller narrows by |
 | `scry_core.traffic` | what a server's replies and its tool list cost the model, per tool, in the client's unit, and the visual tokens of the pictures replies attach, read from `list_tools()` and, when given, live transcripts |
@@ -51,6 +53,7 @@ python -m scry_core.probe all --check --servers mcp_probe/servers.py --tasks mcp
 python -m scry_core.live_bench check --bench <bench>
 python -m scry_core.traffic <server> --servers mcp_probe/servers.py --transcript <jsonl>
 python -m scry_core.hook
+python -m scry_core.replay <document> [--binary PATH] [--rompath DIR] [--transcript PATH]
 ```
 
 `--help` on each is its contract. A real probe run asks the `claude` CLI and needs the network;

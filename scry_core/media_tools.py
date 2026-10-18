@@ -16,10 +16,11 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from scry_core import goldens, judges, raster, series, wav
+from scry_core.recording import ExportAs
 from scry_core.reply_contract import Invalid
 
 Summary = Callable[[dict[str, Any], dict[str, Any]], str]
-#: A server's registration decorator: `wrap(title, summary=..., read_only=...)(body)`.
+#: A server's registration decorator: `wrap(title, summary=..., read_only=..., replay=...)(body)`.
 Wrap = Callable[..., Callable[[Callable[..., Any]], Any]]
 TOLERANCE_MAX = 255
 REFERENCE = "Reference: REFERENCE.md, Media files."
@@ -299,14 +300,17 @@ def _golden_check_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
 
 @dataclass(frozen=True)
 class FileTool:
-    """One media tool: what the client shows, its body, its judge, its summary line, and
-    whether it is read-only (a tool that writes a file is not, whatever it reads)."""
+    """One media tool: what the client shows, its body, its judge, its summary line, whether it
+    is read-only (a tool that writes a file is not, whatever it reads), and what its calls become
+    in an exported session (`scry_core.recording`): dropped, since none reads the machine, but
+    for a check of what a file holds."""
 
     title: str
     body: Callable[..., dict[str, Any]]
     check: Callable[..., None]
     summary: Summary
     read_only: bool
+    replay: ExportAs = "drop"
 
 
 TOOLS: dict[str, FileTool] = {
@@ -317,7 +321,8 @@ TOOLS: dict[str, FileTool] = {
     "region_track": FileTool("Track a region through a series", region_track,
                              check_region_track, _region_track_line, False),
     "golden_check": FileTool("Check files against goldens", golden_check, check_golden_check,
-                             _golden_check_line, True),
+                             _golden_check_line, True,
+                             ("matched", "differing", "missing", "extra")),
     "audio_measure": FileTool("Measure a WAV recording", audio_measure, check_audio_measure,
                               _audio_measure_line, True),
     "audio_diff": FileTool("Compare two WAV recordings", audio_diff, check_audio_diff,
@@ -335,8 +340,8 @@ def register(wrap: Wrap, names: Sequence[str]) -> dict[str, Any]:
     unknown = sorted(set(names) - TOOLS.keys())
     if unknown:
         raise ValueError(f"no media tools named {unknown}")
-    return {n: wrap(TOOLS[n].title, summary=TOOLS[n].summary,
-                    read_only=TOOLS[n].read_only)(TOOLS[n].body) for n in names}
+    return {n: wrap(TOOLS[n].title, summary=TOOLS[n].summary, read_only=TOOLS[n].read_only,
+                    replay=TOOLS[n].replay)(TOOLS[n].body) for n in names}
 
 
 for _tool in TOOLS.values():

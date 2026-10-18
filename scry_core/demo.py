@@ -21,8 +21,10 @@ README carries and what `readme_drift` compares.
 Exit codes: 0 every step OK; 1 a step failed (the steps after it are not run); 2 a usage error,
 an unknown option included; 3 INVALID, nothing was demonstrated: zero steps, options given and
 no step to take them, a `precheck` reason (such as a ROM that is not there), a server that did
-not start, a README whose markers are not there exactly once, a capture the run did not write,
-or anything else that stopped the run before its verdict. Whatever happens, the run ends with
+not start, a step whose check found that nothing could be demonstrated (it raises `Invalid`), a
+README whose markers are not there exactly once, a capture the run did not write, or anything
+else that stopped the run before its verdict. `execute` is the run without its command line,
+for a runner of another shape (`scry_core.replay`). Whatever happens, the run ends with
 the cleanup call unless its last step already made it, so no emulator outlives it.
 
 THE README BLOCK IS GENERATED, never typed. `--update-readme` rewrites what sits between
@@ -141,7 +143,10 @@ class Step:
     fails before `check` is asked. `options` marks the step the command line's options are
     merged into, which is the server's `start`: `True` for all of them, or the set it takes.
     `volatile` adds reply keys hidden in this step alone, each with its reason: a value that
-    varies here (a register at a stop the clock chose) and is shown, stable, in another step."""
+    varies here (a register at a stop the clock chose) and is shown, stable, in another step.
+    `failure` words the FAIL of a reply that is not `ok`, where the reply's own summary would not
+    say what the run needs said. A check that raises `Invalid` ends the run INVALID: what it found
+    means nothing was demonstrated."""
 
     name: str
     tool: str
@@ -149,6 +154,7 @@ class Step:
     check: Callable[[Reply, Run], str]
     options: bool | frozenset[str] = False
     volatile: Mapping[str, str] = field(default_factory=dict)
+    failure: Callable[[Reply, Run], str] | None = None
 
 
 @dataclass(frozen=True)
@@ -159,7 +165,9 @@ class Demo:
     `capture` is the image `--update-readme` copies, a file in `run.dir` that one
     step writes. `precheck` answers why the demo cannot run at all, or an empty string. `volatile`
     adds reply keys to `VOLATILE`, each with its reason; `host_args` names the argument keys whose
-    values are the host's own rather than the demo's, each with its reason."""
+    values are the host's own rather than the demo's, each with its reason. `verdict` words the
+    last line from the steps declared and those OK, `DEMO <name>: <n> steps, <k> OK` unless
+    given."""
 
     name: str
     root: Path
@@ -172,6 +180,7 @@ class Demo:
     volatile: Mapping[str, str] = field(default_factory=dict)
     host_args: Mapping[str, str] = field(default_factory=dict)
     reads: frozenset[str] = frozenset()
+    verdict: Callable[[int, int], str] | None = None
 
 
 # ======================================================================== the README block
@@ -379,7 +388,7 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                     out.transcripts.add(n, step.tool, args, reply, line, step.volatile)
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
-                        out.code = EXIT_FAILED
+                        out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAILED
                         break
                     passed += 1
                 if not closed:
@@ -392,7 +401,9 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                 f"INVALID: the server did not start ({_why(e)}); its stderr is in {stderr_path}")
             if not started:
                 return out
-    out.lines.append(f"DEMO {demo.name}: {len(demo.steps)} steps, {passed} OK")
+    if out.code != EXIT_INVALID:              # an INVALID line is the run's last word
+        out.lines.append(demo.verdict(len(demo.steps), passed) if demo.verdict else
+                         f"DEMO {demo.name}: {len(demo.steps)} steps, {passed} OK")
     return out
 
 
@@ -412,11 +423,14 @@ async def _step(client: Client, step: Step, run: Run
         reply = _reply(await client.call_tool(step.tool, dict(args)))
         run.replies[step.name] = reply
         if reply.get("status") != "ok":
-            raise StepFailed(_refused(reply, step.tool))
+            raise StepFailed(step.failure(reply, run) if step.failure else
+                             _refused(reply, step.tool))
         summary = step.check(reply, run)
         if not isinstance(summary, str):
             raise StepFailed(f"the check returned {summary!r}, not a summary")
         return True, f"OK {step.name}: {_one_line(summary)}", args, reply
+    except Invalid as e:  # the step found that nothing could be demonstrated
+        return False, f"INVALID {step.name}: {_one_line(str(e))}", args, reply
     except Exception as e:  # every failure inside a step is that step's FAIL
         return False, f"FAIL {step.name}: {_why(e)}", args, reply
 
@@ -490,7 +504,7 @@ def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
              "shared": getattr(ns, "shared", None)}
     run = Run(dir=transcript.parent, options={k: v for k, v in given.items() if v is not None})
     try:
-        code = _main(demo, run, transcript, ns.update_readme)
+        code = execute(demo, run, transcript, ns.update_readme)
     except Invalid as e:
         print(f"INVALID: {e}")
         code = EXIT_INVALID
@@ -501,7 +515,9 @@ def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
     return code
 
 
-def _main(demo: Demo, run: Run, transcript: Path, update_readme: bool) -> int:
+def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False) -> int:
+    """Run `demo` with `run`'s options, write its transcripts at `transcript`, print its lines,
+    answer the exit code; `Invalid` for what stops it before a verdict (`main` prints it)."""
     if not demo.steps:
         raise Invalid(f"the demo {demo.name} declares zero steps, so it demonstrates nothing")
     untaken = set(run.options) - _taken(demo)

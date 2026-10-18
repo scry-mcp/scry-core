@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any, Literal, get_args
 
 #: The contract's version: a consumer can assert the contract it was written against.
-CONTRACT_VERSION = 4
+CONTRACT_VERSION = 5
 
 Code = Literal[
     "no_session",         # no live machine: `start` first
@@ -61,6 +61,8 @@ Code = Literal[
     "console_rerun",      # the console ran the call's own chunk again: it acted twice
     "host_failed",        # a helper of the host failed: a program, a file, the window server
     "step_failed",        # a step of a sequence failed; `failed` carries the step's own code
+    "diverged",           # a replayed step's reply does not hold to what the session recorded
+    "no_recording",       # nothing is recorded to export: a recording begins at a `start`
 ]
 CODES: frozenset[str] = frozenset(get_args(Code))
 

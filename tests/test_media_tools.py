@@ -148,16 +148,19 @@ def test_every_description_fits_a_client_and_says_what_it_touches() -> None:
 
 
 def test_register_hands_each_tool_to_the_servers_own_decorator() -> None:
-    seen: list[tuple[str, Any, bool, str]] = []
+    seen: list[tuple[str, Any, bool, str, Any]] = []
 
-    def wrap(title: str, *, summary: Any, read_only: bool) -> Any:
+    def wrap(title: str, *, summary: Any, read_only: bool, replay: Any) -> Any:
         def register(fn: Any) -> Any:
-            seen.append((title, summary, read_only, fn.__name__))
+            seen.append((title, summary, read_only, fn.__name__, replay))
             return ("registered", fn.__name__)
         return register
     got = media_tools.register(wrap, media_tools.IMAGE_TOOLS)
     assert got == {n: ("registered", n) for n in media_tools.IMAGE_TOOLS}
     assert [s[3] for s in seen] == list(media_tools.IMAGE_TOOLS)
     assert [s[2] for s in seen] == [True, True, False, True], "region_track writes its file"
+    # None reads the machine, so an export drops them all but the check of what files hold.
+    assert [s[4] for s in seen] == ["drop", "drop", "drop",
+                                    ("matched", "differing", "missing", "extra")]
     with pytest.raises(ValueError, match="no media tools named"):
         media_tools.register(wrap, ["screen_view"])

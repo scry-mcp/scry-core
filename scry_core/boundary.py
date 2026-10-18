@@ -32,6 +32,7 @@ from mcp.types import ToolAnnotations
 
 from scry_core import cancel
 from scry_core.envelope import Envelope
+from scry_core.recording import ExportAs, Recorder
 
 Reply = dict[str, Any]
 #: How the server calls a tool's body (the body, its signature, the call's positional and keyword
@@ -69,13 +70,18 @@ class Boundary:
                  take_cancelled: Callable[[], cancel.Cancelled | None],
                  keep_cancelled: Callable[[cancel.Cancelled], None],
                  doc: Callable[[str, str], str], after: After = _nothing_after,
-                 give_back: GiveBack = _nothing_to_give_back) -> None:
+                 give_back: GiveBack = _nothing_to_give_back,
+                 recorder: Recorder | None = None) -> None:
         self.mcp = mcp
         self._lock = lock
         self._invoke = invoke
         self._end = end
         self._after = after
         self._give_back = give_back
+        #: The session's recording (`scry_core.recording`), fed with every call it takes.
+        self.recorder = recorder
+        # The calls in flight inside the lock, outermost first: a call's parent is the one above.
+        self._calls: list[str] = []
         self._line = line
         self._session_block = session_block
         self._take_cancelled = take_cancelled
@@ -118,13 +124,15 @@ class Boundary:
 
     def tool(self, title: str, *, read_only: bool = False, idempotent: bool = False,
              session_before: bool = False, on_cancel: cancel.OnCancel | None = None,
+             replay: ExportAs | None = None,
              ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register `fn` as an MCP tool serialised over the one machine. `read_only` and
         `idempotent` become the protocol's hints. A tool that takes a `ctx` (the protocol's
         `Context`, for the progress line of a bounded wait) must declare `on_cancel` or fails at
         import, because a wait cancelled with no declared end would leave the machine in a state
         nobody chose; any other tool ends `none` when a cancel meets it. The `ctx` is kept out of
-        the summary's arguments, which are the ones the call RAN with, defaults applied."""
+        the summary's arguments, which are the ones the call RAN with, defaults applied.
+        `replay` is what the tool's calls become in an export (`scry_core.recording`)."""
 
         def register(fn: Callable[..., Any]) -> Callable[..., Any]:
             signature = inspect.signature(fn)
@@ -132,6 +140,8 @@ class Boundary:
                 raise TypeError(f"{fn.__name__} waits and reports its progress, so it declares "
                                 "how a cancel ends it (`on_cancel`)")
             self.declared_ends[fn.__name__] = on_cancel
+            if self.recorder is not None:
+                self.recorder.declare(fn.__name__, replay, read_only)
 
             @functools.wraps(fn)
             def wrapped(*a: Any, **k: Any) -> Any:
@@ -140,7 +150,14 @@ class Boundary:
                     # to apply and nothing to record.
                     cancel.check()
                     began = time.monotonic()
+                    # FED BEFORE THE COUNT GOES UP, so nothing between the two can leave it high.
+                    parent = self._calls[-1] if self._calls else None
+                    given = {n: v for n, v in signature.bind_partial(*a, **k).arguments.items()
+                             if n != "ctx"}
+                    taken = (self.recorder.begin(fn.__name__, parent, given)
+                             if self.recorder is not None else None)
                     self.nested += 1
+                    self._calls.append(fn.__name__)
                     kept: object = None
                     reply: Reply | None = None
                     try:
@@ -148,6 +165,8 @@ class Boundary:
                         if self.nested == 1:
                             cancel.check()           # a cancel that came as the body returned
                     except BaseException as e:
+                        if self.recorder is not None:
+                            self.recorder.ended(fn.__name__, parent, given, taken)
                         if cancel.is_cancellation(e) and self.nested == 1:
                             if reply is not None:
                                 self._give_back(reply)
@@ -161,6 +180,9 @@ class Boundary:
                             self._after(kept)
                         finally:
                             self.nested -= 1
+                            self._calls.pop()
+                    if self.recorder is not None:
+                        self.recorder.end(fn.__name__, parent, given, reply, taken)
                     bound = signature.bind_partial(*a, **k)
                     bound.apply_defaults()
                     args = dict(bound.arguments)

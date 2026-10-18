@@ -12,6 +12,7 @@ TABLE = """### A long wait, and a cancelled call
 |---|---|---|
 | `stop` | stopped, `BREAK` typed | `run`, `trace` |
 | `kill` | closed | `start` |
+| `later` | not an end this contract knows, so not a row of the table | `start` |
 
 ## Next section
 
