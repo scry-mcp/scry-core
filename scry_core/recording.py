@@ -23,12 +23,12 @@ THE EXPORT keeps what moved the machine and what was checked, drops the rest and
 - any other tool is kept as a STEP; one that left the machine at a new stop carries the stop's
   fields (`stop_fields`) as its `recorded`;
 - a RUN THE WALL CLOCK SHAPED becomes frames: from a release (a call that left the machine running)
-  to the first stop a call found it at (or, when no call did, the stop the machine is at when the
-  export reads it), or within one call of a tool declared `wall`, or of any tool whose reply's
-  verdict says its wall-clock bound ended it (`WALL_VERDICTS`), the export writes
-  `run_for(frames=<the difference between the two stops' frames>)` holding to the stop reached,
-  whatever stopped it, because only a count of frames replays the same way; a run that would not
-  stop at the same place shows as `diverged`;
+  to the first stop a call found it at (the one its reply says it found on its own, when it arrived
+  unread) (or, when no call did, the stop the machine is at when the export reads it), or within one
+  call of a tool declared `wall`, or of any tool whose reply's verdict says its wall-clock bound
+  ended it (`WALL_VERDICTS`), the export writes `run_for(frames=<the difference between the two
+  stops' frames>)` holding to the stop reached, whatever stopped it, because only a count of frames
+  replays the same way; a run that would not stop at the same place shows as `diverged`;
 - the first call the rules cannot place (its frames unknown, made while the machine ran, ended
   without a reply, or with the machine unreadable around it) CUTS the document there: what came
   before stands, and the reply names the call and why.
@@ -36,6 +36,7 @@ THE EXPORT keeps what moved the machine and what was checked, drops the rest and
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import shlex
@@ -91,7 +92,9 @@ UNREAD = Machine(running=True, frame=None, seq=None, known=False)
 class Call:
     """One recorded call: `status` is the reply's, or `ended` for a call with no reply (cancelled,
     or failed in its body); `walled` when its reply says the wall clock's bound ended it; `wrote`
-    the files it names as written (its `dest`, its reply's `path`)."""
+    the files it names as written (its `dest`, its reply's `path`); `found` the stop it found the
+    machine at on its own (its reply's `stopped_on_its_own`): one that arrived while nobody read
+    it, which ended a run before the call began."""
 
     op: str
     args: Mapping[str, Any]
@@ -101,6 +104,7 @@ class Call:
     after: Machine
     walled: bool = False
     wrote: tuple[str, ...] = ()
+    found: Mapping[str, Any] | None = None
 
 
 @dataclass
@@ -198,7 +202,8 @@ class Recorder:
                                    self._read(), walled=reply.get("verdict") in WALL_VERDICTS,
                                    wrote=tuple(str(x) for x in (given.get("dest"),
                                                                 reply.get("path"))
-                                               if isinstance(x, str) and x)))
+                                               if isinstance(x, str) and x),
+                                   found=_found(reply.get("stopped_on_its_own"))))
 
     def ended(self, tool: str, parent: str | None, given: Mapping[str, Any],
               began: Machine | None) -> None:
@@ -269,6 +274,14 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
             out.cut_at(n, call.op, "it ended with no reply (cancelled, or failed in its body), "
                        "so where it left the machine is not recorded")
             break
+        if released is not None and call.found is not None:
+            # A STOP THAT ARRIVED UNREAD ended the run before this call began, and its reply says
+            # where: the run ends there, and the call is judged from that stop.
+            reached = _found_machine(call.found, recorder)
+            if not _run_for(out, released, reached, None):
+                break
+            released = None
+            call = dataclasses.replace(call, before=reached)
         if released is not None and not call.before.running:
             # The machine had stopped before this call began: the run ends at that stop.
             if not _run_for(out, released, call.before, None):
@@ -335,6 +348,19 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
     doc = {"version": DOCUMENT_VERSION, "server": recorder.server, "start": dict(recording.start),
            "steps": out.steps, "needs": {"states": out.loaded}}
     return doc, out
+
+
+def _found(value: object) -> Mapping[str, Any] | None:
+    return dict(value) if isinstance(value, dict) and value else None
+
+
+def _found_machine(found: Mapping[str, Any], recorder: Recorder) -> Machine:
+    """The stop a call found, as the machine at it."""
+    frame = found.get("frame")
+    seq = found.get("stop_seq")
+    return Machine(running=False, frame=frame if isinstance(frame, int) else None,
+                   seq=seq if isinstance(seq, int) else None,
+                   stop={f: found[f] for f in recorder.stop_fields if f in found})
 
 
 def _reads_any(args: Mapping[str, Any], files: set[str]) -> bool:

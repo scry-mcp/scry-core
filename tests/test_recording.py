@@ -24,6 +24,16 @@ class _Machine:
         self.frame: int | None = 100
         self.seq = 1
         self.unreadable = False
+        self.unread: int | None = None         # a stop that arrived and nobody read yet
+
+    def contact(self) -> dict[str, Any]:
+        """A call's first contact: an unread stop is found, and said once in its reply."""
+        if self.unread is None:
+            return {}
+        self.stop_at(self.unread)
+        self.unread = None
+        return {"stopped_on_its_own": {"stop_seq": self.seq, "pc": f"0x{self.seq:x}",
+                                       "frame": self.frame}}
 
     def read(self) -> recording.Machine:
         if self.unreadable:
@@ -69,6 +79,10 @@ class _Server:
 
         @b.tool("run_for")
         def run_for(frames: int, seconds: float = 30.0) -> dict[str, Any]:
+            found = m.contact()
+            if found:
+                m.stop_at(None if m.frame is None else m.frame + frames)
+                return {**stopped(), **found}
             if seconds < 1:                    # the bound ran out first, a third of the way
                 m.stop_at(None if m.frame is None else m.frame + frames // 3)
                 return {**stopped(), "verdict": "TIMEOUT"}
@@ -102,8 +116,9 @@ class _Server:
 
         @b.tool("peek", read_only=True)
         def peek() -> dict[str, Any]:
+            found = m.contact()
             m.stop_at(m.frame)     # a reader that steps the guest to read it
-            return {"status": "ok"}
+            return {"status": "ok", **found}
 
         @b.tool("look")
         def look() -> dict[str, Any]:
@@ -659,3 +674,26 @@ def test_a_wall_tool_that_moved_nothing_is_dropped_and_an_export_of_no_step_is_r
         recording.export(s.recorder, str(tmp_path / "s.json"))
     assert e.value.code == "no_recording" and "no step" in str(e.value)
     assert not (tmp_path / "s.json").exists()
+
+
+def test_a_run_a_breakpoint_ended_unread_ends_at_the_stop_the_next_call_found() -> None:
+    """The stop arrived while nobody read it, so the machine still reads as running when the next
+    call begins; its reply says the stop it found, which is where the run ended. The call is then
+    judged from there: an advance holds to its own stop, a reader that stepped stays a step."""
+    s = _Server()
+    s.start(system="board")
+    s.resume()
+    s.m.running, s.m.unread = True, 170
+    s.run_for(frames=10)
+    doc, out = s.document()
+    assert doc["steps"] == [{"op": "run_for", "frames": 70,
+                             "recorded": {"pc": "0x2", "frame": 170}},
+                            {"op": "run_for", "frames": 10,
+                             "recorded": {"pc": "0x3", "frame": 180}}], out.cut
+    s.resume()
+    s.m.running, s.m.unread = True, 300
+    s.peek()
+    doc, out = s.document()
+    assert doc["steps"][2:] == [{"op": "run_for", "frames": 120,
+                                 "recorded": {"pc": "0x4", "frame": 300}},
+                                {"op": "peek"}], (doc["steps"], out.cut)
