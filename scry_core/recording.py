@@ -404,26 +404,30 @@ def _run_for(out: Account, released: tuple[int, Call], reached: Machine,
     """The run from `released`'s stop to `reached`, as frames, the calls it replaces named;
     False (and the cut set) when the frames are unknown or do not go forward. With `reach`, the
     frames hold to the frame alone and the advance it names goes on to the stop's place: frames
-    end at a frame's edge, and a stop that ended a run lands anywhere inside its frame."""
+    end at a frame's edge, and a stop that ended a run lands anywhere inside its frame, the one
+    the run began in included, which is then the reach alone."""
     began, ended = released[1].before.frame, reached.frame
     if began is None or ended is None:
         out.cut_at(released[0], released[1].op, "the run it began was ended by the wall clock "
                    "and the server reads no frame to replace it with")
         return False
-    if ended <= began:
-        out.cut_at(released[0], released[1].op, f"the run it began ended at frame {ended}, not "
-                   f"after frame {began}, so no count of frames replays it")
-        return False
     stop = dict(reached.stop)
     op, argument, field = (reach if reach and reached.reachable and reach[2] in stop
                            else (None, "", ""))
-    edge = {f: v for f, v in stop.items() if f != field}
-    out.steps.append({"op": "run_for", "frames": ended - began,
-                      **({RECORDED: edge} if edge else {})})
-    took = f"run_for(frames={ended - began})"
+    if ended < began or (ended == began and op is None):
+        out.cut_at(released[0], released[1].op, f"the run it began ended at frame {ended}, not "
+                   f"after frame {began}, so no count of frames replays it")
+        return False
+    taken = []
+    if ended > began:               # a run inside the frame it began in is the reach alone
+        edge = {f: v for f, v in stop.items() if f != field}
+        out.steps.append({"op": "run_for", "frames": ended - began,
+                          **({RECORDED: edge} if edge else {})})
+        taken.append(f"run_for(frames={ended - began})")
     if op is not None:
         out.steps.append({"op": op, argument: stop[field], RECORDED: stop})
-        took += f" then {op}({argument}={stop[field]!r})"
+        taken.append(f"{op}({argument}={stop[field]!r})")
+    took = " then ".join(taken)
     for at, call in dict([released, *([replaced] if replaced else [])]).items():
         out.drop(at, call.op, f"replaced by {took}, the frames its run took and its place")
     return True

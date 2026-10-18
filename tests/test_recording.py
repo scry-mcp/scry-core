@@ -731,3 +731,16 @@ def test_a_stop_the_servers_reach_cannot_run_from_keeps_the_frames_holding_to_it
     doc, out = s.document()
     assert doc["steps"] == [{"op": "run_for", "frames": 70,
                              "recorded": {"pc": "0x2", "frame": 170}}], out.cut
+
+
+def test_a_run_that_stopped_inside_the_frame_it_began_in_is_the_reach_alone() -> None:
+    """A breakpoint met before the next frame's edge: no frames to count, and the place is
+    reached by the server's own advance from where the run began."""
+    s = _Server(reach=("run_to", "ref", "pc"))
+    s.start(system="board")
+    s.resume()
+    s.stop(frames_then=0)
+    doc, out = s.document()
+    assert doc["steps"] == [{"op": "run_to", "ref": "0x2",
+                             "recorded": {"pc": "0x2", "frame": 100}}], out.cut
+    assert "run_to" in out.dropped[-1]["why"]
