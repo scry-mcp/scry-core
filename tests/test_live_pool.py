@@ -102,6 +102,20 @@ def test_a_summary_left_by_an_earlier_run_is_never_read_as_this_ones(tmp_path: P
     assert r.outcomes == {"x": "FAIL"}, r
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the trampoline's pre-check is POSIX's")
+@pytest.mark.parametrize("kind", ["file", "directory"])
+def test_a_program_that_is_there_but_not_executable_is_said_so(tmp_path: Path, kind: str) -> None:
+    program = tmp_path / "not-executable"
+    if kind == "file":
+        program.write_text("#!/bin/sh\nexit 0\n")
+        program.chmod(0o644)
+    else:
+        program.mkdir()
+    r = lp.run_pool([lp.Job("a", [str(program)], planned=("l",))], 1, tmp_path, VAR)
+    assert r.outcomes == {"l": "FAIL"}
+    assert "not executable" in r.reasons["l"] and "no program" not in r.reasons["l"], r.reasons
+
+
 def test_a_job_that_cannot_start_fails_alone(tmp_path: Path) -> None:
     jobs = [lp.Job("a", [str(tmp_path / "no-such-program")], planned=("l",)),
             lp.Job("b", _writes(("m",)), planned=("m",))]
@@ -296,22 +310,26 @@ def test_a_summary_is_renamed_into_place_whole(tmp_path: Path,
 
 _CHILD_REPORTING_SIGINT = _child(
     "import signal\nh = signal.getsignal(signal.SIGINT)\n"
+    "blocked = signal.SIGINT in signal.pthread_sigmask(signal.SIG_BLOCK, set())\n"
     "lp.write_summary(summary, lp.Summary(('h',), {'h': 'OK' if h is signal.default_int_handler "
-    "else 'FAIL'}, {}, repr(h), 0))\n")
+    "and not blocked else 'FAIL'}, {}, f'{h!r} blocked={blocked}', 0))\n")
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Windows has no SIGINT for one process")
-@pytest.mark.parametrize("launcher", ["default", "ignored"])
+@pytest.mark.parametrize("launcher", ["default", "ignored", "blocked"])
 def test_a_child_unwinds_on_the_sigint_the_pool_sends_whatever_its_launcher_ignored(
         tmp_path: Path, launcher: str) -> None:
     """The stop's premise, in the child: Python's handler, the one that raises KeyboardInterrupt,
-    whether the pool itself runs with SIGINT at its default or ignored, as a background job of a
-    non-interactive shell runs it (an ignored signal survives exec)."""
+    and SIGINT unblocked, whether the pool itself runs with SIGINT at its default, ignored (as a
+    background job of a non-interactive shell runs it: an ignored signal survives exec) or
+    blocked (a mask survives exec too, and a blocked SIGINT only waits)."""
     parent = tmp_path / "parent.py"
     parent.write_text(
         "import signal, sys\nfrom pathlib import Path\nfrom scry_core import live_pool as lp\n"
         "signal.signal(signal.SIGINT, "
         f"{'signal.SIG_IGN' if launcher == 'ignored' else 'signal.default_int_handler'})\n"
+        + ("signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})\n"
+           if launcher == "blocked" else "") +
         f"r = lp.run_pool([lp.Job('h', {_CHILD_REPORTING_SIGINT!r}, planned=('h',))], 1, "
         f"Path({str(tmp_path / 'o')!r}), {VAR!r})\n"
         "print(r.outcomes['h'], r.results[0].summary.transcript if r.results[0].summary else "

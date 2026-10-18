@@ -70,14 +70,18 @@ _OWN_GROUP: dict[str, Any] = (
 # and a Python child born so never installs the handler its cleanup runs under. So on POSIX each
 # child starts through this trampoline, which execs the job's own argv with SIGINT at its default,
 # and SIGPIPE and SIGXFSZ too: the trampoline is itself a Python, which ignores those two at
-# startup, undoing what `Popen`'s `restore_signals` did. Isolated (`-I`), so neither a module in the
-# pool's directory nor the job's `PYTHON*` variables reach it. A `preexec_fn` would do it in the
-# parent's fork, which is unsafe beside the threads the pool starts children from.
+# startup, undoing what `Popen`'s `restore_signals` did. SIGINT is UNBLOCKED as well: a mask
+# survives exec like a disposition does, and a blocked SIGINT is never delivered, only kept
+# pending. Only SIGINT: it is the pool's stop, and a block of any other signal is the launcher's.
+# Isolated (`-I`), so neither a module in the pool's directory nor the job's `PYTHON*` variables
+# reach it. A `preexec_fn` would do it in the parent's fork, which is unsafe beside the threads
+# the pool starts children from.
 _RESTORE_SIGNALS: tuple[str, ...] = () if sys.platform == "win32" else (
     sys.executable, "-I", "-c",
     "import os, signal, sys\n"
     "for name in ('SIGINT', 'SIGPIPE', 'SIGXFSZ'):\n"
     "    signal.signal(getattr(signal, name), signal.SIG_DFL)\n"
+    "signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGINT})\n"
     "os.execvp(sys.argv[1], sys.argv[1:])")
 
 
@@ -223,7 +227,10 @@ class _Children:
             if self._stopping:
                 return None
             if _RESTORE_SIGNALS and shutil.which(argv[0], path=env.get("PATH")) is None:
-                # What the trampoline's exec would fail on, refused here as Popen refuses it.
+                # What the trampoline's exec would fail on, refused here before it, and told apart
+                # by what is on disk: a path that is there and may not be run is not "no program".
+                if os.sep in argv[0] and os.path.lexists(argv[0]):
+                    raise PermissionError(f"{argv[0]!r} is not executable")
                 raise FileNotFoundError(f"no program {argv[0]!r}")
             proc = subprocess.Popen([*_RESTORE_SIGNALS, *argv], env=env, stdin=subprocess.DEVNULL,
                                     stdout=out, stderr=subprocess.STDOUT, **_OWN_GROUP)
