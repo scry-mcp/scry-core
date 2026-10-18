@@ -134,6 +134,21 @@ class _RecordingCtx:
         self.got.append((p, total, message))
 
 
+class _TimedCtx(_RecordingCtx):
+    """A context that also keeps when each line reached it."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.sent: list[float] = []
+
+    async def report_progress(self, p: float, total: float | None = None,
+                              message: str | None = None) -> None:
+        self.sent.append(time.monotonic())
+        await super().report_progress(p, total, message)
+
+
+
+
 def test_the_bridge_reaches_the_context_from_a_worker_thread_and_none_paints_nothing() -> None:
     assert progress.bridge(None) is progress.no_progress
     ctx = _RecordingCtx()
@@ -171,11 +186,17 @@ def test_a_ticker_polls_for_a_cancellation_at_every_iteration(
     assert len(calls) == 3
 
 
+#: Half a report period past the first, so a line is due before the cancel.
+CANCEL_AFTER_S = 1.5 * progress.PROGRESS_EVERY_S
+
+
 def test_a_cancelled_call_sends_no_progress_and_its_wait_ends_at_the_next_poll() -> None:
     """The bridge and the Ticker on a real worker thread whose request is cancelled: the wait
-    unwinds at its next poll, and nothing reaches the context after the cancellation."""
-    ctx = _RecordingCtx()
+    unwinds at its next poll, a line reached the context before the cancellation (a bridge that
+    never sends would pass the rest), and none after it."""
+    ctx = _TimedCtx()
     polls: list[float] = []
+    began: list[float] = []
 
     def wait() -> None:
         t = progress.Ticker(30.0, progress.bridge(ctx))  # type: ignore[arg-type]
@@ -185,12 +206,15 @@ def test_a_cancelled_call_sends_no_progress_and_its_wait_ends_at_the_next_poll()
             time.sleep(0.05)
 
     async def main() -> None:
-        with anyio.move_on_after(1.5):
+        began.append(time.monotonic())
+        with anyio.move_on_after(CANCEL_AFTER_S):
             await anyio.to_thread.run_sync(wait)
 
     anyio.run(main)
+    cancelled_at = began[0] + CANCEL_AFTER_S
     assert polls and polls[-1] - polls[0] < 2.0, "the wait ran on past its cancellation"
-    assert len(ctx.got) <= 1, ctx.got              # the one tick a second before the cancel
+    assert ctx.sent, "no line reached the context in the second before the cancel"
+    assert all(when < cancelled_at for when in ctx.sent), (ctx.sent, cancelled_at)
 
 
 def test_check_is_a_no_op_outside_a_worker_thread() -> None:

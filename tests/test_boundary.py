@@ -24,13 +24,15 @@ class _Server:
     def __init__(self) -> None:
         self.log: list[tuple[Any, ...]] = []
         self.pending: cancel.Cancelled | None = None
+        self.given_back: list[dict[str, Any]] = []
         self.lock = threading.RLock()
         self.mcp = Envelope("t", instructions="i", refusal=self.refusal)
         self.b = boundary.Boundary(
             self.mcp, self.lock, invoke=self.invoke, end=self.end, after=self.after,
             line=lambda name, args, reply: f"{name} {sorted(args.items())}",
             session_block=lambda: {"altered": False}, take_cancelled=self.take,
-            keep_cancelled=self.keep, doc=lambda name, text: f"{name}: {text}")
+            keep_cancelled=self.keep, doc=lambda name, text: f"{name}: {text}",
+            give_back=self.given_back.append)
         self.after_raises = False
 
     def held(self) -> bool:
@@ -339,3 +341,63 @@ def test_a_second_cancel_before_any_reply_keeps_the_first_ones_name() -> None:
         with pytest.raises(asyncio.CancelledError):
             run()
     assert s.pending is not None and s.pending.earlier == ("run",)
+
+
+def test_a_cancel_seen_after_the_body_returned_records_it_with_no_end_and_gives_its_accounts_back(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """The body reached its own end, so no end is applied; the reply the SDK would drop goes to
+    nobody, so what it carried waits for the next one."""
+    s = _Server()
+    polls = [0]
+
+    def check() -> None:
+        polls[0] += 1
+        if polls[0] == 2:                      # the poll after the body, not the one on entry
+            raise asyncio.CancelledError
+    monkeypatch.setattr(cancel, "check", check)
+
+    @s.b.tool("Read", on_cancel="stop")
+    def read() -> dict[str, Any]:
+        return {"status": "ok", "stopped_on_its_own": {"stop_seq": 4}}
+
+    with pytest.raises(asyncio.CancelledError):
+        read()
+    assert [e for e in s.log if e[0] == "end"] == [("end", "read", "none")]
+    assert s.given_back == [{"status": "ok", "stopped_on_its_own": {"stop_seq": 4}}]
+    assert s.pending is not None and s.pending.tool == "read"
+
+
+def test_only_the_outermost_call_polls_after_its_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    s = _Server()
+    polls = [0]
+
+    def check() -> None:
+        polls[0] += 1
+    monkeypatch.setattr(cancel, "check", check)
+
+    @s.b.tool("Step")
+    def step() -> dict[str, Any]:
+        return {"status": "ok"}
+
+    @s.b.tool("Sequence")
+    def sequence() -> dict[str, Any]:
+        step()
+        return {"status": "ok"}
+
+    sequence()
+    assert polls == [3]       # the outer call's entry, the step's entry, the outer call's end
+
+
+def test_each_tools_declared_end_is_kept_by_name() -> None:
+    s = _Server()
+
+    @s.b.tool("Run", on_cancel="stop")
+    def run(ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
+        return {"status": "ok"}
+
+    @s.b.tool("Read")
+    def read() -> dict[str, Any]:
+        return {"status": "ok"}
+
+    assert s.b.declared_ends == {"run": "stop", "read": None}
+

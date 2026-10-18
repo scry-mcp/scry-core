@@ -11,6 +11,12 @@ included, applies the end it declared (`cancel.OnCancel`) only when it is the OU
 step of a `perform` cancelled is the sequence's cancel, ended as the sequence declared. The record
 waits for the next reply, and only the outermost reply takes it, because a step's reply is not
 the one a caller reads.
+
+A CANCEL THAT ARRIVES AS THE BODY RETURNS is looked for once more, after the body and before the
+reply is closed, because closing a reply spends one-time accounts and the SDK drops the reply of
+a cancelled request: such a call is recorded as cancelled with no end applied (it reached its own
+end), and the accounts its reply carried go back for the next one (`give_back`). A cancel that
+arrives after that poll, while the reply is on its way, is not seen.
 """
 
 from __future__ import annotations
@@ -40,10 +46,17 @@ End = Callable[[str, cancel.OnCancel], tuple[cancel.Left, object]]
 After = Callable[[object], None]
 #: The one line a caller reads first: the tool's name, the arguments it ran with, its reply.
 ReplyLine = Callable[[str, dict[str, Any], Reply], str]
+#: The one-time accounts a reply nobody will read carried, put back for the next reply.
+GiveBack = Callable[[Reply], None]
 
 
 def _nothing_after(kept: object) -> None:
     """The `After` of a server with nothing to do once a call is over."""
+
+
+def _nothing_to_give_back(reply: Reply) -> None:
+    """The `GiveBack` of a server that builds no one-time account into a reply's body: its
+    accounts are handed over by `End` and `After` instead."""
 
 
 class Boundary:
@@ -55,12 +68,14 @@ class Boundary:
                  line: ReplyLine, session_block: Callable[[], dict[str, Any] | None],
                  take_cancelled: Callable[[], cancel.Cancelled | None],
                  keep_cancelled: Callable[[cancel.Cancelled], None],
-                 doc: Callable[[str, str], str], after: After = _nothing_after) -> None:
+                 doc: Callable[[str, str], str], after: After = _nothing_after,
+                 give_back: GiveBack = _nothing_to_give_back) -> None:
         self.mcp = mcp
         self._lock = lock
         self._invoke = invoke
         self._end = end
         self._after = after
+        self._give_back = give_back
         self._line = line
         self._session_block = session_block
         self._take_cancelled = take_cancelled
@@ -68,6 +83,9 @@ class Boundary:
         self._doc = doc
         # HOW DEEP THE CALLS INSIDE THE LOCK ARE NESTED, read and written only while holding it.
         self.nested = 0
+        #: Each registered tool's `on_cancel` as declared, None where it declared none (and so
+        #: ends `none`): what a server's suite holds against its reference (`ends_table`).
+        self.declared_ends: dict[str, cancel.OnCancel | None] = {}
 
     def finished(self, name: str, args: dict[str, Any], reply: Reply,
                  session_before: bool = False, outer: bool = True) -> Reply:
@@ -113,6 +131,7 @@ class Boundary:
             if "ctx" in signature.parameters and on_cancel is None:
                 raise TypeError(f"{fn.__name__} waits and reports its progress, so it declares "
                                 "how a cancel ends it (`on_cancel`)")
+            self.declared_ends[fn.__name__] = on_cancel
 
             @functools.wraps(fn)
             def wrapped(*a: Any, **k: Any) -> Any:
@@ -123,11 +142,17 @@ class Boundary:
                     began = time.monotonic()
                     self.nested += 1
                     kept: object = None
+                    reply: Reply | None = None
                     try:
                         reply = self._invoke(fn, signature, a, k)
+                        if self.nested == 1:
+                            cancel.check()           # a cancel that came as the body returned
                     except BaseException as e:
                         if cancel.is_cancellation(e) and self.nested == 1:
-                            kept = self._cancelled(fn.__name__, on_cancel or "none", began)
+                            if reply is not None:
+                                self._give_back(reply)
+                            kept = self._cancelled(fn.__name__, "none" if reply is not None
+                                                   else on_cancel or "none", began)
                         raise
                     finally:
                         # The count goes back whatever the hook does: a count left high would
