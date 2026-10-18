@@ -65,12 +65,12 @@ WALL_VERDICTS = frozenset({"TIMEOUT"})
 #: stops the cpu, inside a frame and inside whatever loop it is in, and no replayed advance
 #: reaches that place (a count of frames ends at a frame's edge); every stop after it would
 #: inherit the shift.
-#: The reply fields that name a file or a directory a call wrote, beside its `dest` argument.
-WRITTEN = ("path", "manifest", "dir")
 RELEASED = ("it released the machine, and the stop that ends a run lands at a place inside its "
             "frame that no replayed advance reaches")
 RUN_STOPPED_INSIDE = ("its run was stopped by the wall clock or by the machine itself, at a place "
                       "inside its frame that no replayed advance reaches")
+#: The reply fields that name a file or a directory a call wrote, beside its `dest` argument.
+WRITTEN = ("path", "manifest", "dir")
 
 #: What a tool's calls become in an export: kept as a `step`; a `wall` step, a run the wall clock
 #: ends; `drop`ped; or, a tuple of field names, kept as a check of those fields.
@@ -131,17 +131,20 @@ class Declared:
 
 class Recorder:
     """One server's recording, fed by its `scry_core.boundary.Boundary`. `machine` reads the
-    machine (`Machine`); `stop_fields` names the fields of a reply that say where a stop is;
+    machine (`Machine`); `live` says whether a session is up, as the start refuses over one;
+    `stop_fields` names the fields of a reply that say where a stop is;
     `sequences` the tools whose steps are recorded in their place; `start_tool` the tool that
     begins a recording and `plan` its argument whose steps are recorded after it; `outside` the
     tools that are no step a replay could take (`close`, the exporter's own)."""
 
-    def __init__(self, server: str, machine: Callable[[], Machine], *,
+    def __init__(self, server: str, machine: Callable[[], Machine], live: Callable[[], bool], *,
                  stop_fields: tuple[str, ...], outside: frozenset[str] = frozenset({"close"}),
                  sequences: frozenset[str] = frozenset({"perform", "drive"}),
                  start_tool: str = "start", plan: str | None = None) -> None:
         self.server = server
         self._machine = machine
+        self._live = live
+        self._found_live = False
         self.stop_fields = stop_fields
         self.outside = outside | {EXPORT_TOOL}
         self.sequences = sequences
@@ -174,6 +177,7 @@ class Recorder:
             return None
         if parent is None and tool == self.start_tool:
             self._starting = Recording({k: v for k, v in given.items() if k != self.plan})
+            self._found_live = self._was_live()
             return None
         if parent is None:
             if tool in self.sequences or self.recording is None:
@@ -191,9 +195,10 @@ class Recorder:
         a call `begin` took is added to its recording."""
         if parent is None and tool == self.start_tool:
             # A START THAT LEFT A SESSION UP is that session's, a plan that failed included: the
-            # recording before it belongs to a machine that is gone.
+            # recording before it belongs to a machine that is gone. One refused while a session
+            # was live touched nothing, and the session up is the one recorded.
             session = reply.get("session")
-            up = reply.get("status") == "ok" or (isinstance(session, dict)
+            up = reply.get("status") == "ok" or (not self._found_live and isinstance(session, dict)
                                                  and session.get("alive") is True)
             if up and self._starting is not None:
                 self.recording = self._starting
@@ -226,6 +231,14 @@ class Recorder:
             into.full = True
             return
         into.calls.append(call)
+
+    def _was_live(self) -> bool:
+        """Whether a session was up as a start began; unreadable counts as up, so a start that
+        cannot be told apart keeps the recording rather than handing it to a refusal."""
+        try:
+            return self._live()
+        except Exception:  # noqa: BLE001 -- as `_read`: a recorder never fails a call
+            return True
 
     def _read(self) -> Machine:
         """The machine as the server reads it, or `UNREAD`: a recorder never fails a call."""
@@ -307,10 +320,6 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
     return doc, out
 
 
-
-
-
-
 def _reads_any(args: Mapping[str, Any], files: set[str]) -> bool:
     """Whether an argument names one of `files`, a directory holding one, or a file inside one
     (a series' `dest` is a directory, and its manifest a file in it)."""
@@ -324,17 +333,11 @@ def _moved(call: Call) -> bool:
     return (call.after.seq, dict(call.after.stop)) != (call.before.seq, dict(call.before.stop))
 
 
-
-
 def _step(call: Call, recorded: Mapping[str, Any]) -> dict[str, Any]:
     step: dict[str, Any] = {"op": call.op, **call.args}
     if recorded:
         step[RECORDED] = dict(recorded)
     return step
-
-
-
-
 
 
 def _states(out: Account, call: Call) -> None:

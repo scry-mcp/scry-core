@@ -46,6 +46,9 @@ def perform(steps: list[dict[str, Any]], summaries: bool = False) -> dict[str, A
                     "recorded": recorded, "got": value, "steps_completed": i, "session": {}}
     # Each server's own word for the count: mame says `steps_completed`, dosbox-x `completed`.
     count = "completed" if os.environ.get("REPLAY_DOUBLE_SAYS_COMPLETED") else "steps_completed"
+    if os.environ.get("REPLAY_DOUBLE_ENDS_EARLY"):   # mame's list when a settle wait ran out
+        return {"summary": "perform: TIMEOUT", "status": "ok", count: len(steps) - 1,
+                "verdict": "TIMEOUT", "note": "the last step was not sent", "session": {}}
     return {"summary": f"perform: {len(steps)} steps", "status": "ok", count: len(steps),
             "session": {}}
 

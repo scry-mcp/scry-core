@@ -26,6 +26,7 @@ class _Machine:
         self.seq = 1
         self.unreadable = False
         self.bare = False          # a server whose stops carry no fields (dosbox-x's are counted)
+        self.up = False            # a session is live, which a second start is refused over
 
     def read(self) -> recording.Machine:
         if self.unreadable:
@@ -43,8 +44,8 @@ class _Server:
 
     def __init__(self, plan: str | None = None) -> None:
         self.m = _Machine()
-        self.recorder = recording.Recorder("double", self.m.read, stop_fields=("pc", "frame"),
-                                        plan=plan)
+        self.recorder = recording.Recorder("double", self.m.read, lambda: self.m.up,
+                                        stop_fields=("pc", "frame"), plan=plan)
         self.b = boundary.Boundary(
             Envelope("t", instructions="i", refusal=lambda *a: {}), threading.RLock(),
             invoke=lambda fn, sig, a, k: dict(fn(*a, **k)), end=lambda n, o: ("stopped", None),
@@ -57,11 +58,14 @@ class _Server:
 
         @b.tool("start")
         def start(system: str, plan: list[dict[str, Any]] | None = None,
-                  fails: bool = False) -> dict[str, Any]:
+                  fails: bool = False, over_live: bool = False) -> dict[str, Any]:
+            if over_live:                      # refused before anything is spawned
+                return {"status": "INVALID", "code": "session_live", "message": "close first",
+                        "session": {"alive": True}}
             if fails:
                 return {"status": "INVALID", "code": "bad_argument", "message": "no",
                         "session": {"alive": False}}
-            m.running, m.frame, m.seq = False, 100, 1
+            m.running, m.frame, m.seq, m.up = False, 100, 1, True
             for step in plan or []:
                 got = ops[step["op"]](**{k: v for k, v in step.items() if k != "op"})
                 if got.get("status") != "ok":    # the plan failed; the session stays up
@@ -497,11 +501,35 @@ def test_a_start_whose_plan_failed_with_its_session_up_is_the_sessions_recording
     s = _Server(plan="plan")
     s.start(system="one")
     s.write(ref="a", value=1)
+    s.m.up = False                             # that session closed; its recording stays
     s.start(system="two", plan=[{"op": "run_for", "frames": 5}, {"op": "write", "ref": "bad",
                                                                  "value": 0}])
     rec = s.recorder.recording
     assert rec is not None and rec.start == {"system": "two"}
     assert [c.op for c in rec.calls] == ["run_for", "write"]
+
+
+def test_a_start_refused_over_a_live_session_keeps_that_sessions_recording() -> None:
+    s = _Server(plan="plan")
+    s.start(system="one")
+    s.write(ref="a", value=1)
+    s.start(system="two", over_live=True)      # its reply says a session is alive: the old one
+    rec = s.recorder.recording
+    assert rec is not None and rec.start == {"system": "one"}
+    assert [c.op for c in rec.calls] == ["write"]
+
+
+def test_a_start_that_cannot_tell_whether_a_session_was_live_keeps_the_recording() -> None:
+    s = _Server(plan="plan")
+    s.start(system="one")
+    s.write(ref="a", value=1)
+
+    def unreadable() -> bool:
+        raise OSError("no answer")
+    s.recorder._live = unreadable
+    s.start(system="two", plan=[{"op": "write", "ref": "bad", "value": 0}])
+    rec = s.recorder.recording
+    assert rec is not None and rec.start == {"system": "one"}
 
 
 def test_a_run_its_wall_clock_bound_ended_cuts_the_document_at_it() -> None:

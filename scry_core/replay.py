@@ -62,22 +62,29 @@ def _refused_start(reply: demo.Reply, run: demo.Run) -> str:
 
 
 def _played(steps: Sequence[Mapping[str, Any]]) -> Callable[[demo.Reply, demo.Run], str]:
-    checks = sum(bool(s.get(RECORDED)) for s in steps)
+    # Not "checks": the export spends that word on its reads, and an advancing step holds too.
+    held = sum(bool(s.get(RECORDED)) for s in steps)
 
     def line(reply: demo.Reply, run: demo.Run) -> str:
         done = reply.get("steps_completed", reply.get("completed", "?"))
-        return f"{done} steps, {checks} checks"
+        if done != len(steps):         # an ok list can end early (a wait ran out): not a hold
+            why = reply.get("note") or reply.get("verdict") or "no reason given"
+            raise demo.StepFailed(f"{done} of {len(steps)} steps ran: {why}")
+        return f"{done} steps, {held} holding to a recorded answer"
     return line
 
 
 def _failed(steps: Sequence[Mapping[str, Any]]) -> Callable[[demo.Reply, demo.Run], str]:
     def why(reply: demo.Reply, run: demo.Run) -> str:
         at = reply.get("failed_at")
-        op = steps[at].get("op", "?") if isinstance(at, int) and 0 <= at < len(steps) else "?"
+        op, where = "?", f"step {at}"
+        if isinstance(at, int) and 0 <= at < len(steps):
+            # `failed_at` counts from 0; a person reading the document counts from 1.
+            op, where = steps[at].get("op", "?"), f"step {at + 1} of {len(steps)}"
         if reply.get("code") == "diverged":
-            return (f"diverged at step {at} ({op}): {reply.get('field')} recorded "
+            return (f"diverged at {where} ({op}): {reply.get('field')} recorded "
                     f"{reply.get('recorded')!r}, got {reply.get('got')!r}")
-        return f"step {at} ({op}) failed: {reply.get('message') or reply.get('summary')}"
+        return f"{where} ({op}) failed: {reply.get('message') or reply.get('summary')}"
     return why
 
 

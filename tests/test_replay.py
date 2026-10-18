@@ -41,7 +41,8 @@ def test_a_document_whose_steps_hold_replays_with_exit_0(
     assert _run(monkeypatch, tmp_path, doc, "--binary", "/opt/mame") == 0
     out = capsys.readouterr().out
     assert "OK start: started board on /opt/mame" in out
-    assert "OK perform: 1 steps, 1 checks" in out and "REPLAY session: every step held" in out
+    assert "OK perform: 1 steps, 1 holding to a recorded answer" in out
+    assert "REPLAY session: every step held" in out
     assert (tmp_path / "tmp" / "replays" / "session" / "transcript.md").is_file()
 
 
@@ -52,7 +53,7 @@ def test_a_step_that_diverges_is_exit_1_naming_the_step_and_the_field(
                             "recorded": {"frame": 6}}], server="dosbox-x")
     assert _run(monkeypatch, tmp_path, doc) == 1
     out = capsys.readouterr().out
-    assert "FAIL perform: diverged at step 1 (run_for): frame recorded 6, got 5" in out
+    assert "FAIL perform: diverged at step 2 of 2 (run_for): frame recorded 6, got 5" in out
     assert "REPLAY session: it did not hold" in out
 
 
@@ -61,7 +62,7 @@ def test_a_step_that_fails_is_exit_1_in_the_servers_own_words(
         ) -> None:
     doc = _repo(tmp_path, [{"op": "run_for", "frames": 1}, {"op": "fails"}])
     assert _run(monkeypatch, tmp_path, doc) == 1
-    assert "FAIL perform: step 1 (fails) failed: no such op" in capsys.readouterr().out
+    assert "FAIL perform: step 2 of 2 (fails) failed: no such op" in capsys.readouterr().out
 
 
 def test_the_runner_runs_as_a_module() -> None:
@@ -150,4 +151,15 @@ def test_the_perform_line_counts_the_steps_in_either_servers_word(
                 server="dosbox-x")
     monkeypatch.setenv("REPLAY_DOUBLE_SAYS_COMPLETED", "1")
     assert _run(monkeypatch, tmp_path, doc) == 0
-    assert "OK perform: 2 steps, 0 checks" in capsys.readouterr().out
+    assert "OK perform: 2 steps, 0 holding to a recorded answer" in capsys.readouterr().out
+
+
+def test_a_list_that_ended_before_its_last_step_is_exit_1_naming_what_ran(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        ) -> None:
+    doc = _repo(tmp_path, [{"op": "run_for", "frames": 1}, {"op": "run_for", "frames": 2}])
+    monkeypatch.setenv("REPLAY_DOUBLE_ENDS_EARLY", "1")
+    assert _run(monkeypatch, tmp_path, doc) == 1
+    out = capsys.readouterr().out
+    assert "FAIL perform: 1 of 2 steps ran: the last step was not sent" in out
+    assert "every step held" not in out
