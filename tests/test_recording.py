@@ -57,14 +57,21 @@ class _Server:
         def start(system: str, plan: list[dict[str, Any]] | None = None,
                   fails: bool = False) -> dict[str, Any]:
             if fails:
-                return {"status": "INVALID", "code": "bad_argument", "message": "no"}
+                return {"status": "INVALID", "code": "bad_argument", "message": "no",
+                        "session": {"alive": False}}
             m.running, m.frame, m.seq = False, 100, 1
             for step in plan or []:
-                ops[step["op"]](**{k: v for k, v in step.items() if k != "op"})
+                got = ops[step["op"]](**{k: v for k, v in step.items() if k != "op"})
+                if got.get("status") != "ok":    # the plan failed; the session stays up
+                    return {"status": "INVALID", "code": "step_failed", "message": "plan",
+                            "session": {"alive": True}}
             return {"status": "ok"}
 
         @b.tool("run_for")
-        def run_for(frames: int) -> dict[str, Any]:
+        def run_for(frames: int, seconds: float = 30.0) -> dict[str, Any]:
+            if seconds < 1:                    # the bound ran out first, a third of the way
+                m.stop_at(None if m.frame is None else m.frame + frames // 3)
+                return {**stopped(), "verdict": "TIMEOUT"}
             m.stop_at(None if m.frame is None else m.frame + frames)
             return stopped()
 
@@ -601,3 +608,23 @@ def test_a_divergence_carries_what_the_runner_reads_and_the_steps_own_reply() ->
     assert message == "step 2 ('read_memory') diverged: `hex` was recorded '00' and came back '01'"
     assert fields == {"failed_at": 2, "failed": {"op": "read_memory", "reply": {"hex": "01"}},
                       "field": "hex", "recorded": "00", "got": "01"}
+
+
+def test_a_start_whose_plan_failed_with_its_session_up_is_the_sessions_recording() -> None:
+    s = _Server(plan="plan")
+    s.start(system="one")
+    s.write(ref="a", value=1)
+    s.start(system="two", plan=[{"op": "run_for", "frames": 5}, {"op": "write", "ref": "bad",
+                                                                 "value": 0}])
+    rec = s.recorder.recording
+    assert rec is not None and rec.start == {"system": "two"}
+    assert [c.op for c in rec.calls] == ["run_for", "write"]
+
+
+def test_a_run_its_wall_clock_bound_ended_is_written_as_the_frames_it_took() -> None:
+    s = _Server()
+    s.start(system="board")
+    s.run_for(frames=90, seconds=0.5)
+    doc, _out = s.document()
+    assert doc["steps"] == [{"op": "run_for", "frames": 30,
+                             "recorded": {"pc": "0x2", "frame": 130}}]

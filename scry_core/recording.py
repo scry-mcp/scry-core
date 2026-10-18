@@ -3,13 +3,14 @@ call boundary feeds (`Recorder`), the rules of the export (`document`), the tool
 it (`export`), and the check a replayed step holds to (`diverged`). The runner that plays a
 document back is `scry_core.replay`, apart, because a server never needs the client it uses.
 
-THE RECORDING is always on from a successful `start` (the document's start) and cleared by the
-next one; `close` keeps it, so a session can be exported after it closed. Every outermost call is
-recorded with its arguments as given, its status, what its reply says that a replay must hold to,
-and the machine around it (`Machine`), except a sequence (`perform`, `drive`), whose steps are
-recorded instead, and the tools that are no step of a sequence (`outside`: `close`, the exporter);
-a `start` that runs a plan has its plan's steps recorded after it. `RECORD_MAX` calls at most;
-past it the recording stops and the export says it is cut there.
+THE RECORDING is always on from a `start` that left a session up (the document's start; a plan it
+ran that failed included) and cleared by the next one; `close` keeps it, so a session can be
+exported after it closed. Every outermost call is recorded with its arguments as given, its status,
+what its reply says that a replay must hold to, and the machine around it (`Machine`), except a
+sequence (`perform`, `drive`), whose steps are recorded instead, and the tools that are no step of a
+sequence (`outside`: `close`, the exporter); a `start` that runs a plan has its plan's steps
+recorded after it. `RECORD_MAX` calls at most; past it the recording stops and the export says it is
+cut there.
 
 THE EXPORT keeps what moved the machine and what was checked, drops the rest and names each drop:
 
@@ -21,12 +22,13 @@ THE EXPORT keeps what moved the machine and what was checked, drops the rest and
   reply, and the replay's `perform` compares them;
 - any other tool is kept as a STEP; one that left the machine at a new stop carries the stop's
   fields (`stop_fields`) as its `recorded`;
-- a RUN THE WALL CLOCK SHAPED becomes frames: from a release (a call that left the machine
-  running) to the first stop a call found it at (or, when no call did, the stop the machine is
-  at when the export reads it), or within a tool declared `wall` that ran and stopped in one
-  call, the export writes `run_for(frames=<the difference between the two stops' frames>)`
-  holding to the stop reached, whatever stopped it, because only a count of frames replays the
-  same way; a run that would not stop at the same place shows as `diverged`;
+- a RUN THE WALL CLOCK SHAPED becomes frames: from a release (a call that left the machine running)
+  to the first stop a call found it at (or, when no call did, the stop the machine is at when the
+  export reads it), or within one call of a tool declared `wall`, or of any tool whose reply's
+  verdict says its wall-clock bound ended it (`WALL_VERDICTS`), the export writes
+  `run_for(frames=<the difference between the two stops' frames>)` holding to the stop reached,
+  whatever stopped it, because only a count of frames replays the same way; a run that would not
+  stop at the same place shows as `diverged`;
 - the first call the rules cannot place (its frames unknown, made while the machine ran, ended
   without a reply, or with the machine unreadable around it) CUTS the document there: what came
   before stands, and the reply names the call and why.
@@ -55,6 +57,9 @@ DOCUMENT_VERSION = 1
 EXPORT_TOOL = "perform_export"
 #: The key a step's recorded fields sit under: no Scry tool declares an argument by that name.
 RECORDED = "recorded"
+#: A reply's `verdict` when the call's wall-clock bound ended it, whatever the tool: such a run is
+#: a run the wall clock shaped, written as the frames it took.
+WALL_VERDICTS = frozenset({"TIMEOUT"})
 
 #: What a tool's calls become in an export: kept as a `step`; a `wall` step, a run the wall clock
 #: ends; `drop`ped; or, a tuple of field names, kept as a check of those fields.
@@ -85,7 +90,7 @@ UNREAD = Machine(running=True, frame=None, seq=None, known=False)
 @dataclass(frozen=True)
 class Call:
     """One recorded call: `status` is the reply's, or `ended` for a call with no reply (cancelled,
-    or failed in its body)."""
+    or failed in its body); `walled` when its reply says the wall clock's bound ended it."""
 
     op: str
     args: Mapping[str, Any]
@@ -93,6 +98,7 @@ class Call:
     recorded: Mapping[str, Any]
     before: Machine
     after: Machine
+    walled: bool = False
 
 
 @dataclass
@@ -174,7 +180,12 @@ class Recorder:
         """A call answered: a successful outermost `start` makes its recording the session's;
         a call `begin` took is added to its recording."""
         if parent is None and tool == self.start_tool:
-            if reply.get("status") == "ok" and self._starting is not None:
+            # A START THAT LEFT A SESSION UP is that session's, a plan that failed included: the
+            # recording before it belongs to a machine that is gone.
+            session = reply.get("session")
+            up = reply.get("status") == "ok" or (isinstance(session, dict)
+                                                 and session.get("alive") is True)
+            if up and self._starting is not None:
                 self.recording = self._starting
             self._starting = None
             return
@@ -183,7 +194,7 @@ class Recorder:
             fields = fields if isinstance(fields, tuple) else self.stop_fields
             self._add(parent, Call(tool, dict(given), str(reply.get("status")),
                                    {f: reply[f] for f in fields if f in reply}, began,
-                                   self._read()))
+                                   self._read(), walled=reply.get("verdict") in WALL_VERDICTS))
 
     def ended(self, tool: str, parent: str | None, given: Mapping[str, Any],
               began: Machine | None) -> None:
@@ -296,7 +307,7 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
         if call.after.running:
             released = (n, call)
             continue
-        if declared.export_as == "wall" and _moved(call):
+        if (declared.export_as == "wall" or call.walled) and _moved(call):
             if not _run_for(out, (n, call), call.after, (n, call)):
                 break
             continue
