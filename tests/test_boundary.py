@@ -1,0 +1,341 @@
+"""`scry_core.boundary`: the cancel poll as a call enters the lock, the nesting, the
+outermost-only end of a cancelled call, the after-call hook on every path, and the reply every
+path closes with; driven through a double server whose hooks record what the boundary asked of
+them."""
+
+from __future__ import annotations
+
+import asyncio
+import inspect
+import threading
+from collections.abc import Callable
+from typing import Any
+
+import pytest
+from mcp.server.mcpserver import Context
+
+from scry_core import boundary, cancel
+from scry_core.envelope import Envelope
+
+
+class _Server:
+    """A server of doubles: every hook appends what it was asked to `log`."""
+
+    def __init__(self) -> None:
+        self.log: list[tuple[Any, ...]] = []
+        self.pending: cancel.Cancelled | None = None
+        self.lock = threading.RLock()
+        self.mcp = Envelope("t", instructions="i", refusal=self.refusal)
+        self.b = boundary.Boundary(
+            self.mcp, self.lock, invoke=self.invoke, end=self.end, after=self.after,
+            line=lambda name, args, reply: f"{name} {sorted(args.items())}",
+            session_block=lambda: {"altered": False}, take_cancelled=self.take,
+            keep_cancelled=self.keep, doc=lambda name, text: f"{name}: {text}")
+        self.after_raises = False
+
+    def held(self) -> bool:
+        return bool(self.lock._is_owned())  # type: ignore[attr-defined]
+
+    def invoke(self, fn: Callable[..., Any], signature: inspect.Signature,
+               a: tuple[Any, ...], k: dict[str, Any]) -> dict[str, Any]:
+        self.log.append(("invoke", fn.__name__, self.held()))
+        try:
+            return dict(fn(*a, **k))
+        except LookupError as e:          # this server's own vocabulary, answered
+            return {"status": "INVALID", "code": "lookup", "message": str(e)}
+
+    def end(self, name: str, on_cancel: cancel.OnCancel) -> tuple[cancel.Left, object]:
+        self.log.append(("end", name, on_cancel))
+        return "stopped", f"kept by {name}"
+
+    def after(self, kept: object) -> None:
+        self.log.append(("after", kept, self.b.nested))
+        if self.after_raises:
+            raise OSError("the hook broke")
+
+    def keep(self, record: cancel.Cancelled) -> None:
+        self.pending = record
+
+    def take(self) -> cancel.Cancelled | None:
+        record, self.pending = self.pending, None
+        return record
+
+    def refusal(self, name: str, arguments: dict[str, Any], cause: Any) -> dict[str, Any]:
+        def build() -> dict[str, Any]:
+            self.log.append(("build", name, self.held()))
+            return {"status": "INVALID", "code": "bad"}
+        return self.b.refused(name, arguments, build)
+
+
+def _cancelled() -> None:
+    raise asyncio.CancelledError
+
+
+def test_a_call_answers_summary_first_and_session_last_from_the_args_it_ran_with() -> None:
+    s = _Server()
+
+    @s.b.tool("Count")
+    def count(n: int, by: int = 2) -> dict[str, Any]:
+        return {"status": "ok", "n": n * by, "session": {"stale": True}}
+
+    got = count(3)
+    assert list(got) == ["summary", "status", "n", "session"]
+    assert got["summary"] == "count [('by', 2), ('n', 3)]"
+    assert got["session"] == {"altered": False}       # composed after the body, never the body's
+    assert s.log == [("invoke", "count", True), ("after", None, 1)]
+    assert s.b.nested == 0
+
+
+def test_session_before_keeps_the_block_the_body_built() -> None:
+    s = _Server()
+
+    @s.b.tool("Close", session_before=True)
+    def close() -> dict[str, Any]:
+        return {"status": "ok", "session": {"altered": True}}
+
+    assert close()["session"] == {"altered": True}
+
+
+def test_session_before_with_no_block_from_the_body_composes_one() -> None:
+    s = _Server()
+
+    @s.b.tool("Close", session_before=True)
+    def close() -> dict[str, Any]:
+        return {"status": "ok"}
+
+    assert close()["session"] == {"altered": False}
+
+
+def test_the_ctx_is_kept_out_of_the_summarys_arguments() -> None:
+    s = _Server()
+
+    @s.b.tool("Wait", on_cancel="stop")
+    def wait(seconds: int, ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
+        return {"status": "ok"}
+
+    assert wait(1, ctx=None)["summary"] == "wait [('seconds', 1)]"
+
+
+def test_a_tool_that_waits_declares_how_a_cancel_ends_it_or_fails_at_import() -> None:
+    s = _Server()
+
+    def wait(ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
+        return {"status": "ok"}
+
+    with pytest.raises(TypeError, match="declares how a cancel ends it"):
+        s.b.tool("Wait")(wait)
+    assert s.mcp._tool_manager.list_tools() == []
+
+
+def test_registration_fills_the_description_and_the_annotations() -> None:
+    s = _Server()
+
+    @s.b.tool("Read", read_only=True, idempotent=True)
+    def read() -> dict[str, Any]:
+        """Reads."""
+        return {"status": "ok"}
+
+    (registered,) = s.mcp._tool_manager.list_tools()
+    assert registered.name == "read"
+    assert registered.description == "read: Reads."
+    assert registered.title == "Read"
+    assert registered.annotations is not None
+    assert registered.annotations.read_only_hint and registered.annotations.idempotent_hint
+
+
+def test_a_call_cancelled_while_it_queued_runs_nothing_and_ends_nothing(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    s = _Server()
+
+    @s.b.tool("Run", on_cancel="stop")
+    def run() -> dict[str, Any]:
+        raise AssertionError("the body of a call cancelled in the queue ran")
+
+    monkeypatch.setattr(cancel, "check", _cancelled)
+    with pytest.raises(asyncio.CancelledError):
+        run()
+    assert s.log == []
+    assert s.pending is None and s.b.nested == 0
+
+
+def test_a_call_cancelled_in_its_body_applies_its_end_and_the_next_reply_says_so() -> None:
+    s = _Server()
+
+    @s.b.tool("Run", on_cancel="stop")
+    def run() -> dict[str, Any]:
+        _cancelled()
+        return {}
+
+    @s.b.tool("Status")
+    def status() -> dict[str, Any]:
+        return {"status": "ok"}
+
+    with pytest.raises(asyncio.CancelledError):
+        run()
+    assert s.log == [("invoke", "run", True), ("end", "run", "stop"), ("after", "kept by run", 1)]
+    got = status()
+    assert got["summary"] == "after a cancelled run (stopped): status []"
+    assert got["cancelled"]["tool"] == "run" and got["cancelled"]["left"] == "stopped"
+    assert list(got)[-1] == "session"
+    assert "cancelled" not in status()                 # said once
+
+
+def test_a_tool_with_no_declared_end_ends_none() -> None:
+    s = _Server()
+
+    @s.b.tool("Poke")
+    def poke() -> dict[str, Any]:
+        _cancelled()
+        return {}
+
+    with pytest.raises(asyncio.CancelledError):
+        poke()
+    assert ("end", "poke", "none") in s.log
+
+
+def test_only_the_outermost_call_ends_and_only_its_reply_takes_the_record() -> None:
+    s = _Server()
+    inner_replies: list[dict[str, Any]] = []
+    s.pending = cancel.recorded(None, "earlier", 0.0, "stopped")
+
+    @s.b.tool("Step")
+    def step() -> dict[str, Any]:
+        return {"status": "ok"}
+
+    @s.b.tool("Leaf", on_cancel="kill")
+    def leaf() -> dict[str, Any]:
+        _cancelled()
+        return {}
+
+    @s.b.tool("Sequence", on_cancel="stop")
+    def sequence(cancel_in_step: bool) -> dict[str, Any]:
+        inner_replies.append(step())
+        if cancel_in_step:
+            leaf()
+        return {"status": "ok"}
+
+    got = sequence(False)
+    assert "cancelled" not in inner_replies[0]          # a step's reply is not the caller's
+    assert got["cancelled"]["tool"] == "earlier"
+    s.log.clear()
+    with pytest.raises(asyncio.CancelledError):
+        sequence(True)
+    assert [e for e in s.log if e[0] == "end"] == [("end", "sequence", "stop")]
+    assert s.b.nested == 0
+
+
+def test_an_error_that_is_not_a_cancellation_escapes_with_no_end_and_the_after_hook_runs() -> None:
+    s = _Server()
+
+    @s.b.tool("Broken", on_cancel="stop")
+    def broken() -> dict[str, Any]:
+        raise ZeroDivisionError
+
+    with pytest.raises(ZeroDivisionError):
+        broken()
+    assert s.log == [("invoke", "broken", True), ("after", None, 1)]
+    assert s.b.nested == 0
+
+
+def test_the_servers_own_vocabulary_is_answered_by_its_invoke() -> None:
+    s = _Server()
+
+    @s.b.tool("Find")
+    def find() -> dict[str, Any]:
+        raise LookupError("nowhere")
+
+    got = find()
+    assert got["code"] == "lookup" and got["summary"] == "find []"
+
+
+def test_the_schemas_refusal_is_closed_under_the_lock_and_takes_the_record() -> None:
+    s = _Server()
+    s.pending = cancel.recorded(None, "run", 1.0, "running")
+    held: list[bool] = []
+    real = s.b.finished
+
+    def spy(*a: Any, **k: Any) -> dict[str, Any]:
+        held.append(s.held())
+        return real(*a, **k)
+
+    s.b.finished = spy  # type: ignore[method-assign]
+    got = s.refusal("count", {"n": "x"}, None)
+    assert held == [True] and s.log == [("build", "count", True)]
+    assert got["status"] == "INVALID" and got["cancelled"]["tool"] == "run"
+
+
+def test_a_refusal_whose_call_was_cancelled_while_it_queued_spends_no_account(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    s = _Server()
+    s.pending = cancel.recorded(None, "run", 1.0, "running")
+    monkeypatch.setattr(cancel, "check", _cancelled)
+    with pytest.raises(asyncio.CancelledError):
+        s.refusal("count", {}, None)
+    assert s.pending is not None and s.log == []
+
+
+def test_an_after_hook_that_raises_still_gives_the_nesting_back() -> None:
+    s = _Server()
+
+    @s.b.tool("Run", on_cancel="stop")
+    def run(cancelled: bool) -> dict[str, Any]:
+        if cancelled:
+            _cancelled()
+        return {"status": "ok"}
+
+    s.after_raises = True
+    with pytest.raises(OSError):
+        run(False)
+    s.after_raises = False
+    assert s.b.nested == 0
+    with pytest.raises(asyncio.CancelledError):
+        run(True)
+    assert ("end", "run", "stop") in s.log
+    assert run(False)["cancelled"]["tool"] == "run"
+
+
+def test_an_end_that_raises_still_runs_the_after_hook_and_gives_the_nesting_back() -> None:
+    s = _Server()
+
+    def broken_end(name: str, on_cancel: cancel.OnCancel) -> tuple[cancel.Left, object]:
+        raise OSError("the end broke")
+
+    s.b._end = broken_end
+
+    @s.b.tool("Run", on_cancel="stop")
+    def run() -> dict[str, Any]:
+        _cancelled()
+        return {}
+
+    with pytest.raises(OSError):
+        run()
+    assert s.log[-1] == ("after", None, 1) and s.b.nested == 0
+
+
+def test_a_server_with_nothing_to_do_after_a_call_needs_no_after_hook() -> None:
+    lock = threading.RLock()
+    b = boundary.Boundary(
+        Envelope("t", instructions="i", refusal=lambda *a: {}), lock,
+        invoke=lambda fn, sig, a, k: dict(fn(*a, **k)), end=lambda n, o: ("stopped", None),
+        line=lambda n, a, r: n, session_block=lambda: None, take_cancelled=lambda: None,
+        keep_cancelled=lambda r: None, doc=lambda n, t: t)
+
+    @b.tool("Ping")
+    def ping() -> dict[str, Any]:
+        return {"status": "ok"}
+
+    assert ping() == {"summary": "ping", "status": "ok", "session": None}
+
+
+def test_a_second_cancel_before_any_reply_keeps_the_first_ones_name() -> None:
+    s = _Server()
+
+    @s.b.tool("Run", on_cancel="stop")
+    def run() -> dict[str, Any]:
+        _cancelled()
+        return {}
+
+    for _ in range(2):
+        with pytest.raises(asyncio.CancelledError):
+            run()
+    assert s.pending is not None and s.pending.earlier == ("run",)
