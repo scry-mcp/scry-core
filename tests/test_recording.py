@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shlex
 import threading
 from pathlib import Path
 from typing import Any
@@ -381,22 +382,24 @@ def test_the_export_writes_the_document_and_accounts_for_it(tmp_path: Path) -> N
     assert got["path"] == str(path) and got["steps"] == 1 and got["checks"] == 0
     assert got["dropped_total"] == 45 and len(got["dropped"]) == recording.DROPPED_SHOWN
     assert got["dropped"][-1]["call"] == 45 and got["cut"] is None
-    assert got["replay"] == f"uv run python -m scry_core.replay {path}"
+    assert shlex.split(got["replay"]) == ["uv", "run", "python", "-m", "scry_core.replay",
+                                          str(path)]
     assert json.loads(path.read_text())["steps"][0]["frames"] == 3
     assert s.recorder.recording is not None
     assert all(c.op != recording.EXPORT_TOOL for c in s.recorder.recording.calls)
 
 
-@pytest.mark.parametrize("path, says", [
-    ("relative.json", "absolute or starts with `~`"),
-    ("/tmp/session.txt", "ends in `.json`"),
-    ("/no/such/dir/session.json", "is not a directory"),
+@pytest.mark.parametrize("path, absolute, says", [
+    ("relative.json", False, "absolute or starts with `~`"),
+    ("session.txt", True, "ends in `.json`"),
+    ("no/such/dir/session.json", True, "is not a directory"),
 ])
-def test_an_export_to_a_path_it_cannot_take_is_refused(path: str, says: str) -> None:
+def test_an_export_to_a_path_it_cannot_take_is_refused(tmp_path: Path, path: str, absolute: bool,
+                                                         says: str) -> None:
     s = _Server()
     s.start(system="board")
     with pytest.raises(Invalid, match=says):
-        recording.export(s.recorder, path)
+        recording.export(s.recorder, str(tmp_path / path) if absolute else path)
 
 
 def test_an_export_over_a_file_needs_overwrite_and_one_with_nothing_recorded_is_refused(
@@ -417,6 +420,7 @@ def test_an_export_over_a_file_needs_overwrite_and_one_with_nothing_recorded_is_
 def test_an_export_led_by_a_tilde_lands_under_the_home(monkeypatch: pytest.MonkeyPatch,
                                                        tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))        # the home on Windows
     s = _Server()
     s.start(system="board")
     s.run_for(frames=1)
@@ -556,7 +560,7 @@ def test_the_replay_line_quotes_a_path_with_a_space(tmp_path: Path) -> None:
     s.run_for(frames=1)
     (tmp_path / "a b").mkdir()
     got = recording.export(s.recorder, str(tmp_path / "a b" / "s.json"))
-    assert got["replay"].endswith(f"'{tmp_path}/a b/s.json'")
+    assert shlex.split(got["replay"])[-1] == str(tmp_path / "a b" / "s.json")
 
 
 def test_a_field_compares_as_json_carries_it() -> None:
