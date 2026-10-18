@@ -25,24 +25,12 @@ class _Machine:
         self.frame: int | None = 100
         self.seq = 1
         self.unreadable = False
-        self.unread: int | None = None         # a stop that arrived and nobody read yet
-        self.reachable = True                  # whether the server's `reach` could run here
-
-    def contact(self) -> dict[str, Any]:
-        """A call's first contact: an unread stop is found, and said once in its reply."""
-        if self.unread is None:
-            return {}
-        self.stop_at(self.unread)
-        self.unread = None
-        return {"stopped_on_its_own": {"stop_seq": self.seq, "pc": f"0x{self.seq:x}",
-                                       "frame": self.frame}}
 
     def read(self) -> recording.Machine:
         if self.unreadable:
             raise OSError("the console did not answer")
         stop = {} if self.running else {"pc": f"0x{self.seq:x}", "frame": self.frame}
-        return recording.Machine(self.running, None if self.running else self.frame, self.seq,
-                                 stop, reachable=self.reachable)
+        return recording.Machine(self.running, self.seq, stop)
 
     def stop_at(self, frame: int | None) -> None:
         self.running, self.frame, self.seq = False, frame, self.seq + 1
@@ -51,11 +39,10 @@ class _Machine:
 class _Server:
     """A boundary with a recorder and the tools a session uses, each moving `_Machine`."""
 
-    def __init__(self, plan: str | None = None,
-                 reach: tuple[str, str, str] | None = None) -> None:
+    def __init__(self, plan: str | None = None) -> None:
         self.m = _Machine()
         self.recorder = recording.Recorder("double", self.m.read, stop_fields=("pc", "frame"),
-                                        plan=plan, reach=reach)
+                                        plan=plan)
         self.b = boundary.Boundary(
             Envelope("t", instructions="i", refusal=lambda *a: {}), threading.RLock(),
             invoke=lambda fn, sig, a, k: dict(fn(*a, **k)), end=lambda n, o: ("stopped", None),
@@ -82,10 +69,6 @@ class _Server:
 
         @b.tool("run_for")
         def run_for(frames: int, seconds: float = 30.0) -> dict[str, Any]:
-            found = m.contact()
-            if found:
-                m.stop_at(None if m.frame is None else m.frame + frames)
-                return {**stopped(), **found}
             if seconds < 1:                    # the bound ran out first, a third of the way
                 m.stop_at(None if m.frame is None else m.frame + frames // 3)
                 return {**stopped(), "verdict": "TIMEOUT"}
@@ -112,16 +95,10 @@ class _Server:
                 return {"status": "INVALID", "code": "unknown_ref", "message": "no such ref"}
             return {"status": "ok"}
 
-        @b.tool("poke")
-        def poke(ref: str, stops_at: int) -> dict[str, Any]:
-            m.stop_at(stops_at)    # the first contact finds the stop the machine made itself
-            return {"status": "ok"}
-
         @b.tool("peek", read_only=True)
         def peek() -> dict[str, Any]:
-            found = m.contact()
             m.stop_at(m.frame)     # a reader that steps the guest to read it
-            return {"status": "ok", **found}
+            return {"status": "ok"}
 
         @b.tool("look")
         def look() -> dict[str, Any]:
@@ -184,7 +161,7 @@ class _Server:
             return {"status": "ok", **recording.export(self.recorder, path, overwrite)}
 
         ops = {"run_for": run_for, "write": write, "read_memory": read_memory, "resume": resume}
-        self.tools = {f.__name__: f for f in (start, run_for, resume, stop, write, poke, peek,
+        self.tools = {f.__name__: f for f in (start, run_for, resume, stop, write, peek,
                                               look, golden_check,
                                               wait_out, crashes, close, read_memory, log,
                                               poke_and_look, snapshot, state_save, state_load,
@@ -296,62 +273,12 @@ def test_refused_calls_unchecked_reads_and_host_writers_are_dropped_and_named() 
     assert "a write to the host only" in out.dropped[2]["why"]
 
 
-def test_a_release_and_the_stop_that_ended_it_become_the_frames_the_run_took() -> None:
-    s = _Server()
-    s.start(system="board")
-    s.resume()
-    s.log()                                            # a read while it ran, dropped
-    s.stop(frames_then=50)
-    s.write(ref="a", value=1)
-    doc, out = s.document()
-    assert doc["steps"][0] == {"op": "run_for", "frames": 50,
-                               "recorded": {"pc": "0x2", "frame": 150}}
-    assert doc["steps"][1] == {"op": "write", "ref": "a", "value": 1}
-    replaced = [d for d in out.dropped if "replaced by run_for(frames=50)" in d["why"]]
-    assert [d["op"] for d in replaced] == ["resume", "stop"]
-
-
-def test_a_run_the_wall_clock_ended_inside_one_call_becomes_its_frames() -> None:
-    s = _Server()
-    s.start(system="board")
-    s.resume(seconds=2, frames_then=120)
-    doc, _out = s.document()
-    assert doc["steps"] == [{"op": "run_for", "frames": 120,
-                             "recorded": {"pc": "0x2", "frame": 220}}]
-
-
-def test_a_call_made_while_the_machine_ran_cuts_the_document_there() -> None:
-    s = _Server()
-    s.start(system="board")
-    s.run_for(frames=1)
-    s.resume()
-    s.write(ref="a", value=1)
-    s.stop()
-    doc, out = s.document()
-    assert [st["op"] for st in doc["steps"]] == ["run_for"]
-    assert out.cut is not None and out.cut["call"] == 3 and out.cut["op"] == "write"
-    assert "while the machine ran" in out.cut["why"]
-
-
 def test_a_release_no_call_saw_end_cuts_the_document_at_the_release() -> None:
     s = _Server()
     s.start(system="board")
     s.resume()
     doc, out = s.document()
     assert doc["steps"] == [] and out.cut is not None and out.cut["op"] == "resume"
-
-
-def test_a_run_the_wall_ended_on_a_server_with_no_frame_counter_cuts_the_document() -> None:
-    s = _Server()
-    s.start(system="board")
-    s.m.frame = None
-    s.write(ref="a", value=1)
-    s.resume()
-    s.stop()
-    s.write(ref="a", value=2)
-    doc, out = s.document()
-    assert [st["op"] for st in doc["steps"]] == ["write"]
-    assert out.cut is not None and out.cut["op"] == "resume" and "no frame" in out.cut["why"]
 
 
 def test_a_wall_ended_call_on_a_server_with_no_frame_counter_cuts_the_document() -> None:
@@ -437,34 +364,6 @@ def test_a_step_holds_to_every_recorded_field_and_names_the_first_it_does_not() 
 
 
 
-
-
-def test_a_run_the_machine_ended_by_itself_keeps_the_calls_that_found_it_stopped() -> None:
-    """A breakpoint stops the released machine; the next calls (a write, a check) did their own
-    work on the stopped machine, so the run is exported up to that stop and they stay after it."""
-    s = _Server()
-    s.start(system="board")
-    s.resume()
-    s.m.stop_at(170)                                    # the machine's own breakpoint
-    s.write(ref="a", value=1)
-    s.read_memory(ref="score")
-    doc, out = s.document()
-    assert doc["steps"] == [{"op": "run_for", "frames": 70,
-                             "recorded": {"pc": "0x2", "frame": 170}},
-                            {"op": "write", "ref": "a", "value": 1},
-                            {"op": "read_memory", "ref": "score", "recorded": {"hex": "beef"}}]
-    assert out.checks == 1 and out.cut is None
-
-
-def test_a_run_that_does_not_go_forward_cuts_the_document() -> None:
-    s = _Server()
-    s.start(system="board")
-    s.resume()
-    s.m.stop_at(40)                                     # a state of an earlier frame, say
-    s.stop(frames_then=0)
-    doc, out = s.document()
-    assert doc["steps"] == [] and out.cut is not None and out.cut["op"] == "resume"
-    assert "not after frame 100" in out.cut["why"]
 
 
 def test_a_refusal_that_moved_the_machine_cuts_the_document_and_one_that_did_not_is_dropped(
@@ -569,42 +468,6 @@ def test_a_field_compares_as_json_carries_it() -> None:
     assert recording.diverged({"crop": [1, 2]}, {"crop": (1, 2)}) is None
 
 
-def test_a_stop_a_call_finds_inside_itself_ends_the_run_and_the_call_stays() -> None:
-    s = _Server()
-    s.start(system="board")
-    s.resume()
-    s.poke(ref="a", stops_at=150)
-    doc, _out = s.document()
-    assert doc["steps"] == [{"op": "run_for", "frames": 50,
-                             "recorded": {"pc": "0x2", "frame": 150}},
-                            {"op": "poke", "ref": "a", "stops_at": 150}]
-
-
-def test_an_advance_made_after_the_machine_stopped_by_itself_follows_the_run() -> None:
-    s = _Server()
-    s.start(system="board")
-    s.resume()
-    s.m.stop_at(170)
-    s.run_for(frames=10)
-    doc, out = s.document()
-    assert doc["steps"] == [{"op": "run_for", "frames": 70,
-                             "recorded": {"pc": "0x2", "frame": 170}},
-                            {"op": "run_for", "frames": 10,
-                             "recorded": {"pc": "0x3", "frame": 180}}]
-    assert out.cut is None
-
-
-def test_an_advance_that_began_on_the_running_machine_cuts_the_document() -> None:
-    """Where the machine stopped between its run and the advance's own stop is not recorded."""
-    s = _Server()
-    s.start(system="board")
-    s.resume()
-    s.run_for(frames=10)
-    doc, out = s.document()
-    assert doc["steps"] == [] and out.cut is not None and out.cut["op"] == "run_for"
-    assert "whose run had just stopped" in out.cut["why"]
-
-
 def test_a_reader_that_moved_the_machine_is_kept_as_a_step_never_dropped() -> None:
     s = _Server()
     s.start(system="board")
@@ -612,17 +475,6 @@ def test_a_reader_that_moved_the_machine_is_kept_as_a_step_never_dropped() -> No
     s.log()
     doc, out = s.document()
     assert doc["steps"] == [{"op": "peek"}] and [d["op"] for d in out.dropped] == ["log"]
-
-
-def test_a_run_no_call_saw_end_ends_at_the_stop_the_export_finds(tmp_path: Path) -> None:
-    s = _Server()
-    s.start(system="board")
-    s.resume()
-    s.m.stop_at(160)                                    # a breakpoint, nobody asked since
-    got = s.perform_export(path=str(tmp_path / "s.json"))
-    doc = json.loads(Path(got["path"]).read_text())
-    assert doc["steps"] == [{"op": "run_for", "frames": 60,
-                             "recorded": {"pc": "0x2", "frame": 160}}] and got["cut"] is None
 
 
 def test_a_steps_arguments_leave_out_its_op_and_its_recorded() -> None:
@@ -650,13 +502,13 @@ def test_a_start_whose_plan_failed_with_its_session_up_is_the_sessions_recording
     assert [c.op for c in rec.calls] == ["run_for", "write"]
 
 
-def test_a_run_its_wall_clock_bound_ended_is_written_as_the_frames_it_took() -> None:
+def test_a_run_its_wall_clock_bound_ended_cuts_the_document_at_it() -> None:
     s = _Server()
     s.start(system="board")
     s.run_for(frames=90, seconds=0.5)
-    doc, _out = s.document()
-    assert doc["steps"] == [{"op": "run_for", "frames": 30,
-                             "recorded": {"pc": "0x2", "frame": 130}}]
+    doc, out = s.document()
+    assert doc["steps"] == []
+    assert out.cut is not None and out.cut["op"] == "run_for" and "wall clock" in out.cut["why"]
 
 
 def test_a_check_of_files_a_dropped_call_wrote_is_dropped_never_a_green_by_construction() -> None:
@@ -682,65 +534,36 @@ def test_a_wall_tool_that_moved_nothing_is_dropped_and_an_export_of_no_step_is_r
     assert not (tmp_path / "s.json").exists()
 
 
-def test_a_run_a_breakpoint_ended_unread_ends_at_the_stop_the_next_call_found() -> None:
-    """The stop arrived while nobody read it, so the machine still reads as running when the next
-    call begins; its reply says the stop it found, which is where the run ended. The call is then
-    judged from there: an advance holds to its own stop, a reader that stepped stays a step."""
+@pytest.mark.parametrize("ended_by", ["stop", "a breakpoint a read found", "an advance", "nothing"])
+def test_a_release_ends_the_document_whatever_ends_its_run(ended_by: str) -> None:
+    """The clock or a breakpoint stops the cpu at a place inside its frame that no replayed
+    advance reaches, and every stop after it would inherit the shift: the bench is what came
+    before the release, and the cut names the release and why."""
     s = _Server()
     s.start(system="board")
+    s.write(ref="a", value=0)
     s.resume()
-    s.m.running, s.m.unread = True, 170
-    s.run_for(frames=10)
+    s.log()                                            # a read while it ran
+    if ended_by == "stop":
+        s.stop(frames_then=50)
+    elif ended_by == "a breakpoint a read found":
+        s.m.stop_at(170)
+        s.read_memory(ref="score")
+    elif ended_by == "an advance":
+        s.m.stop_at(170)
+        s.run_for(frames=10)
+    s.write(ref="a", value=1)
     doc, out = s.document()
-    assert doc["steps"] == [{"op": "run_for", "frames": 70,
-                             "recorded": {"pc": "0x2", "frame": 170}},
-                            {"op": "run_for", "frames": 10,
-                             "recorded": {"pc": "0x3", "frame": 180}}], out.cut
-    s.resume()
-    s.m.running, s.m.unread = True, 300
-    s.peek()
-    doc, out = s.document()
-    assert doc["steps"][2:] == [{"op": "run_for", "frames": 120,
-                                 "recorded": {"pc": "0x4", "frame": 300}},
-                                {"op": "peek"}], (doc["steps"], out.cut)
+    assert doc["steps"] == [{"op": "write", "ref": "a", "value": 0}]
+    assert out.cut == {"call": 2, "op": "resume", "why": recording.RELEASED}, out.cut
 
 
-def test_a_run_a_stop_ended_mid_frame_goes_to_the_frame_then_to_the_stops_place() -> None:
-    """The run's frames end at a frame's edge, and a stop the wall clock made lands anywhere in
-    that frame: the frames hold to the frame only, then the server's own advance goes on to the
-    stop's place and holds to the whole stop."""
-    s = _Server(reach=("run_to", "ref", "pc"))
+def test_a_wall_tool_that_came_back_with_the_machine_moved_cuts_the_document() -> None:
+    """A `resume(seconds=)` that came back stopped: the same run inside one call."""
+    s = _Server()
     s.start(system="board")
-    s.resume()
-    s.stop(frames_then=70)
+    s.write(ref="a", value=0)
+    s.resume(seconds=1.0)
     doc, out = s.document()
-    assert doc["steps"] == [{"op": "run_for", "frames": 70, "recorded": {"frame": 170}},
-                            {"op": "run_to", "ref": "0x2",
-                             "recorded": {"pc": "0x2", "frame": 170}}], out.cut
-    assert "run_to" in out.dropped[-1]["why"], out.dropped
-
-
-def test_a_stop_the_servers_reach_cannot_run_from_keeps_the_frames_holding_to_it() -> None:
-    """The server says when its `reach` would be refused there (a `run_to` with no control):
-    the frames then hold to the whole stop, which holds wherever the frame's edge is the place."""
-    s = _Server(reach=("run_to", "ref", "pc"))
-    s.start(system="board")
-    s.resume()
-    s.m.reachable = False
-    s.stop(frames_then=70)
-    doc, out = s.document()
-    assert doc["steps"] == [{"op": "run_for", "frames": 70,
-                             "recorded": {"pc": "0x2", "frame": 170}}], out.cut
-
-
-def test_a_run_that_stopped_inside_the_frame_it_began_in_is_the_reach_alone() -> None:
-    """A breakpoint met before the next frame's edge: no frames to count, and the place is
-    reached by the server's own advance from where the run began."""
-    s = _Server(reach=("run_to", "ref", "pc"))
-    s.start(system="board")
-    s.resume()
-    s.stop(frames_then=0)
-    doc, out = s.document()
-    assert doc["steps"] == [{"op": "run_to", "ref": "0x2",
-                             "recorded": {"pc": "0x2", "frame": 100}}], out.cut
-    assert "run_to" in out.dropped[-1]["why"]
+    assert doc["steps"] == [{"op": "write", "ref": "a", "value": 0}]
+    assert out.cut == {"call": 2, "op": "resume", "why": recording.RUN_STOPPED_INSIDE}, out.cut
