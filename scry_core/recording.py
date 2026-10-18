@@ -15,16 +15,18 @@ THE EXPORT keeps what moved the machine and what was checked, drops the rest and
 
 - a call the server refused is dropped, unless the machine moved under it;
 - a tool declared `drop` (a read the export does not check, or a write only to the host: a file,
-  a window, the emulator's pace) is dropped;
+  a window, the emulator's pace) is dropped, unless the call moved the machine (a reader that
+  steps the guest to read it), which is kept as a step: dropped, the replay would fall behind;
 - a tool declared with fields is kept as a CHECK: the step carries `recorded`, those fields of its
   reply, and the replay's `perform` compares them;
 - any other tool is kept as a STEP; one that left the machine at a new stop carries the stop's
   fields (`stop_fields`) as its `recorded`;
 - a RUN THE WALL CLOCK SHAPED becomes frames: from a release (a call that left the machine
-  running) to the first stop a call found it at, or within a tool declared `wall` that ran and
-  stopped in one call, the export writes `run_for(frames=<the difference between the two stops'
-  frames>)` holding to the stop reached, whatever stopped it, because only a count of frames
-  replays the same way; a run that would not stop at the same place shows as `diverged`;
+  running) to the first stop a call found it at (or, when no call did, the stop the machine is
+  at when the export reads it), or within a tool declared `wall` that ran and stopped in one
+  call, the export writes `run_for(frames=<the difference between the two stops' frames>)`
+  holding to the stop reached, whatever stopped it, because only a count of frames replays the
+  same way; a run that would not stop at the same place shows as `diverged`;
 - the first call the rules cannot place (its frames unknown, made while the machine ran, ended
   without a reply, or with the machine unreadable around it) CUTS the document there: what came
   before stands, and the reply names the call and why.
@@ -201,6 +203,10 @@ class Recorder:
             return
         into.calls.append(call)
 
+    def read(self) -> Machine:
+        """The machine now, as `_read` reads it: what an export ends a pending run at."""
+        return self._read()
+
     def _read(self) -> Machine:
         """The machine as the server reads it, or `UNREAD`: a recorder never fails a call."""
         try:
@@ -230,9 +236,10 @@ class Account:
         self.cut = {"call": n, "op": op, "why": why}
 
 
-def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
+def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, Any], Account]:
     """The recorder's recording as `perform`'s document, by the rules the module docstring sets
-    out, and the account of what was kept, dropped and cut. `recorder.recording` is not None."""
+    out, and the account of what was kept, dropped and cut. `now` is the machine as the export
+    reads it, which ends a run no recorded call saw end. `recorder.recording` is not None."""
     recording = recorder.recording
     assert recording is not None
     out = Account()
@@ -279,7 +286,7 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
             out.cut_at(n, call.op, "it was made while the machine ran, at no frame a replay can "
                        "place it at")
             break
-        if declared.export_as == "drop":
+        if declared.export_as == "drop" and not _moved(call):
             out.drop(n, call.op, _dropped_why(declared))
             continue
         if isinstance(declared.export_as, tuple):
@@ -296,9 +303,11 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
         out.steps.append(_step(call, call.recorded if _moved(call) else {}))
         _states(out, call)
     else:
-        if released is not None:
+        if released is not None and (now is None or now.running or not now.known):
             out.cut_at(released[0], released[1].op, "it left the machine running and no call "
                        "found it stopped again, so the frames of its run are unknown")
+        elif released is not None and now is not None:
+            _run_for(out, released, now, None)
     if out.cut is None and recording.full:
         out.cut_at(RECORD_MAX + 1, None, f"the recording holds at most {RECORD_MAX} calls")
     doc = {"version": DOCUMENT_VERSION, "server": recorder.server, "start": dict(recording.start),
@@ -381,7 +390,7 @@ def export(recorder: Recorder, path: str, overwrite: bool = False) -> dict[str, 
     if recorder.recording is None:
         raise Invalid("no_recording", "nothing is recorded: a recording begins at a `start` "
                       "that succeeds")
-    doc, out = document(recorder)
+    doc, out = document(recorder, recorder.read())
     data = (json.dumps(doc, indent=2) + "\n").encode()
     if overwrite and os.path.lexists(target):
         # A NEW FILE BESIDE IT, then moved over it: a write that fails leaves the old one whole.
@@ -406,3 +415,28 @@ def diverged(recorded: Mapping[str, Any], reply: Mapping[str, Any]
         if got != value:
             return name, value, got
     return None
+
+
+def step_arguments(step: Mapping[str, Any]) -> dict[str, Any]:
+    """A step's arguments for its tool: everything but its `op` and its `recorded`."""
+    return {k: v for k, v in step.items() if k not in ("op", RECORDED)}
+
+
+def refuse_recorded(step: Mapping[str, Any]) -> str | None:
+    """Why a step's `recorded` is not one (a sequence's preflight refuses the step with it), or
+    None when it is a mapping or absent."""
+    if isinstance(step.get(RECORDED, {}), dict):
+        return None
+    return (f"carries `{RECORDED}` as {step[RECORDED]!r}: it is the fields a replay holds the "
+            "step's reply to, a mapping of field to value")
+
+
+def divergence(i: int, op: str, reply: Mapping[str, Any],
+               apart: tuple[str, Any, Any]) -> tuple[str, dict[str, Any]]:
+    """The message and the fields of the INVALID `diverged` a sequence answers when step `i`
+    (`op`) did not hold to its `recorded`: what the runner reads (`failed_at`, `field`,
+    `recorded`, `got`) and the step's own reply under `failed`, as a failed step carries it."""
+    field, recorded, got = apart
+    return (f"step {i} ({op!r}) diverged: `{field}` was recorded {recorded!r} and came back "
+            f"{got!r}", {"failed_at": i, "failed": {"op": op, "reply": dict(reply)},
+                         "field": field, "recorded": recorded, "got": got})

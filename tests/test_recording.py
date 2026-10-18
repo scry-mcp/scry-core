@@ -92,6 +92,11 @@ class _Server:
             m.stop_at(stops_at)    # the first contact finds the stop the machine made itself
             return {"status": "ok"}
 
+        @b.tool("peek", read_only=True)
+        def peek() -> dict[str, Any]:
+            m.stop_at(m.frame)     # a reader that steps the guest to read it
+            return {"status": "ok"}
+
         @b.tool("look")
         def look() -> dict[str, Any]:
             return stopped()       # where the machine stands, which this step did not move
@@ -149,7 +154,8 @@ class _Server:
             return {"status": "ok", **recording.export(self.recorder, path, overwrite)}
 
         ops = {"run_for": run_for, "write": write, "read_memory": read_memory, "resume": resume}
-        self.tools = {f.__name__: f for f in (start, run_for, resume, stop, write, poke, look,
+        self.tools = {f.__name__: f for f in (start, run_for, resume, stop, write, poke, peek,
+                                              look,
                                               wait_out, crashes, close, read_memory, log,
                                               poke_and_look, snapshot, state_save, state_load,
                                               perform, perform_export)}
@@ -561,3 +567,37 @@ def test_an_advance_that_began_on_the_running_machine_cuts_the_document() -> Non
     doc, out = s.document()
     assert doc["steps"] == [] and out.cut is not None and out.cut["op"] == "run_for"
     assert "whose run had just stopped" in out.cut["why"]
+
+
+def test_a_reader_that_moved_the_machine_is_kept_as_a_step_never_dropped() -> None:
+    s = _Server()
+    s.start(system="board")
+    s.peek()
+    s.log()
+    doc, out = s.document()
+    assert doc["steps"] == [{"op": "peek"}] and [d["op"] for d in out.dropped] == ["log"]
+
+
+def test_a_run_no_call_saw_end_ends_at_the_stop_the_export_finds(tmp_path: Path) -> None:
+    s = _Server()
+    s.start(system="board")
+    s.resume()
+    s.m.stop_at(160)                                    # a breakpoint, nobody asked since
+    got = s.perform_export(path=str(tmp_path / "s.json"))
+    doc = json.loads(Path(got["path"]).read_text())
+    assert doc["steps"] == [{"op": "run_for", "frames": 60,
+                             "recorded": {"pc": "0x2", "frame": 160}}] and got["cut"] is None
+
+
+def test_a_steps_arguments_leave_out_its_op_and_its_recorded() -> None:
+    step = {"op": "read_memory", "ref": "0x0", "recorded": {"hex": "00"}}
+    assert recording.step_arguments(step) == {"ref": "0x0"}
+    assert recording.refuse_recorded(step) is None and recording.refuse_recorded({}) is None
+    assert "a mapping of field to value" in str(recording.refuse_recorded({"recorded": [1]}))
+
+
+def test_a_divergence_carries_what_the_runner_reads_and_the_steps_own_reply() -> None:
+    message, fields = recording.divergence(2, "read_memory", {"hex": "01"}, ("hex", "00", "01"))
+    assert message == "step 2 ('read_memory') diverged: `hex` was recorded '00' and came back '01'"
+    assert fields == {"failed_at": 2, "failed": {"op": "read_memory", "reply": {"hex": "01"}},
+                      "field": "hex", "recorded": "00", "got": "01"}
