@@ -141,3 +141,13 @@ def test_an_unknown_option_is_a_usage_error() -> None:
     with pytest.raises(SystemExit) as e:
         replay.main(["x.json", "--speed", "2"])
     assert e.value.code == 2
+
+
+def test_the_perform_line_counts_the_steps_in_either_servers_word(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        ) -> None:
+    doc = _repo(tmp_path, [{"op": "run_for", "frames": 1}, {"op": "run_for", "frames": 2}],
+                server="dosbox-x")
+    monkeypatch.setenv("REPLAY_DOUBLE_SAYS_COMPLETED", "1")
+    assert _run(monkeypatch, tmp_path, doc) == 0
+    assert "OK perform: 2 steps, 0 checks" in capsys.readouterr().out

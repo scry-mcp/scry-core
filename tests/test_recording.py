@@ -84,8 +84,9 @@ class _Server:
             return {"status": "ok"}
 
         @b.tool("stop", replay="wall")
-        def stop(frames_then: int = 50) -> dict[str, Any]:
-            m.stop_at(None if m.frame is None else m.frame + frames_then)
+        def stop(frames_then: int = 50, already: bool = False) -> dict[str, Any]:
+            if not already:
+                m.stop_at(None if m.frame is None else m.frame + frames_then)
             return stopped()
 
         @b.tool("write")
@@ -138,8 +139,12 @@ class _Server:
             return {"status": "ok"}
 
         @b.tool("snapshot", replay="drop")
-        def snapshot() -> dict[str, Any]:
-            return {"status": "ok", "path": "/tmp/x.png"}
+        def snapshot(dest: str = "") -> dict[str, Any]:
+            return {"status": "ok", "path": dest or "/tmp/x.png"}
+
+        @b.tool("golden_check", read_only=True, replay=("matched",))
+        def golden_check(dir: str) -> dict[str, Any]:
+            return {"status": "ok", "matched": ["a.png"]}
 
         @b.tool("state_save")
         def state_save(name: str) -> dict[str, Any]:
@@ -162,7 +167,7 @@ class _Server:
 
         ops = {"run_for": run_for, "write": write, "read_memory": read_memory, "resume": resume}
         self.tools = {f.__name__: f for f in (start, run_for, resume, stop, write, poke, peek,
-                                              look,
+                                              look, golden_check,
                                               wait_out, crashes, close, read_memory, log,
                                               poke_and_look, snapshot, state_save, state_load,
                                               perform, perform_export)}
@@ -386,11 +391,12 @@ def test_an_export_over_a_file_needs_overwrite_and_one_with_nothing_recorded_is_
         recording.export(s.recorder, str(tmp_path / "x.json"))
     assert e.value.code == "no_recording"
     s.start(system="board")
+    s.run_for(frames=1)
     taken = tmp_path / "taken.json"
     taken.write_text("{}")
     with pytest.raises(Invalid, match="is there already"):
         recording.export(s.recorder, str(taken))
-    assert recording.export(s.recorder, str(taken), overwrite=True)["steps"] == 0
+    assert recording.export(s.recorder, str(taken), overwrite=True)["steps"] == 1
 
 
 def test_an_export_led_by_a_tilde_lands_under_the_home(monkeypatch: pytest.MonkeyPatch,
@@ -398,6 +404,7 @@ def test_an_export_led_by_a_tilde_lands_under_the_home(monkeypatch: pytest.Monke
     monkeypatch.setenv("HOME", str(tmp_path))
     s = _Server()
     s.start(system="board")
+    s.run_for(frames=1)
     assert recording.export(s.recorder, "~/s.json")["path"] == str(tmp_path / "s.json")
 
 
@@ -531,6 +538,7 @@ def test_an_export_to_a_home_that_does_not_exist_or_a_directory_is_refused(
 def test_the_replay_line_quotes_a_path_with_a_space(tmp_path: Path) -> None:
     s = _Server()
     s.start(system="board")
+    s.run_for(frames=1)
     (tmp_path / "a b").mkdir()
     got = recording.export(s.recorder, str(tmp_path / "a b" / "s.json"))
     assert got["replay"].endswith(f"'{tmp_path}/a b/s.json'")
@@ -628,3 +636,26 @@ def test_a_run_its_wall_clock_bound_ended_is_written_as_the_frames_it_took() -> 
     doc, _out = s.document()
     assert doc["steps"] == [{"op": "run_for", "frames": 30,
                              "recorded": {"pc": "0x2", "frame": 130}}]
+
+
+def test_a_check_of_files_a_dropped_call_wrote_is_dropped_never_a_green_by_construction() -> None:
+    s = _Server()
+    s.start(system="board")
+    s.snapshot(dest="/tmp/goldens/a.png")
+    s.golden_check(dir="/tmp/goldens")
+    doc, out = s.document()
+    assert doc["steps"] == [] and out.checks == 0
+    assert "files a dropped call wrote" in out.dropped[-1]["why"], out.dropped
+
+
+def test_a_wall_tool_that_moved_nothing_is_dropped_and_an_export_of_no_step_is_refused(
+        tmp_path: Path) -> None:
+    s = _Server()
+    s.start(system="board")
+    s.stop(already=True)                               # nothing moved: the stop was there
+    doc, out = s.document()
+    assert doc["steps"] == [] and out.dropped[-1]["op"] == "stop"
+    with pytest.raises(Invalid) as e:
+        recording.export(s.recorder, str(tmp_path / "s.json"))
+    assert e.value.code == "no_recording" and "no step" in str(e.value)
+    assert not (tmp_path / "s.json").exists()

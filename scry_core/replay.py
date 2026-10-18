@@ -65,7 +65,8 @@ def _played(steps: Sequence[Mapping[str, Any]]) -> Callable[[demo.Reply, demo.Ru
     checks = sum(bool(s.get(RECORDED)) for s in steps)
 
     def line(reply: demo.Reply, run: demo.Run) -> str:
-        return f"{reply.get('steps_completed', '?')} steps, {checks} checks"
+        done = reply.get("steps_completed", reply.get("completed", "?"))
+        return f"{done} steps, {checks} checks"
     return line
 
 

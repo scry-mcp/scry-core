@@ -44,8 +44,10 @@ def perform(steps: list[dict[str, Any]], summaries: bool = False) -> dict[str, A
             return {"summary": "perform: INVALID", "status": "INVALID", "code": "diverged",
                     "message": f"step {i} diverged", "failed_at": i, "field": field,
                     "recorded": recorded, "got": value, "steps_completed": i, "session": {}}
-    return {"summary": f"perform: {len(steps)} steps", "status": "ok",
-            "steps_completed": len(steps), "session": {}}
+    # Each server's own word for the count: mame says `steps_completed`, dosbox-x `completed`.
+    count = "completed" if os.environ.get("REPLAY_DOUBLE_SAYS_COMPLETED") else "steps_completed"
+    return {"summary": f"perform: {len(steps)} steps", "status": "ok", count: len(steps),
+            "session": {}}
 
 
 @mcp.tool()

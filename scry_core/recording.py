@@ -90,7 +90,8 @@ UNREAD = Machine(running=True, frame=None, seq=None, known=False)
 @dataclass(frozen=True)
 class Call:
     """One recorded call: `status` is the reply's, or `ended` for a call with no reply (cancelled,
-    or failed in its body); `walled` when its reply says the wall clock's bound ended it."""
+    or failed in its body); `walled` when its reply says the wall clock's bound ended it; `wrote`
+    the files it names as written (its `dest`, its reply's `path`)."""
 
     op: str
     args: Mapping[str, Any]
@@ -99,16 +100,16 @@ class Call:
     before: Machine
     after: Machine
     walled: bool = False
+    wrote: tuple[str, ...] = ()
 
 
 @dataclass
 class Recording:
-    """What a session did since its `start`; `broken` says why the recording could not go on."""
+    """What a session did since its `start`; `full` once it reached `RECORD_MAX`."""
 
     start: Mapping[str, Any]
     calls: list[Call] = field(default_factory=list)
     full: bool = False
-    broken: str | None = None
 
 
 @dataclass(frozen=True)
@@ -194,7 +195,10 @@ class Recorder:
             fields = fields if isinstance(fields, tuple) else self.stop_fields
             self._add(parent, Call(tool, dict(given), str(reply.get("status")),
                                    {f: reply[f] for f in fields if f in reply}, began,
-                                   self._read(), walled=reply.get("verdict") in WALL_VERDICTS))
+                                   self._read(), walled=reply.get("verdict") in WALL_VERDICTS,
+                                   wrote=tuple(str(x) for x in (given.get("dest"),
+                                                                reply.get("path"))
+                                               if isinstance(x, str) and x)))
 
     def ended(self, tool: str, parent: str | None, given: Mapping[str, Any],
               began: Machine | None) -> None:
@@ -255,6 +259,7 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
     assert recording is not None
     out = Account()
     released: tuple[int, Call] | None = None
+    unwritten: set[str] = set()          # files that dropped calls wrote, which no replay writes
     for n, call in enumerate(recording.calls, start=1):
         declared = recorder.kind(call.op)
         if not (call.before.known and call.after.known):
@@ -297,10 +302,16 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
             out.cut_at(n, call.op, "it was made while the machine ran, at no frame a replay can "
                        "place it at")
             break
-        if declared.export_as == "drop" and not _moved(call):
-            out.drop(n, call.op, _dropped_why(declared))
+        if declared.export_as in ("drop", "wall") and not _moved(call):
+            out.drop(n, call.op, _dropped_why(declared) if declared.export_as == "drop"
+                     else "it ran nothing: the machine was where it left it")
+            unwritten.update(call.wrote)
             continue
         if isinstance(declared.export_as, tuple):
+            if _reads_any(call.args, unwritten):
+                out.drop(n, call.op, "it holds to files a dropped call wrote, which a replay "
+                         "does not write: kept, it would hold by construction")
+                continue
             out.steps.append(_step(call, call.recorded))
             out.checks += bool(call.recorded)
             continue
@@ -324,6 +335,12 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
     doc = {"version": DOCUMENT_VERSION, "server": recorder.server, "start": dict(recording.start),
            "steps": out.steps, "needs": {"states": out.loaded}}
     return doc, out
+
+
+def _reads_any(args: Mapping[str, Any], files: set[str]) -> bool:
+    """Whether an argument names one of `files`, or a directory holding one."""
+    named = [Path(v) for v in args.values() if isinstance(v, str) and v]
+    return any(Path(f) == n or n in Path(f).parents for f in files for n in named)
 
 
 def _moved(call: Call) -> bool:
@@ -402,6 +419,10 @@ def export(recorder: Recorder, path: str, overwrite: bool = False) -> dict[str, 
         raise Invalid("no_recording", "nothing is recorded: a recording begins at a `start` "
                       "that succeeds")
     doc, out = document(recorder, recorder.read())
+    if not out.steps:
+        raise Invalid("no_recording", "the recording holds no step a replay could take: "
+                      + (f"it is cut at call {out.cut['call']} ({out.cut['why']})" if out.cut
+                         else f"{len(out.dropped)} calls, every one dropped"))
     data = (json.dumps(doc, indent=2) + "\n").encode()
     if overwrite and os.path.lexists(target):
         # A NEW FILE BESIDE IT, then moved over it: a write that fails leaves the old one whole.
