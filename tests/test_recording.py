@@ -50,10 +50,11 @@ class _Machine:
 class _Server:
     """A boundary with a recorder and the tools a session uses, each moving `_Machine`."""
 
-    def __init__(self, plan: str | None = None) -> None:
+    def __init__(self, plan: str | None = None,
+                 reach: tuple[str, str, str] | None = None) -> None:
         self.m = _Machine()
         self.recorder = recording.Recorder("double", self.m.read, stop_fields=("pc", "frame"),
-                                        plan=plan)
+                                        plan=plan, reach=reach)
         self.b = boundary.Boundary(
             Envelope("t", instructions="i", refusal=lambda *a: {}), threading.RLock(),
             invoke=lambda fn, sig, a, k: dict(fn(*a, **k)), end=lambda n, o: ("stopped", None),
@@ -701,3 +702,18 @@ def test_a_run_a_breakpoint_ended_unread_ends_at_the_stop_the_next_call_found() 
     assert doc["steps"][2:] == [{"op": "run_for", "frames": 120,
                                  "recorded": {"pc": "0x4", "frame": 300}},
                                 {"op": "peek"}], (doc["steps"], out.cut)
+
+
+def test_a_run_a_stop_ended_mid_frame_goes_to_the_frame_then_to_the_stops_place() -> None:
+    """The run's frames end at a frame's edge, and a stop the wall clock made lands anywhere in
+    that frame: the frames hold to the frame only, then the server's own advance goes on to the
+    stop's place and holds to the whole stop."""
+    s = _Server(reach=("run_to", "ref", "pc"))
+    s.start(system="board")
+    s.resume()
+    s.stop(frames_then=70)
+    doc, out = s.document()
+    assert doc["steps"] == [{"op": "run_for", "frames": 70, "recorded": {"frame": 170}},
+                            {"op": "run_to", "ref": "0x2",
+                             "recorded": {"pc": "0x2", "frame": 170}}], out.cut
+    assert "run_to" in out.dropped[-1]["why"], out.dropped

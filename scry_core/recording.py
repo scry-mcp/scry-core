@@ -28,7 +28,10 @@ THE EXPORT keeps what moved the machine and what was checked, drops the rest and
   call of a tool declared `wall`, or of any tool whose reply's verdict says its wall-clock bound
   ended it (`WALL_VERDICTS`), the export writes `run_for(frames=<the difference between the two
   stops' frames>)` holding to the stop reached, whatever stopped it, because only a count of frames
-  replays the same way; a run that would not stop at the same place shows as `diverged`;
+  replays the same way; with the recorder's `reach`, that holds to the frame alone and the advance
+  `reach` names then goes on to the stop's place and holds to the whole stop, because frames end at
+  a frame's edge and a stop lands anywhere inside its frame; a run that would not stop at the same
+  place shows as `diverged`;
 - the first call the rules cannot place (its frames unknown, made while the machine ran, ended
   without a reply, or with the machine unreadable around it) CUTS the document there: what came
   before stands, and the reply names the call and why.
@@ -129,12 +132,16 @@ class Recorder:
     machine (`Machine`); `stop_fields` names the fields of a reply that say where a stop is;
     `sequences` the tools whose steps are recorded in their place; `start_tool` the tool that
     begins a recording and `plan` its argument whose steps are recorded after it; `outside` the
-    tools that are no step a replay could take (`close`, the exporter's own)."""
+    tools that are no step a replay could take (`close`, the exporter's own); `reach` the advance
+    that goes on from a frame's edge to a stop's place, as its op, the argument naming the place
+    and the stop field holding it (`("run_to", "ref", "pc")`): without it, a run's frames hold to
+    the whole stop."""
 
     def __init__(self, server: str, machine: Callable[[], Machine], *,
                  stop_fields: tuple[str, ...], outside: frozenset[str] = frozenset({"close"}),
                  sequences: frozenset[str] = frozenset({"perform", "drive"}),
-                 start_tool: str = "start", plan: str | None = None) -> None:
+                 start_tool: str = "start", plan: str | None = None,
+                 reach: tuple[str, str, str] | None = None) -> None:
         self.server = server
         self._machine = machine
         self.stop_fields = stop_fields
@@ -142,6 +149,7 @@ class Recorder:
         self.sequences = sequences
         self.start_tool = start_tool
         self.plan = plan
+        self.reach = reach
         self.declared: dict[str, Declared] = {}
         self.recording: Recording | None = None
         self._starting: Recording | None = None
@@ -278,13 +286,13 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
             # A STOP THAT ARRIVED UNREAD ended the run before this call began, and its reply says
             # where: the run ends there, and the call is judged from that stop.
             reached = _found_machine(call.found, recorder)
-            if not _run_for(out, released, reached, None):
+            if not _run_for(out, released, reached, None, recorder.reach):
                 break
             released = None
             call = dataclasses.replace(call, before=reached)
         if released is not None and not call.before.running:
             # The machine had stopped before this call began: the run ends at that stop.
-            if not _run_for(out, released, call.before, None):
+            if not _run_for(out, released, call.before, None, recorder.reach):
                 break
             released = None
         if released is not None and not call.after.running:
@@ -295,7 +303,8 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
                 out.cut_at(n, call.op, "it began on a machine whose run had just stopped, and "
                            "where that stop was is not recorded apart from its own")
                 break
-            if not _run_for(out, released, call.after, (n, call) if noticed else None):
+            if not _run_for(out, released, call.after, (n, call) if noticed else None,
+                            recorder.reach):
                 break
             released = None
             if noticed:
@@ -332,7 +341,7 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
             released = (n, call)
             continue
         if (declared.export_as == "wall" or call.walled) and _moved(call):
-            if not _run_for(out, (n, call), call.after, (n, call)):
+            if not _run_for(out, (n, call), call.after, (n, call), recorder.reach):
                 break
             continue
         out.steps.append(_step(call, call.recorded if _moved(call) else {}))
@@ -342,7 +351,7 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
             out.cut_at(released[0], released[1].op, "it left the machine running and no call "
                        "found it stopped again, so the frames of its run are unknown")
         elif released is not None and now is not None:
-            _run_for(out, released, now, None)
+            _run_for(out, released, now, None, recorder.reach)
     if out.cut is None and recording.full:
         out.cut_at(RECORD_MAX + 1, None, f"the recording holds at most {RECORD_MAX} calls")
     doc = {"version": DOCUMENT_VERSION, "server": recorder.server, "start": dict(recording.start),
@@ -387,9 +396,11 @@ def _step(call: Call, recorded: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _run_for(out: Account, released: tuple[int, Call], reached: Machine,
-             replaced: tuple[int, Call] | None) -> bool:
+             replaced: tuple[int, Call] | None, reach: tuple[str, str, str] | None) -> bool:
     """The run from `released`'s stop to `reached`, as frames, the calls it replaces named;
-    False (and the cut set) when the frames are unknown or do not go forward."""
+    False (and the cut set) when the frames are unknown or do not go forward. With `reach`, the
+    frames hold to the frame alone and the advance it names goes on to the stop's place: frames
+    end at a frame's edge, and a stop that ended a run lands anywhere inside its frame."""
     began, ended = released[1].before.frame, reached.frame
     if began is None or ended is None:
         out.cut_at(released[0], released[1].op, "the run it began was ended by the wall clock "
@@ -399,11 +410,17 @@ def _run_for(out: Account, released: tuple[int, Call], reached: Machine,
         out.cut_at(released[0], released[1].op, f"the run it began ended at frame {ended}, not "
                    f"after frame {began}, so no count of frames replays it")
         return False
+    stop = dict(reached.stop)
+    op, argument, field = reach if reach and reach[2] in stop else (None, "", "")
+    edge = {f: v for f, v in stop.items() if f != field}
     out.steps.append({"op": "run_for", "frames": ended - began,
-                      **({RECORDED: dict(reached.stop)} if reached.stop else {})})
+                      **({RECORDED: edge} if edge else {})})
+    took = f"run_for(frames={ended - began})"
+    if op is not None:
+        out.steps.append({"op": op, argument: stop[field], RECORDED: stop})
+        took += f" then {op}({argument}={stop[field]!r})"
     for at, call in dict([released, *([replaced] if replaced else [])]).items():
-        out.drop(at, call.op, f"replaced by run_for(frames={ended - began}), the frames its run "
-                 "took")
+        out.drop(at, call.op, f"replaced by {took}, the frames its run took and its place")
     return True
 
 
