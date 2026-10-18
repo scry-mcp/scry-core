@@ -28,10 +28,11 @@ THE EXPORT keeps what moved the machine and what was checked, drops the rest and
   call of a tool declared `wall`, or of any tool whose reply's verdict says its wall-clock bound
   ended it (`WALL_VERDICTS`), the export writes `run_for(frames=<the difference between the two
   stops' frames>)` holding to the stop reached, whatever stopped it, because only a count of frames
-  replays the same way; with the recorder's `reach`, that holds to the frame alone and the advance
-  `reach` names then goes on to the stop's place and holds to the whole stop, because frames end at
-  a frame's edge and a stop lands anywhere inside its frame; a run that would not stop at the same
-  place shows as `diverged`;
+  replays the same way; with the recorder's `reach`, from a stop the server says it can be taken
+  from (`Machine.reachable`), that holds to the frame alone and the advance `reach` names then goes
+  on to the stop's place and holds to the whole stop, because frames end at a frame's edge and a
+  stop lands anywhere inside its frame; a run that would not stop at the same place shows as
+  `diverged`;
 - the first call the rules cannot place (its frames unknown, made while the machine ran, ended
   without a reply, or with the machine unreadable around it) CUTS the document there: what came
   before stands, and the reply names the call and why.
@@ -78,13 +79,15 @@ class Machine:
     and `seq`: the frame and the sequence number of the stop it is at, None when not known.
     `stop`: that stop in the fields a replayed advance answers with (`stop_fields`), so a
     `run_for` that replaces a run holds to them. `known`: False when the server could not be
-    read at all."""
+    read at all. `reachable`: False when the recorder's `reach` would be refused from this stop
+    (the server knows why), so a run ending here holds its frames to the whole stop."""
 
     running: bool
     frame: int | None
     seq: int | None
     stop: Mapping[str, Any] = field(default_factory=dict)
     known: bool = True
+    reachable: bool = True
 
 
 #: What a recording keeps for a machine the server could not read.
@@ -285,7 +288,8 @@ def document(recorder: Recorder, now: Machine | None = None) -> tuple[dict[str, 
         if released is not None and call.found is not None:
             # A STOP THAT ARRIVED UNREAD ended the run before this call began, and its reply says
             # where: the run ends there, and the call is judged from that stop.
-            reached = _found_machine(call.found, recorder)
+            reached = dataclasses.replace(_found_machine(call.found, recorder),
+                                          reachable=call.after.reachable)
             if not _run_for(out, released, reached, None, recorder.reach):
                 break
             released = None
@@ -411,7 +415,8 @@ def _run_for(out: Account, released: tuple[int, Call], reached: Machine,
                    f"after frame {began}, so no count of frames replays it")
         return False
     stop = dict(reached.stop)
-    op, argument, field = reach if reach and reach[2] in stop else (None, "", "")
+    op, argument, field = (reach if reach and reached.reachable and reach[2] in stop
+                           else (None, "", ""))
     edge = {f: v for f, v in stop.items() if f != field}
     out.steps.append({"op": "run_for", "frames": ended - began,
                       **({RECORDED: edge} if edge else {})})

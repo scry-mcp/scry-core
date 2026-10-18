@@ -26,6 +26,7 @@ class _Machine:
         self.seq = 1
         self.unreadable = False
         self.unread: int | None = None         # a stop that arrived and nobody read yet
+        self.reachable = True                  # whether the server's `reach` could run here
 
     def contact(self) -> dict[str, Any]:
         """A call's first contact: an unread stop is found, and said once in its reply."""
@@ -41,7 +42,7 @@ class _Machine:
             raise OSError("the console did not answer")
         stop = {} if self.running else {"pc": f"0x{self.seq:x}", "frame": self.frame}
         return recording.Machine(self.running, None if self.running else self.frame, self.seq,
-                                 stop)
+                                 stop, reachable=self.reachable)
 
     def stop_at(self, frame: int | None) -> None:
         self.running, self.frame, self.seq = False, frame, self.seq + 1
@@ -717,3 +718,16 @@ def test_a_run_a_stop_ended_mid_frame_goes_to_the_frame_then_to_the_stops_place(
                             {"op": "run_to", "ref": "0x2",
                              "recorded": {"pc": "0x2", "frame": 170}}], out.cut
     assert "run_to" in out.dropped[-1]["why"], out.dropped
+
+
+def test_a_stop_the_servers_reach_cannot_run_from_keeps_the_frames_holding_to_it() -> None:
+    """The server says when its `reach` would be refused there (a `run_to` with no control):
+    the frames then hold to the whole stop, which holds wherever the frame's edge is the place."""
+    s = _Server(reach=("run_to", "ref", "pc"))
+    s.start(system="board")
+    s.resume()
+    s.m.reachable = False
+    s.stop(frames_then=70)
+    doc, out = s.document()
+    assert doc["steps"] == [{"op": "run_for", "frames": 70,
+                             "recorded": {"pc": "0x2", "frame": 170}}], out.cut
