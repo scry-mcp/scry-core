@@ -14,12 +14,14 @@ cut there.
 
 THE EXPORT keeps what moved the machine and what was checked, drops the rest and names each drop:
 
-- a call the server refused is dropped, unless the machine moved under it;
+- a call the server refused is dropped, unless the machine moved under it (which cuts);
 - a tool declared `drop` (a read the export does not check, or a write only to the host: a file,
   a window, the emulator's pace) is dropped, unless the call moved the machine (a reader that
   steps the guest to read it), which is kept as a step: dropped, the replay would fall behind;
 - a tool declared with fields is kept as a CHECK: the step carries `recorded`, those fields of its
-  reply, and the replay's `perform` compares them;
+  reply, and the replay's `perform` compares them; one whose arguments name what a dropped call
+  wrote (`dest`, or its reply's `WRITTEN` fields: the file, the directory, a file inside it) is
+  dropped, because the replay does not write it and the check would hold by construction;
 - any other tool is kept as a STEP; one that left the machine at a new stop carries the stop's
   fields (`stop_fields`) as its `recorded`;
 - a RELEASE (a call that left the machine running), and a call declared `wall` that came back with
@@ -63,6 +65,8 @@ WALL_VERDICTS = frozenset({"TIMEOUT"})
 #: stops the cpu, inside a frame and inside whatever loop it is in, and no replayed advance
 #: reaches that place (a count of frames ends at a frame's edge); every stop after it would
 #: inherit the shift.
+#: The reply fields that name a file or a directory a call wrote, beside its `dest` argument.
+WRITTEN = ("path", "manifest", "dir")
 RELEASED = ("it released the machine, and the stop that ends a run lands at a place inside its "
             "frame that no replayed advance reaches")
 RUN_STOPPED_INSIDE = ("its run was stopped by the wall clock or by the machine itself, at a place "
@@ -202,7 +206,7 @@ class Recorder:
                                    {f: reply[f] for f in fields if f in reply}, began,
                                    self._read(), walled=reply.get("verdict") in WALL_VERDICTS,
                                    wrote=tuple(str(x) for x in (given.get("dest"),
-                                                                reply.get("path"))
+                                                                *map(reply.get, WRITTEN))
                                                if isinstance(x, str) and x)))
 
     def ended(self, tool: str, parent: str | None, given: Mapping[str, Any],
@@ -268,6 +272,9 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
             out.cut_at(n, call.op, "it ended with no reply (cancelled, or failed in its body), "
                        "so where it left the machine is not recorded")
             break
+        if call.after.running:             # refused or not: a release is a release
+            out.cut_at(n, call.op, RELEASED)
+            break
         if call.status != "ok":
             if _moved(call):
                 out.cut_at(n, call.op, f"the server refused it ({call.status}) after the "
@@ -275,9 +282,6 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
                 break
             out.drop(n, call.op, f"the server refused it ({call.status})")
             continue
-        if call.after.running:
-            out.cut_at(n, call.op, RELEASED)
-            break
         if declared.export_as in ("drop", "wall") and not _moved(call):
             out.drop(n, call.op, _dropped_why(declared) if declared.export_as == "drop"
                      else "it ran nothing: the machine was where it left it")
@@ -308,9 +312,11 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
 
 
 def _reads_any(args: Mapping[str, Any], files: set[str]) -> bool:
-    """Whether an argument names one of `files`, or a directory holding one."""
+    """Whether an argument names one of `files`, a directory holding one, or a file inside one
+    (a series' `dest` is a directory, and its manifest a file in it)."""
     named = [Path(v) for v in args.values() if isinstance(v, str) and v]
-    return any(Path(f) == n or n in Path(f).parents for f in files for n in named)
+    return any(Path(f) == n or n in Path(f).parents or Path(f) in n.parents
+               for f in files for n in named)
 
 
 def _moved(call: Call) -> bool:
@@ -349,7 +355,9 @@ def export(recorder: Recorder, path: str, overwrite: bool = False) -> dict[str, 
     """`perform_export`'s body: the recording written to `path` (absolute or `~`-led, `.json`,
     refused if it is there unless `overwrite`), and the account: `path`, `steps`, `checks`,
     `dropped` (the newest `DROPPED_SHOWN`) with `dropped_total`, `cut`, and `replay`, the
-    runner's command line. `no_recording` when no `start` succeeded since the server began."""
+    runner's command line. `no_recording` when no `start` succeeded since the server began, or
+    when the recording holds no step a replay could take (cut at its first, or every call
+    dropped)."""
     if not (path.startswith("~") or Path(path).is_absolute()):
         raise Invalid("bad_argument", f"path={path!r} is absolute or starts with `~`")
     try:

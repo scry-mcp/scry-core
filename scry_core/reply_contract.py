@@ -62,7 +62,7 @@ Code = Literal[
     "host_failed",        # a helper of the host failed: a program, a file, the window server
     "step_failed",        # a step of a sequence failed; `failed` carries the step's own code
     "diverged",           # a replayed step's reply does not hold to what the session recorded
-    "no_recording",       # nothing is recorded to export: a recording begins at a `start`
+    "no_recording",       # nothing to export: no `start` recorded, or no step a replay takes
 ]
 CODES: frozenset[str] = frozenset(get_args(Code))
 

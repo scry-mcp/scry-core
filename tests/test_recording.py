@@ -25,11 +25,13 @@ class _Machine:
         self.frame: int | None = 100
         self.seq = 1
         self.unreadable = False
+        self.bare = False          # a server whose stops carry no fields (dosbox-x's are counted)
 
     def read(self) -> recording.Machine:
         if self.unreadable:
             raise OSError("the console did not answer")
-        stop = {} if self.running else {"pc": f"0x{self.seq:x}", "frame": self.frame}
+        stop = ({} if self.running or self.bare else
+                {"pc": f"0x{self.seq:x}", "frame": self.frame})
         return recording.Machine(self.running, self.seq, stop)
 
     def stop_at(self, frame: int | None) -> None:
@@ -138,8 +140,17 @@ class _Server:
             return {"status": "ok", "path": dest or "/tmp/x.png"}
 
         @b.tool("golden_check", read_only=True, replay=("matched",))
-        def golden_check(dir: str) -> dict[str, Any]:
+        def golden_check(dir: str = "", manifest: str = "") -> dict[str, Any]:
             return {"status": "ok", "matched": ["a.png"]}
+
+        @b.tool("series_capture", replay="drop")
+        def series_capture(dest: str = "") -> dict[str, Any]:
+            return {"status": "ok", "manifest": f"{dest or '/tmp/s'}/manifest.json"}
+
+        @b.tool("go_refused")
+        def go_refused() -> dict[str, Any]:
+            m.running = True       # let go, then refused what it was asked after
+            return {"status": "INVALID", "code": "bad_argument", "message": "after the release"}
 
         @b.tool("state_save")
         def state_save(name: str) -> dict[str, Any]:
@@ -162,7 +173,7 @@ class _Server:
 
         ops = {"run_for": run_for, "write": write, "read_memory": read_memory, "resume": resume}
         self.tools = {f.__name__: f for f in (start, run_for, resume, stop, write, peek,
-                                              look, golden_check,
+                                              look, golden_check, series_capture, go_refused,
                                               wait_out, crashes, close, read_memory, log,
                                               poke_and_look, snapshot, state_save, state_load,
                                               perform, perform_export)}
@@ -277,15 +288,6 @@ def test_a_release_no_call_saw_end_cuts_the_document_at_the_release() -> None:
     s = _Server()
     s.start(system="board")
     s.resume()
-    doc, out = s.document()
-    assert doc["steps"] == [] and out.cut is not None and out.cut["op"] == "resume"
-
-
-def test_a_wall_ended_call_on_a_server_with_no_frame_counter_cuts_the_document() -> None:
-    s = _Server()
-    s.start(system="board")
-    s.m.frame = None
-    s.resume(seconds=2)
     doc, out = s.document()
     assert doc["steps"] == [] and out.cut is not None and out.cut["op"] == "resume"
 
@@ -567,3 +569,48 @@ def test_a_wall_tool_that_came_back_with_the_machine_moved_cuts_the_document() -
     doc, out = s.document()
     assert doc["steps"] == [{"op": "write", "ref": "a", "value": 0}]
     assert out.cut == {"call": 2, "op": "resume", "why": recording.RUN_STOPPED_INSIDE}, out.cut
+
+
+
+@pytest.mark.parametrize("names", ["the manifest", "a file in the directory",
+                                   "the manifest its reply named, with no dest"])
+def test_a_check_of_a_dropped_series_by_its_manifest_is_dropped(names: str) -> None:
+    """A series captured into `dest` and judged by the manifest its reply names: the file the
+    check reads sits in what the dropped call wrote, so kept it would hold by construction."""
+    s = _Server()
+    s.start(system="board")
+    if names == "the manifest its reply named, with no dest":
+        s.series_capture()
+        s.golden_check(manifest="/tmp/s/manifest.json")
+    else:
+        s.series_capture(dest="/tmp/series")
+        s.golden_check(**({"manifest": "/tmp/series/manifest.json"} if names == "the manifest"
+                          else {"manifest": "/tmp/series/frames/0001.png"}))
+    doc, out = s.document()
+    assert doc["steps"] == [] and out.checks == 0
+    assert "files a dropped call wrote" in out.dropped[-1]["why"], out.dropped
+
+
+def test_a_release_ends_the_document_on_a_server_whose_stops_carry_no_fields() -> None:
+    """A release moves no stop count and no stop fields: it is still a release."""
+    s = _Server()
+    s.m.bare = True
+    s.start(system="board")
+    s.write(ref="a", value=0)
+    s.resume()
+    s.m.stop_at(170)
+    s.write(ref="a", value=1)
+    doc, out = s.document()
+    assert doc["steps"] == [{"op": "write", "ref": "a", "value": 0}]
+    assert out.cut == {"call": 2, "op": "resume", "why": recording.RELEASED}, out.cut
+
+
+def test_a_refused_call_that_left_the_machine_running_is_a_release() -> None:
+    s = _Server()
+    s.m.bare = True
+    s.start(system="board")
+    s.go_refused()
+    s.m.stop_at(170)
+    s.write(ref="a", value=1)
+    doc, out = s.document()
+    assert doc["steps"] == [] and out.cut is not None and out.cut["op"] == "go_refused", out.cut
