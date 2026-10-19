@@ -17,10 +17,16 @@ from scry_core import boundary, cancel, recording
 from scry_core.envelope import Envelope
 from scry_core.reply_contract import Invalid
 
+
+def _held(refs: list[str]) -> dict[str, Any]:
+    return {"breakpoint_list": {"key": "breakpoints", "refs": refs}}
+
+
 #: The double's tool names, which a real server declares as its own.
 VOCABULARY: dict[str, Any] = {"outside": frozenset({"close"}),
                               "sequences": frozenset({"perform", "drive"}),
-                              "start_tool": "start", "states": ("state_save", "state_load", "name")}
+                              "start_tool": "start", "states": ("state_save", "state_load", "name"),
+                              "lists": {"breakpoint_list": "breakpoints"}}
 
 
 class _Machine:
@@ -65,7 +71,8 @@ class _Server:
         self.m = _Machine()
         self.declared: list[str] = []
         self.recorder = recording.Recorder("double", "double.py", RECORD_MAX, self.m.read,
-                                           lambda: self.m.up, declarations=lambda: self.declared,
+                                           lambda: self.m.up,
+                                           declarations=lambda: {"breakpoint_list": self.declared},
                                            stop_fields=("pc", "frame"), plan=plan,
                                            **VOCABULARY)
         self.b = boundary.Boundary(
@@ -323,7 +330,7 @@ def test_a_run_and_a_check_are_kept_and_each_step_holds_to_where_it_stopped() ->
         {"op": "read_memory", "ref": "score", "recorded": {"hex": "beef"}}]
     assert out.checks == 1 and out.cut is None and out.dropped == []
     assert doc["version"] == 2 and doc["server"] == "double"
-    assert doc["needs"] == {"states": [], "declarations": []}
+    assert doc["needs"] == {"states": [], "declarations": _held([])}
 
 
 def test_refused_calls_unchecked_reads_and_host_writers_are_dropped_and_named() -> None:
@@ -355,7 +362,7 @@ def test_a_state_loaded_and_not_saved_in_the_recording_is_what_the_document_need
     s.state_load(name="mine")
     s.state_load(name="theirs")
     doc, _out = s.document()
-    assert doc["needs"] == {"states": ["theirs"], "declarations": []}
+    assert doc["needs"] == {"states": ["theirs"], "declarations": _held([])}
 
 
 def test_the_export_writes_the_document_and_accounts_for_it(tmp_path: Path) -> None:
@@ -733,7 +740,7 @@ def test_the_machine_moved_between_two_recorded_calls_cuts_the_document() -> Non
 
 def test_a_call_with_nothing_to_add_to_is_this_modules_defect_said_as_one() -> None:
     r = recording.Recorder("x", "x.py", 10, lambda: recording.UNREAD, lambda: False,
-                           declarations=lambda: [], stop_fields=(), **VOCABULARY)
+                           declarations=dict, stop_fields=(), **VOCABULARY)
     with pytest.raises(RuntimeError, match="was taken with no recording to add it to"):
         r.end("write", None, {}, {"status": "ok"}, recording.UNREAD)
 
@@ -746,18 +753,18 @@ def test_the_document_names_its_entry_file_and_the_declarations_its_start_found(
     s.run_for(frames=2)
     doc, _ = s.document()
     assert doc["entry"] == "double.py"
-    assert doc["needs"]["declarations"] == ["0x40", "w:0x80"]
+    assert doc["needs"]["declarations"] == _held(["0x40", "w:0x80"])
 
 
 def test_a_server_that_cannot_list_its_declarations_records_none() -> None:
     s = _Server()
 
-    def broken() -> list[str]:
+    def broken() -> dict[str, list[str]]:
         raise OSError("the store cannot be read")
     s.recorder._declarations = broken
     s.start(system="board")
     s.run_for(frames=2)
-    assert s.document()[0]["needs"]["declarations"] == []
+    assert s.document()[0]["needs"]["declarations"] == {}
 
 
 def test_the_state_tools_are_the_servers_own_words() -> None:
@@ -784,4 +791,4 @@ def test_the_declarations_are_the_stores_before_the_plan_declares_its_own() -> N
     s.declared = ["0x40"]
     s.start(system="board", plan=[{"op": "declare", "ref": "0x80"}, {"op": "run_for", "frames": 1}])
     doc, _ = s.document()
-    assert doc["needs"]["declarations"] == ["0x40"]
+    assert doc["needs"]["declarations"] == _held(["0x40"])

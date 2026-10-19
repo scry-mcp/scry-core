@@ -22,6 +22,13 @@ HELD1 = {"op": "run_for", "frames": 1, "recorded": {"pc": "0x10", "frame": 1}}
 HELD2 = {"op": "run_for", "frames": 2, "recorded": {"pc": "0x10", "frame": 2}}
 
 
+def _lists(refs: list[str]) -> dict[str, Any]:
+    """The double's two list tools, as a server declares them (`Recorder.lists`)."""
+    return {"breakpoint_list": {"key": "breakpoints",
+                                "refs": [r for r in refs if not r.startswith("w:")]},
+            "watch_list": {"key": "watches", "refs": [r for r in refs if r.startswith("w:")]}}
+
+
 def _repo(tmp_path: Path, steps: list[dict[str, Any]], states: list[str] | None = None,
           server: str = "mame", declarations: list[str] | None = None) -> Path:
     shutil.copyfile(FIXTURE, tmp_path / "server.py")
@@ -29,7 +36,7 @@ def _repo(tmp_path: Path, steps: list[dict[str, Any]], states: list[str] | None 
     doc.write_text(json.dumps({"version": 2, "server": server, "entry": "server.py",
                                "start": {"system": "board"}, "steps": steps,
                                "needs": {"states": states or [],
-                                         "declarations": declarations or []}}))
+                                         "declarations": _lists(declarations or [])}}))
     return doc
 
 
@@ -114,7 +121,10 @@ def test_a_server_that_does_not_start_is_exit_3(
     ('{"version": 2, "entry": "x.py", "steps": [1]}', "one that is not an object"),
     ('{"version": 2, "entry": "x.py", "steps": [{}], "start": []}', "`start` is an object"),
     ('{"version": 2, "entry": "x.py", "steps": [{}], "needs": {"states": "boot"}}',
-     "lists of names"),
+     "a list of names"),
+    ('{"version": 2, "entry": "x.py", "steps": [{}], '
+     '"needs": {"declarations": {"breakpoint_list": {"key": "b", "refs": "0x10"}}}}',
+     "each list tool's `key` and `refs`"),
     ('{"version": 2, "entry": "x.py", "steps": [{"op": "run_for"}]}', "nothing held to"),
 ])
 def test_a_document_that_is_not_one_is_exit_3(
@@ -203,8 +213,8 @@ def test_a_store_that_declares_otherwise_than_the_recorded_start_found_is_exit_3
     doc = _repo(tmp_path, [HELD1], declarations=["0x10", "w:0x20"])
     monkeypatch.setenv("REPLAY_DOUBLE_DECLARED", "0x10")
     assert _run(monkeypatch, tmp_path, doc) == 3
-    assert "the store declares ['0x10'] where the recorded session's start found " \
-        "['0x10', 'w:0x20']" in capsys.readouterr().out
+    assert "`watch_list` lists [] where the recorded session's start found ['w:0x20']" \
+        in capsys.readouterr().out
     monkeypatch.setenv("REPLAY_DOUBLE_DECLARED", "0x10,w:0x20")
     assert _run(monkeypatch, tmp_path, doc) == 0
 
@@ -221,3 +231,16 @@ def test_a_server_that_breaks_around_the_steps_is_exit_3_too(
     monkeypatch.setenv(env, "1")
     assert _run(monkeypatch, tmp_path, doc) == 3
     assert says in capsys.readouterr().out
+
+
+def test_the_lists_a_replay_reads_are_the_ones_the_document_names(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        ) -> None:
+    """Which tools list a server's declarations is the server's word, carried by the document:
+    a third list the recorded server had is read too, and one the server lacks is no verdict."""
+    doc = _repo(tmp_path, [HELD1])
+    data = json.loads(doc.read_text())
+    data["needs"]["declarations"]["regpoint_list"] = {"key": "regpoints", "refs": []}
+    doc.write_text(json.dumps(data))
+    assert _run(monkeypatch, tmp_path, doc) == 3
+    assert "regpoint_list" in capsys.readouterr().out

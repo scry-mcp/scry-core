@@ -46,12 +46,12 @@ def _read(path: Path) -> dict[str, Any]:
         raise demo.Invalid(f"{path} holds no steps, or one that is not an object, so a replay "
                            "would demonstrate nothing")
     states = needs.get("states", []) if isinstance(needs, dict) else None
-    declared = needs.get("declarations", []) if isinstance(needs, dict) else None
-    if not isinstance(start, dict) or not all(
-            isinstance(x, list) and all(isinstance(s, str) for s in x)
-            for x in (states, declared)):
-        raise demo.Invalid(f"{path}: `start` is an object of arguments, and `needs.states` and "
-                           "`needs.declarations` lists of names")
+    declared = needs.get("declarations", {}) if isinstance(needs, dict) else None
+    if not isinstance(start, dict) or not _names(states) or not isinstance(declared, dict) \
+            or not all(isinstance(v, dict) and isinstance(v.get("key"), str)
+                       and _names(v.get("refs")) for v in declared.values()):
+        raise demo.Invalid(f"{path}: `start` is an object of arguments, `needs.states` a list "
+                           "of names, and `needs.declarations` each list tool's `key` and `refs`")
     if not any(s.get(RECORDED) for s in steps):
         raise demo.Invalid(f"{path}: no step carries `{RECORDED}`, so a replay would hold "
                            "nothing to anything: nothing held to")
@@ -81,18 +81,22 @@ def _broke(reply: demo.Reply, run: demo.Run) -> str:
     raise demo.Invalid(f"the server did not answer: {reply.get('summary') or reply}")
 
 
-def _declarations(recorded: Sequence[str]) -> Callable[[demo.Reply, demo.Run], str]:
-    """The store's declarations as the replay starts, against the recorded start's: a replay
+def _names(value: object) -> bool:
+    return isinstance(value, list) and all(isinstance(s, str) for s in value)
+
+
+def _declarations(tool: str, key: str, recorded: Sequence[str]
+                  ) -> Callable[[demo.Reply, demo.Run], str]:
+    """One list's declarations as the replay starts, against the recorded start's: a replay
     armed otherwise would stop where the session did not, which is no verdict about it."""
     def check(reply: demo.Reply, run: demo.Run) -> str:
-        have: list[str] = []
-        for name, key in (("breakpoint_list", "breakpoints"), ("watch_list", "watches")):
-            listed = run.replies[name].get(key) if name in run.replies else None
-            have += [str(r["ref"]) for r in listed or [] if isinstance(r, dict) and "ref" in r]
-        have.sort()
+        listed = reply.get(key)
+        if not isinstance(listed, list):
+            raise demo.Invalid(f"the server's `{tool}` answered no `{key}` list: {reply}")
+        have = sorted(str(r["ref"]) for r in listed if isinstance(r, dict) and "ref" in r)
         want = sorted(recorded)
         if have != want:
-            raise demo.Invalid(f"the store declares {have} where the recorded session's start "
+            raise demo.Invalid(f"`{tool}` lists {have} where the recorded session's start "
                                f"found {want}: clear or declare those first")
         return f"{prose.counted(len(want), 'declaration')}, as the recorded start found them"
     return check
@@ -136,15 +140,14 @@ def build(doc: dict[str, Any], root: Path, name: str) -> demo.Demo:
     """The document as a demo of its server: start, the states it needs, the steps, close."""
     steps = doc["steps"]
     needs = doc.get("needs") or {}
-    states, declared = list(needs.get("states") or []), list(needs.get("declarations") or [])
+    states, declared = list(needs.get("states") or []), dict(needs.get("declarations") or {})
     plan: list[demo.Step] = [demo.Step("start", "start", dict(doc.get("start") or {}),
                                        lambda r, run: str(r.get("summary", "started")),
                                        options=True, failure=_refused_start,
                                        broken_is_invalid=True)]
-    plan += [demo.Step("breakpoint_list", "breakpoint_list", {},
-                       lambda r, run: "read", failure=_broke, broken_is_invalid=True),
-             demo.Step("watch_list", "watch_list", {}, _declarations(declared),
-                       failure=_broke, broken_is_invalid=True)]
+    plan += [demo.Step(tool, tool, {}, _declarations(tool, listed["key"], listed["refs"]),
+                       failure=_broke, broken_is_invalid=True)
+             for tool, listed in declared.items()]
     if states:
         plan.append(demo.Step("states", "state_list", {}, _needs(states), failure=_broke,
                               broken_is_invalid=True))

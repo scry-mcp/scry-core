@@ -46,7 +46,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, get_args
@@ -133,7 +133,8 @@ class Recording:
     full: bool = False
     #: Whether it stopped at the storage ceiling (calls an export drops), not at `record_max`.
     stored_out: bool = False
-    declarations: list[str] = field(default_factory=list)
+    #: By list tool, the references it listed as the start began (`Recorder.lists`).
+    declarations: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -146,18 +147,22 @@ class Declared:
 
 class Recorder:
     """One server's recording, fed by its `scry_core.boundary.Boundary`. `server` and `entry`
-    name the server and its entry file, which a runner starts; `record_max` is the most steps its
-    `perform` takes; `machine` reads the machine (`Machine`); `live` says whether a session is
-    up, as the start refuses over one; `declarations` the references the store holds as a start
-    succeeds (what it re-arms); `stop_fields` names the fields of a reply that say where a stop
-    is; `sequences` the tools whose steps are recorded in their place; `start_tool` the tool that
-    begins a recording and `plan` its argument whose steps are recorded after it; `outside` the
-    tools that are no step a replay could take (`close`, the exporter's own); `states` the tools
-    that save and load a state and the argument that names it. Each is the server's own
-    vocabulary, declared by the server: nothing here names a tool."""
+    name the server and its entry file, which a runner starts; `record_max` the most calls an
+    export keeps, the server's own bound; `machine` reads the machine (`Machine`); `live` says
+    whether a session is up, as the start refuses over one; `declarations` the references the
+    store holds as a start succeeds (what it re-arms), by the list tool that lists them, and
+    `lists` each such tool with the reply field its rows are under; `stop_fields` names the
+    fields of a reply that say where a stop is; `sequences` the tools whose steps are recorded
+    in their place; `start_tool` the tool that begins a recording and `plan` its argument whose
+    steps are recorded after it; `outside` the tools that are no step a replay could take
+    (`close`, the exporter's own); `states` the tools that save and load a state and the
+    argument that names it. Each is the server's own vocabulary, declared by the server: nothing
+    here names a tool."""
 
     def __init__(self, server: str, entry: str, record_max: int, machine: Callable[[], Machine],
-                 live: Callable[[], bool], *, declarations: Callable[[], list[str]],
+                 live: Callable[[], bool], *,
+                 declarations: Callable[[], Mapping[str, Sequence[str]]],
+                 lists: Mapping[str, str],
                  stop_fields: tuple[str, ...], outside: frozenset[str], sequences: frozenset[str],
                  start_tool: str, states: tuple[str, str, str], plan: str | None = None) -> None:
         self.server = server
@@ -166,6 +171,7 @@ class Recorder:
         self._machine = machine
         self._live = live
         self._declarations = declarations
+        self.lists = dict(lists)
         self._found_live = False
         self.stop_fields = stop_fields
         self.outside = outside | {EXPORT_TOOL}
@@ -178,7 +184,7 @@ class Recorder:
         self._starting: Recording | None = None
         # What the store held as the start's plan began (or as it ended, with no plan): what a
         # replayed `start` re-arms, before the plan's own steps declare anything.
-        self._found_declared: list[str] | None = None
+        self._found_declared: dict[str, list[str]] | None = None
 
     def declare(self, tool: str, export_as: ExportAs | None, read_only: bool) -> None:
         """A tool registered: how its calls are exported, by default `drop` for a reader and
@@ -279,13 +285,14 @@ class Recorder:
         into.calls.append(call)
         into.kept += call.keepable
 
-    def _stored(self) -> list[str]:
-        """The declarations the store holds as a start succeeds, sorted; none when the server
-        cannot say, which a replay then has nothing to compare against."""
+    def _stored(self) -> dict[str, list[str]]:
+        """The declarations the store holds as a start succeeds, sorted, by list tool; none when
+        the server cannot say, which a replay then has nothing to compare against."""
         try:
-            return sorted(self._declarations())
+            held = self._declarations()
+            return {tool: sorted(held.get(tool, ())) for tool in self.lists}
         except Exception:  # noqa: BLE001 -- as `_read`: a recorder never fails a call
-            return []
+            return {}
 
     def _was_live(self) -> bool:
         """Whether a session was up as a start began; unreadable counts as up, so a start that
@@ -386,7 +393,9 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
                    f"the recording holds at most {recorder.record_max} calls a replay keeps")
     doc = {"version": DOCUMENT_VERSION, "server": recorder.server, "entry": recorder.entry,
            "start": dict(recording.start), "steps": out.steps,
-           "needs": {"states": out.loaded, "declarations": recording.declarations}}
+           "needs": {"states": out.loaded,
+                     "declarations": {tool: {"key": recorder.lists[tool], "refs": refs}
+                                      for tool, refs in recording.declarations.items()}}}
     return doc, out
 
 
