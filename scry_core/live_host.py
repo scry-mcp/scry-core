@@ -31,6 +31,8 @@ POSIX only, as the live tiers are: the end check reads `ps` and signals process 
 from __future__ import annotations
 
 import contextlib
+import csv
+import io
 import os
 import shutil
 import signal
@@ -60,6 +62,10 @@ SCRATCH_VAR = "SCRY_LIVE_SCRATCH"
 LEAVE_S = 5.0
 #: How much of a command name Linux's `ps` keeps: a longer name is matched by its prefix.
 COMM_MAX = 15
+#: WINDOWS HAS NO PROCESS GROUPS AND NO `ps -A`: its processes are listed by `tasklist` and ended
+#: one pid at a time (both signals are `TerminateProcess` there), so the guards that remain are
+#: the program's name and the run's own ledger.
+WINDOWS = os.name == "nt"
 
 
 def canary(argv: Sequence[str]) -> str:
@@ -103,16 +109,23 @@ def canary(argv: Sequence[str]) -> str:
 
 
 def _end_group(proc: subprocess.Popen[bytes]) -> bool:
-    """SIGKILL to the group `proc` leads, then whether it is still there."""
+    """SIGKILL to the group `proc` leads (on Windows, `proc` itself), then whether it is still
+    there."""
     with contextlib.suppress(ProcessLookupError, PermissionError):
-        os.killpg(proc.pid, signal.SIGKILL)
+        if WINDOWS:
+            proc.kill()
+        else:
+            os.killpg(proc.pid, signal.SIGKILL)
     with contextlib.suppress(subprocess.TimeoutExpired):
         proc.wait(LEAVE_S)
     return bool(_alive({proc.pid}, 0.0))
 
 
 def _processes() -> dict[int, tuple[int, str, str]]:
-    """Every process on the host, `pid -> (pgid, state, command)`, from one `ps` listing."""
+    """Every process on the host, `pid -> (pgid, state, command)`, from one `ps` listing; on
+    Windows from one `tasklist` listing (`_tasklist`)."""
+    if WINDOWS:
+        return _tasklist()
     done = subprocess.run(["ps", "-A", "-o", "pid=,pgid=,stat=,comm="], capture_output=True,
                           text=True, check=False)
     if done.returncode != 0:
@@ -122,6 +135,24 @@ def _processes() -> dict[int, tuple[int, str, str]]:
         parts = line.split(None, 3)
         if len(parts) == 4 and parts[0].isdigit() and parts[1].isdigit():
             found[int(parts[0])] = (int(parts[1]), parts[2], parts[3])
+    return found
+
+
+def _tasklist() -> dict[int, tuple[int, str, str]]:
+    """Every process on a Windows host as `_processes` answers it: each its own group (there are
+    none) and running (no state is listed)."""
+    done = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
+                          errors="replace", check=False)
+    if done.returncode != 0:
+        raise OSError(f"tasklist answered rc={done.returncode}: {done.stderr.strip()}")
+    return _tasklist_rows(done.stdout)
+
+
+def _tasklist_rows(text: str) -> dict[int, tuple[int, str, str]]:
+    found: dict[int, tuple[int, str, str]] = {}
+    for row in csv.reader(io.StringIO(text)):
+        if len(row) >= 2 and row[1].isdigit():
+            found[int(row[1])] = (int(row[1]), "R", row[0])
     return found
 
 
@@ -138,11 +169,15 @@ def _alive(pids: set[int], within_s: float) -> set[int]:
         time.sleep(0.1)
 
 
+#: The last signal: Windows has no SIGKILL, and its SIGTERM already ends a process outright.
+_KILL = getattr(signal, "SIGKILL", signal.SIGTERM)
+
+
 def _signal(pid: int, pgid: int, sig: signal.Signals) -> None:
     """`sig` to the group `pid` leads, or to `pid` alone when it lives in somebody else's group:
     MAME runs in its server's, which in process is the run's own."""
     with contextlib.suppress(ProcessLookupError, PermissionError):
-        if pgid == pid:
+        if pgid == pid and not WINDOWS:
             os.killpg(pid, sig)
         else:
             os.kill(pid, sig)
@@ -163,6 +198,8 @@ def _same_program(recorded: str, comm: str) -> bool:
     """Whether `ps`'s command `comm` is the program recorded under `recorded`: macOS lists the
     path, Linux the name cut to `COMM_MAX`."""
     shown = Path(comm).name
+    if WINDOWS:     # `tasklist` names the image, `mamed.exe`, which a launch may have named bare
+        return Path(shown).stem.lower() == Path(recorded).stem.lower()
     return shown == recorded or (len(recorded) > COMM_MAX and shown == recorded[:COMM_MAX])
 
 
@@ -231,7 +268,7 @@ class EmulatorLedger:
             _signal(p, pgid, signal.SIGTERM)
         if left := _alive(set(alive), LEAVE_S):
             for p in left:
-                _signal(p, alive[p], signal.SIGKILL)
+                _signal(p, alive[p], _KILL)
             left = _alive(left, LEAVE_S)
         states = _processes()
         return Leftovers(len(mine), len(alive), tuple(sorted(

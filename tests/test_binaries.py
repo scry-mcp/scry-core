@@ -3,6 +3,8 @@ and who is answerable when nothing resolves."""
 
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -13,12 +15,17 @@ from scry_core.reply_contract import Invalid
 LADDER = binaries.Ladder(product="Emu", executable="emu", variable="EMU_BINARY")
 
 
-def _build(where: Path) -> Path:
+def _build(where: Path, body: str = "print('Emu 1.0')") -> Path:
+    """An executable named `emu` that runs `body` as Python, on this host's terms: a `#!/bin/sh`
+    script with its exec bit on POSIX, an `emu.cmd` on Windows, which runs no shebang. Both are
+    written on every host, and the one this host runs is answered."""
     where.mkdir(parents=True, exist_ok=True)
+    (where / "emu.py").write_text(body + "\n")
+    (where / "emu.cmd").write_text(f'@"{sys.executable}" "{where / "emu.py"}" %*\r\n')
     exe = where / "emu"
-    exe.write_text("#!/bin/sh\necho 'Emu 1.0'\n")
+    exe.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{where / "emu.py"}" "$@"\n')
     exe.chmod(0o755)
-    return exe
+    return where / "emu.cmd" if os.name == "nt" else exe
 
 
 @pytest.mark.parametrize(("rung", "code"), [
@@ -43,7 +50,8 @@ def test_the_first_rung_holding_a_value_is_taken_and_named(
     assert LADDER.resolve(str(given)) == binaries.Resolved(str(given), "argument")
     assert LADDER.resolve("").origin == "EMU_BINARY"
     monkeypatch.delenv("EMU_BINARY")
-    assert LADDER.resolve("") == binaries.Resolved(str(tmp_path / "path" / "emu"), "PATH")
+    assert LADDER.resolve("").origin == "PATH"
+    assert Path(LADDER.resolve("").path).parent == tmp_path / "path"
     assert binaries.facts(LADDER.resolve(""))["version"] == "Emu 1.0"
 
 
@@ -57,18 +65,15 @@ def test_why_a_path_is_no_executable_is_said_in_its_owners_words(tmp_path: Path)
 
 
 @pytest.mark.parametrize(("body", "said"), [
-    ("echo 'banner' >&2; exit 1", "banner"),
-    ("exit 0", "printed nothing (rc=0)"),
-    ("exec sleep 5", "did not return in 0.2 s"),
+    ("import sys; sys.stderr.write('banner\\n'); sys.exit(1)", "banner"),
+    ("pass", "printed nothing (rc=0)"),
+    ("import time; time.sleep(5)", "did not return in 0.2 s"),
 ], ids=["a banner on stderr with rc 1", "nothing printed", "a build that hangs"])
 def test_a_version_is_the_first_line_printed_or_why_there_is_none(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str, said: str) -> None:
     if "sleep" in body:      # the bound shortened only where it is the case: a busy host
-        monkeypatch.setattr(binaries, "VERSION_TIMEOUT_S", 0.2)   # starts a shell slowly
-    exe = tmp_path / "emu"
-    exe.write_text(f"#!/bin/sh\n{body}\n")
-    exe.chmod(0o755)
-    got = binaries.version(str(exe))
+        monkeypatch.setattr(binaries, "VERSION_TIMEOUT_S", 0.2)   # starts a program slowly
+    got = binaries.version(str(_build(tmp_path, body)))
     assert got == said if isinstance(got, str) else said in got["why"], got
 
 

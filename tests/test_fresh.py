@@ -168,8 +168,8 @@ def test_a_replace_lands_whole_and_leaves_nothing_beside_it(
         fresh.replace(tmp_path, b"x", "the file")
 
 
-def test_a_file_replaced_keeps_its_mode_and_one_the_server_chose_is_the_hosts(
-        tmp_path: Path) -> None:
+@pytest.mark.skipif(os.name == "nt", reason="a POSIX mode: Windows keeps only a read-only bit")
+def test_a_file_replaced_keeps_its_mode(tmp_path: Path) -> None:
     target = tmp_path / "a.json"
     target.write_bytes(b"old")
     target.chmod(0o640)
@@ -179,6 +179,9 @@ def test_a_file_replaced_keeps_its_mode_and_one_the_server_chose_is_the_hosts(
     assert (tmp_path / "new.json").stat().st_mode & 0o777 == 0o604
     fresh.replace(target, b"newer", "the file", new_mode=0o604)
     assert target.stat().st_mode & 0o777 == 0o640, "a mode given for a new file only"
+
+
+def test_a_file_the_server_chose_that_cannot_be_written_is_the_hosts(tmp_path: Path) -> None:
     with pytest.raises(Invalid) as e:
         fresh.replace(tmp_path / "no" / "b.json", b"x", "the store", named_by_caller=False)
     assert e.value.code == "host_failed"

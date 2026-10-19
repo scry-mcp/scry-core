@@ -17,7 +17,7 @@ import pytest
 from scry_core import live_host as host
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="process groups and `ps` are "
-                                "POSIX, and the live tiers run on POSIX hosts only")
+                                "POSIX: Windows's half is `test_live_host_windows`")
 #: How long a case waits for a fake to reach a state it signals by a file.
 READY_S = 10.0
 

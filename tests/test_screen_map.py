@@ -555,12 +555,12 @@ def test_a_load_that_would_make_the_two_layers_unsaveable_is_refused(
     assert maps.load(_file(tmp_path, _doc()))["screens"] == 2
 
 
-def test_check_save_judges_the_path_and_the_overwrite() -> None:
-    screen_map.check_save("/x/demo.scry-map.json", False)
+def test_check_save_judges_the_path_and_the_overwrite(tmp_path: Path) -> None:
+    screen_map.check_save(str(tmp_path / "demo.scry-map.json"), False)
     with pytest.raises(Invalid, match="overwrite='yes' is true or false"):
-        screen_map.check_save("/x/demo.scry-map.json", "yes")
+        screen_map.check_save(str(tmp_path / "demo.scry-map.json"), "yes")
     with pytest.raises(Invalid, match="is not named"):
-        screen_map.check_save("/x/demo.json", True)
+        screen_map.check_save(str(tmp_path / "demo.json"), True)
 
 
 def test_the_file_tools_descriptions_say_the_limits_the_code_enforces() -> None:
