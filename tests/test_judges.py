@@ -88,7 +88,7 @@ def test_a_file_to_write_has_a_directory_and_a_fresh_one_nothing_there(tmp_path:
         with pytest.raises(Invalid, match=r"already exists\. This will not overwrite it") as e:
             judges.fresh_file("dest", str(taken), tool="t")
         assert e.value.code == "bad_argument" and e.value.fields == {"tool": "t"}
-    with pytest.raises(Invalid, match=r"dest: .*/no is not a directory, so x\.png has nowhere"):
+    with pytest.raises(Invalid, match=r"dest: .*[/\\]no is not a directory, so x\.png has nowhere"):
         judges.writable_file("dest", str(tmp_path / "no" / "x.png"))
     with pytest.raises(Invalid, match="must be an absolute path"):
         judges.fresh_file("dest", "x.png")
