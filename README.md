@@ -36,6 +36,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.fresh` | files and directories created new, never over another, never left half written, and a directory taken back when the work that fills it fails |
 | `scry_core.avi` | an AVI's main header: its frame size, and its frames, by the header once the file is finished and by its chunks while it is written |
 | `scry_core.docs` | a tool description's `{NAME}` placeholders, filled from the constants that enforce them |
+| `scry_core.screen_map` | screen maps (`scry-map/1`): which screen of an application a machine shows, off one read of it, and its named controls, in a file layer and a session layer |
 
 Each server pins it by a release tag, never by a branch:
 
