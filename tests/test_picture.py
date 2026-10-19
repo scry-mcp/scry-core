@@ -211,3 +211,10 @@ def test_the_shared_sentences_carry_the_constants_that_enforce_them() -> None:
     for value in (picture.INLINE_SIDE_MAX, picture.INLINE_TOKENS_MAX, picture.TOKEN_SIDE):
         assert str(value) in picture.DESCRIBED
     assert str(picture.SCALE_MAX) in picture.ARGUMENTS and "gone at `close`" in picture.ARGUMENTS
+
+
+def test_a_server_that_records_nothing_names_no_recorder(tmp_path: Path) -> None:
+    block = picture.publish(png.Raster(1, 1, bytes(3)), 1, None, tmp_path, "shot")
+    assert Path(block["path"]).is_file()
+    data = picture.data_file(png.Raster(1, 1, bytes(3)), tmp_path, "data")
+    assert Path(data["path"]).is_file()

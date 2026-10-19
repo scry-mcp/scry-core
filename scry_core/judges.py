@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import math
 from pathlib import Path
-from typing import TypeGuard
+from typing import Any, TypeGuard
 
 from scry_core import png
 from scry_core.reply_contract import Invalid
@@ -41,11 +41,73 @@ def shift(value: object) -> tuple[int, int]:
     return value[0], value[1]
 
 
-def absolute(name: str, value: object) -> Path:
-    """A path argument: a string naming an absolute path, or the refusal naming `name`."""
-    if not isinstance(value, str) or not value or "\x00" in value or not Path(value).is_absolute():
-        raise Invalid("bad_argument", f"{name}={value!r} must be an absolute path")
-    return Path(value)
+def absolute(name: str, value: object, **fields: Any) -> Path:
+    """THE ONE JUDGE OF A PATH ARGUMENT, on both servers: a string naming an absolute path, or
+    one led by `~`, expanded here as the shell would (`~` is what a person types, and no shell
+    stands between a client and this argument), or the refusal naming `name`; `fields` ride on
+    it. A relative path is refused because it would be judged in one directory and used in
+    another (the server's, the emulator's); a NUL and a lone surrogate because no file name can
+    hold either."""
+    if not isinstance(value, str):
+        raise Invalid("bad_argument", f"{name}={value!r} is not a path", **fields)
+    if not value:
+        raise Invalid("bad_argument", f"{name} is empty: give an absolute path, or one starting "
+                      "with `~`", **fields)
+    if "\x00" in value:
+        raise Invalid("bad_argument", f"{name}={value!r} holds a NUL, which no file name holds",
+                      **fields)
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as e:
+        raise Invalid("bad_argument", f"{name}={value!r} holds a lone surrogate "
+                      f"{value[e.start]!r}, which no file name holds", **fields) from None
+    path = Path(value)
+    if value.startswith("~"):
+        try:
+            path = path.expanduser()
+        except RuntimeError:
+            path = Path(value)
+        if str(path).startswith("~"):
+            raise Invalid("bad_argument", f"{name}={value!r} names a home directory this host "
+                          "cannot find: write it out in full", **fields)
+    if not path.is_absolute():
+        raise Invalid("bad_argument", f"{name}={value!r} must be an absolute path or start with "
+                      "`~`: a relative one would be judged in one directory and used in another",
+                      **fields)
+    return path
+
+
+def writable_file(name: str, value: object, **fields: Any) -> Path:
+    """A file a tool is about to write, which may be there: `absolute`, and its directory is
+    one, or the refusal naming `name`. (`is_dir` and `exists` answer False for a path the
+    filesystem cannot look at, so such a path is refused here too, never raised.)"""
+    path = absolute(name, value, **fields)
+    if not path.parent.is_dir():
+        raise Invalid("bad_argument", f"{name}: {path.parent} is not a directory, so "
+                      f"{path.name} has nowhere to go", **fields)
+    return path
+
+
+def fresh_file(name: str, value: object, **fields: Any) -> Path:
+    """A file a tool is about to create: `writable_file`, and nothing at it yet, a link that
+    points nowhere included (it is something there, and a writer would follow it)."""
+    path = writable_file(name, value, **fields)
+    if path.exists() or path.is_symlink():
+        raise Invalid("bad_argument", f"{name}: {path} already exists. This will not overwrite "
+                      "it: name a path that is not there yet", **fields)
+    return path
+
+
+def expanded(value: str) -> str:
+    """`value` with a leading `~` expanded as `absolute` expands it, for a server that hands the
+    text on (to an emulator's command line, or a list it splits); anything else, a `~user` this
+    host cannot find included, as given, for `absolute` to judge."""
+    if not value.startswith("~"):
+        return value
+    try:
+        return str(Path(value).expanduser())
+    except RuntimeError:
+        return value
 
 
 def window(name: str, value: object) -> tuple[float, float] | None:

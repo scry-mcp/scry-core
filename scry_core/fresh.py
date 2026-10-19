@@ -5,7 +5,9 @@ looks like a file, and a file written over is somebody else's evidence gone.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import contextlib
+import shutil
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import IO
 
@@ -67,6 +69,39 @@ def numbered_dir(folder: Path, name: Callable[[int], str], what: str) -> Path:
             number += 1
         except OSError as e:
             raise Invalid("host_failed", f"{what} {path} cannot be created: {e}") from None
+
+
+def directory(dest: Path | None, folder: Path, name: Callable[[int], str],
+              what: str) -> Path:
+    """A directory made new for a piece of work: `dest` (a path the caller named and the
+    server judged), or the first free `folder / name(n)` (`numbered_dir`)."""
+    if dest is None:
+        return numbered_dir(folder, name, what)
+    try:
+        dest.mkdir()
+    except FileExistsError:
+        raise Invalid("bad_argument", f"dest: {dest} is already there. This will not write into "
+                      "it: name a directory that is not there yet") from None
+    except OSError as e:
+        raise Invalid("bad_argument", f"dest: {dest} cannot be created: {e}") from None
+    return dest
+
+
+@contextlib.contextmanager
+def taken_back(where: Path) -> Iterator[None]:
+    """The work that fills `where`, a directory `directory` just made: any exception, a refusal
+    or a cancel alike, takes the whole directory away again, so no half piece of work is left
+    where a caller or the next call would find it."""
+    try:
+        yield
+    except BaseException:
+        remove_dir(where)
+        raise
+
+
+def remove_dir(where: Path) -> None:
+    """`where` and everything in it, gone: a directory made for work that produced nothing."""
+    shutil.rmtree(where, ignore_errors=True)
 
 
 def _fill(out: IO[bytes], path: Path, data: bytes, what: str) -> None:

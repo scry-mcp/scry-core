@@ -45,7 +45,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, get_args
 
-from scry_core import fresh
+from scry_core import fresh, judges
 from scry_core.reply_contract import Invalid
 
 #: The most calls one recording holds: as many as one `perform(until_frame=)` takes in steps.
@@ -361,16 +361,9 @@ def export(recorder: Recorder, path: str, overwrite: bool = False) -> dict[str, 
     runner's command line. `no_recording` when no `start` succeeded since the server began, or
     when the recording holds no step a replay could take (cut at its first, or every call
     dropped)."""
-    if not (path.startswith("~") or Path(path).is_absolute()):
-        raise Invalid("bad_argument", f"path={path!r} is absolute or starts with `~`")
-    try:
-        target = Path(path).expanduser()
-    except RuntimeError as e:                      # `~nobody/...`: no such home
-        raise Invalid("bad_argument", f"path={path!r}: {e}") from None
+    target = judges.writable_file("path", path)
     if target.suffix != ".json":
         raise Invalid("bad_argument", f"path={path!r} ends in `.json`: the document is JSON")
-    if not target.parent.is_dir():
-        raise Invalid("bad_argument", f"{target.parent} is not a directory")
     if target.is_dir():
         raise Invalid("bad_argument", f"{target} is a directory")
     if os.path.lexists(target) and not overwrite:

@@ -4,6 +4,8 @@ a picture is read once so its digest and its pixels are one file's."""
 from __future__ import annotations
 
 import hashlib
+import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -19,11 +21,31 @@ def test_whole_numbers_and_their_bounds() -> None:
         assert not judges.whole(bad, lo, hi), (bad, lo, hi)
 
 
-@pytest.mark.parametrize("value", ["a.png", "", None, 3, "/x\x00y"])
-def test_a_path_that_is_not_absolute_is_refused(value: object) -> None:
-    with pytest.raises(Invalid, match="must be an absolute path") as e:
-        judges.absolute("a", value)
-    assert e.value.code == "bad_argument"
+#: Windows builds a `~user` path beside the home without asking whether that user exists.
+NTPATH = "ntpath expands any ~user"
+
+
+@pytest.mark.parametrize("value, said", [
+    ("a.png", "a='a.png' must be an absolute path or start with `~`"),
+    ("", "a is empty: give an absolute path, or one starting with `~`"),
+    (None, "a=None is not a path"), (3, "a=3 is not a path"),
+    ("/x\x00y", "holds a NUL"), ("/x\ud800", "holds a lone surrogate"),
+    pytest.param("~no-such-user-here/x", "names a home directory this host cannot find",
+                 marks=pytest.mark.skipif(sys.platform == "win32", reason=NTPATH)),
+])
+def test_a_path_that_is_not_absolute_is_refused(value: object, said: str) -> None:
+    with pytest.raises(Invalid, match=re.escape(said)) as e:
+        judges.absolute("a", value, tool="t")
+    assert e.value.code == "bad_argument" and e.value.fields == {"tool": "t"}
+
+
+def test_a_tilde_path_is_expanded_as_a_person_means_it(monkeypatch: pytest.MonkeyPatch,
+                                                       tmp_path: Path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    assert judges.absolute("a", "~/x.png") == tmp_path / "x.png"
+    assert judges.absolute("a", "~") == tmp_path
+    assert judges.absolute("a", str(tmp_path / "y")) == tmp_path / "y"
 
 
 def test_a_picture_is_read_once_with_its_digest(tmp_path: Path) -> None:
@@ -42,3 +64,37 @@ def test_a_picture_is_read_once_with_its_digest(tmp_path: Path) -> None:
         judges.picture_file("p", tmp_path / "absent.png")
     with pytest.raises(Invalid, match="is not a file"):
         judges.existing_file("p", str(tmp_path))
+
+
+def test_expanded_hands_on_the_text_absolute_would_judge(monkeypatch: pytest.MonkeyPatch,
+                                                         tmp_path: Path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    assert judges.expanded("~/roms") == str(tmp_path / "roms")
+    assert judges.expanded("/abs/~x") == "/abs/~x" and judges.expanded("rel") == "rel"
+    if sys.platform != "win32":                  # NTPATH
+        assert judges.expanded("~no-such-user-here/x") == "~no-such-user-here/x"
+    assert judges.absolute("a", judges.expanded("~/roms")) == judges.absolute("a", "~/roms")
+
+
+def test_a_file_to_write_has_a_directory_and_a_fresh_one_nothing_there(tmp_path: Path) -> None:
+    there = tmp_path / "there.png"
+    there.write_bytes(b"x")
+    (tmp_path / "dangling").symlink_to(tmp_path / "nowhere")
+    assert judges.writable_file("dest", str(there)) == there
+    assert judges.fresh_file("dest", str(tmp_path / "new.png")) == tmp_path / "new.png"
+    for taken in (there, tmp_path / "dangling"):
+        with pytest.raises(Invalid, match=r"already exists\. This will not overwrite it") as e:
+            judges.fresh_file("dest", str(taken), tool="t")
+        assert e.value.code == "bad_argument" and e.value.fields == {"tool": "t"}
+    with pytest.raises(Invalid, match=r"dest: .*/no is not a directory, so x\.png has nowhere"):
+        judges.writable_file("dest", str(tmp_path / "no" / "x.png"))
+    with pytest.raises(Invalid, match="must be an absolute path"):
+        judges.fresh_file("dest", "x.png")
+
+
+def test_a_name_too_long_to_look_at_is_refused_not_raised(tmp_path: Path) -> None:
+    with pytest.raises(Invalid) as e:
+        judges.writable_file("dest", str(tmp_path / ("x" * 300) / "y"))
+    assert e.value.code == "bad_argument"
+    assert judges.fresh_file("dest", str(tmp_path / ("x" * 300))).name == "x" * 300

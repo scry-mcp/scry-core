@@ -102,7 +102,7 @@ def test_series_diff_region_track_and_golden_check_on_one_series(tmp_path: Path)
     ("image_diff", {"a": "/a", "b": "/b", "shift": [1]}, "shift="),
     ("image_diff", {"a": "/a", "b": "/b", "tolerance": 256}, "tolerance=256"),
     ("image_diff", {"a": "/a", "b": "/b", "tolerance": True}, "tolerance=True"),
-    ("series_diff", {"a": "/a", "b": ""}, "b='' must be an absolute path"),
+    ("series_diff", {"a": "/a", "b": ""}, "b is empty"),
     ("series_diff", {"a": "/a", "b": "/b", "crop": [1]}, "crop="),
     ("region_track", {"manifest": "/m", "measure": "area"}, "measure='area' is one of"),
     ("region_track", {"manifest": "/m", "measure": "match"}, "`ref` goes with measure"),
@@ -129,9 +129,9 @@ def test_a_wrong_shape_is_refused_by_the_judge_and_by_the_body(tool: str, kw: di
 
 
 def test_the_limits_themselves_are_accepted() -> None:
-    media_tools.check_image_diff("/a", "/b", tolerance=255)
-    media_tools.check_region_track("/m", threshold=1, limit=series.LIMIT_MAX)
-    media_tools.check_region_track("/m", limit=1)
+    media_tools.check_image_diff(a="/a", b="/b", tolerance=255)
+    media_tools.check_region_track(manifest="/m", threshold=1, limit=series.LIMIT_MAX)
+    media_tools.check_region_track(manifest="/m", limit=1)
 
 
 def test_every_description_fits_a_client_and_says_what_it_touches() -> None:
@@ -155,7 +155,7 @@ def test_register_hands_each_tool_to_the_servers_own_decorator() -> None:
             seen.append((title, summary, read_only, fn.__name__, replay))
             return ("registered", fn.__name__)
         return register
-    got = media_tools.register(wrap, media_tools.IMAGE_TOOLS)
+    got = media_tools.register(wrap, media_tools.IMAGE_TOOLS, lambda body: body)
     assert got == {n: ("registered", n) for n in media_tools.IMAGE_TOOLS}
     assert [s[3] for s in seen] == list(media_tools.IMAGE_TOOLS)
     assert [s[2] for s in seen] == [True, True, False, True], "region_track writes its file"
@@ -163,4 +163,36 @@ def test_register_hands_each_tool_to_the_servers_own_decorator() -> None:
     assert [s[4] for s in seen] == ["drop", "drop", "drop",
                                     ("matched", "differing", "missing", "extra")]
     with pytest.raises(ValueError, match="no media tools named"):
-        media_tools.register(wrap, ["screen_view"])
+        media_tools.register(wrap, ["screen_view"], lambda body: body)
+
+
+def test_register_makes_each_body_s_fields_the_servers_reply(tmp_path: Path) -> None:
+    """The server's reply builder wraps what the body answers, and the registered function
+    keeps the body's name and description, which the client is shown."""
+    def wrap(title: str, **_: Any) -> Any:
+        return lambda fn: fn
+    got = media_tools.register(wrap, ["golden_check"], lambda body: {"status": "ok", **body})
+    assert got["golden_check"].__name__ == "golden_check"
+    assert got["golden_check"].__doc__ == media_tools.golden_check.__doc__
+    with pytest.raises(Invalid, match="one of the two"):
+        got["golden_check"](checksums="/g")
+    folder = tmp_path / "d"
+    folder.mkdir()
+    (folder / "a.png").write_bytes(b"a")
+    sums = tmp_path / "sums"
+    sums.write_text(f"{hashlib.sha256(b'a').hexdigest()}  a.png\n")
+    answered = got["golden_check"](dir=str(folder), checksums=str(sums))
+    assert answered["status"] == "ok" and answered["matched"] == 1, answered
+
+
+def test_a_judge_takes_the_defaults_its_body_declares(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each default is written once, on the body: the pre-gate judges a call that left an
+    argument out with the value the body would run with."""
+    seen: list[dict[str, Any]] = []
+    monkeypatch.setattr(media_tools, "_judge_region_track", lambda **kw: seen.append(kw))
+    gate = media_tools._gate(media_tools.region_track, media_tools._judge_region_track)
+    gate(manifest="/m")
+    assert seen == [{"manifest": "/m", "crop": None, "measure": "signature", "ref": "",
+                     "threshold": series.THRESHOLD_DEFAULT, "limit": series.LIMIT_DEFAULT}]
+    gate(limit=3, ctx="ignored")
+    assert seen[-1]["manifest"] == "" and seen[-1]["limit"] == 3 and "ctx" not in seen[-1]

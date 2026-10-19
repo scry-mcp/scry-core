@@ -325,7 +325,7 @@ def test_the_export_writes_the_document_and_accounts_for_it(tmp_path: Path) -> N
 
 
 @pytest.mark.parametrize("path, absolute, says", [
-    ("relative.json", False, "absolute or starts with `~`"),
+    ("relative.json", False, "must be an absolute path or start with `~`"),
     ("session.txt", True, "ends in `.json`"),
     ("no/such/dir/session.json", True, "is not a directory"),
 ])

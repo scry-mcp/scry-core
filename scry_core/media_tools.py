@@ -2,15 +2,17 @@
 body, ONE description, ONE summary line and ONE judge, so the two servers cannot describe or judge
 one tool two ways.
 
-A server registers them with `register(wrap, names)`, `wrap` being its own registration decorator
-(`wrap(title, summary=..., read_only=...)`), which already registers on the server and wraps every
-reply in that server's envelope with its `session` block. Each tool's judge (`TOOLS[n].check`,
+A server registers them with `register(wrap, names, answer)`, `wrap` being its own registration
+decorator (`wrap(title, summary=..., read_only=...)`) and `answer` the function that makes a body's
+bare fields that server's reply, with its `session` block. Each tool's judge (`TOOLS[n].check`,
 machine-independent) goes in the server's pre-gate table, so a call of the wrong shape is refused
 before any file is read.
 """
 
 from __future__ import annotations
 
+import functools
+import inspect
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
@@ -24,6 +26,7 @@ Summary = Callable[[dict[str, Any], dict[str, Any]], str]
 Wrap = Callable[..., Callable[[Callable[..., Any]], Any]]
 TOLERANCE_MAX = 255
 REFERENCE = "Reference: REFERENCE.md, Media files."
+PATHS = "Every path is absolute or starts with `~`."
 READS_ONLY = "Reads files only: it needs no machine and alters nothing."
 WRITES_ITS_FILE = "Reads files and writes one, `path`: it needs no machine."
 
@@ -33,8 +36,8 @@ def _optional_rect(name: str, value: object) -> None:
         judges.rect(name, value)
 
 
-def check_image_diff(a: object = "", b: object = "", crop: object = None, shift: object = None,
-                     tolerance: object = 0, **_: Any) -> None:
+def _judge_image_diff(a: object, b: object, crop: object, shift: object,
+                      tolerance: object) -> None:
     judges.absolute("a", a)
     judges.absolute("b", b)
     _optional_rect("crop", crop)
@@ -50,7 +53,7 @@ def image_diff(a: str, b: str, crop: list[int] | None = None, shift: list[int] |
     """Compare two PNG files pixel by pixel, in the colours they show, and answer where they
     differ without sending either picture.
 
-    `a`, `b`: absolute paths of PNGs (8-bit, indexed or RGB). `crop` [x, y, width, height] is
+    `a`, `b`: paths of PNGs (8-bit, indexed or RGB). `crop` [x, y, width, height] is
     the rectangle compared on both; it must lie inside both (it is never padded), and pictures
     of two sizes need one. `shift` [dx, dy] compares pixel (x, y) of `a` with (x + dx, y + dy) of
     `b`, over the part of the crop both stay in: a sprite that moved compares equal at its
@@ -61,7 +64,7 @@ def image_diff(a: str, b: str, crop: list[int] | None = None, shift: list[int] |
     `crop` (the rectangle of `a` compared), `shift`, `tolerance`, and `a` and `b` (`path`,
     `sha256`).
     """
-    check_image_diff(a, b, crop, shift, tolerance)
+    _judge_image_diff(a, b, crop, shift, tolerance)
     read = {name: (path, *judges.picture_file(name, path))
             for name, path in (("a", judges.existing_file("a", a)),
                                ("b", judges.existing_file("b", b)))}
@@ -76,7 +79,7 @@ def image_diff(a: str, b: str, crop: list[int] | None = None, shift: list[int] |
                for name, (path, _, digest) in read.items()}}
 
 
-def check_series_diff(a: object = "", b: object = "", crop: object = None, **_: Any) -> None:
+def _judge_series_diff(a: object, b: object, crop: object) -> None:
     judges.absolute("a", a)
     judges.absolute("b", b)
     _optional_rect("crop", crop)
@@ -86,7 +89,7 @@ def series_diff(a: str, b: str, crop: list[int] | None = None) -> dict[str, Any]
     """Compare two series frame by frame, paired by frame number, after checking that each one
     can tell frames apart at all.
 
-    `a`, `b`: absolute paths of `scry-series/1` manifests (what `series_capture` writes); every
+    `a`, `b`: paths of `scry-series/1` manifests (what `series_capture` writes); every
     file a manifest lists is checked against its sha256 first. `crop` [x, y, width, height] is
     compared on every frame of both, inside the PNGs. THE CONTROLS: a series whose every frame
     has one signature over the crop is `control_silent` naming it, since it says nothing about
@@ -96,14 +99,13 @@ def series_diff(a: str, b: str, crop: list[int] | None = None) -> dict[str, Any]
     `bbox`, or null), `only_in_a` and `only_in_b` (frames with no partner, as [first, last]
     runs), `crop` (the rectangle compared), and `a`, `b`.
     """
-    check_series_diff(a, b, crop)
+    _judge_series_diff(a, b, crop)
     one, two = series.read_manifest("a", a), series.read_manifest("b", b)
     return {**series.series_diff(one, two, crop), "a": str(one.path), "b": str(two.path)}
 
 
-def check_region_track(manifest: object = "", crop: object = None, measure: object = "signature",
-                       ref: object = "", threshold: object = series.THRESHOLD_DEFAULT,
-                       limit: object = series.LIMIT_DEFAULT, **_: Any) -> None:
+def _judge_region_track(manifest: object, crop: object, measure: object, ref: object,
+                        threshold: object, limit: object) -> None:
     judges.absolute("manifest", manifest)
     _optional_rect("crop", crop)
     if measure not in series.MEASURES:
@@ -129,11 +131,11 @@ def region_track(manifest: str, crop: list[int] | None = None, measure: str = "s
     """Follow one region through a series and answer the frames where it changes, as numbers,
     never as pictures.
 
-    `manifest`: an absolute path of a `scry-series/1` manifest. `crop` [x, y, width, height],
+    `manifest`: the path of a `scry-series/1` manifest. `crop` [x, y, width, height],
     inside its PNGs (default the whole picture). `measure`: `signature` (the region's
     signature; a transition is a new one), `changed_pixels` (pixels changed since the previous
     frame; a transition is a frame where any did), `match` (the fraction of the region equal to
-    `ref`, the absolute path of a PNG of the crop's size; on at `threshold` or more, default
+    `ref`, the path of a PNG of the crop's size; on at `threshold` or more, default
     0.98, and a transition is a flip). `limit` (1..1000, default 40): transitions listed. THE
     CONTROL: a measure that never changes over the series is `control_silent`, the crop having
     missed.
@@ -145,7 +147,7 @@ def region_track(manifest: str, crop: list[int] | None = None, measure: str = "s
     every transition and each frame's value; a list cut at `limit` says so in `omitted` and
     `how`.
     """
-    check_region_track(manifest, crop, measure, ref, threshold, limit)
+    _judge_region_track(manifest, crop, measure, ref, threshold, limit)
     track = series.read_manifest("manifest", manifest)
     reference = judges.picture_file("ref", judges.existing_file("ref", ref))[0] if ref else None
     return {**series.region_track(track, crop, cast(series.Measure, measure), reference,
@@ -153,8 +155,7 @@ def region_track(manifest: str, crop: list[int] | None = None, measure: str = "s
             "manifest": str(track.path)}
 
 
-def check_golden_check(manifest: object = "", dir: object = "", checksums: object = "",
-                       **_: Any) -> None:
+def _judge_golden_check(manifest: object, dir: object, checksums: object) -> None:
     if bool(manifest) == bool(dir):
         raise Invalid("bad_argument", "name the files to check either as `manifest` (a series) "
                       "or as `dir` (a directory of PNGs), one of the two")
@@ -169,8 +170,8 @@ def golden_check(manifest: str = "", dir: str = "", checksums: str = "") -> dict
     """Check a series, or a directory of PNGs, against goldens written by `shasum -a 256`:
     exact bytes, by file name.
 
-    ONE of `manifest`, the absolute path of a `scry-series/1` manifest (its frames), or `dir`, an
-    absolute directory (its `*.png`); and `checksums`, the absolute path of a file of
+    ONE of `manifest`, the path of a `scry-series/1` manifest (its frames), or `dir`, a
+    directory (its `*.png`); and `checksums`, the path of a file of
     `<sha256>  <name>` lines (the name's last part is matched, so a line may carry a directory).
     A file and a golden that meet nowhere compare nothing, so no name in common is
     `control_silent`; a line that does not parse is refused naming it.
@@ -178,7 +179,7 @@ def golden_check(manifest: str = "", dir: str = "", checksums: str = "") -> dict
     Reply: `matched` (a count), `differing`, `missing` (goldens with no file) and `extra` (files
     with no golden), each a sorted list of names, and `checksums`, and `manifest` or `dir`.
     """
-    check_golden_check(manifest, dir, checksums)
+    _judge_golden_check(manifest, dir, checksums)
     sums = goldens.read_checksums("checksums", judges.existing_file("checksums", checksums))
     if manifest:
         track = series.read_manifest("manifest", manifest)
@@ -188,11 +189,11 @@ def golden_check(manifest: str = "", dir: str = "", checksums: str = "") -> dict
         folder = judges.absolute("dir", dir)
         files = goldens.in_dir("dir", folder)
         where = {"dir": str(folder)}
-    return {**goldens.compare(files, sums), "checksums": checksums, **where}
+    return {**goldens.compare(files, sums),
+            "checksums": str(judges.absolute("checksums", checksums)), **where}
 
 
-def check_audio_measure(path: object = "", window: object = None, channel: object = None,
-                        **_: Any) -> None:
+def _judge_audio_measure(path: object, window: object, channel: object) -> None:
     judges.absolute("path", path)
     judges.window("window", window)
     if channel is not None and not judges.whole(channel):
@@ -204,7 +205,7 @@ def audio_measure(path: str, window: list[float] | None = None,
     """Measure a WAV (what `audio_record` writes) and answer whether it sounded, how loud, when
     and whether it clipped, as numbers: the sound itself never comes back.
 
-    `path`: the absolute path of an 8- or 16-bit PCM WAV. `window` [from_s, to_s], seconds
+    `path`: the path of an 8- or 16-bit PCM WAV. `window` [from_s, to_s], seconds
     (default the whole file). `channel` (default every channel).
 
     A chip resting at a steady level is silent: the RMS and the plateau read the window less its
@@ -219,13 +220,12 @@ def audio_measure(path: str, window: list[float] | None = None,
     `bits`, `window` and `pcm_sha256` (the window's frames, every channel's, for an exact
     comparison), and `path`.
     """
-    check_audio_measure(path, window, channel)
+    _judge_audio_measure(path, window, channel)
     recording = wav.read("path", path)
     return {**wav.measure(recording, window, channel), "path": str(recording.path)}
 
 
-def check_audio_diff(a: object = "", b: object = "", window: object = None, align: object = True,
-                     **_: Any) -> None:
+def _judge_audio_diff(a: object, b: object, window: object, align: object) -> None:
     judges.absolute("a", a)
     judges.absolute("b", b)
     judges.window("window", window)
@@ -238,7 +238,7 @@ def audio_diff(a: str, b: str, window: list[float] | None = None,
     """Compare two WAVs of one format, `b` the reference, and answer how close they are as
     numbers.
 
-    `a`, `b`: absolute paths of 8- or 16-bit PCM WAVs of one rate, channel count and width.
+    `a`, `b`: paths of 8- or 16-bit PCM WAVs of one rate, channel count and width.
     `window` [from_s, to_s], seconds, on each. `align` (default true) drops the head of the
     later one so the two onsets meet, so a recording that starts later is not called different
     for it. Each channel is compared with its twin and the worst grades. THE CONTROL: two
@@ -253,9 +253,31 @@ def audio_diff(a: str, b: str, window: list[float] | None = None,
     `length_delta_samples` (a's minus b's), `aligned_by_samples` (positive: a's head dropped;
     negative: b's), and `a`, `b`.
     """
-    check_audio_diff(a, b, window, align)
+    _judge_audio_diff(a, b, window, align)
     one, two = wav.read("a", a), wav.read("b", b)
     return {**wav.compare(one, two, window, align), "a": str(one.path), "b": str(two.path)}
+
+
+def _gate(body: Callable[..., Any], judge: Callable[..., None]) -> Callable[..., None]:
+    """The pre-gate's judge of `body`: the arguments a call named, the body's own defaults for
+    the rest, so each default is written once, on the body; an argument the body takes and the
+    call left out with no default is `""`, the spelling of "not given" every judge refuses."""
+    params = inspect.signature(body).parameters
+
+    def gate(**given: Any) -> None:
+        judge(**{name: given.get(name, "" if p.default is p.empty else p.default)
+                 for name, p in params.items()})
+    # Named as the judge it runs, which is the name the body calls it by.
+    gate.__name__ = gate.__qualname__ = judge.__name__
+    return gate
+
+
+check_image_diff = _gate(image_diff, _judge_image_diff)
+check_series_diff = _gate(series_diff, _judge_series_diff)
+check_region_track = _gate(region_track, _judge_region_track)
+check_golden_check = _gate(golden_check, _judge_golden_check)
+check_audio_measure = _gate(audio_measure, _judge_audio_measure)
+check_audio_diff = _gate(audio_diff, _judge_audio_diff)
 
 
 def _audio_measure_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
@@ -334,18 +356,26 @@ IMAGE_TOOLS = ("image_diff", "series_diff", "region_track", "golden_check")
 AUDIO_TOOLS = ("audio_measure", "audio_diff")
 
 
-def register(wrap: Wrap, names: Sequence[str]) -> dict[str, Any]:
-    """Register the tools `names` through the server's own decorator, and answer each as the
-    decorator returned it, so the server can call them as it calls its own."""
+def register(wrap: Wrap, names: Sequence[str],
+             answer: Callable[[dict[str, Any]], dict[str, Any]]) -> dict[str, Any]:
+    """Register the tools `names` through the server's own decorator, each body's bare fields
+    made a reply by `answer`, the server's own reply builder (its `status` and `session`), and
+    answer each as the decorator returned it, so the server calls them as it calls its own."""
     unknown = sorted(set(names) - TOOLS.keys())
     if unknown:
         raise ValueError(f"no media tools named {unknown}")
+
+    def answered(body: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
+        @functools.wraps(body)
+        def reply(*a: Any, **k: Any) -> dict[str, Any]:
+            return answer(body(*a, **k))
+        return reply
     return {n: wrap(TOOLS[n].title, summary=TOOLS[n].summary, read_only=TOOLS[n].read_only,
-                    replay=TOOLS[n].replay)(TOOLS[n].body) for n in names}
+                    replay=TOOLS[n].replay)(answered(TOOLS[n].body)) for n in names}
 
 
 for _tool in TOOLS.values():
     # The two sentences every description ends on, said once here for all of them.
     _tool.body.__doc__ = ((_tool.body.__doc__ or "").rstrip() + "\n\n    "
-                          + (READS_ONLY if _tool.read_only else WRITES_ITS_FILE)
+                          + (READS_ONLY if _tool.read_only else WRITES_ITS_FILE) + " " + PATHS
                           + f"\n\n    {REFERENCE}\n")

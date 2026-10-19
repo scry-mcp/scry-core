@@ -95,3 +95,47 @@ def test_numbered_directories_skip_taken_names(tmp_path: Path) -> None:
     assert e.value.code == "host_failed"
     with pytest.raises(Invalid, match="cannot be created"):
         fresh.numbered_dir(tmp_path, lambda n: f"no/s-{n}", "the series")
+
+
+def _folder(dest: Path | None, scratch: Path) -> tuple[Path, bool]:
+    return fresh.directory(dest, scratch / "series", lambda n: f"series-{n}", "the series"), \
+        dest is not None
+
+
+def test_a_series_folder_is_the_callers_dest_or_a_numbered_scratch(tmp_path: Path) -> None:
+    dest = tmp_path / "mine"
+    assert _folder(dest, tmp_path / "scratch") == (dest, True) and dest.is_dir()
+    one, kept = _folder(None, tmp_path / "scratch")
+    two, _ = _folder(None, tmp_path / "scratch")
+    assert (one.name, two.name, kept) == ("series-1", "series-2", False)
+
+
+def test_a_dest_already_there_is_refused_and_left_alone(tmp_path: Path) -> None:
+    (tmp_path / "there").mkdir()
+    (tmp_path / "there" / "keep.png").write_bytes(b"x")
+    with pytest.raises(Invalid, match="already there") as e:
+        _folder(tmp_path / "there", tmp_path)
+    assert e.value.code == "bad_argument" and (tmp_path / "there" / "keep.png").exists()
+
+
+def test_a_dest_whose_parent_is_missing_is_the_callers(tmp_path: Path) -> None:
+    with pytest.raises(Invalid, match="cannot be created") as e:
+        _folder(tmp_path / "no" / "such", tmp_path)
+    assert e.value.code == "bad_argument"
+
+
+@pytest.mark.parametrize("raised", [Invalid("bad_argument", "x"), KeyboardInterrupt()])
+def test_any_exception_inside_a_capture_takes_the_folder_away(tmp_path: Path,
+                                                               raised: BaseException) -> None:
+    where, _ = _folder(tmp_path / "s", tmp_path)
+    with pytest.raises(type(raised)), fresh.taken_back(where):
+        (where / "raw-1.png").write_bytes(b"half")
+        raise raised
+    assert not where.exists()
+
+
+def test_a_capture_that_ends_well_keeps_its_folder(tmp_path: Path) -> None:
+    where, _ = _folder(None, tmp_path)
+    with fresh.taken_back(where):
+        (where / "f000001.png").write_bytes(b"x")
+    assert (where / "f000001.png").exists()

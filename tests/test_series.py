@@ -71,7 +71,7 @@ def test_the_reply_half_names_the_manifest_and_counts_distinct_signatures(tmp_pa
         series.write_manifest(folder, "test", "avi", None, [99])
     assert e.value.code == "host_failed"
     with pytest.raises(ValueError):
-        series.write_manifest(folder, "test", "radio", None, [10])
+        series.write_manifest(folder, "test", "", None, [10])
 
 
 @pytest.mark.parametrize("measure, transitions, gaps", [
@@ -267,3 +267,18 @@ def test_a_frame_that_changed_since_its_manifest_is_refused_however_it_is_used(
     (tmp_path / "t" / "f000012.png").write_bytes(png.encode(_frame({(2, 2)})))
     with pytest.raises(Invalid, match="no longer matches the sha256"):
         track.picture(track.rows[2])
+
+
+def test_the_reply_tail_names_what_was_asked_and_what_counts_the_frames() -> None:
+    assert series.tail(3, True, "avi") == {"frames_asked": 3, "kept_after_close": True,
+                                           "frame_source": "avi"}
+
+
+def test_any_source_word_the_server_names_is_written(tmp_path: Path) -> None:
+    folder = tmp_path / "s"
+    folder.mkdir()
+    (folder / series.frame_name(1)).write_bytes(png.encode(_frame(set())))
+    reply = series.write_manifest(folder, "test", "a-word-of-its-own", None, [1])
+    assert json.loads(Path(reply["manifest"]).read_text())["source"] == "a-word-of-its-own"
+    with pytest.raises(ValueError):
+        series.write_manifest(folder, "test", "", None, [1])

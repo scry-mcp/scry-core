@@ -3,13 +3,13 @@ change. No emulator here: a server writes the PNGs and calls `write_manifest`; e
 reads files.
 
 THE MANIFEST is one JSON file, `"format": "scry-series/1"`, beside its PNGs (`f000123.png`, the
-frame number in six digits): `server`, `source` (what the frame numbers count: the emulator's
-`frame_number`, or an `avi`'s own frames), `crop` (the rectangle of the screen each PNG holds, or
-None for the whole screen) and `frames`, one row per frame `{frame, path, sha256, bytes,
-signature}`, ascending. A row's `path` is a file name in the manifest's own directory, so the
-directory can move. Its `signature` is `raster.picture_signature` over the whole PNG, the number
-the screen's own signature over that crop gives. Reading a manifest hashes every file it lists, so
-a frame that changed since is refused rather than trusted.
+frame number in six digits): `server`, `source` (what the frame numbers count, in the server's own
+word: an emulated frame counter, or a capture file's own frames), `crop` (the rectangle of the
+screen each PNG holds, or None for the whole screen) and `frames`, one row per frame `{frame,
+path, sha256, bytes, signature}`, ascending. A row's `path` is a file name in the manifest's own
+directory, so the directory can move. Its `signature` is `raster.picture_signature` over the
+whole PNG, the number the screen's own signature over that crop gives. Reading a manifest hashes
+every file it lists, so a frame that changed since is refused rather than trusted.
 
 EVERY COMPARISON HAS A CONTROL, because a result that cannot come out the other way is no result:
 a series whose frames never change says nothing about another series, two series with no frame in
@@ -31,9 +31,10 @@ from scry_core.reply_contract import Invalid
 
 MANIFEST_FORMAT = "scry-series/1"
 MANIFEST_NAME = "manifest.json"
-SOURCES = ("frame_number", "avi")
 #: The most frames one series holds: seconds of animation at 60 Hz.
 SERIES_MAX = 1000
+#: What a tool's description fills from here (`scry_core.docs.filled`).
+DOC_VALUES = {"SERIES_MAX": str(SERIES_MAX)}
 MEASURES = ("signature", "changed_pixels", "match")
 Measure = Literal["signature", "changed_pixels", "match"]
 #: `region_track`'s default list length and its ceiling.
@@ -83,13 +84,19 @@ def frame_list(frames: Sequence[int] | None, first: int | None, last: int | None
     return list(range(first, last + 1, step))
 
 
+def tail(asked: int, kept: bool, source: str) -> dict[str, Any]:
+    """The fields every `series_capture` reply ends on: how many frames were asked, whether the
+    directory outlives the session, and what the frame numbers count."""
+    return {"frames_asked": asked, "kept_after_close": kept, "frame_source": source}
+
+
 def write_manifest(folder: Path, server: str, source: str, crop: Sequence[int] | None,
                    frames: Sequence[int]) -> dict[str, Any]:
     """The manifest of the PNGs a capture wrote into `folder` as `frame_name(n)`, each decoded
     for its signature and hashed, written beside them; answers the reply's half: `manifest`,
-    `count`, `first`, `last`, `distinct` (signatures). A wrong `source` or no frame is the
+    `count`, `first`, `last`, `distinct` (signatures). No `source` word or no frame is the
     server's bug, a `ValueError`."""
-    if source not in SOURCES or not frames:
+    if not source or not frames:
         raise ValueError(f"a series of {len(frames)} frames from source {source!r}")
     rows = []
     for frame in frames:

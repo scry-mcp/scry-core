@@ -1,6 +1,6 @@
 """The picture a view tool answers with: ONE PNG on disk, its `image` block in the reply, and the
 same bytes attached beside the JSON when the model can see them unresampled. Both servers attach
-through here; each passes in its scratch and how it records a capture.
+through here; each passes in its scratch, and how it records a capture when it records one.
 
 THE CEILING. Past a long side of `INLINE_SIDE_MAX` pixels, or past `INLINE_TOKENS_MAX` tiles of
 `TOKEN_SIDE` pixels, the API resamples an image before the model sees it, and a resampled picture
@@ -49,7 +49,10 @@ DESCRIBED = (
     "`not_inlined`)")
 ARGUMENTS = (
     f"`scale` 0, the largest integer enlargement up to {SCALE_MAX} that fits; `dest` a new "
-    "absolute path, else the scratch, gone at `close`")
+    "path, else the scratch, gone at `close`")
+
+#: What a tool's description fills from here (`scry_core.docs.filled`).
+DOC_VALUES = {"PICTURE": DESCRIBED, "PICTURE_ARGS": ARGUMENTS}
 
 #: How a server records a file it wrote for the session, so it is listed and cleaned with it.
 Record = Callable[[Path], None]
@@ -90,8 +93,9 @@ Ring = tuple[int, int, int, int, tuple[int, int, int], int]
 
 
 def publish(raster: png.Raster, scale: int, dest: Path | None, scratch: Path, stem: str,
-            record: Record, marks: list[Mark] | None = None, rings: list[Ring] | None = None,
-            border: int = 0, clear: int | None = None) -> dict[str, Any]:
+            record: Record | None = None, marks: list[Mark] | None = None,
+            rings: list[Ring] | None = None, border: int = 0,
+            clear: int | None = None) -> dict[str, Any]:
     """Write `raster` as ONE PNG, enlarged by `scale` (0: the largest that fits), to `dest` (a
     path the server judged fresh) or to a numbered file in the scratch's `gfx`, and answer its
     `image` block. Marks and rings (RGB pictures only) are drawn AFTER the enlargement, one
@@ -123,7 +127,8 @@ def publish(raster: png.Raster, scale: int, dest: Path | None, scratch: Path, st
     return block
 
 
-def data_file(raster: png.Raster, scratch: Path, stem: str, record: Record) -> dict[str, Any]:
+def data_file(raster: png.Raster, scratch: Path, stem: str,
+              record: Record | None = None) -> dict[str, Any]:
     """Write `raster` unscaled as the DATA beside a picture that is a view of it (a view dims or
     marks, and an indexed data PNG cannot), and answer its block. Never attached: the view is."""
     data = png.encode(raster)
@@ -132,15 +137,17 @@ def data_file(raster: png.Raster, scratch: Path, stem: str, record: Record) -> d
             "indexed": raster.palette is not None}
 
 
-def written(data: bytes, dest: Path | None, scratch: Path, stem: str, record: Record) -> Path:
+def written(data: bytes, dest: Path | None, scratch: Path, stem: str,
+            record: Record | None = None) -> Path:
     """`data` at `dest`, or at the first free `stem-<n>.png` of the scratch's `gfx` (`fresh`'s
-    rules), then recorded."""
+    rules), then recorded when the server records its files (`record`; None, it does not)."""
     if dest is None:
         path = fresh.numbered(scratch / "gfx", lambda n: f"{stem}-{n}.png", data, "the picture")
     else:
         fresh.create(dest, data, "the picture", named_by_caller=True)
         path = dest
-    record(path)
+    if record is not None:
+        record(path)
     return path
 
 

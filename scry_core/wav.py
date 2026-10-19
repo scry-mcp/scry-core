@@ -104,10 +104,22 @@ def _as_plain_pcm(path: Path) -> str | io.BytesIO:
             if (len(fmt) < _SUBFORMAT.stop or struct.unpack_from("<H", fmt)[0] != _TAG_EXTENSIBLE
                     or fmt[_SUBFORMAT] != _PCM_SUBFORMAT):
                 return str(path)
+            # ONE COPY: the buffer is grown to the file's size and the file read straight into
+            # it, then the tag rewritten in place; a `bytearray(f.read())` and a `BytesIO` of it
+            # would each copy the whole recording again.
+            size = f.seek(0, io.SEEK_END)
             f.seek(0)
-            whole = bytearray(f.read())
-            whole[fmt_at:fmt_at + 2] = struct.pack("<H", _TAG_PCM)
-            return io.BytesIO(whole)
+            whole = io.BytesIO()
+            whole.seek(size - 1)
+            whole.write(b"\0")
+            with whole.getbuffer() as view:
+                got = f.readinto(view)
+                view[fmt_at:fmt_at + 2] = struct.pack("<H", _TAG_PCM)
+            # A file that shrank since its size was read ends where it ends, never padded
+            # with a silence nobody recorded.
+            whole.truncate(got)
+            whole.seek(0)
+            return whole
     return str(path)
 
 
@@ -254,7 +266,7 @@ def measure(recording: Recording, window: Sequence[float] | None,
         raw = recording.channels[c][start:end]
         heard = dc_blocked(raw, recording.rate)
         peak, rms = max(abs(x) for x in raw), _rms(centred(raw))
-        silent = rms / recording.full < SILENT_RMS
+        silent = _quiet(rms, recording.full)
         quiet = silences(heard, recording.rate, recording.full, start)
         first = None if silent else onset(from_rest(raw))
         # The plateau reads the window less its mean, where a clipped top is still flat and the
@@ -305,17 +317,23 @@ def _channel(pa: Sequence[float], pb: Sequence[float], full: int) -> tuple[float
     return snr, correlation(envelope(pa[:n]), envelope(pb[:n]), full)
 
 
+def _quiet(rms: float, full: int) -> bool:
+    """THE ONE SILENCE: an RMS under `SILENT_RMS` of full scale, the word `measure` says and
+    the control `compare` keys on."""
+    return rms / full < SILENT_RMS
+
+
+def _sounding(recording: Recording, start: int, end: int) -> list[Sequence[int]]:
+    """The channels of `recording` that are not silent over `start`..`end`, each cut to it."""
+    return [cut for ch in recording.channels
+            if not _quiet(_rms(centred(cut := ch[start:end])), recording.full)]
+
+
 def _first_onset(recording: Recording, start: int, end: int) -> int | None:
-    """The earliest onset of any channel over `start`..`end`."""
-    found = [o for ch in recording.channels
-             if _rms(centred(ch[start:end])) / recording.full >= SILENT_RMS
-             and (o := onset(from_rest(ch[start:end]))) is not None]
-    return min(found, default=None)
-
-
-def _silent(recording: Recording, start: int, end: int) -> bool:
-    return all(_rms(centred(ch[start:end])) / recording.full < SILENT_RMS
-               for ch in recording.channels)
+    """The earliest onset of any sounding channel over `start`..`end`, read as `measure` reads
+    each channel's."""
+    return min((o for cut in _sounding(recording, start, end)
+                if (o := onset(from_rest(cut))) is not None), default=None)
 
 
 def compare(a: Recording, b: Recording, window: Sequence[float] | None,
@@ -327,7 +345,7 @@ def compare(a: Recording, b: Recording, window: Sequence[float] | None,
                       f"x {8 * a.width}-bit and {b.rate} Hz x {len(b.channels)} x "
                       f"{8 * b.width}-bit: compare two of one format")
     (sa, ea), (sb, eb) = span(a, window), span(b, window)
-    if _silent(a, sa, ea) and _silent(b, sb, eb):
+    if not _sounding(a, sa, ea) and not _sounding(b, sb, eb):
         raise Invalid("control_silent", "both recordings are silent over the window: two "
                       "silences compare equal whatever produced them, which is no verdict")
     frame = len(a.channels) * a.width
