@@ -26,7 +26,8 @@ session layer (its screens were read off another run) and keeps the file layer.
 
 ONE SCREEN READ PER IDENTIFICATION. `find` reads the screen once and cuts every candidate's
 crops from that read, each distinct crop signed once, kind and size compared before any hash:
-on MAME each read is a Lua call, and a map of many screens must not cost one per screen.
+a read can be a round trip through the emulator's console, and a map of many screens must not
+cost one per screen.
 
 A CONTROL IS NAMED AGAINST THE IDENTIFICATION IT CAME FROM, the way a browser automation `ref`
 is valid against the snapshot it was read from: `target` answers the centre of a control of the
@@ -56,8 +57,30 @@ SCREENS_MAX, MATCH_MAX, CONTROLS_MAX = 200, 16, 100
 FILE_BYTES_MAX = 4 * 1024 * 1024
 _SIGNATURE = re.compile(r"[0-9a-f]{16}")
 _NAME_MAX = 64
+#: A side no screen reaches: what a rectangle's shape is judged against before a read says the
+#: screen's own size.
+_ANY_SIDE = 1 << 16
 
 Layer = Literal["session", "file"]
+
+#: The two file tools' descriptions, the same on both servers: they touch no machine.
+LOAD_DESCRIBED = (
+    "An application's SCREEN MAP as the FILE layer, replacing any loaded one: its screens, each "
+    "known by the `scry-sig/1` signatures of declared stable regions, and the named controls on "
+    f"each. `path`: `<application>{SUFFIX}`, absolute or `~`-led. It lives for the server; a "
+    "`start` keeps it. Any state, before a session too.\n\n"
+    "    Reply: `path`, `application`, `screens`, `controls` (counts). Refused whole, naming the "
+    f"first fault: a file that is not `{FORMAT}`, a name used twice, a rectangle off its screen, "
+    "an `application` other than the file's name says (`bad_argument`)")
+SAVE_DESCRIBED = (
+    "The file layer and the session layer written as ONE map, the session's screens winning, "
+    "and that file made the file layer (the session's screens are `promoted`). `path` as "
+    "`map_load`'s; one already there is refused unless `overwrite`. Any state.\n\n"
+    "    Reply: `path`, `application`, `screens`, `controls`, `promoted`. Refused: nothing mapped "
+    "(`needs_call`); a path a load would refuse, or there without `overwrite`, or more screens "
+    f"than a map holds ({SCREENS_MAX}) (`bad_argument`)")
+#: What a tool's description fills from here (`scry_core.docs.filled`).
+DOC_VALUES = {"MAP_LOAD": LOAD_DESCRIBED, "MAP_SAVE": SAVE_DESCRIBED}
 
 
 @dataclass(frozen=True)
@@ -104,11 +127,12 @@ class Screen:
 
 @dataclass(frozen=True)
 class Found:
-    """The most recent identification: the screen, its layer, and the stop it was read at."""
+    """The most recent identification: the screen, its layer, and the stop it was read at (None
+    when the server could not name that stop)."""
 
     screen: Screen
     layer: Layer
-    stop: int
+    stop: int | None
 
 
 @dataclass
@@ -180,7 +204,7 @@ class Maps:
                 "controls": len(screen.controls), "replaced": replaced,
                 "shadows_file": screen.name in self.file}
 
-    def find(self, read: Read, stop: int) -> dict[str, Any]:
+    def find(self, read: Read, stop: int | None) -> dict[str, Any]:
         """Which screen the machine shows, off ONE read: the session layer first, then the
         file's, each in its order; the first whose every region matches."""
         candidates: list[tuple[Layer, Screen]] = [
@@ -189,6 +213,9 @@ class Maps:
         if not candidates:
             raise Invalid("needs_call", "no screen is mapped: `map_load` a map, or `map_add` the "
                           "screen in front of you")
+        # FORGOTTEN BEFORE THE READ: a read that fails is no identification, and acting on the
+        # screen the last one found would act on a screen nobody has seen since.
+        self.found = None
         grid = read()
         signed: dict[judges.Rect, str] = {}
         tried = 0
@@ -209,13 +236,15 @@ class Maps:
     def save(self, path_arg: object, overwrite: bool) -> dict[str, Any]:
         """The file layer and the session layer written as one map, the session winning, and
         made the file layer."""
+        check_save(path_arg, overwrite)
         path = _map_path("path", path_arg)
-        if not isinstance(overwrite, bool):
-            raise Invalid("bad_argument", f"overwrite={overwrite!r} is true or false")
         merged = {**self.file, **self.session}
         if not merged:
             raise Invalid("needs_call", "no screen is mapped: `map_add` the screen in front of "
                           "you, or `map_load` a map, before saving one")
+        if len(merged) > SCREENS_MAX:
+            raise Invalid("bad_argument", f"the two layers hold {len(merged)} screens, and a map "
+                          f"holds at most {SCREENS_MAX}: a file of them would not load")
         application = _application(path)
         doc = {"format": FORMAT, "application": application,
                "screens": [s.doc() for s in merged.values()]}
@@ -235,7 +264,8 @@ class Maps:
 
     def target(self, control: str) -> dict[str, Any]:
         """The centre of `control` on the screen the most recent `find` matched, with that
-        screen and the stop it was read at."""
+        screen, its kind and size (what an acting server holds the screen in front to), and the
+        stop it was read at."""
         if self.found is None:
             raise Invalid("needs_call", "no screen is identified: `map_find` at a stop first, "
                           "and act on the screen it matched")
@@ -243,6 +273,7 @@ class Maps:
         for c in screen.controls:
             if c.name == control:
                 return {"target": c.name, "centre": c.centre(), "screen": screen.name,
+                        "kind": screen.kind, "size": screen.size,
                         "identified_at_stop": self.found.stop}
         names = ", ".join(c.name for c in screen.controls) or "none"
         raise Invalid("unknown_ref", f"target={control!r}: screen {screen.name!r} has no such "
@@ -428,7 +459,9 @@ def check_path(name: str, value: object) -> None:
 
 
 def check_add(screen: object, match: object, controls: object = None) -> None:
-    """`map_add`'s machine-independent half: the name, the crops' shapes and the controls'."""
+    """`map_add`'s machine-independent half, everything but whether its rectangles lie on the
+    screen, which only a read can say: the name, the crops' shapes, the controls' shapes, keys
+    and names. A fault found here costs no read."""
     if not _name(screen):
         raise Invalid("bad_argument", f"screen={screen!r} is a name of 1..{_NAME_MAX} "
                       "characters")
@@ -441,4 +474,14 @@ def check_add(screen: object, match: object, controls: object = None) -> None:
                                      and len(controls) <= CONTROLS_MAX):
         raise Invalid("bad_argument", f"controls is a list of at most {CONTROLS_MAX} "
                       "{\"name\", \"rect\"}")
+    _screen({"name": screen, "kind": "pixel", "size": [_ANY_SIDE, _ANY_SIDE],
+             "match": [{"crop": c, "signature": "0" * 16} for c in match],
+             "controls": controls if controls is not None else []}, "the screen", 0, "match")
+
+
+def check_save(path: object, overwrite: object) -> None:
+    """`map_save`'s machine-independent half: the path, and `overwrite` a yes or a no."""
+    _map_path("path", path)
+    if not isinstance(overwrite, bool):
+        raise Invalid("bad_argument", f"overwrite={overwrite!r} is true or false")
 

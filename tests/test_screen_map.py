@@ -176,7 +176,9 @@ def test_a_control_is_named_against_the_identification_it_came_from(tmp_path: Pa
     assert e.value.code == "needs_call"
     maps.find(Reads(PLAY), stop=12)
     assert maps.target("paddle") == {"target": "paddle", "centre": [1, 3], "screen": "play",
-                                     "identified_at_stop": 12}
+                                     "kind": "pixel", "size": (W, H), "identified_at_stop": 12}
+    maps.find(Reads(PLAY), stop=None)
+    assert maps.target("paddle")["identified_at_stop"] is None, "a stop nobody could name"
     with pytest.raises(Invalid, match=r"has no such control; its controls: paddle, quit") as e:
         maps.target("start")
     assert e.value.code == "unknown_ref"
@@ -512,3 +514,54 @@ def test_a_map_that_is_not_utf8_is_refused_saying_so(tmp_path: Path) -> None:
     bad.write_bytes(b'{"format": "\xff"}')
     with pytest.raises(Invalid, match="cannot be read"):
         Maps().load(str(bad))
+
+
+def test_a_find_whose_read_fails_forgets_the_last_screen(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    maps.find(Reads(PLAY), stop=1)
+
+    def fails() -> Grid:
+        raise Invalid("no_channel", "the screen could not be read")
+    with pytest.raises(Invalid, match="could not be read"):
+        maps.find(fails, stop=2)
+    assert maps.found is None, "a failed read is no identification"
+
+
+@pytest.mark.parametrize("controls, said", [
+    ([{"name": "a"}], "control 'a' has no `rect`"),
+    ([{"name": "a", "rect": [0, 0, 1, 1], "x": 1}], "carries ['x']"),
+    ([{"name": "a", "rect": [0, 0, 1, 1]}, {"name": "a", "rect": [0, 0, 1, 1]}],
+     "named twice"),
+    (["a"], "control 0 is not an object"),
+    ([{"name": "", "rect": [0, 0, 1, 1]}], "control 0's `name`"),
+], ids=["no rect", "an extra key", "a name twice", "not an object", "an empty name"])
+def test_map_adds_controls_are_judged_whole_before_the_read(controls: Any, said: str) -> None:
+    with pytest.raises(Invalid, match=_re(said)) as e:
+        screen_map.check_add("a", [[0, 0, 1, 1]], controls)
+    assert e.value.code == "bad_argument"
+
+
+def test_save_refuses_two_layers_bigger_than_a_map_can_load(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(screen_map, "SCREENS_MAX", 2)
+    maps = Maps()
+    maps.add("c", [[0, 0, 1, 1]], [], Reads(TITLE))
+    maps.load(_file(tmp_path, _doc()))           # a load replaces the file layer whole
+    out = tmp_path / "all.scry-map.json"
+    with pytest.raises(Invalid, match="the two layers hold 3 screens") as e:
+        maps.save(str(out), False)
+    assert e.value.code == "bad_argument" and not out.exists()
+
+
+def test_check_save_judges_the_path_and_the_overwrite() -> None:
+    screen_map.check_save("/x/demo.scry-map.json", False)
+    with pytest.raises(Invalid, match="overwrite='yes' is true or false"):
+        screen_map.check_save("/x/demo.scry-map.json", "yes")
+    with pytest.raises(Invalid, match="is not named"):
+        screen_map.check_save("/x/demo.json", True)
+
+
+def test_the_file_tools_descriptions_say_the_limits_the_code_enforces() -> None:
+    assert screen_map.SUFFIX in screen_map.DOC_VALUES["MAP_LOAD"]
+    assert f"({screen_map.SCREENS_MAX})" in screen_map.DOC_VALUES["MAP_SAVE"]
