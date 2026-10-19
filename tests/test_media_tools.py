@@ -84,6 +84,7 @@ def test_series_diff_region_track_and_golden_check_on_one_series(tmp_path: Path)
         f"{series.frame_name(n)}\n" for n in range(4)))
     gold = media_tools.golden_check(manifest=one, checksums=str(sums))
     assert gold == {"matched": 4, "differing": [], "missing": [], "extra": ["f000004.png"],
+                    "differing_total": 0, "missing_total": 0, "extra_total": 1,
                     "checksums": str(sums), "manifest": one}
     by_dir = media_tools.golden_check(dir=str(folder), checksums=str(sums))
     assert by_dir["matched"] == 4 and by_dir["dir"] == str(folder)
@@ -161,7 +162,8 @@ def test_register_hands_each_tool_to_the_servers_own_decorator() -> None:
     assert [s[2] for s in seen] == [True, True, False, True], "region_track writes its file"
     # None reads the machine, so an export drops them all but the check of what files hold.
     assert [s[4] for s in seen] == ["drop", "drop", "drop",
-                                    ("matched", "differing", "missing", "extra")]
+                                    ("matched", "differing_total", "missing_total",
+                                     "extra_total", "differing", "missing", "extra")]
     with pytest.raises(ValueError, match="no media tools named"):
         media_tools.register(wrap, ["screen_view"], lambda body: body)
 
@@ -196,3 +198,41 @@ def test_a_judge_takes_the_defaults_its_body_declares(monkeypatch: pytest.Monkey
                      "threshold": series.THRESHOLD_DEFAULT, "limit": series.LIMIT_DEFAULT}]
     gate(limit=3, ctx="ignored")
     assert seen[-1]["manifest"] == "" and seen[-1]["limit"] == 3 and "ctx" not in seen[-1]
+
+
+def test_golden_check_cuts_each_list_at_limit_and_keeps_the_counts_whole(tmp_path: Path) -> None:
+    """A thousand frames against another run's goldens with one name in common would list every
+    other name; the lists stop at `limit`, the counts stay whole and the cut says so."""
+    folder = tmp_path / "d"
+    folder.mkdir()
+    for n in range(6):
+        (folder / f"f{n}.png").write_bytes(b"x%d" % n)
+    sums = tmp_path / "sums"
+    sums.write_text(f"{hashlib.sha256(b'x0').hexdigest()}  f0.png\n"
+                    + "".join(f"{'0' * 64}  g{n}.png\n" for n in range(5)))
+    got = media_tools.golden_check(dir=str(folder), checksums=str(sums), limit=2)
+    assert (got["matched"], got["extra"], got["extra_total"], got["missing"],
+            got["missing_total"]) == (1, ["f1.png", "f2.png"], 5, ["g0.png", "g1.png"], 5)
+    assert got["omitted"] == ["missing", "extra"] and "raise `limit`" in got["how"]
+    assert media_tools._golden_check_line({}, got) == (
+        "golden_check: 1 matched, 0 differing, 5 missing, 5 extra")
+    whole = media_tools.golden_check(dir=str(folder), checksums=str(sums))
+    assert len(whole["extra"]) == 5 and "omitted" not in whole
+    for bad in (0, series.LIMIT_MAX + 1, True):
+        with pytest.raises(Invalid, match="limit="):
+            media_tools.check_golden_check(dir=str(folder), checksums=str(sums), limit=bad)
+
+
+def test_golden_check_cuts_a_list_only_past_limit_and_counts_differing_whole(
+        tmp_path: Path) -> None:
+    folder = tmp_path / "d"
+    folder.mkdir()
+    for n in range(3):
+        (folder / f"f{n}.png").write_bytes(b"x%d" % n)
+    sums = tmp_path / "sums"
+    sums.write_text("".join(f"{'0' * 64}  f{n}.png\n" for n in range(3)))
+    at = media_tools.golden_check(dir=str(folder), checksums=str(sums), limit=3)
+    assert at["differing"] == ["f0.png", "f1.png", "f2.png"] and "omitted" not in at
+    cut = media_tools.golden_check(dir=str(folder), checksums=str(sums), limit=2)
+    assert cut["differing"] == ["f0.png", "f1.png"] and cut["differing_total"] == 3
+    assert cut["omitted"] == ["differing"]

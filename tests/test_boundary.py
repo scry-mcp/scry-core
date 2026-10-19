@@ -531,3 +531,31 @@ def test_the_accounts_go_back_after_the_calls_own_hook_closed_its_accounts() -> 
     with pytest.raises(asyncio.CancelledError):
         run()
     assert order == ["after", "give_back"]
+
+
+def test_a_steps_picture_is_marked_unattached_before_its_line_and_its_record_read_it() -> None:
+    """Only a reply's own picture is attached: a step's says so in its block, and the step's
+    summary line, which a compact row of a sequence keeps alone, reads the marked block."""
+    s = _Server()
+    lines: list[str] = []
+    picture_block = {"path": "/s.png", "inline": True, "width": 2, "height": 2}
+
+    def line(args: dict[str, Any], reply: dict[str, Any]) -> str:
+        text = f"view {'inline' if reply['image']['inline'] else 'not inlined'}"
+        lines.append(text)
+        return text
+
+    @s.b.tool("View", summary=line)
+    def view() -> dict[str, Any]:
+        return {"status": "ok", "image": dict(picture_block)}
+
+    @s.tool("Sequence")
+    def sequence() -> dict[str, Any]:
+        return {"status": "ok", "ran": [view()]}
+
+    alone = view()
+    assert alone["image"]["inline"] is True and lines == ["view inline"]
+    got = sequence()
+    step = got["ran"][0]
+    assert step["image"]["inline"] is False and step["image"]["not_inlined"] == "nested"
+    assert step["summary"] == "view not inlined" == lines[-1]

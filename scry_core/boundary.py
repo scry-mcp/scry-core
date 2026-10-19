@@ -39,7 +39,7 @@ from typing import Any, Protocol
 
 from mcp.types import ToolAnnotations
 
-from scry_core import cancel
+from scry_core import cancel, picture
 from scry_core.envelope import Envelope
 from scry_core.recording import ExportAs, Machine, Unrecorded
 
@@ -231,6 +231,10 @@ class Boundary:
                     back: list[Reply] = []
                     try:
                         reply = self._invoke(fn, bound)
+                        if parent is not None:
+                            # A STEP'S PICTURE IS NEVER ATTACHED, only a reply's own: said in
+                            # the step's block before its summary line or its record reads it.
+                            reply = picture.unattached_below(reply, top=False)
                         if self.nested == 1:
                             cancel.check()           # a cancel that came as the body returned
                     except BaseException as e:

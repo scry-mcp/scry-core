@@ -282,3 +282,27 @@ def test_any_source_word_the_server_names_is_written(tmp_path: Path) -> None:
     assert json.loads(Path(reply["manifest"]).read_text())["source"] == "a-word-of-its-own"
     with pytest.raises(ValueError):
         series.write_manifest(folder, "test", "", None, [1])
+
+
+def test_a_hand_edited_signature_is_refused_naming_the_frame(tmp_path: Path) -> None:
+    manifest = _series(tmp_path / "s", TRACKED)
+    doc = json.loads(manifest.read_text())
+    doc["frames"][2]["signature"] = "0" * 16
+    manifest.write_text(json.dumps(doc))
+    with pytest.raises(Invalid, match=r"frame 12's row names signature 0{16}") as e:
+        _read(manifest)
+    assert e.value.code == "bad_argument"
+
+
+def test_a_frame_whose_bytes_match_but_are_no_picture_is_refused_naming_it(
+        tmp_path: Path) -> None:
+    manifest = _series(tmp_path / "s", TRACKED)
+    doc = json.loads(manifest.read_text())
+    row = doc["frames"][1]
+    junk = b"not a png"
+    (manifest.parent / row["path"]).write_bytes(junk)
+    row["sha256"] = hashlib.sha256(junk).hexdigest()
+    manifest.write_text(json.dumps(doc))
+    with pytest.raises(Invalid, match=f"frame {row['frame']}'s file") as e:
+        _read(manifest)
+    assert e.value.code == "bad_argument"

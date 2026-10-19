@@ -8,6 +8,7 @@ import base64
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from mcp.types import CallToolResult, ImageContent, TextContent
@@ -218,3 +219,73 @@ def test_a_server_that_records_nothing_names_no_recorder(tmp_path: Path) -> None
     assert Path(block["path"]).is_file()
     data = picture.data_file(png.Raster(1, 1, bytes(3)), tmp_path, "data")
     assert Path(data["path"]).is_file()
+
+
+def test_a_view_asked_not_to_attach_writes_its_file_and_says_why(tmp_path: Path) -> None:
+    block = picture.publish(png.Raster(2, 2, bytes(12)), 1, None, tmp_path, "shot", attach=False)
+    assert Path(block["path"]).is_file()
+    assert block["inline"] is False and block["not_inlined"] == "attach=false"
+    result = picture.attached(_result(block))
+    assert not [c for c in result.content if isinstance(c, ImageContent)]
+
+
+def test_a_picture_inside_a_step_is_never_attached_and_says_nested(tmp_path: Path) -> None:
+    """Only a reply's own picture crosses: a sequence's step pictures are files it names, so
+    their blocks say so, and the reply's own one is still attached."""
+    own = picture.publish(png.Raster(2, 2, bytes(12)), 1, None, tmp_path, "own")
+    step = picture.publish(png.Raster(2, 2, bytes(12)), 1, None, tmp_path, "step")
+    body: dict[str, Any] = {"status": "ok", "image": own,
+                            "ran": [{"op": "screen_view", "image": step}, {"op": "registers"}]}
+    result = picture.attached(CallToolResult(content=[TextContent(type="text",
+                                                                  text=json.dumps(body))],
+                                             structured_content=body))
+    out = result.structured_content
+    assert out["ran"][0]["image"]["inline"] is False
+    assert out["ran"][0]["image"]["not_inlined"] == "nested"
+    assert out["image"]["inline"] is True
+    assert json.loads(result.content[0].text) == out, "the text half says what the body says"
+    images = [c for c in result.content if isinstance(c, ImageContent)]
+    assert len(images) == 1 and base64.b64decode(images[0].data) == Path(own["path"]).read_bytes()
+    assert body["ran"][0]["image"]["inline"] is True, "the caller's dict is not mutated"
+
+
+def test_a_nested_picture_in_a_reply_with_none_of_its_own_is_marked_too(tmp_path: Path) -> None:
+    step = picture.publish(png.Raster(2, 2, bytes(12)), 1, None, tmp_path, "step")
+    body = {"status": "ok", "ran": [{"reply": {"image": step}}]}
+    out = picture.attached(CallToolResult(content=[TextContent(type="text", text="{}")],
+                                          structured_content=body)).structured_content
+    assert out["ran"][0]["reply"]["image"]["not_inlined"] == "nested"
+
+
+def test_the_described_sentence_names_every_key_an_image_block_has(tmp_path: Path) -> None:
+    block = picture.publish(png.Raster(2, 2, bytes(12)), 1, None, tmp_path, "b", border=1)
+    block_over = picture.publish(png.Raster(2000, 2, bytes(12000)), 1, None, tmp_path, "o")
+    for key in {*block, *block_over}:
+        assert f"`{key}`" in picture.DESCRIBED, key
+
+
+def test_a_nested_picture_keeps_any_reason_it_already_had_and_a_non_picture_is_left(
+        tmp_path: Path) -> None:
+    over = {"path": "/o.png", "inline": False, "not_inlined": "past the ceiling"}
+    not_a_picture = {"inline": True, "width": 1, "height": 1}       # names no file
+    body = {"ran": [[{"image": over}], {"image": not_a_picture}, {"image": "/a/path.png"}]}
+    assert picture.unattached_below(body) == body
+    deep = {"ran": [[{"image": {"path": "/s.png", "inline": True}}]]}
+    assert picture.unattached_below(deep)["ran"][0][0]["image"]["not_inlined"] == "nested"
+
+
+def test_a_rebuilt_reply_reads_as_the_sdk_writes_one(tmp_path: Path) -> None:
+    """Marked or not, the text half is the SDK's own serialisation: no non-ASCII escaped."""
+    step = picture.publish(png.Raster(2, 2, bytes(12)), 1, None, tmp_path, "step")
+    body = {"status": "ok", "text": "café", "ran": [{"image": step}]}
+    result = picture.attached(CallToolResult(content=[TextContent(type="text", text="{}")],
+                                             structured_content=body))
+    text = result.content[0]
+    assert isinstance(text, TextContent) and "café" in text.text and "\\u" not in text.text
+
+
+@pytest.mark.parametrize("attach", ["no", 1, None])
+def test_an_attach_that_is_no_yes_or_no_is_refused(attach: object) -> None:
+    with pytest.raises(Invalid, match="attach is a boolean"):
+        picture.check_attach(attach)
+    picture.check_attach(False)

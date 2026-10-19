@@ -9,7 +9,8 @@ screen each PNG holds, or None for the whole screen) and `frames`, one row per f
 path, sha256, bytes, signature}`, ascending. A row's `path` is a file name in the manifest's own
 directory, so the directory can move. Its `signature` is `raster.picture_signature` over the
 whole PNG, the number the screen's own signature over that crop gives. Reading a manifest hashes
-every file it lists, so a frame that changed since is refused rather than trusted.
+every file it lists and signs each picture again, so a frame that changed since, or a row edited by
+hand, is refused rather than trusted.
 
 EVERY COMPARISON HAS A CONTROL, because a result that cannot come out the other way is no result:
 a series whose frames never change says nothing about another series, two series with no frame in
@@ -172,13 +173,25 @@ def read_manifest(name: str, value: object) -> Manifest:
                           f"after frame {rows[-1].frame}: the frames are ascending, each once")
         row = FrameRow(r["frame"], path.parent / file, r["sha256"], r["signature"])
         try:
-            digest = hashlib.sha256(row.path.read_bytes()).hexdigest()
+            data = row.path.read_bytes()
         except OSError as e:
             raise Invalid("bad_argument", f"{name}: frame {row.frame}'s file {row.path} cannot "
                           f"be read: {e}") from None
-        if digest != row.sha256:
+        if hashlib.sha256(data).hexdigest() != row.sha256:
             raise Invalid("bad_argument", f"{name}: frame {row.frame}'s file {row.path} no longer "
                           "matches the sha256 its row names, so it is not that frame")
+        # THE SIGNATURE IS CHECKED, NOT TAKEN AT THE WRITER'S WORD: the control of a comparison
+        # and a track by `signature` read these, so a row edited by hand would pass the one and
+        # invent transitions in the other.
+        try:
+            picture = png.decode(data)
+        except png.NotAPicture as e:
+            raise Invalid("bad_argument", f"{name}: frame {row.frame}'s file {row.path}: "
+                          f"{e}") from None
+        if raster.picture_signature(picture) != row.signature:
+            raise Invalid("bad_argument", f"{name}: frame {row.frame}'s row names signature "
+                          f"{row.signature}, and its picture's is "
+                          f"{raster.picture_signature(picture)}: the row is not that frame's")
         rows.append(row)
     return Manifest(path, rows)
 

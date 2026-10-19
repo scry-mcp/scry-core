@@ -22,10 +22,11 @@ definition (name, description and input schema, compact JSON, which is what a mo
 and the server's `instructions` and the sum of its tool names.
 
 PICTURES are a second column, never summed with the units: a reply's `image_tokens` is the sum,
-over its `image` blocks with `inline: true` at any depth (a step's reply inside a sequence carries
-its own), of the API's visual tokens for the picture as attached (`picture.tiles`). A block that
-says `inline: true` without a whole width and height of at least one pixel is INVALID rather than
-free, under any tool name, a foreign one included.
+over the `image` blocks a client is handed attached, of the API's visual tokens for the picture as
+attached (`picture.tiles`): a step's picture inside a sequence is never attached, whatever a body
+recorded before the MCP boundary says. A block that says `inline: true` without a whole width
+and height of at least one pixel is INVALID rather than free, under any tool name, a foreign one
+included.
 
 A TOOL IS FLAGGED FOR REVIEW when its largest reply is over `REVIEW_MAX_UNITS` (`max`), or when
 it is among the fewest tools whose replies make `REVIEW_SHARE` of all reply units (`share`).
@@ -64,7 +65,7 @@ from typing import Any
 
 from scry_core.client_cap import CLIENT_TEXT_CAP, utf16_units
 from scry_core.judges import whole
-from scry_core.picture import tiles
+from scry_core.picture import tiles, unattached_below
 from scry_core.probe import EXIT_INVALID, Invalid, broke, configure
 
 EXIT_TABLE = 0
@@ -89,10 +90,15 @@ def json_units(value: Any) -> int:
 
 
 def image_tokens(value: Any) -> int:
-    """The visual tokens of every attached picture `value` describes, at any depth: a step's
-    reply inside `perform` or `drive` carries its own `image` block."""
+    """The visual tokens of every picture `value` attaches as a client receives it: a reply
+    recorded before the MCP boundary still says `inline: true` on a step's picture inside
+    `perform` or `drive`, which the boundary never attaches (`unattached_below`)."""
+    return _tokens(unattached_below(value))
+
+
+def _tokens(value: Any) -> int:
     if isinstance(value, list):
-        return sum(image_tokens(v) for v in value)
+        return sum(_tokens(v) for v in value)
     if not isinstance(value, dict):
         return 0
     total = 0
@@ -104,7 +110,7 @@ def image_tokens(value: Any) -> int:
                               "cost cannot be counted")
             total += tiles(w, h)
         else:
-            total += image_tokens(v)
+            total += _tokens(v)
     return total
 
 

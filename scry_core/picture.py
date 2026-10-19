@@ -22,11 +22,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pydantic_core
 from mcp.types import CallToolResult, ImageContent, TextContent
 
 from scry_core import fresh, png
@@ -41,18 +41,25 @@ TOKEN_SIDE = 28
 SCALE_MAX = 8
 BORDER_COLOUR = (0x80, 0x80, 0x80)     # a neutral grey: what lies outside the picture's source
 
-#: The two sentences a view tool's description says about its picture, the same on both servers.
+#: What a view tool's description says about its picture, the same on both servers: the picture,
+#: the arguments every picture tool takes, and `attach`, which only a view takes.
 DESCRIBED = (
     "The PNG is attached after the JSON when within the inline ceiling "
     f"({INLINE_SIDE_MAX} px a side, {INLINE_TOKENS_MAX} tiles of {TOKEN_SIDE} px); `image` names "
-    "it either way (`path`, `sha256`, `width`, `height`, `scale`, `indexed`, `inline`, "
-    "`not_inlined`)")
+    "it either way (`path`, `bytes`, `sha256`, `width`, `height`, `scale`, `indexed`, `border`, "
+    "`inline`, `not_inlined`)")
 ARGUMENTS = (
     f"`scale` 0, the largest integer enlargement up to {SCALE_MAX} that fits; `dest` a new "
     "path, else the scratch, gone at `close`")
+ATTACH = "`attach` false writes the file, unattached"
+#: Why a picture written was not attached when the caller asked so (`not_inlined`); the ceiling's
+#: reason is a sentence saying the size.
+NOT_ASKED = "attach=false"
+#: Why a step's picture inside a sequence was not attached: only a reply's own one is.
+NESTED = "nested"
 
 #: What a tool's description fills from here (`scry_core.docs.filled`).
-DOC_VALUES = {"PICTURE": DESCRIBED, "PICTURE_ARGS": ARGUMENTS}
+DOC_VALUES = {"PICTURE": DESCRIBED, "PICTURE_ARGS": ARGUMENTS, "PICTURE_ATTACH": ATTACH}
 
 #: How a server records a file it wrote for the session, so it is listed and cleaned with it.
 Record = Callable[[Path], None]
@@ -85,6 +92,12 @@ def check_scale(scale: object) -> None:
                       f"inside the inline ceiling, or name a factor in 1..{SCALE_MAX}")
 
 
+def check_attach(attach: object) -> None:
+    """An `attach` is a yes or a no, said in one sentence on both servers."""
+    if not isinstance(attach, bool):
+        raise Invalid("bad_argument", f"attach is a boolean; got {attach!r}")
+
+
 #: A rectangle marked over a picture: `x`, `y`, `width`, `height` in source pixels, and its RGB.
 Mark = tuple[int, int, int, int, tuple[int, int, int]]
 #: A mark drawn round a rectangle instead: the same, and how many output pixels OUTSIDE it the
@@ -95,14 +108,15 @@ Ring = tuple[int, int, int, int, tuple[int, int, int], int]
 def publish(raster: png.Raster, scale: int, dest: Path | None, scratch: Path, stem: str,
             record: Record | None = None, marks: list[Mark] | None = None,
             rings: list[Ring] | None = None, border: int = 0,
-            clear: int | None = None) -> dict[str, Any]:
+            clear: int | None = None, attach: bool = True) -> dict[str, Any]:
     """Write `raster` as ONE PNG, enlarged by `scale` (0: the largest that fits), to `dest` (a
     path the server judged fresh) or to a numbered file in the scratch's `gfx`, and answer its
     `image` block. Marks and rings (RGB pictures only) are drawn AFTER the enlargement, one
     output pixel wide: a mark along its rectangle's outer pixel squares, a ring OUTSIDE them, so a
     ring covers none of what it frames. A `border` of that many output pixels in `BORDER_COLOUR`
     goes round the picture first (RGB only), where a ring round a pixel at the picture's edge has
-    room; the block names it. `clear` is `png.encode`'s transparent index."""
+    room; the block names it. `clear` is `png.encode`'s transparent index. With `attach` false the
+    file is written and named, and never attached."""
     factor = scale or auto_scale(raster.width, raster.height, border)
     big = png.enlarged(raster, factor)
     if border:
@@ -114,11 +128,13 @@ def publish(raster: png.Raster, scale: int, dest: Path | None, scratch: Path, st
     block: dict[str, Any] = {
         **file_block(path, data), "width": big.width, "height": big.height, "scale": factor,
         "indexed": raster.palette is not None,
-        "inline": within_ceiling(big.width, big.height),
+        "inline": attach and within_ceiling(big.width, big.height),
     }
     if border:
         block["border"] = border
-    if not block["inline"]:
+    if not attach:
+        block["not_inlined"] = NOT_ASKED
+    elif not block["inline"]:
         block["not_inlined"] = (
             f"{big.width}x{big.height} is past the inline ceiling (a side of "
             f"{INLINE_SIDE_MAX} px, {INLINE_TOKENS_MAX} tiles of {TOKEN_SIDE} px), where the API "
@@ -201,14 +217,39 @@ def outlined(raster: png.Raster, marks: list[Mark], rings: list[Ring],
     return png.Raster(raster.width, raster.height, bytes(px))
 
 
+def unattached_below(value: Any, top: bool = True) -> Any:
+    """`value` with every attached picture block (`image`, naming its file) below the reply's
+    top level marked `inline: false`, `not_inlined: "nested"`, and the top level's too when `top`
+    is false (a step's own reply): only a reply's own picture is attached, so a step's picture
+    inside a sequence is a file the reply names, and saying `inline: true` there would be a
+    promise nobody keeps (and a cost `traffic` would charge)."""
+    if isinstance(value, list):
+        return [unattached_below(v, False) for v in value]
+    if not isinstance(value, dict):
+        return value
+    out = {}
+    for key, v in value.items():
+        if (key == "image" and not top and isinstance(v, dict) and v.get("inline") is True
+                and "path" in v):
+            out[key] = {**v, "inline": False, "not_inlined": NESTED}
+        else:
+            out[key] = unattached_below(v, False) if key != "image" or not top else v
+    return out
+
+
 def attached(result: Any) -> Any:
     """`result` with its picture beside the JSON, when its body's `image` says `inline`: the
     one place a reply gains an `ImageContent`, at the MCP boundary, so a tool body and a test
-    handle a plain dict. The file is hashed again first; a file that no longer matches its
-    `sha256` is not attached, and the body says so."""
+    handle a plain dict. A picture below the top level is marked unattached first
+    (`unattached_below`). The file is hashed again; a file that no longer matches its `sha256`
+    is not attached, and the body says so."""
     if not isinstance(result, CallToolResult) or not isinstance(result.structured_content, dict):
         return result
-    body = result.structured_content
+    marked = unattached_below(result.structured_content)
+    if marked != result.structured_content:
+        result = CallToolResult(content=[_text(marked)], structured_content=marked,
+                                is_error=result.is_error)
+    body = marked
     image = body.get("image")
     if not isinstance(image, dict) or image.get("inline") is not True:
         return result
@@ -230,4 +271,6 @@ def attached(result: Any) -> Any:
 
 
 def _text(body: dict[str, Any]) -> TextContent:
-    return TextContent(type="text", text=json.dumps(body, indent=2))
+    """The text half as the SDK writes it for a structured reply, so a rebuilt reply reads the
+    same as one that was not."""
+    return TextContent(type="text", text=pydantic_core.to_json(body, indent=2).decode())

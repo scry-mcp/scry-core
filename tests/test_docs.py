@@ -23,5 +23,6 @@ def test_braces_that_are_no_placeholder_stay_as_written() -> None:
 
 
 def test_the_media_modules_export_their_values() -> None:
-    assert picture.DOC_VALUES == {"PICTURE": picture.DESCRIBED, "PICTURE_ARGS": picture.ARGUMENTS}
+    assert picture.DOC_VALUES == {"PICTURE": picture.DESCRIBED, "PICTURE_ARGS": picture.ARGUMENTS,
+                                  "PICTURE_ATTACH": picture.ATTACH}
     assert {"SERIES_MAX": str(series.SERIES_MAX)} == series.DOC_VALUES

@@ -17,7 +17,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
-from scry_core import goldens, judges, prose, raster, series, wav
+from scry_core import goldens, judges, narrowing, prose, raster, series, wav
 from scry_core.recording import ExportAs
 from scry_core.reply_contract import Invalid
 
@@ -155,7 +155,7 @@ def region_track(manifest: str, crop: list[int] | None = None, measure: str = "s
             "manifest": str(track.path)}
 
 
-def _judge_golden_check(manifest: object, dir: object, checksums: object) -> None:
+def _judge_golden_check(manifest: object, dir: object, checksums: object, limit: object) -> None:
     if bool(manifest) == bool(dir):
         raise Invalid("bad_argument", "name the files to check either as `manifest` (a series) "
                       "or as `dir` (a directory of PNGs), one of the two")
@@ -164,9 +164,13 @@ def _judge_golden_check(manifest: object, dir: object, checksums: object) -> Non
     else:
         judges.absolute("dir", dir)
     judges.absolute("checksums", checksums)
+    if not judges.whole(limit, 1, series.LIMIT_MAX):
+        raise Invalid("bad_argument", f"limit={limit!r} is how many names each list shows, "
+                      f"1..{series.LIMIT_MAX}")
 
 
-def golden_check(manifest: str = "", dir: str = "", checksums: str = "") -> dict[str, Any]:
+def golden_check(manifest: str = "", dir: str = "", checksums: str = "",
+                 limit: int = series.LIMIT_DEFAULT) -> dict[str, Any]:
     """Check a series, or a directory of PNGs, against goldens written by `shasum -a 256`:
     exact bytes, by file name.
 
@@ -177,9 +181,11 @@ def golden_check(manifest: str = "", dir: str = "", checksums: str = "") -> dict
     `control_silent`; a line that does not parse is refused naming it.
 
     Reply: `matched` (a count), `differing`, `missing` (goldens with no file) and `extra` (files
-    with no golden), each a sorted list of names, and `checksums`, and `manifest` or `dir`.
+    with no golden), each a sorted list of names cut at `limit` (1..1000, default 40) with its
+    whole count beside it (`differing_total`, `missing_total`, `extra_total`; a cut list says so
+    in `omitted` and `how`), and `checksums`, and `manifest` or `dir`.
     """
-    _judge_golden_check(manifest, dir, checksums)
+    _judge_golden_check(manifest, dir, checksums, limit)
     sums = goldens.read_checksums("checksums", judges.existing_file("checksums", checksums))
     if manifest:
         track = series.read_manifest("manifest", manifest)
@@ -189,8 +195,15 @@ def golden_check(manifest: str = "", dir: str = "", checksums: str = "") -> dict
         folder = judges.absolute("dir", dir)
         files = goldens.in_dir("dir", folder)
         where = {"dir": str(folder)}
-    return {**goldens.compare(files, sums),
-            "checksums": str(judges.absolute("checksums", checksums)), **where}
+    got = goldens.compare(files, sums)
+    lists = ("differing", "missing", "extra")
+    cut = [name for name in lists if len(got[name]) > limit]
+    return {"matched": got["matched"],
+            **{name: got[name][:limit] for name in lists},
+            **{f"{name}_total": len(got[name]) for name in lists},
+            "checksums": str(judges.absolute("checksums", checksums)), **where,
+            **narrowing.omission(cut, f"each list shows its first {limit} names and its whole "
+                                 "count is beside it: raise `limit` for more")}
 
 
 def _judge_audio_measure(path: object, window: object, channel: object) -> None:
@@ -316,8 +329,8 @@ def _region_track_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
 
 
 def _golden_check_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    return (f"golden_check: {reply['matched']} matched, {len(reply['differing'])} differing, "
-            f"{len(reply['missing'])} missing, {len(reply['extra'])} extra")
+    return (f"golden_check: {reply['matched']} matched, {reply['differing_total']} differing, "
+            f"{reply['missing_total']} missing, {reply['extra_total']} extra")
 
 
 @dataclass(frozen=True)
@@ -344,7 +357,8 @@ TOOLS: dict[str, FileTool] = {
                              check_region_track, _region_track_line, False),
     "golden_check": FileTool("Check files against goldens", golden_check, check_golden_check,
                              _golden_check_line, True,
-                             ("matched", "differing", "missing", "extra")),
+                             ("matched", "differing_total", "missing_total", "extra_total",
+                              "differing", "missing", "extra")),
     "audio_measure": FileTool("Measure a WAV recording", audio_measure, check_audio_measure,
                               _audio_measure_line, True),
     "audio_diff": FileTool("Compare two WAV recordings", audio_diff, check_audio_diff,

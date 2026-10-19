@@ -79,19 +79,21 @@ def test_a_tool_list_counted_by_hand() -> None:
 
 def test_attached_pictures_counted_by_hand(tmp_path: Path) -> None:
     """Three `image` blocks, counted by hand in tiles of 28 px: a 960x720 picture attached at
-    the top (35 x 26 = 910), a 256x64 one in a `perform` step's reply (10 x 3 = 30), and a
-    3000x3000 one written and NOT attached (`inline: false`), which costs nothing."""
+    the top (35 x 26 = 910), a 256x64 one in a `perform` step's reply recorded before the MCP
+    boundary still saying `inline: true`, which the boundary never attaches, and a 3000x3000 one
+    written and NOT attached (`inline: false`): the last two cost nothing."""
     shown = {"status": "ok", "image": {"inline": True, "width": 960, "height": 720}}
     stepped = {"status": "ok", "ran": [{"op": "palette", "reply": {
-        "status": "ok", "image": {"inline": True, "width": 256, "height": 64}}}]}
+        "status": "ok", "image": {"path": "/s.png", "inline": True, "width": 256,
+                                  "height": 64}}}]}
     unshown = {"status": "ok", "image": {"inline": False, "width": 3000, "height": 3000}}
     assert traffic.image_tokens(shown) == 910
-    assert traffic.image_tokens(stepped) == 30
+    assert traffic.image_tokens(stepped) == 0
     assert traffic.image_tokens(unshown) == 0
     calls = traffic.read_transcripts([_transcript(
         tmp_path, _line("screen_view", shown), _line("perform", stepped),
         _line("screen_view", unshown))])
-    assert calls.image_tokens == {"screen_view": [910, 0], "perform": [30]}
+    assert calls.image_tokens == {"screen_view": [910, 0], "perform": [0]}
     # The edge of one tile: 28 pixels is one, 29 is two.
     assert traffic.image_tokens({"image": {"inline": True, "width": 28, "height": 29}}) == 2
 
