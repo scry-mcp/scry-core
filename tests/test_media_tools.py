@@ -65,7 +65,7 @@ def test_series_diff_region_track_and_golden_check_on_one_series(tmp_path: Path)
         "series_diff: 5 pairs, 4 identical, 1 differing, first at frame 4")
     track = media_tools.region_track(one, crop=[0, 0, 1, 1], measure="changed_pixels")
     assert track["transitions"] == [[2, 1], [4, 1]] and track["manifest"] == one
-    assert track["start"] is None
+    assert track["start"]["available"] is False, track
     assert media_tools._region_track_line({}, track) == (
         "region_track changed_pixels: 2 transitions over 5 frames")
     cut = media_tools.region_track(one, crop=[0, 0, 1, 1], measure="changed_pixels", limit=1)

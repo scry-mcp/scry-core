@@ -108,7 +108,7 @@ class Boundary:
     `keep_cancelled` stores a new one), because its state is what a caller's `status` reads."""
 
     def __init__(self, mcp: Envelope, lock: threading.RLock, *, invoke: Invoke, end: End,
-                 refusal_line: RefusalLine, session_block: Callable[[], dict[str, Any] | None],
+                 refusal_line: RefusalLine, session_block: Callable[[], dict[str, Any]],
                  take_cancelled: Callable[[], cancel.Cancelled | None],
                  keep_cancelled: Callable[[cancel.Cancelled], None],
                  doc: Callable[[str, str], str], after: After = _nothing_after,

@@ -295,7 +295,8 @@ def test_the_recording_stops_at_its_cap_and_the_export_says_where() -> None:
         s.write(ref="a", value=v)
     doc, out = s.document()
     assert len(doc["steps"]) == 3
-    assert out.cut == {"call": 8, "op": None,
+    assert out.cut == {"call": 8, "op": {"available": False,
+                                         "why": "the recording's bound cut it, no call"},
                        "why": "the recording holds at most 3 calls a replay keeps"}
 
 
@@ -309,7 +310,7 @@ def test_a_recording_of_reads_alone_is_bounded_too() -> None:
     assert len(s.recorder.recording.calls) == recording.STORED_PER_KEPT * 2
     assert s.recorder.recording.full
     _, out = s.document()
-    assert out.cut is not None and "the ones an export drops included" in out.cut["why"]
+    assert "call" in out.cut and "the ones an export drops included" in out.cut["why"]
 
 
 # ============================================================================ the export
@@ -328,7 +329,7 @@ def test_a_run_and_a_check_are_kept_and_each_step_holds_to_where_it_stopped() ->
         {"op": "write", "ref": "a", "value": 1},
         {"op": "look"},                                # it moved nothing, so it holds to nothing
         {"op": "read_memory", "ref": "score", "recorded": {"hex": "beef"}}]
-    assert out.checks == 1 and out.cut is None and out.dropped == []
+    assert out.checks == 1 and "call" not in out.cut and out.dropped == []
     assert doc["version"] == 2 and doc["server"] == "double"
     assert doc["needs"] == {"states": [], "declarations": _held([])}
 
@@ -352,7 +353,7 @@ def test_a_release_no_call_saw_end_cuts_the_document_at_the_release() -> None:
     s.start(system="board")
     s.resume()
     doc, out = s.document()
-    assert doc["steps"] == [] and out.cut is not None and out.cut["op"] == "resume"
+    assert doc["steps"] == [] and "call" in out.cut and out.cut["op"] == "resume"
 
 
 def test_a_state_loaded_and_not_saved_in_the_recording_is_what_the_document_needs() -> None:
@@ -375,7 +376,7 @@ def test_the_export_writes_the_document_and_accounts_for_it(tmp_path: Path) -> N
     got = s.perform_export(path=str(path))
     assert got["path"] == str(path) and got["steps"] == 1 and got["checks"] == 0
     assert got["dropped_total"] == 45 and len(got["dropped"]) == recording.DROPPED_SHOWN
-    assert got["dropped"][-1]["call"] == 45 and got["cut"] is None
+    assert got["dropped"][-1]["call"] == 45 and got["cut"]["available"] is False, got
     assert shlex.split(got["replay"]) == ["uv", "run", "python", "-m", "scry_core.replay",
                                           str(path)]
     assert json.loads(path.read_text())["steps"][0]["frames"] == 3
@@ -437,7 +438,7 @@ def test_a_refusal_that_moved_the_machine_cuts_the_document_and_one_that_did_not
     s.wait_out(frames=30)
     doc, out = s.document()
     assert doc["steps"] == [] and [d["op"] for d in out.dropped] == ["write"]
-    assert out.cut is not None and out.cut["op"] == "wait_out"
+    assert "call" in out.cut and out.cut["op"] == "wait_out"
 
 
 @pytest.mark.parametrize("cancelled", [False, True])
@@ -449,7 +450,7 @@ def test_a_call_that_ended_with_no_reply_cuts_the_document(cancelled: bool) -> N
         s.crashes(frames=5, cancelled=cancelled)
     doc, out = s.document()
     assert [st["op"] for st in doc["steps"]] == ["run_for"]
-    assert out.cut is not None and out.cut["op"] == "crashes" and "no reply" in out.cut["why"]
+    assert "call" in out.cut and out.cut["op"] == "crashes" and "no reply" in out.cut["why"]
     assert s.b.nested == 0
 
 
@@ -490,7 +491,7 @@ def test_a_machine_the_server_cannot_read_never_fails_the_call_and_cuts_the_expo
     assert s.b.nested == 0
     s.m.unreadable = False
     _doc, out = s.document()
-    assert out.cut is not None and "could not read the machine" in out.cut["why"]
+    assert "call" in out.cut and "could not read the machine" in out.cut["why"]
 
 
 def test_close_keeps_the_recording_and_is_no_step() -> None:
@@ -606,7 +607,7 @@ def test_a_run_its_wall_clock_bound_ended_cuts_the_document_at_it() -> None:
     s.run_for(frames=90, seconds=0.5)
     doc, out = s.document()
     assert doc["steps"] == []
-    assert out.cut is not None and out.cut["op"] == "run_for" and "wall clock" in out.cut["why"]
+    assert "call" in out.cut and out.cut["op"] == "run_for" and "wall clock" in out.cut["why"]
 
 
 def test_a_check_of_files_a_dropped_call_wrote_is_dropped_never_a_green_by_construction() -> None:
@@ -708,7 +709,7 @@ def test_a_refused_call_that_left_the_machine_running_is_a_release() -> None:
     s.m.stop_at(170)
     s.write(ref="a", value=1)
     doc, out = s.document()
-    assert doc["steps"] == [] and out.cut is not None and out.cut["op"] == "go_refused", out.cut
+    assert doc["steps"] == [] and "call" in out.cut and out.cut["op"] == "go_refused", out.cut
 
 
 def test_a_step_that_writes_a_file_the_session_named_cuts_the_document_there() -> None:
@@ -735,7 +736,7 @@ def test_the_machine_moved_between_two_recorded_calls_cuts_the_document() -> Non
     s.run_for(frames=1)
     doc, out = s.document()
     assert len(doc["steps"]) == 1
-    assert out.cut is not None and out.cut["call"] == 2
+    assert "call" in out.cut and out.cut["call"] == 2
     assert "not where the call before it left it" in out.cut["why"]
 
 

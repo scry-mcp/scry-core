@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from scry_core import fresh, judges, narrowing, png, raster
-from scry_core.reply_contract import Invalid
+from scry_core.reply_contract import Invalid, unavailable
 
 MANIFEST_FORMAT = "scry-series/1"
 MANIFEST_NAME = "manifest.json"
@@ -245,7 +245,7 @@ def series_diff(a: Manifest, b: Manifest, crop: Sequence[int] | None) -> dict[st
             first = (frame, got)
     return {
         "pairs": len(paired), "identical": identical, "differing": differing,
-        "first_differing": None if first is None else {
+        "first_differing": unavailable("every paired frame is identical") if first is None else {
             "frame": first[0], "differing_pixels": first[1]["differing_pixels"],
             "bbox": first[1]["bbox"]},
         "only_in_a": runs(sorted(by_a.keys() - by_b.keys())),
@@ -275,7 +275,8 @@ def region_track(series: Manifest, crop: Sequence[int] | None, measure: Measure,
     manifest."""
     if measure not in MEASURES or limit < 1 or (measure == "match") != (ref is not None):
         raise ValueError(f"region_track({measure!r}, ref={ref is not None}, limit={limit})")
-    start: list[Any] | None = None
+    start: list[Any] | dict[str, Any] = unavailable(
+        "`changed_pixels` counts a change from the frame before, and the first frame has none")
     values: list[list[Any]]
     if measure == "signature":
         values = [[r.frame, s] for r, s in zip(series.rows, _signatures(series, crop),

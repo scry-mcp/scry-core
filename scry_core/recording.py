@@ -52,7 +52,7 @@ from pathlib import Path
 from typing import Any, Literal, get_args
 
 from scry_core import fresh, judges
-from scry_core.reply_contract import Invalid
+from scry_core.reply_contract import Invalid, unavailable
 
 #: The most calls a recording keeps beside the ones its export would drop, whatever its
 #: `record_max`: a session that reads a million times is bounded too.
@@ -320,14 +320,15 @@ class Account:
     steps: list[dict[str, Any]] = field(default_factory=list)
     checks: int = 0
     dropped: list[dict[str, Any]] = field(default_factory=list)
-    cut: dict[str, Any] | None = None
+    cut: dict[str, Any] = field(default_factory=lambda: unavailable(
+        "the recording kept every call a replay takes"))
     saved: set[str] = field(default_factory=set)
     loaded: list[str] = field(default_factory=list)
 
     def drop(self, n: int, op: str, why: str) -> None:
         self.dropped.append({"call": n, "op": op, "why": why})
 
-    def cut_at(self, n: int | None, op: str | None, why: str) -> None:
+    def cut_at(self, n: int, op: str | dict[str, Any], why: str) -> None:
         self.cut = {"call": n, "op": op, "why": why}
 
 
@@ -386,8 +387,8 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
             continue
         out.steps.append(_step(call, call.recorded if _moved(call) else {}))
         _states(out, call, recorder.states)
-    if out.cut is None and recording.full:
-        out.cut_at(len(recording.calls) + 1, None,
+    if "call" not in out.cut and recording.full:
+        out.cut_at(len(recording.calls) + 1, unavailable("the recording's bound cut it, no call"),
                    f"the recording holds at most {STORED_PER_KEPT * recorder.record_max} calls "
                    "in all, the ones an export drops included" if recording.stored_out else
                    f"the recording holds at most {recorder.record_max} calls a replay keeps")
@@ -464,7 +465,8 @@ def export(recorder: Recorder, path: str, overwrite: bool = False) -> dict[str, 
     doc, out = document(recorder)
     if not out.steps:
         raise Invalid("no_recording", "the recording holds no step a replay could take: "
-                      + (f"it is cut at call {out.cut['call']} ({out.cut['why']})" if out.cut
+                      + (f"it is cut at call {out.cut['call']} ({out.cut['why']})"
+                         if "call" in out.cut
                          else f"{len(out.dropped)} calls, every one dropped"))
     data = (json.dumps(doc, indent=2) + "\n").encode()
     if overwrite and os.path.lexists(target):

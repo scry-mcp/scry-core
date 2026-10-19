@@ -42,6 +42,7 @@ from typing import Any
 
 import pytest
 
+from scry_core import reply_contract as contract
 from scry_core.reply_shapes import ANCHORS_INI
 
 # THE TABLE HOLDS A WORD ONLY ONCE TWO REPLIES HAVE SPELLED IT WITH TWO SHAPES: `truncated`, a
@@ -69,7 +70,19 @@ Factory = Callable[[Any], Any]
 
 
 def _judge(value: Any, where: str) -> None:
-    """Every `SHAPES` key anywhere in a reply carries the shape the table gives it.
+    """Every `SHAPES` key anywhere in a reply carries the shape the table gives it (`_shapes`),
+    and no value anywhere is a null: a datum that could not be read or does not apply is the
+    contract's `unavailable(why)` in its place, so a null is a reply that skipped the one
+    spelling. The nulls are the contract's own walk (`nulls_in`), every one named at once."""
+    _shapes(value, where)
+    if found := contract.nulls_in(value):
+        raise AssertionError(f"{where} carries a null at {', '.join(found)}; no reply carries a "
+                             f"null: a datum that could not be read or does not apply is "
+                             f"`unavailable(why)` in its place")
+
+
+def _shapes(value: Any, where: str) -> None:
+    """Every `SHAPES` key anywhere in `value` carries the shape the table gives it.
 
     IT WALKS, and does not stop at the top level: a key's shape is a property of the word,
     not of how deep in the reply it happens to sit, so a row inside `symbols` answering
@@ -88,13 +101,13 @@ def _judge(value: Any, where: str) -> None:
                     f"{where}[{key!r}] is {sub!r}, of type {type(sub).__name__}; every "
                     f"server holds `{key}` to {want.__name__} everywhere it is spelled. One word, "
                     f"one shape: give the other meaning its own name")
-            _judge(sub, f"{where}[{key!r}]")
+            _shapes(sub, f"{where}[{key!r}]")
     elif isinstance(value, list | tuple):
         # A TUPLE TOO, because the battery reads a reply BEFORE it is serialised: on the wire
         # everything is JSON and a tuple cannot survive, but in process it can, and in process
         # is where every case here looks.
         for i, sub in enumerate(value):
-            _judge(sub, f"{where}[{i}]")
+            _shapes(sub, f"{where}[{i}]")
 
 
 def _wrap_envelope(original: Envelope) -> Envelope:

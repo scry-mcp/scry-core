@@ -89,7 +89,7 @@ def test_a_region_track_finds_the_transitions_built_in(tmp_path: Path, measure: 
         transitions = [[12, on], [15, off]]
         assert got["start"] == [10, off]
     else:
-        assert got["start"] is None, "changed_pixels has no frame before the first"
+        assert got["start"]["available"] is False, "changed_pixels has no frame before the first"
     assert got["transitions"] == transitions and got["gaps"] == gaps
     assert got["transitions_total"] == 2 and got["frames"] == 6 and got["crop"] == [0, 0, 1, 1]
     assert "omitted" not in got
@@ -170,7 +170,8 @@ def test_two_series_are_paired_by_frame_and_offsets_are_runs(tmp_path: Path) -> 
     assert got["only_in_a"] == [[10, 12]] and got["only_in_b"] == [[16, 18]]
     assert got["crop"] == [0, 0, 4, 3]
     same = series.series_diff(a, a, None)
-    assert same["identical"] == 6 and same["first_differing"] is None
+    assert same["identical"] == 6 and same["first_differing"] == {
+        "available": False, "why": "every paired frame is identical"}
     assert series.series_diff(a, a, [0, 0, 1, 1])["identical"] == 6
 
 

@@ -330,14 +330,15 @@ def test_a_server_with_nothing_to_do_after_a_call_needs_no_after_hook() -> None:
         Envelope("t", instructions="i", refusal=lambda *a: {}), lock,
         invoke=lambda fn, bound: dict(fn(*bound.args, **bound.kwargs)),
         end=lambda n, o: ("stopped", None),
-        refusal_line=lambda n, r: n, session_block=lambda: None, take_cancelled=lambda: None,
+        refusal_line=lambda n, r: n, session_block=lambda: {"alive": False},
+        take_cancelled=lambda: None,
         keep_cancelled=lambda r: None, doc=lambda n, t: t)
 
     @b.tool("Ping", summary=lambda args, reply: "ping")
     def ping() -> dict[str, Any]:
         return {"status": "ok"}
 
-    assert ping() == {"summary": "ping", "status": "ok", "session": None}
+    assert ping() == {"summary": "ping", "status": "ok", "session": {"alive": False}}
 
 
 def test_a_second_cancel_before_any_reply_keeps_the_first_ones_name() -> None:

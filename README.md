@@ -5,7 +5,9 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 
 | Module | What it holds |
 |---|---|
-| `scry_core.reply_contract` | the refusal contract (`status`, `code`, `message`), its class and its envelope check |
+| `scry_core.reply_contract` | the refusal contract (`status`, `code`, `message`), its class and its envelope check; a datum that could not be read as `unavailable(why)`, never a null; a wait's `verdict` words |
+| `scry_core.log_wait` | a wait for a line of a log: what the log already holds answered first, then the wait, ended by a match, its bound, a stopped machine or a gone emulator |
+| `scry_core.sequence_account` | the account of a list of steps run in one call: compact rows, the two files, and the count of the stops numbered while it ran |
 | `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, and the reply every path closes with, its summary line first; the server's vocabulary handed in as hooks |
 | `scry_core.ends_table` | a server reference's table of how a cancelled call ends, held against what its tools declare |
 | `scry_core.envelope` | the MCP boundary's server object: the schema's refusal given the server's envelope, off the event loop, and a tool's picture attached |

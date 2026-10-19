@@ -39,7 +39,7 @@ from pathlib import Path
 from typing import Any
 
 from scry_core import judges
-from scry_core.reply_contract import Invalid
+from scry_core.reply_contract import Invalid, unavailable
 
 SILENT_RMS = 0.005
 SILENCE_DBFS = -60.0
@@ -170,9 +170,10 @@ def span(recording: Recording, window: Sequence[float] | None) -> tuple[int, int
     return start, end
 
 
-def _dbfs(level: float, full: int) -> float | None:
-    """`level` in dB of full scale, rounded; None for a level of zero, which has none."""
-    return round(20 * math.log10(level / full), 2) if level > 0 else None
+def _dbfs(level: float, full: int) -> float | dict[str, Any]:
+    """`level` in dB of full scale, rounded; unavailable for a level of zero, which has none."""
+    return (round(20 * math.log10(level / full), 2) if level > 0
+            else unavailable("a level of zero has no value in dB"))
 
 
 def _rms(samples: Sequence[float]) -> float:
@@ -275,9 +276,10 @@ def measure(recording: Recording, window: Sequence[float] | None,
         out.append({"channel": c, "peak_dbfs": _dbfs(peak, recording.full),
                     "rms_dbfs": _dbfs(rms, recording.full),
                     "silent": silent,
-                    "silence_spans": {"count": len(quiet), "first": quiet[0] if quiet else None},
-                    "onset_s": None if first is None else round((start + first) / recording.rate,
-                                                                4),
+                    "silence_spans": {"count": len(quiet), "first": quiet[0] if quiet else
+                                      unavailable("no silence in the window")},
+                    "onset_s": (unavailable("a silent window has no onset") if first is None
+                                else round((start + first) / recording.rate, 4)),
                     "clipping_run": run, "clipped": run > CLIP_RUN_MAX})
     frame = recording.width * count
     pcm = recording.raw[start * frame:end * frame]
@@ -363,8 +365,11 @@ def compare(a: Recording, b: Recording, window: Sequence[float] | None,
     grade = ("exact" if exact else "different" if abs(length_delta) > a.rate // LENGTH_TENTHS
              else "inaudible" if snr is None or snr >= SNR_INAUDIBLE_DB
              else "audible" if snr >= SNR_AUDIBLE_DB else "different")
-    return {"exact": exact, "snr_db": None if snr is None else round(snr, 2), "class": grade,
+    return {"exact": exact,
+            "snr_db": unavailable("the two are equal after alignment: there is no error to "
+                                  "measure the signal against") if snr is None
+            else round(snr, 2), "class": grade,
             "envelope_correlation": min(c for _, c in pairs),
-            "onset_delta_ms": None if oa is None or ob is None
-            else round((oa - ob) * 1000 / a.rate, 3),
+            "onset_delta_ms": unavailable("one of the two is silent, so has no onset")
+            if oa is None or ob is None else round((oa - ob) * 1000 / a.rate, 3),
             "length_delta_samples": length_delta, "aligned_by_samples": shift}

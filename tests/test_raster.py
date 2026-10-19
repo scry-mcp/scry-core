@@ -96,8 +96,9 @@ def test_a_diff_counts_its_box_by_hand() -> None:
     # Within a tolerance of 5 the blue change counts as equal; the box shrinks to one pixel.
     assert raster.diff(a, b, tolerance=5)["bbox"] == [1, 0, 1, 1]
     # A crop that misses both leaves nothing differing, and says no box.
-    assert raster.diff(a, b, crop=[0, 1, 2, 2])["bbox"] is None
-    assert raster.diff(a, a) == {"differing_pixels": 0, "bbox": None, "max_delta": [0, 0, 0],
+    nothing = {"available": False, "why": "no pixel differs"}
+    assert raster.diff(a, b, crop=[0, 1, 2, 2])["bbox"] == nothing
+    assert raster.diff(a, a) == {"differing_pixels": 0, "bbox": nothing, "max_delta": [0, 0, 0],
                                  "compared": [0, 0, 4, 3]}
 
 

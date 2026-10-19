@@ -22,7 +22,7 @@ from typing import Any, Literal
 
 from scry_core.judges import Rect, rect
 from scry_core.png import Raster
-from scry_core.reply_contract import Invalid
+from scry_core.reply_contract import Invalid, unavailable
 
 Kind = Literal["pixel", "text"]
 #: Bytes a cell of each kind: an RGB triplet; a CP437 byte and two triplets.
@@ -104,8 +104,8 @@ def diff(a: Raster, b: Raster, crop: Sequence[int] | None = None,
          shift: Sequence[int] = (0, 0), tolerance: int = 0) -> dict[str, Any]:
     """`a` against `b`: pixel (x, y) of `a` against (x + dx, y + dy) of `b`, over the part of
     `crop` (on both pictures) where both lie inside it; a channel within `tolerance` counts as
-    equal. Answers `differing_pixels`, `bbox` (`[x, y, w, h]` in `a`'s coordinates, None when
-    none differ), `max_delta` per channel, and `compared`, the rectangle of `a` compared."""
+    equal. Answers `differing_pixels`, `bbox` (`[x, y, w, h]` in `a`'s coordinates, unavailable
+    when none differ), `max_delta` per channel, and `compared`, the rectangle of `a` compared."""
     if crop is None and (a.width, a.height) != (b.width, b.height):
         raise Invalid("bad_argument", f"the pictures are {a.width}x{a.height} and "
                       f"{b.width}x{b.height}: name a `crop` that lies inside both"
@@ -139,7 +139,8 @@ def diff(a: Raster, b: Raster, crop: Sequence[int] | None = None,
                 x = left + i // 3
                 x_lo, x_hi = min(x_lo, x), max(x_hi, x)
                 y_lo, y_hi = min(y_lo, y), max(y_hi, y)
-    bbox = [x_lo, y_lo, x_hi - x_lo + 1, y_hi - y_lo + 1] if differing else None
+    bbox = ([x_lo, y_lo, x_hi - x_lo + 1, y_hi - y_lo + 1] if differing
+            else unavailable("no pixel differs"))
     return {"differing_pixels": differing, "bbox": bbox, "max_delta": peak,
             "compared": [left, top, right - left, bottom - top]}
 

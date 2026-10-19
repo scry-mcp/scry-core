@@ -25,6 +25,18 @@ def test_the_shape_it_holds_passes_and_a_bool_is_not_an_int() -> None:
     assert not isinstance(1, bool), "the direction the table relies on"
 
 
+@pytest.mark.parametrize(("reply", "where"), [
+    ({"pc": None}, r"reply carries a null at pc;"),
+    ({"rows": [{"name": "a", "linear": None}], "x": None}, r"at rows\[0\]\.linear, x;"),
+    ({"pairs": (None,)}, r"at pairs\[0\];"),
+])
+def test_a_null_is_refused_at_any_depth_naming_where(reply: dict[str, Any], where: str) -> None:
+    """No reply carries a null: a datum that could not be read, or does not apply, is the
+    contract's `unavailable(why)` in its place, and the guard names where the null sits."""
+    with pytest.raises(AssertionError, match=where + ".*unavailable"):
+        shapes._judge(reply, "reply")
+
+
 def test_both_wraps_judge_what_they_are_handed() -> None:
     envelope = shapes._wrap_envelope(lambda reply: reply)
     summary = shapes._wrap_summary(lambda name, args, reply: f"{name}: {reply['status']}")

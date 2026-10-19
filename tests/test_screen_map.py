@@ -178,7 +178,8 @@ def test_a_control_is_named_against_the_identification_it_came_from(tmp_path: Pa
     assert maps.target("paddle") == {"target": "paddle", "centre": [1, 3], "screen": "play",
                                      "kind": "pixel", "size": (W, H), "identified_at_stop": 12}
     maps.find(Reads(PLAY), stop=None)
-    assert maps.target("paddle")["identified_at_stop"] is None, "a stop nobody could name"
+    assert maps.target("paddle")["identified_at_stop"]["available"] is False, (
+        "a stop nobody could name")
     with pytest.raises(Invalid, match=r"has no such control; its controls: paddle, quit") as e:
         maps.target("start")
     assert e.value.code == "unknown_ref"

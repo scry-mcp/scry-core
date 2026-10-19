@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from scry_core import fresh, judges, prose, raster
-from scry_core.reply_contract import Invalid
+from scry_core.reply_contract import Invalid, or_unavailable
 
 FORMAT = "scry-map/1"
 SUFFIX = ".scry-map.json"
@@ -275,7 +275,9 @@ class Maps:
             if c.name == control:
                 return {"target": c.name, "centre": c.centre(), "screen": screen.name,
                         "kind": screen.kind, "size": screen.size,
-                        "identified_at_stop": self.found.stop}
+                        "identified_at_stop": or_unavailable(
+                            self.found.stop, "the stop it was identified at was not numbered "
+                            "(its survey came back cut)")}
         names = ", ".join(c.name for c in screen.controls) or "none"
         raise Invalid("unknown_ref", f"target={control!r}: screen {screen.name!r} has no such "
                       f"control; its controls: {names}")

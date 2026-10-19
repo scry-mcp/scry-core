@@ -65,7 +65,8 @@ def test_a_sine_measures_at_its_level_and_its_onset(tmp_path: Path) -> None:
 def test_silence_is_silent_with_no_onset_and_no_level(tmp_path: Path) -> None:
     m = wav.measure(wav.read("p", _write(tmp_path / "q.wav", [[0] * 4000])), None, None)[
         "measures"][0]
-    assert (m["silent"], m["onset_s"], m["peak_dbfs"], m["rms_dbfs"]) == (True, None, None, None)
+    assert m["silent"] is True and m["onset_s"]["available"] is False, m
+    assert m["peak_dbfs"]["available"] is False and m["rms_dbfs"]["available"] is False, m
     assert m["silence_spans"] == {"count": 1, "first": [0.0, 0.5]}
 
 
@@ -182,7 +183,7 @@ def test_two_silences_compare_nothing(tmp_path: Path) -> None:
     assert e.value.code == "control_silent"
     loud = _write(tmp_path / "c.wav", [_sine(800)])
     one_silent = wav.compare(wav.read("a", loud), wav.read("b", a), None, True)
-    assert one_silent["class"] == "different" and one_silent["onset_delta_ms"] is None
+    assert one_silent["class"] == "different" and one_silent["onset_delta_ms"]["available"] is False
 
 
 def test_two_formats_are_refused(tmp_path: Path) -> None:
@@ -198,7 +199,8 @@ def test_the_two_tools_answer_and_judge_their_arguments(tmp_path: Path) -> None:
     assert got["path"] == path and got["measures"][0]["onset_s"] > 0.09
     assert media_tools._audio_measure_line({}, got).startswith("audio_measure: ch0 peak -6.23")
     same = media_tools.audio_diff(path, path)
-    assert same["exact"] is True and same["class"] == "exact" and same["snr_db"] is None
+    assert same["exact"] is True and same["class"] == "exact"
+    assert same["snr_db"]["available"] is False, same
     assert media_tools._audio_diff_line({}, same) == (
         "audio_diff: exact, equal, envelope 1.0")
     quiet = media_tools.audio_measure(_write(tmp_path / "q.wav", [[0] * 800]))
@@ -355,7 +357,7 @@ def test_a_steady_offset_is_silence_and_a_tone_on_it_starts_at_its_onset(
     tone starts, not at the file's first sample."""
     dc = wav.read("p", _write(tmp_path / "dc.wav", [[-11000 + (i % 3) for i in range(RATE)]]))
     m = wav.measure(dc, None, None)["measures"][0]
-    assert m["silent"] is True and m["onset_s"] is None and m["clipped"] is False
+    assert m["silent"] is True and m["onset_s"]["available"] is False and m["clipped"] is False
     assert m["peak_dbfs"] == pytest.approx(20 * math.log10(11000 / 32768), abs=0.01)
     ride = [v - 8000 for v in _sine(RATE, amp=AMP / 2, start=800)]
     t = wav.measure(wav.read("p", _write(tmp_path / "t.wav", [ride])), None, None)["measures"][0]
@@ -381,7 +383,7 @@ def test_a_resting_chip_is_silent_unclipped_and_quiet(tmp_path: Path, name: str,
                                                        samples: list[int]) -> None:
     m = wav.measure(wav.read("p", _write(tmp_path / "r.wav", [samples])), None, None)
     got = m["measures"][0]
-    assert got["silent"] is True and got["onset_s"] is None, name
+    assert got["silent"] is True and got["onset_s"]["available"] is False, name
     assert got["clipped"] is False and got["clipping_run"] == 0, name
 
 

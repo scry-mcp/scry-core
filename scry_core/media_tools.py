@@ -59,7 +59,8 @@ def image_diff(a: str, b: str, crop: list[int] | None = None, shift: list[int] |
     `b`, over the part of the crop both stay in: a sprite that moved compares equal at its
     move. `tolerance` (0..255) is the per-channel difference still counted equal.
 
-    Reply: `differing_pixels`, `bbox` ([x, y, w, h] in `a`'s pixels, null when none differ),
+    Reply: `differing_pixels`, `bbox` ([x, y, w, h] in `a`'s pixels, unavailable when none
+    differ),
     `max_delta` ([r, g, b], the largest channel difference seen), `width` and `height` (`a`'s),
     `crop` (the rectangle of `a` compared), `shift`, `tolerance`, and `a` and `b` (`path`,
     `sha256`).
@@ -96,7 +97,7 @@ def series_diff(a: str, b: str, crop: list[int] | None = None) -> dict[str, Any]
     the other one; two series with no frame number in common are `control_silent` too.
 
     Reply: `pairs`, `identical`, `differing`, `first_differing` (`frame`, `differing_pixels`,
-    `bbox`, or null), `only_in_a` and `only_in_b` (frames with no partner, as [first, last]
+    `bbox`, or unavailable), `only_in_a` and `only_in_b` (frames with no partner, as [first, last]
     runs), `crop` (the rectangle compared), and `a`, `b`.
     """
     _judge_series_diff(a, b, crop)
@@ -140,7 +141,7 @@ def region_track(manifest: str, crop: list[int] | None = None, measure: str = "s
     CONTROL: a measure that never changes over the series is `control_silent`, the crop having
     missed.
 
-    Reply: `start` ([frame, value] at the first frame; null for `changed_pixels`),
+    Reply: `start` ([frame, value] at the first frame; unavailable for `changed_pixels`),
     `transitions` ([frame, value]: the new signature, the count, or true/false), `gaps` (frame
     numbers between consecutive transitions), `transitions_total`, `frames`, `measure`, `crop`
     (the rectangle measured), `manifest`, and `path`, a JSON file beside the manifest holding
@@ -225,11 +226,11 @@ def audio_measure(path: str, window: list[float] | None = None,
     mean, the silences read it through a DC blocker, the onset against its first sample, the
     peak as written (a square wave's flat top reads as a plateau too).
     Reply, per channel in `measures` (`channel`, 0 the first, the left of a stereo file):
-    `peak_dbfs` and `rms_dbfs` (null for zero), `silent` (an RMS under 0.5% of full scale),
+    `peak_dbfs` and `rms_dbfs` (unavailable for zero), `silent` (an RMS under 0.5% of full scale),
     `silence_spans` (`count`, and the `first` [from_s, to_s] quieter than -60 dBFS for 50 ms or
-    more), `onset_s` (the first sample over 2% of the peak, from the file's start; null when
-    silent), `clipping_run` (the longest run of flat samples at 95% of the peak or above)
-    and `clipped` (a run past 8); then `sample_rate_hz`, `channels`,
+    more, unavailable with none), `onset_s` (the first sample over 2% of the peak, from the
+    file's start; unavailable when silent), `clipping_run` (the longest run of flat samples at
+    95% of the peak or above) and `clipped` (a run past 8); then `sample_rate_hz`, `channels`,
     `bits`, `window` and `pcm_sha256` (the window's frames, every channel's, for an exact
     comparison), and `path`.
     """
@@ -259,7 +260,7 @@ def audio_diff(a: str, b: str, window: list[float] | None = None,
     is `control_silent`.
 
     Reply: `exact` (the windows' bytes equal), `snr_db` (signal to error, the reference's
-    energy over the difference's, the worst channel's; null when equal after alignment),
+    energy over the difference's, the worst channel's; unavailable when equal after alignment),
     `class` (`exact`, `inaudible` at 60 dB or more, `audible` 30 to 60, `different` under 30 or
     lengths a tenth of a second apart), `envelope_correlation` (of the 64-window energy
     envelopes, the worst channel's), `onset_delta_ms` (a's onset minus b's),
@@ -301,7 +302,7 @@ def _audio_measure_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
 
 
 def _audio_diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    snr = "equal" if reply["snr_db"] is None else f"SNR {reply['snr_db']} dB"
+    snr = "equal" if isinstance(reply["snr_db"], dict) else f"SNR {reply['snr_db']} dB"
     return f"audio_diff: {reply['class']}, {snr}, envelope {reply['envelope_correlation']}"
 
 
@@ -316,7 +317,7 @@ def _image_diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
 
 def _series_diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     first = reply["first_differing"]
-    tail = f", first at frame {first['frame']}" if first else ""
+    tail = f", first at frame {first['frame']}" if "frame" in first else ""
     return (f"series_diff: {reply['pairs']} pairs, {reply['identical']} identical, "
             f"{reply['differing']} differing{tail}")
 
