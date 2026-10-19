@@ -40,6 +40,7 @@ from typing import Any, Protocol
 from mcp.types import ToolAnnotations
 
 from scry_core import cancel, picture
+from scry_core import strict_arguments as strict
 from scry_core.envelope import Envelope
 from scry_core.recording import ExportAs, Machine, Unrecorded
 
@@ -149,7 +150,7 @@ class Boundary:
         registrations themselves (`none` for one that declared nothing): what a server's suite
         holds against its reference (`ends_table`)."""
         return {t.name: getattr(t.fn, ON_CANCEL_ATTR)
-                for t in self.mcp._tool_manager.list_tools()
+                for t in strict.registered(self.mcp)
                 if hasattr(t.fn, ON_CANCEL_ATTR)}
 
     def line(self, name: str, args: dict[str, Any], reply: Reply) -> str:

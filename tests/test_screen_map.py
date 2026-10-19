@@ -379,7 +379,7 @@ def test_a_save_over_a_file_that_fails_leaves_no_temporary(
     def refuse(*_a: Any) -> None:
         raise PermissionError(13, "Permission denied")
     monkeypatch.setattr(os, "replace", refuse)
-    with pytest.raises(Invalid, match="cannot be written: .*Permission denied"):
+    with pytest.raises(Invalid, match="could not be written: .*Permission denied"):
         maps.save(str(out), True)
     assert out.read_text() == "keep" and [p.name for p in tmp_path.iterdir()] == [out.name]
 
@@ -542,16 +542,17 @@ def test_map_adds_controls_are_judged_whole_before_the_read(controls: Any, said:
     assert e.value.code == "bad_argument"
 
 
-def test_save_refuses_two_layers_bigger_than_a_map_can_load(
+def test_a_load_that_would_make_the_two_layers_unsaveable_is_refused(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(screen_map, "SCREENS_MAX", 2)
     maps = Maps()
     maps.add("c", [[0, 0, 1, 1]], [], Reads(TITLE))
-    maps.load(_file(tmp_path, _doc()))           # a load replaces the file layer whole
-    out = tmp_path / "all.scry-map.json"
-    with pytest.raises(Invalid, match="the two layers hold 3 screens") as e:
-        maps.save(str(out), False)
-    assert e.value.code == "bad_argument" and not out.exists()
+    with pytest.raises(Invalid, match="the session layer 1 more, past the 2") as e:
+        maps.load(_file(tmp_path, _doc()))
+    assert e.value.code == "bad_argument" and maps.file == {}
+    maps.add("title", [[0, 0, 1, 1]], [], Reads(TITLE))   # a name the file shares counts once
+    del maps.session["c"]
+    assert maps.load(_file(tmp_path, _doc()))["screens"] == 2
 
 
 def test_check_save_judges_the_path_and_the_overwrite() -> None:
@@ -564,4 +565,22 @@ def test_check_save_judges_the_path_and_the_overwrite() -> None:
 
 def test_the_file_tools_descriptions_say_the_limits_the_code_enforces() -> None:
     assert screen_map.SUFFIX in screen_map.DOC_VALUES["MAP_LOAD"]
-    assert f"({screen_map.SCREENS_MAX})" in screen_map.DOC_VALUES["MAP_SAVE"]
+    assert "`overwrite`" in screen_map.DOC_VALUES["MAP_SAVE"]
+
+
+def test_mapping_the_identified_screen_again_forgets_the_identification(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.add("play", [[0, 0, 1, 1]], [{"name": "a", "rect": [0, 0, 1, 1]}], Reads(TITLE))
+    maps.find(Reads(TITLE), stop=1)
+    maps.add("play", [[0, 0, 1, 1]], [{"name": "b", "rect": [0, 0, 1, 1]}], Reads(TITLE))
+    with pytest.raises(Invalid, match="no screen is identified"):
+        maps.target("a")
+    maps.find(Reads(TITLE), stop=2)
+    maps.add("other", [[0, 0, 1, 1]], [], Reads(TITLE))
+    assert maps.target("b")["screen"] == "play", "another screen added keeps the identification"
+
+
+def test_where_a_crop_lies_is_never_judged_before_the_read() -> None:
+    screen_map.check_add("x", [[70000, 0, 1, 1]], [{"name": "c", "rect": [0, 90000, 1, 1]}])
+    with pytest.raises(Invalid, match=r"leaves screen 'x' \(8x4\)"):
+        Maps().add("x", [[70000, 0, 1, 1]], [], Reads(TITLE))

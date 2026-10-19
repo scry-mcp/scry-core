@@ -38,7 +38,6 @@ cannot be read at the moment a pointer moves.
 from __future__ import annotations
 
 import json
-import os
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -57,9 +56,9 @@ SCREENS_MAX, MATCH_MAX, CONTROLS_MAX = 200, 16, 100
 FILE_BYTES_MAX = 4 * 1024 * 1024
 _SIGNATURE = re.compile(r"[0-9a-f]{16}")
 _NAME_MAX = 64
-#: A side no screen reaches: what a rectangle's shape is judged against before a read says the
-#: screen's own size.
-_ANY_SIDE = 1 << 16
+#: A side past any rectangle a caller can name: what a rectangle's shape is judged against before
+#: a read says the screen's own size, so only the read ever refuses where a rectangle lies.
+_ANY_SIDE = 1 << 62
 
 Layer = Literal["session", "file"]
 
@@ -77,8 +76,7 @@ SAVE_DESCRIBED = (
     "and that file made the file layer (the session's screens are `promoted`). `path` as "
     "`map_load`'s; one already there is refused unless `overwrite`. Any state.\n\n"
     "    Reply: `path`, `application`, `screens`, `controls`, `promoted`. Refused: nothing mapped "
-    "(`needs_call`); a path a load would refuse, or there without `overwrite`, or more screens "
-    f"than a map holds ({SCREENS_MAX}) (`bad_argument`)")
+    "(`needs_call`); a path a load would refuse, or there without `overwrite` (`bad_argument`)")
 #: What a tool's description fills from here (`scry_core.docs.filled`).
 DOC_VALUES = {"MAP_LOAD": LOAD_DESCRIBED, "MAP_SAVE": SAVE_DESCRIBED}
 
@@ -172,6 +170,10 @@ class Maps:
             raise Invalid("bad_argument", f"path: {path} names application "
                           f"{_application(path)!r} and the file says {application!r}: a map is "
                           "named by the application it maps")
+        if len(screens.keys() | self.session.keys()) > SCREENS_MAX:
+            raise Invalid("bad_argument", f"path: {path} holds {len(screens)} screens and the "
+                          f"session layer {len(self.session)} more, past the {SCREENS_MAX} a map "
+                          "holds: `map_save` the session's first, or `start` again")
         self.file, self.application, self.path = screens, application, path
         self.found = None
         return {"path": str(path), "application": application, "screens": len(screens),
@@ -199,6 +201,8 @@ class Maps:
             raise Invalid("bad_argument", f"the map holds {SCREENS_MAX} screens, the most one "
                           "holds")
         self.session[screen.name] = screen
+        if self.found is not None and self.found.screen.name == screen.name:
+            self.found = None          # its controls are another screen's now: identify again
         return {"screen": screen.name, "kind": screen.kind, "size": list(screen.size),
                 "match": [{"crop": list(c), "signature": s} for c, s in screen.match],
                 "controls": len(screen.controls), "replaced": replaced,
@@ -242,15 +246,12 @@ class Maps:
         if not merged:
             raise Invalid("needs_call", "no screen is mapped: `map_add` the screen in front of "
                           "you, or `map_load` a map, before saving one")
-        if len(merged) > SCREENS_MAX:
-            raise Invalid("bad_argument", f"the two layers hold {len(merged)} screens, and a map "
-                          f"holds at most {SCREENS_MAX}: a file of them would not load")
         application = _application(path)
         doc = {"format": FORMAT, "application": application,
                "screens": [s.doc() for s in merged.values()]}
         data = (json.dumps(doc, indent=1) + "\n").encode()
         if overwrite:
-            _replace(path, data)
+            fresh.replace(path, data, "path:")
         else:
             fresh.create(path, data, "the map", named_by_caller=True)
         promoted = sorted(self.session)
@@ -308,20 +309,6 @@ def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             raise ValueError(f"the key {key!r} is said twice in one object")
         out[key] = value
     return out
-
-
-def _replace(path: Path, data: bytes) -> None:
-    """`data` at `path`, over what is there, whole or not at all: written beside it, then
-    renamed over it, so a reader never meets half a map."""
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    try:
-        if path.is_dir():
-            raise Invalid("bad_argument", f"path: {path} is a directory")
-        fresh.create(tmp, data, "the map", named_by_caller=True)
-        os.replace(tmp, path)
-    except OSError as e:
-        tmp.unlink(missing_ok=True)
-        raise Invalid("bad_argument", f"path: {path} cannot be written: {e}") from None
 
 
 def parse(doc: object, where: str) -> tuple[str, dict[str, Screen]]:

@@ -148,6 +148,14 @@ def _signal(pid: int, pgid: int, sig: signal.Signals) -> None:
             os.kill(pid, sig)
 
 
+def _started(pid: int) -> str:
+    """When `pid` started, as `ps` says it (`lstart`), or empty when it cannot say: with the
+    name, what tells the emulator a run launched from a later process the system gave its pid."""
+    done = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True,
+                          text=True, check=False)
+    return " ".join(done.stdout.split()) if done.returncode == 0 else ""
+
+
 def _same_program(recorded: str, comm: str) -> bool:
     """Whether `ps`'s command `comm` is the program recorded under `recorded`: macOS lists the
     path, Linux the name cut to `COMM_MAX`."""
@@ -173,8 +181,9 @@ class Leftovers:
 
 
 class EmulatorLedger:
-    """The emulators a live run launched, one `<pid>\\t<name>` line each, and the end check that
-    proves them gone. The name guards a pid another program took after the emulator left."""
+    """The emulators a live run launched, one `<pid>\\t<name>\\t<started>` line each, and the end
+    check that proves them gone. The name and the start time guard a pid the system gave another
+    process after the emulator left: the same program, launched by somebody else, included."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -189,23 +198,30 @@ class EmulatorLedger:
         """One launch, called by a server right after its emulator's process exists, before
         anything that could fail; a ledger that cannot be written never fails the launch, and
         the run's end reports how many it recorded."""
+        started = _started(pid)
         with contextlib.suppress(OSError), self.path.open("a", encoding="utf-8") as out:
-            out.write(f"{pid}\t{Path(program).name}\n")
+            out.write(f"{pid}\t{Path(program).name}\t{started}\n")
 
     def recorded(self) -> dict[int, str]:
+        """The program each recorded pid was launched as."""
+        return {pid: name for pid, (name, _) in self._rows().items()}
+
+    def _rows(self) -> dict[int, tuple[str, str]]:
         try:
             text = self.path.read_text(encoding="utf-8")
         except FileNotFoundError:
             return {}
-        rows = (line.split("\t", 1) for line in text.splitlines())
-        return {int(row[0]): row[1] for row in rows if len(row) == 2 and row[0].isdigit()}
+        rows = (line.split("\t") for line in text.splitlines())
+        return {int(row[0]): (row[1], row[2] if len(row) == 3 else "") for row in rows
+                if len(row) in (2, 3) and row[0].isdigit() and row[1]}
 
     def reap(self) -> Leftovers:
         """Every recorded emulator still alive under its own name, sent SIGTERM, then SIGKILL
         after `LEAVE_S`, and what survived both."""
-        mine, now = self.recorded(), _processes()
+        mine, now = self._rows(), _processes()
         alive = {p: pgid for p, (pgid, state, comm) in now.items()
-                 if p in mine and _same_program(mine[p], comm) and not state.startswith("Z")}
+                 if p in mine and _same_program(mine[p][0], comm) and not state.startswith("Z")
+                 and mine[p][1] in ("", _started(p))}
         if not alive:
             return Leftovers(len(mine))
         for p, pgid in alive.items():
@@ -283,6 +299,12 @@ class LiveRun:
         except OSError as e:
             return (f"FAIL  the end check could not read this host's processes ({e}), so the "
                     f"emulators this run launched may still be alive")
+        if not left.recorded:
+            # NOTHING RECORDED IS NOT NOTHING LEFT: a server that never wrote the ledger (one
+            # pinned to a core without it, or spawned before the run named it) leaves this same
+            # empty file, and an end check that examined nothing is no verdict.
+            return ("INVALID  the ledger recorded no emulator launch, so the end check examined "
+                    "nothing: a run that launched one has a server that did not record it")
         if not left.found:
             self.say(f"emulators launched: {left.recorded}, none left alive")
         return left.line()

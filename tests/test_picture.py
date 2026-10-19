@@ -177,6 +177,12 @@ def test_nothing_is_attached_when_the_body_says_not_inline(tmp_path: Path) -> No
     assert picture.attached(plain) is plain, "a reply with no image is left alone"
 
 
+def test_an_inline_block_that_names_no_file_is_left_as_written() -> None:
+    body = {"status": "ok", "image": {"inline": True}}
+    result = CallToolResult(content=[TextContent(type="text", text="{}")], structured_content=body)
+    assert picture.attached(result).structured_content == body
+
+
 def test_a_file_that_changed_is_not_attached_and_the_body_says_so(tmp_path: Path) -> None:
     image = picture.publish(png.Raster(2, 2, bytes(4), ((1, 2, 3),)), 0, None, tmp_path, "p",
                             Recorded())

@@ -113,3 +113,13 @@ def test_a_path_the_filesystem_will_not_look_at_is_refused_not_raised(
     with pytest.raises(Invalid, match="cannot be looked at: .*Permission denied") as e:
         judge("dest", str(tmp_path / "x.png"))
     assert e.value.code == "bad_argument"
+
+
+def test_a_file_the_filesystem_will_not_look_at_is_refused_not_raised(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def denied(self: Path) -> bool:
+        raise PermissionError(13, "Permission denied")
+    monkeypatch.setattr(Path, "is_file", denied)
+    with pytest.raises(Invalid, match="cannot be looked at") as e:
+        judges.existing_file("a", str(tmp_path / "x.png"))
+    assert e.value.code == "bad_argument"

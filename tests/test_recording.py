@@ -409,6 +409,7 @@ def test_an_export_over_a_file_needs_overwrite_and_one_with_nothing_recorded_is_
     with pytest.raises(Invalid, match="is there already"):
         recording.export(s.recorder, str(taken))
     assert recording.export(s.recorder, str(taken), overwrite=True)["steps"] == 1
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["taken.json"], "nothing left beside it"
 
 
 def test_an_export_led_by_a_tilde_lands_under_the_home(monkeypatch: pytest.MonkeyPatch,

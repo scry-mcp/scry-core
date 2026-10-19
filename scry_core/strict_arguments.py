@@ -20,6 +20,7 @@ from typing import Any
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
+from mcp.server.mcpserver.tools import Tool
 from mcp.server.mcpserver.utilities.func_metadata import ArgModelBase, FuncMetadata
 from pydantic import ConfigDict, ValidationError
 
@@ -35,10 +36,16 @@ class _StrictMetadata(FuncMetadata):
         return dict(data)
 
 
+def registered(server: MCPServer) -> list[Tool]:
+    """The tools registered on `server` so far: the one place this package and the servers reach
+    the SDK's registry, which it keeps private."""
+    return server._tool_manager.list_tools()
+
+
 def strict_arguments(server: MCPServer) -> None:
     """Make every tool registered on `server` so far refuse what its lax model would rescue."""
     strict = ConfigDict(strict=True, extra="forbid", arbitrary_types_allowed=True)
-    for t in server._tool_manager.list_tools():
+    for t in registered(server):
         meta = t.fn_metadata
         model: type[ArgModelBase] = type(
             meta.arg_model.__name__, (meta.arg_model,),

@@ -134,9 +134,14 @@ def window(name: str, value: object) -> tuple[float, float] | None:
 
 
 def existing_file(name: str, value: object) -> Path:
-    """`absolute`, and a file is there."""
+    """`absolute`, and a file is there. A path the filesystem will not look at is refused the
+    same way, never raised, as in `writable_file`."""
     path = absolute(name, value)
-    if not path.is_file():
+    try:
+        there = path.is_file()
+    except OSError as e:
+        raise Invalid("bad_argument", f"{name}: {path} cannot be looked at: {e}") from None
+    if not there:
         raise Invalid("bad_argument", f"{name}: {path} is not a file")
     return path
 

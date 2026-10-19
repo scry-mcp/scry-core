@@ -6,12 +6,14 @@ looks like a file, and a file written over is somebody else's evidence gone.
 from __future__ import annotations
 
 import contextlib
+import os
 import shutil
+import stat
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import IO
 
-from scry_core.reply_contract import Invalid
+from scry_core.reply_contract import Code, Invalid
 
 
 def create(path: Path, data: bytes, what: str, named_by_caller: bool = False) -> None:
@@ -28,6 +30,37 @@ def create(path: Path, data: bytes, what: str, named_by_caller: bool = False) ->
         raise Invalid("bad_argument" if named_by_caller else "host_failed",
                       f"{what} {path} cannot be created: {e}") from None
     _fill(out, path, data, what)
+
+
+def replace(path: Path, data: bytes, what: str, named_by_caller: bool = True,
+            new_mode: int | None = None) -> None:
+    """`data` at `path`, over what is there, whole or not at all: written beside it, then renamed
+    over it, so a reader never meets half a file and a write that fails, a cancel included,
+    leaves the old one whole and nothing beside it. A file replaced keeps its mode; a new one
+    takes `new_mode` when given, whatever the umask, else the umask's. A path that cannot take
+    the new file is `bad_argument` when the caller named it, `host_failed` when the server chose
+    it, as in `create`; a rename that fails once the file is written whole is the host's
+    (`host_failed`: a full disk, a volume gone read-only)."""
+    code: Code = "bad_argument" if named_by_caller else "host_failed"
+    beside = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        try:
+            if path.is_dir():
+                raise Invalid(code, f"{what} {path} is a directory")
+            create(beside, data, what, named_by_caller)
+            try:
+                os.chmod(beside, stat.S_IMODE(path.stat().st_mode))
+            except FileNotFoundError:
+                if new_mode is not None:
+                    os.chmod(beside, new_mode)
+        except OSError as e:
+            raise Invalid(code, f"{what} {path} cannot be written: {e}") from None
+        try:
+            os.replace(beside, path)
+        except OSError as e:
+            raise Invalid("host_failed", f"{what} {path} could not be written: {e}") from None
+    finally:
+        beside.unlink(missing_ok=True)
 
 
 def numbered(folder: Path, name: Callable[[int], str], data: bytes, what: str) -> Path:

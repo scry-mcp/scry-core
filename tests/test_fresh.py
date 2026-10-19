@@ -3,6 +3,7 @@ that fails part-way leaving nothing behind."""
 
 from __future__ import annotations
 
+import os
 import threading
 from pathlib import Path
 from typing import Any
@@ -139,3 +140,69 @@ def test_a_capture_that_ends_well_keeps_its_folder(tmp_path: Path) -> None:
     with fresh.taken_back(where):
         (where / "f000001.png").write_bytes(b"x")
     assert (where / "f000001.png").exists()
+
+
+def test_a_replace_lands_whole_and_leaves_nothing_beside_it(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    target = tmp_path / "a.json"
+    target.write_bytes(b"old")
+    fresh.replace(target, b"new", "the file")
+    assert target.read_bytes() == b"new" and sorted(p.name for p in tmp_path.iterdir()) == [
+        "a.json"]
+
+    def fails(*a: Any) -> None:
+        raise PermissionError("denied")
+    monkeypatch.setattr(os, "replace", fails)
+    with pytest.raises(Invalid, match="could not be written: denied") as e:
+        fresh.replace(target, b"newer", "the file")
+    assert e.value.code == "host_failed" and target.read_bytes() == b"new"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["a.json"], "no temporary left"
+
+    def cancelled(*a: Any) -> None:
+        raise KeyboardInterrupt
+    monkeypatch.setattr(os, "replace", cancelled)
+    with pytest.raises(KeyboardInterrupt):
+        fresh.replace(target, b"newest", "the file")
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["a.json"], "a cancel leaves none either"
+    with pytest.raises(Invalid, match="is a directory"):
+        fresh.replace(tmp_path, b"x", "the file")
+
+
+def test_a_file_replaced_keeps_its_mode_and_one_the_server_chose_is_the_hosts(
+        tmp_path: Path) -> None:
+    target = tmp_path / "a.json"
+    target.write_bytes(b"old")
+    target.chmod(0o640)
+    fresh.replace(target, b"new", "the file")
+    assert target.stat().st_mode & 0o777 == 0o640
+    fresh.replace(tmp_path / "new.json", b"x", "the file", new_mode=0o604)
+    assert (tmp_path / "new.json").stat().st_mode & 0o777 == 0o604
+    fresh.replace(target, b"newer", "the file", new_mode=0o604)
+    assert target.stat().st_mode & 0o777 == 0o640, "a mode given for a new file only"
+    with pytest.raises(Invalid) as e:
+        fresh.replace(tmp_path / "no" / "b.json", b"x", "the store", named_by_caller=False)
+    assert e.value.code == "host_failed"
+
+
+def test_a_cancel_while_the_new_file_is_written_leaves_nothing_beside_it(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def cancelled(*a: Any, **k: Any) -> None:
+        raise KeyboardInterrupt
+    monkeypatch.setattr(os, "chmod", cancelled)                # after the temporary is written
+    with pytest.raises(KeyboardInterrupt):
+        fresh.replace(tmp_path / "a.json", b"x", "the file", new_mode=0o600)
+    assert list(tmp_path.iterdir()) == [], "the temporary is gone"
+
+
+def test_a_temporary_whose_mode_cannot_be_set_is_refused_and_removed(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    target = tmp_path / "a.json"
+    target.write_bytes(b"old")
+
+    def refused(*a: Any, **k: Any) -> None:
+        raise PermissionError("not yours")
+    monkeypatch.setattr(os, "chmod", refused)
+    with pytest.raises(Invalid, match="cannot be written: not yours") as e:
+        fresh.replace(target, b"new", "the file")
+    assert e.value.code == "bad_argument" and sorted(p.name for p in tmp_path.iterdir()) == [
+        "a.json"]

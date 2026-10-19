@@ -251,8 +251,9 @@ def attached(result: Any) -> Any:
                                 is_error=result.is_error)
     body = marked
     image = body.get("image")
-    if not isinstance(image, dict) or image.get("inline") is not True:
-        return result
+    if (not isinstance(image, dict) or image.get("inline") is not True
+            or not isinstance(image.get("path"), str) or not isinstance(image.get("sha256"), str)):
+        return result                  # nothing named to attach: the body stands as written
     try:
         data = Path(image["path"]).read_bytes()
     except (OSError, ValueError):

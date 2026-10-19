@@ -199,10 +199,13 @@ def test_an_emulator_in_the_runs_own_group_is_signalled_alone(
     assert proc.wait(5) == -signal.SIGTERM
 
 
-def _faked(monkeypatch: pytest.MonkeyPatch, rows: dict[int, tuple[int, str, str]]) -> list[int]:
-    """The host's process list replaced by `rows`; answers the pids signalled, none for real."""
+def _faked(monkeypatch: pytest.MonkeyPatch, rows: dict[int, tuple[int, str, str]],
+           started: str = "Mon Oct 19 10:00:00 2026") -> list[int]:
+    """The host's process list replaced by `rows`, each started at `started`; answers the pids
+    signalled, none for real."""
     signalled: list[int] = []
     monkeypatch.setattr(host, "_processes", lambda: rows)
+    monkeypatch.setattr(host, "_started", lambda pid: started)
     monkeypatch.setattr(os, "killpg", lambda pid, sig: signalled.append(pid))
     monkeypatch.setattr(os, "kill", lambda pid, sig: signalled.append(pid))
     return signalled
@@ -218,6 +221,16 @@ def test_a_process_that_survives_kill_is_named_with_its_state(
     gone = ledger.reap()
     assert gone == host.Leftovers(1, 1, ((4242, "U"),))
     assert gone.line().endswith("still alive after SIGKILL: pid 4242 state U")
+
+
+def test_a_pid_the_same_program_took_later_is_never_signalled(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger = host.EmulatorLedger(tmp_path / "ledger")
+    monkeypatch.setattr(host, "_started", lambda pid: "Mon Oct 19 10:00:00 2026")
+    ledger.record(4242, "/opt/mamed")
+    signalled = _faked(monkeypatch, {4242: (4242, "S", "/opt/mamed")},
+                       started="Mon Oct 19 11:30:00 2026")
+    assert ledger.reap() == host.Leftovers(1) and signalled == []
 
 
 def test_a_pid_another_program_took_is_never_signalled(
@@ -238,8 +251,18 @@ def test_a_long_name_linux_cut_is_still_the_emulator(
 
 
 def test_a_ledger_line_that_is_not_one_is_skipped(tmp_path: Path) -> None:
-    (tmp_path / "ledger").write_text("7\tdosbox-x\nnot a row\nx\tmamed\n")
-    assert host.EmulatorLedger(tmp_path / "ledger").recorded() == {7: "dosbox-x"}
+    (tmp_path / "ledger").write_text("7\tdosbox-x\nnot a row\nx\tmamed\n8\t\t\n"
+                                     "9\tmamed\tMon Oct 19 10:00:00 2026\n")
+    assert host.EmulatorLedger(tmp_path / "ledger").recorded() == {7: "dosbox-x", 9: "mamed"}
+
+
+def test_a_launch_is_recorded_with_when_it_started(tmp_path: Path) -> None:
+    ledger = host.EmulatorLedger(tmp_path / "ledger")
+    ledger.record(os.getpid(), "/usr/bin/python3")
+    [line] = (tmp_path / "ledger").read_text().splitlines()
+    pid, name, started = line.split("\t")
+    assert (int(pid), name) == (os.getpid(), "python3") and started == host._started(os.getpid())
+    assert len(started.split()) == 5, started     # `ps`'s lstart: day, month, date, time, year
 
 
 def test_a_ledger_no_launch_wrote_records_nothing(tmp_path: Path) -> None:
@@ -395,6 +418,13 @@ def test_a_close_that_raises_still_proves_and_a_proof_that_cannot_read_the_host_
     line = run.close(raises)
     assert line.startswith("FAIL  the end check could not read this host's processes")
     assert any("closing the machine raised RuntimeError: stub hung" in s for s in _said(run))
+
+
+def test_an_end_whose_ledger_recorded_nothing_is_invalid_not_clean(
+        run: host.LiveRun, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(host, "canary", lambda _argv: "")
+    run.begin(["x"], "MAME")
+    assert run.close(lambda: None).startswith("INVALID  the ledger recorded no emulator launch")
 
 
 def test_a_clean_end_says_how_many_it_recorded(run: host.LiveRun,

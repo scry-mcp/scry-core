@@ -468,11 +468,7 @@ def export(recorder: Recorder, path: str, overwrite: bool = False) -> dict[str, 
                          else f"{len(out.dropped)} calls, every one dropped"))
     data = (json.dumps(doc, indent=2) + "\n").encode()
     if overwrite and os.path.lexists(target):
-        # A NEW FILE BESIDE IT, then moved over it: a write that fails leaves the old one whole.
-        beside = target.with_name(f".{target.name}.new")
-        beside.unlink(missing_ok=True)
-        fresh.create(beside, data, "the replay document")
-        os.replace(beside, target)
+        fresh.replace(target, data, "the replay document")
     else:
         fresh.create(target, data, "the replay document", named_by_caller=True)
     return {"path": str(target), "steps": len(out.steps), "checks": out.checks,
