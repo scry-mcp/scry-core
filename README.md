@@ -19,6 +19,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.probe` | what a model calls when all it holds is what the client delivers |
 | `scry_core.probe_checks` | what each server's suite checks on its own probe surface: tasks, captures, the cap |
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
+| `scry_core.live_host` | the host a live tier runs on: a canary that refuses one which cannot start the emulator, the ledger that proves no emulator outlived a run, and the run's scratch left as its verdict says |
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, and the probe's tasks |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, and the README block they generate |
 | `scry_core.recording` | a session as a bench: what a server did, recorded from its `start` through its call boundary, and exported as `perform`'s own document (`perform_export`); the check a replayed step holds to |
