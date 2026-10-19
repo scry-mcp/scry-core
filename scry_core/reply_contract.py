@@ -7,21 +7,24 @@ THE CONTRACT. Every reply carries `status`: `ok`, or `INVALID` when the tool exa
 or cannot vouch for what it examined. An INVALID carries `code` (one word from the table
 below, for a program) and `message` (the prose, for a person), flat, with whatever context
 the refusal has beside them (`last_stop`, `posted`, `route`, `control_hits`...). `verdict`
-is a MEASUREMENT's word (`TARGET`, `TIMEOUT`, `ELAPSED`, `OTHER_STOP`) and never a refusal's,
+is a MEASUREMENT's word (`VERDICTS`) and never a refusal's,
 and `why` is a row's or a field's reason, never a refusal's prose, so a refusal carries neither
 at its top level; `reason` and `cause`, the spellings `message` replaced, are refused there
-too, so a reader cannot be handed two dialects.
+too, so a reader cannot be handed two dialects. NO REPLY CARRIES A NULL: a datum that could
+not be read, or does not apply, is `unavailable(why)` in its place, so a reader finds the reason
+where it looked for the value.
 
 WHY A CLASS. A convention lives in the reader's memory and a grep; the class refuses a code
 outside the table, an empty message and a reserved field WHERE THEY ARE WRITTEN, as a
 programmer's error that escapes as an execution failure, so a malformed refusal can never
 reach a caller looking like a verdict. `check_envelope` is the same guard on the built reply,
-called by each server's envelope function.
+called by each server's envelope function, and it refuses an `ok` reply whose `verdict` is not
+one of the measurements' words.
 
-THE TABLE, one word per concept. What separates a
-refusal from its neighbour is what the CALLER does next: an observation about the guest
-(`wait_expired`, `control_silent`) is a measurement to report; a broken instrument
-(`session_broken`, `host_failed`, `unexpected_answer`) is one to fix before reporting anything.
+THE TABLE, one word per concept. What separates a refusal from its neighbour is what the
+CALLER does next: an observation about the guest (`wait_expired`, `control_silent`) is a
+measurement to report; a broken instrument (`session_broken`, `host_failed`,
+`unexpected_answer`) is one to fix before reporting anything.
 """
 
 from __future__ import annotations
@@ -29,10 +32,10 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Literal, get_args
+from typing import Any, Literal, TypeVar, get_args
 
 #: The contract's version: a consumer can assert the contract it was written against.
-CONTRACT_VERSION = 5
+CONTRACT_VERSION = 6
 
 Code = Literal[
     "no_session",         # no live machine: `start` first
@@ -72,6 +75,32 @@ CODES: frozenset[str] = frozenset(get_args(Code))
 NOT_A_REFUSALS_WORDS: frozenset[str] = frozenset({"verdict", "why", "reason", "cause"})
 RESERVED: frozenset[str] = frozenset({"summary", "status", "code", "message", "session"}
                                      | NOT_A_REFUSALS_WORDS)
+
+
+# A MEASUREMENT'S WORDS: what a wait waited for came (`TARGET`), its bound ran out (`TIMEOUT`), a
+# stop it did not ask for ended it (`OTHER_STOP`), a run by time ran its course (`ELAPSED`). The
+# servers spell them through these names, so a typo is a name error rather than a fifth word.
+Verdict = Literal["TARGET", "TIMEOUT", "OTHER_STOP", "ELAPSED"]
+VERDICTS: frozenset[str] = frozenset(get_args(Verdict))
+TARGET: Verdict = "TARGET"
+TIMEOUT: Verdict = "TIMEOUT"
+OTHER_STOP: Verdict = "OTHER_STOP"
+ELAPSED: Verdict = "ELAPSED"
+
+_T = TypeVar("_T")
+
+
+def unavailable(why: str) -> dict[str, Any]:
+    """A datum that could not be read, or does not apply, in place of its value: never a null
+    beside a sibling key, so a reader finds the reason where it looked for the value."""
+    if not isinstance(why, str) or not why.strip():
+        raise TypeError(f"an unread datum says why; got {why!r}")
+    return {"available": False, "why": why}
+
+
+def or_unavailable(value: _T | None, why: str) -> _T | dict[str, Any]:
+    """`value`, or `unavailable(why)` when there is none."""
+    return unavailable(why) if value is None else value
 
 
 class Invalid(Exception):
@@ -125,13 +154,44 @@ def check_envelope(reply: dict[str, Any]) -> dict[str, Any]:
                             f"word and its prose live in `code` and `message`")
     elif "code" in reply or "message" in reply:
         raise TypeError("an `ok` reply carries `code` or `message`, which are a refusal's")
+    elif "verdict" in reply and not (isinstance(reply["verdict"], str)
+                                     and reply["verdict"] in VERDICTS):
+        raise TypeError(f"{reply['verdict']!r} is not a verdict; the measurements' words are "
+                        f"{sorted(VERDICTS)}")
     return reply
 
 
 # ------------------------------------------------------------- the contract's own audit
 #
-# Two checks every server's suite runs, kept HERE so the two suites cannot drift apart in
-# what they hold a refusal to: the shape of a built reply, and the codes written in a tree.
+# Checks every server's suite runs, kept HERE so the suites cannot drift apart in what they hold
+# a reply to: a refusal's shape, a reply's nulls, and the codes written in a tree.
+
+
+def nulls_in(value: Any) -> list[str]:
+    """Every null in a reply, each named by the path a reader follows to it (`rows[0].x`), in
+    the order the reply lists them; a reply that is itself null is `(the reply)`."""
+    return ["(the reply)"] if value is None else _nulls_at(value, "")
+
+
+def _nulls_at(value: Any, at: str) -> list[str]:
+    if value is None:
+        return [at]
+    found: list[str] = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            found += _nulls_at(item, f"{at}.{key}" if at else str(key))
+    elif isinstance(value, list | tuple):
+        for i, item in enumerate(value):
+            found += _nulls_at(item, f"{at}[{i}]")
+    return found
+
+
+def check_no_null(name: str, reply: dict[str, Any]) -> None:
+    """Raises AssertionError naming the tool and every null's path, so a suite that runs this on
+    every reply it builds reads one failure per tool."""
+    found = nulls_in(reply)
+    if found:
+        raise AssertionError(f"{name}: a null at {found}: {reply}")
 
 
 def check_refusal(name: str, reply: dict[str, Any], code: str | None = None) -> None:

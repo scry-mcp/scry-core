@@ -103,3 +103,58 @@ def test_the_envelope_passes_a_well_formed_reply_and_a_refusal_keeps_its_order()
     assert list(bad) == ["status", "code", "message", "control_hits"]
     assert contract.Invalid("no_session", "m", a=1).reply(b=2) == {
         "status": "INVALID", "code": "no_session", "message": "m", "a": 1, "b": 2}
+
+
+def test_an_unavailable_datum_is_one_shape_and_says_why() -> None:
+    """The one spelling of a datum that could not be read or does not apply, and a blank
+    reason is a programmer's error, refused as the contract refuses its other ones."""
+    assert contract.unavailable("no counter") == {"available": False, "why": "no counter"}
+    assert contract.or_unavailable(None, "none given") == {"available": False,
+                                                            "why": "none given"}
+    assert contract.or_unavailable(0, "never said") == 0
+    assert contract.or_unavailable("", "never said") == ""
+    with pytest.raises(TypeError, match="says why"):
+        contract.unavailable("  ")
+    with pytest.raises(TypeError, match="says why"):
+        contract.unavailable(None)  # type: ignore[arg-type]
+
+
+def test_a_verdict_is_one_word_of_the_measurements() -> None:
+    """`verdict` is a measurement's word, and the four are the table's: a reply carrying
+    another at its top is refused where it is built, as a refusal's code is."""
+    assert frozenset({"TARGET", "TIMEOUT", "OTHER_STOP", "ELAPSED"}) == contract.VERDICTS
+    assert (contract.TARGET, contract.TIMEOUT, contract.OTHER_STOP, contract.ELAPSED) == (
+        "TARGET", "TIMEOUT", "OTHER_STOP", "ELAPSED")
+    with pytest.raises(TypeError, match="not a verdict"):
+        contract.check_envelope({"status": "ok", "verdict": "EXPIRED"})
+    for word in (None, "target", "", ["TARGET"], {"available": False, "why": "x"}):
+        with pytest.raises(TypeError, match="not a verdict"):
+            contract.check_envelope({"status": "ok", "verdict": word})
+    for word in sorted(contract.VERDICTS):
+        contract.check_envelope({"status": "ok", "verdict": word})
+    with pytest.raises(TypeError, match=r"carries \['verdict'\]"):
+        contract.check_envelope({"status": "INVALID", "code": "wait_expired", "message": "m",
+                                 "verdict": "TIMEOUT"})
+
+
+@pytest.mark.parametrize(("reply", "paths"), [
+    ({"a": 1, "b": "x", "c": [1, {"d": False}]}, []),
+    ({"a": None}, ["a"]),
+    ({"a": {"b": [0, None]}}, ["a.b[1]"]),
+    ({"rows": [{"x": None}, {"y": {"z": None}}]}, ["rows[0].x", "rows[1].y.z"]),
+    ([None], ["[0]"]),
+    ({"t": (1, None)}, ["t[1]"]),
+    (None, ["(the reply)"]),
+])
+def test_the_null_walker_names_every_null_by_its_path(reply: Any, paths: list[str]) -> None:
+    """A null anywhere in a reply, a row of a list or a block inside a block included, is
+    named by the path a reader would follow to it, so a suite that walks every reply can
+    say which key of which tool broke the rule."""
+    assert contract.nulls_in(reply) == paths
+
+
+def test_check_no_null_names_the_tool_and_every_path() -> None:
+    """The check passes a reply with no null and names the tool and each path otherwise."""
+    contract.check_no_null("status", {"status": "ok", "session": {"alive": False}})
+    with pytest.raises(AssertionError, match=r"resume: a null at \['stopped_at', 'x\.y'\]"):
+        contract.check_no_null("resume", {"stopped_at": None, "x": {"y": None}})
