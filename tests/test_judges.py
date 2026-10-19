@@ -7,6 +7,7 @@ import hashlib
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -98,3 +99,17 @@ def test_a_name_too_long_to_look_at_is_refused_not_raised(tmp_path: Path) -> Non
         judges.writable_file("dest", str(tmp_path / ("x" * 300) / "y"))
     assert e.value.code == "bad_argument"
     assert judges.fresh_file("dest", str(tmp_path / ("x" * 300))).name == "x" * 300
+
+
+@pytest.mark.parametrize(("judge", "method"), [(judges.writable_file, "is_dir"),
+                                               (judges.fresh_file, "is_dir"),
+                                               (judges.fresh_file, "exists")])
+def test_a_path_the_filesystem_will_not_look_at_is_refused_not_raised(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, judge: Any, method: str) -> None:
+    """Before Python 3.14 `exists` and `is_dir` raise on EACCES rather than answering False."""
+    def denied(self: Path, *a: Any, **k: Any) -> bool:
+        raise PermissionError(13, "Permission denied", str(self))
+    monkeypatch.setattr(Path, method, denied)
+    with pytest.raises(Invalid, match="cannot be looked at: .*Permission denied") as e:
+        judge("dest", str(tmp_path / "x.png"))
+    assert e.value.code == "bad_argument"

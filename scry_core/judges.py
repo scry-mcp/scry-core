@@ -79,10 +79,15 @@ def absolute(name: str, value: object, **fields: Any) -> Path:
 
 def writable_file(name: str, value: object, **fields: Any) -> Path:
     """A file a tool is about to write, which may be there: `absolute`, and its directory is
-    one, or the refusal naming `name`. (`is_dir` and `exists` answer False for a path the
-    filesystem cannot look at, so such a path is refused here too, never raised.)"""
+    one, or the refusal naming `name`. A path the filesystem will not look at is refused the
+    same way, never raised: before Python 3.14 `exists` and `is_dir` raise on EACCES."""
     path = absolute(name, value, **fields)
-    if not path.parent.is_dir():
+    try:
+        there = path.parent.is_dir()
+    except OSError as e:
+        raise Invalid("bad_argument", f"{name}: {path} cannot be looked at: {e}",
+                      **fields) from None
+    if not there:
         raise Invalid("bad_argument", f"{name}: {path.parent} is not a directory, so "
                       f"{path.name} has nowhere to go", **fields)
     return path
@@ -92,7 +97,12 @@ def fresh_file(name: str, value: object, **fields: Any) -> Path:
     """A file a tool is about to create: `writable_file`, and nothing at it yet, a link that
     points nowhere included (it is something there, and a writer would follow it)."""
     path = writable_file(name, value, **fields)
-    if path.exists() or path.is_symlink():
+    try:
+        taken = path.exists() or path.is_symlink()
+    except OSError as e:
+        raise Invalid("bad_argument", f"{name}: {path} cannot be looked at: {e}",
+                      **fields) from None
+    if taken:
         raise Invalid("bad_argument", f"{name}: {path} already exists. This will not overwrite "
                       "it: name a path that is not there yet", **fields)
     return path
