@@ -51,7 +51,10 @@ def launched() -> Iterator[list[subprocess.Popen[bytes]]]:
 
 
 @pytest.fixture(autouse=True)
-def quick(monkeypatch: pytest.MonkeyPatch) -> None:
+def quick(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Short leaving bounds, nothing a run sets left in the environment, and the host's
+    temporary directory the case's own, so a canary's working directory never lands outside."""
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
     monkeypatch.setattr(host, "LEAVE_S", 2.0)
     monkeypatch.delenv(host.LEDGER_VAR, raising=False)
     monkeypatch.delenv(host.SCRATCH_VAR, raising=False)
@@ -61,8 +64,7 @@ def quick(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_a_canary_that_ends_by_itself_answers_nothing_and_leaves_no_directory(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+        tmp_path: Path) -> None:
     # It writes where it runs, as an emulator writes its configuration.
     assert host.canary(_py("open('emulator.cfg', 'w').close()")) == ""
     assert list(tmp_path.iterdir()) == []
