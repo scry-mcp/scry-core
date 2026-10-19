@@ -19,7 +19,7 @@ SECTION = "### A long wait, and a cancelled call"
 _ROW = re.compile(r"^\| `(\w+)` \|.*\| (.*) \|\s*$", re.MULTILINE)
 
 
-def unlike(reference: str, declared: Mapping[str, cancel.OnCancel | None]
+def unlike(reference: str, declared: Mapping[str, cancel.OnCancel]
            ) -> dict[str, dict[str, list[str]]]:
     """Where the table and the declarations disagree, per end: `table_only` (named in its row,
     declared otherwise) and `declared_only`; empty when they agree. A reference with no section,
@@ -42,8 +42,7 @@ def unlike(reference: str, declared: Mapping[str, cancel.OnCancel | None]
         raise ValueError(f"the section {SECTION!r} holds no table of ends")
     by_end: dict[str, set[str]] = {}
     for tool, end in declared.items():
-        if end is not None:
-            by_end.setdefault(end, set()).add(tool)
+        by_end.setdefault(end, set()).add(tool)
     apart = {end: {"table_only": sorted(rows.get(end, set()) - by_end.get(end, set())),
                    "declared_only": sorted(by_end.get(end, set()) - rows.get(end, set()))}
              for end in rows.keys() | by_end.keys()}

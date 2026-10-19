@@ -61,6 +61,8 @@ from mcp.client import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult
 
+from scry_core import prose
+
 EXIT_OK, EXIT_FAILED, EXIT_INVALID = 0, 1, 3
 
 BEGIN = "<!-- demo-transcript:begin -->"
@@ -155,26 +157,30 @@ class Step:
     options: bool | frozenset[str] = False
     volatile: Mapping[str, str] = field(default_factory=dict)
     failure: Callable[[Reply, Run], str] | None = None
+    #: An exception in the CALL itself (a timeout, a server gone mid-call) is this step's
+    #: INVALID rather than its FAIL: what a runner sets where only a step that failed in the
+    #: server's own words is a verdict.
+    broken_is_invalid: bool = False
 
 
 @dataclass(frozen=True)
 class Demo:
     """A demo as its `demo.py` declares it. `server` is the command that starts the server and
     `root` the repository it runs in. `offers` names the options of `OFFERABLE` the demo accepts,
-    and `reads` those it reads from `run.options` itself rather than a step merging them.
-    `capture` is the image `--update-readme` copies, a file in `run.dir` that one
-    step writes. `precheck` answers why the demo cannot run at all, or an empty string. `volatile`
-    adds reply keys to `VOLATILE`, each with its reason; `host_args` names the argument keys whose
-    values are the host's own rather than the demo's, each with its reason. `verdict` words the
-    last line from the steps declared and those OK, `DEMO <name>: <n> steps, <k> OK` unless
-    given."""
+    and `reads` those it reads from `run.options` itself rather than a step merging them. `readme`
+    is the README whose block `--update-readme` rewrites and `capture` the image it copies, a file
+    in `run.dir` that one step writes; a runner of another shape has neither. `precheck` answers why
+    the demo cannot run at all, or an empty string. `volatile` adds reply keys to `VOLATILE`, each
+    with its reason; `host_args` names the argument keys whose values are the host's own rather than
+    the demo's, each with its reason. `verdict` words the last line from the steps declared and
+    those OK, `DEMO <name>: <n> steps, <k> OK` unless given."""
 
     name: str
     root: Path
     server: Sequence[str]
-    readme: Path
     steps: Sequence[Step]
-    capture: Callable[[Run], Path]
+    readme: Path | None = None
+    capture: Callable[[Run], Path] | None = None
     offers: frozenset[str] = frozenset()
     precheck: Callable[[Run], str] | None = None
     volatile: Mapping[str, str] = field(default_factory=dict)
@@ -403,7 +409,7 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                 return out
     if out.code != EXIT_INVALID:              # an INVALID line is the run's last word
         out.lines.append(demo.verdict(len(demo.steps), passed) if demo.verdict else
-                         f"DEMO {demo.name}: {len(demo.steps)} steps, {passed} OK")
+                         f"DEMO {demo.name}: {prose.counted(len(demo.steps), 'step')}, {passed} OK")
     return out
 
 
@@ -431,8 +437,11 @@ async def _step(client: Client, step: Step, run: Run
         return True, f"OK {step.name}: {_one_line(summary)}", args, reply
     except Invalid as e:  # the step found that nothing could be demonstrated
         return False, f"INVALID {step.name}: {_one_line(str(e))}", args, reply
-    except Exception as e:  # every failure inside a step is that step's FAIL
+    except StepFailed as e:  # the reply was not the one asked for
         return False, f"FAIL {step.name}: {_why(e)}", args, reply
+    except Exception as e:  # every other failure inside a step is that step's FAIL
+        kind = "INVALID" if step.broken_is_invalid and reply is None else "FAIL"
+        return False, f"{kind} {step.name}: {_why(e)}", args, reply
 
 
 async def _cleanup(client: Client, out: Outcome) -> None:
@@ -525,13 +534,16 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
         raise Invalid(f"options {sorted(untaken)} were given and nothing in the demo "
                       f"{demo.name} takes them")
     if update_readme:
+        if demo.readme is None or demo.capture is None:
+            raise _no_readme(demo)
         block_span(demo.readme.read_text(encoding="utf-8"))
     why = demo.precheck(run) if demo.precheck else ""
     if why:
         raise Invalid(why)
     run.dir.mkdir(parents=True, exist_ok=True)
-    capture = demo.capture(run)
-    capture.unlink(missing_ok=True)  # only a picture THIS run wrote may reach the README
+    capture = demo.capture(run) if demo.capture is not None else None
+    if capture is not None:
+        capture.unlink(missing_ok=True)  # only a picture THIS run wrote may reach the README
     norm = Normaliser(demo.root.resolve(), Path.home().resolve(),
                       {**VOLATILE, **demo.volatile}, demo.host_args)
     out = asyncio.run(_drive(demo, run, run.dir / "server.stderr", norm))
@@ -544,12 +556,18 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
     if out.transcripts.whole:
         print(f"transcript: {transcript}")
         print(f"normalised: {normalised}")
-    if out.code == EXIT_OK and update_readme:
+    if out.code == EXIT_OK and update_readme and capture is not None:
         _update_readme(demo, capture, normalised)
     return out.code
 
 
+def _no_readme(demo: Demo) -> Invalid:
+    return Invalid(f"the demo {demo.name} has no README block to update")
+
+
 def _update_readme(demo: Demo, capture: Path, normalised: Path) -> None:
+    if demo.readme is None:
+        raise _no_readme(demo)
     if not capture.is_file():
         raise Invalid(f"the capture {capture} was not written by this run, so the README was "
                       "left as it was")

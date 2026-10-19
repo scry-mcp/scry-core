@@ -1,6 +1,6 @@
 [project]
 name = "scry-core"
-version = "0.19.0"
+version = "0.20.0"
 description = "What the Scry emulator MCP servers share: the reply contract, the probe, the live bench and the pre-commit"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -56,7 +56,7 @@ testpaths = ["tests"]
 # `--no-cov` for one of those. `pytester` runs the shape guard on suites of the test's own.
 addopts = "--cov -p pytester"
 # The core's own anchor: the contract every server's envelope goes through.
-reply_shapes_anchors = ["scry_core.reply_contract"]
+reply_shapes_anchors = ["scry_core.reply_contract", "scry_core.boundary"]
 
 [tool.coverage.run]
 branch = true

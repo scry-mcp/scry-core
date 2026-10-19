@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from scry_core import ends_table
+from scry_core import cancel, ends_table
 
 TABLE = """### A long wait, and a cancelled call
 
@@ -12,17 +12,19 @@ TABLE = """### A long wait, and a cancelled call
 |---|---|---|
 | `stop` | stopped, `BREAK` typed | `run`, `trace` |
 | `kill` | closed | `start` |
+| `none` | as it was: every tool that declares no other end | `read` |
 | `later` | not an end this contract knows, so not a row of the table | `start` |
 
 ## Next section
 
-| `none` | not this table's | `read` |
+| `none` | not this table's | `other` |
 """
-DECLARED = {"run": "stop", "trace": "stop", "start": "kill", "read": None}
+DECLARED: dict[str, cancel.OnCancel] = {"run": "stop", "trace": "stop", "start": "kill",
+                                        "read": "none"}
 
 
 def test_a_table_that_is_the_declarations_agrees() -> None:
-    assert ends_table.unlike(TABLE, DECLARED) == {}  # type: ignore[arg-type]
+    assert ends_table.unlike(TABLE, DECLARED) == {}
 
 
 @pytest.mark.parametrize("table, want", [
@@ -33,7 +35,7 @@ def test_a_table_that_is_the_declarations_agrees() -> None:
     (TABLE.replace("| `kill` | closed | `start` |", "| `kill` | closed | `start` |   "), {}),
 ])
 def test_each_side_of_a_disagreement_is_named(table: str, want: object) -> None:
-    assert ends_table.unlike(table, DECLARED) == want  # type: ignore[arg-type]
+    assert ends_table.unlike(table, DECLARED) == want
 
 
 @pytest.mark.parametrize("reference, says", [
@@ -43,4 +45,13 @@ def test_each_side_of_a_disagreement_is_named(table: str, want: object) -> None:
 ])
 def test_a_reference_that_cannot_be_compared_is_refused(reference: str, says: str) -> None:
     with pytest.raises(ValueError, match=says):
-        ends_table.unlike(reference, DECLARED)  # type: ignore[arg-type]
+        ends_table.unlike(reference, DECLARED)
+
+
+def test_a_tool_that_declares_no_end_is_a_row_of_none_like_any_other() -> None:
+    """Every tool ends one way, so the table names every one: an undeclared tool ends `none`, and
+    a table whose `none` row forgets it is told so."""
+    table = TABLE.replace("| `none` | as it was: every tool that declares no other end | `read` |",
+                          "| `none` | as it was | |")
+    assert ends_table.unlike(table, DECLARED) == {
+        "none": {"table_only": [], "declared_only": ["read"]}}

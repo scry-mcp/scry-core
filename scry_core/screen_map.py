@@ -44,7 +44,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from scry_core import fresh, judges, raster
+from scry_core import fresh, judges, prose, raster
 from scry_core.reply_contract import Invalid
 
 FORMAT = "scry-map/1"
@@ -394,35 +394,31 @@ def _keys(obj: dict[str, Any], allowed: set[str], at: str) -> None:
                       f"have (it has {sorted(allowed)})")
 
 
-def counted(n: int, word: str) -> str:
-    return f"{n} {word}{'' if n == 1 else 's'}"
-
-
 def load_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    return (f"map_load: {counted(reply['screens'], 'screen')}, "
-            f"{counted(reply['controls'], 'control')} of {reply['application']}")
+    return (f"map_load: {prose.counted(reply['screens'], 'screen')}, "
+            f"{prose.counted(reply['controls'], 'control')} of {reply['application']}")
 
 
 def add_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     w, h = reply["size"]
     shadow = ", shadowing the file's" if reply["shadows_file"] else ""
     return (f"map_add: {reply['screen']} ({reply['kind']} {w}x{h}), "
-            f"{counted(len(reply['match']), 'region')}, "
-            f"{counted(reply['controls'], 'control')}{shadow}")
+            f"{prose.counted(len(reply['match']), 'region')}, "
+            f"{prose.counted(reply['controls'], 'control')}{shadow}")
 
 
 def find_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     if reply["matched"]:
         return (f"map_find: {reply['screen']} ({reply['layer']}), "
-                f"{counted(len(reply['controls']), 'control')}")
+                f"{prose.counted(len(reply['controls']), 'control')}")
     w, h = reply["size"]
     return (f"map_find: no screen matched the {reply['kind']} {w}x{h} screen "
-            f"({counted(reply['screens_mapped'], 'screen')} mapped, "
+            f"({prose.counted(reply['screens_mapped'], 'screen')} mapped, "
             f"{reply['screens_tried']} of that kind and size)")
 
 
 def save_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    return (f"map_save: {counted(reply['screens'], 'screen')} to {Path(reply['path']).name}, "
+    return (f"map_save: {prose.counted(reply['screens'], 'screen')} to {Path(reply['path']).name}, "
             f"{len(reply['promoted'])} promoted from the session")
 
 

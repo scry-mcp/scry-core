@@ -50,7 +50,7 @@ from scry_core.reply_shapes import ANCHORS_INI
 SHAPES: dict[str, type] = {"truncated": bool}
 
 Envelope = Callable[[dict[str, Any]], dict[str, Any]]
-Summary = Callable[[str, dict[str, Any], dict[str, Any]], str]
+Summary = Callable[..., str]
 Factory = Callable[[Any], Any]
 
 # THE TWO ANCHORS, AND WHY ONE IS NOT ENOUGH.
@@ -60,9 +60,9 @@ Factory = Callable[[Any], Any]
 # return a dict that never went through the envelope, and a tool may bolt fields onto a reply
 # the envelope already passed.
 #
-# `_summary` is the TOOL BOUNDARY: the servers' decorator calls it once per call with the
-# reply COMPLETE, then hands that same reply back with the summary line in front. Nothing a
-# caller receives gets past it, whatever route it took to be built.
+# `_summary` is the TOOL BOUNDARY (`scry_core.boundary._summary`): the boundary calls it once per
+# call with the reply COMPLETE, then hands that same reply back with the summary line in front.
+# Nothing a caller receives gets past it, whatever route it took to be built.
 #
 # A DECLARED MODULE IS WRAPPED ON EACH ANCHOR IT DEFINES: the contract, a module that imported
 # `check_envelope` under its own name (which binds a second name the wrap has to reach), a server.
@@ -111,9 +111,9 @@ def _wrap_envelope(original: Envelope) -> Envelope:
 def _wrap_summary(original: Summary) -> Summary:
     """The reply as the CALLER receives it, judged before the summary line is composed from
     it."""
-    def checked(name: str, args: dict[str, Any], reply: dict[str, Any]) -> str:
+    def checked(name: str, args: dict[str, Any], reply: dict[str, Any], *rest: Any) -> str:
         _judge(reply, f"{name}'s reply")
-        return original(name, args, reply)
+        return original(name, args, reply, *rest)
     return checked
 
 
@@ -198,9 +198,8 @@ def one_word_one_shape(config: pytest.Config) -> Iterator[None]:
                 # THROUGH THE MODULE ATTRIBUTE AND NOT THROUGH `probe`: calling the closure
                 # proves the closure works and says nothing about whether the assignment above
                 # landed where the code reads it, which is the only thing this check is for. The
-                # summary's probe reply declares itself INVALID because each server's `_summary`
-                # answers a refusal from its first lines, so it cannot reach a tool-specific branch
-                # or touch state.
+                # summary's probe reply declares itself INVALID and names no boundary, so it reaches
+                # no tool's line and touches no state.
                 getattr(mod, attr)(*probe_args)
                 if key not in fired:
                     raise RuntimeError(f"the shape guard did not take on {name}.{attr}: this run "

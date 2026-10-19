@@ -1,11 +1,15 @@
 """THE RUNNER of a replay document (`scry_core.recording` writes it): `python -m scry_core.replay
 <document> [--binary PATH] [--rompath DIR] [--transcript PATH]`, from the server's repository,
-with no model. It starts the server over stdio, calls `start` with the document's arguments and
-the options given, checks that every saved state the document loads is there, plays the steps in
-one `perform`, and closes. It is `scry_core.demo`'s machinery with the document as its steps, and
-inherits its exit codes: 0 every step held, 1 a step diverged or failed, 2 usage, 3 nothing was
-demonstrated (a document that is not one, a start the server refused, a saved state it lacks, a
-server that did not start).
+with no model. It starts the server the document names (`entry`, a file of the repository it runs
+from) over stdio, calls `start` with the document's arguments and the options given, checks that
+the store declares what the recorded start found declared and that every saved state the document
+loads is there, plays the steps in one `perform`, and closes. It is `scry_core.demo`'s machinery
+with the document as its steps, and inherits its exit codes: 0 every step held, 1 a step failed
+or diverged in the server's own words, or the server said it held a number of steps the document
+does not record, 2 usage, 3 nothing was demonstrated (a document that is not one, or that records
+nothing a step holds to; a start the server refused; other declarations, or a saved state it
+lacks; a server that did not start, or broke: a call that raised or timed out, an error result,
+a list it refused whole).
 """
 
 from __future__ import annotations
@@ -17,11 +21,12 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from scry_core import demo
+from scry_core import demo, prose
 from scry_core.recording import DOCUMENT_VERSION, RECORDED
 
-#: Each server's command, from its repository's root.
-SERVERS: Mapping[str, str] = {"mame": "server.py", "dosbox-x": "dosbox_x_server.py"}
+#: The codes of a `perform` that answered in its own words about a step: a verdict (1), where any
+#: other refusal of the list is the server's failure to play it (3).
+STEP_CODES = frozenset({"step_failed", "diverged"})
 
 
 def _read(path: Path) -> dict[str, Any]:
@@ -31,34 +36,66 @@ def _read(path: Path) -> dict[str, Any]:
         raise demo.Invalid(f"{path} is not a readable document: {e}") from None
     if not isinstance(doc, dict) or doc.get("version") != DOCUMENT_VERSION:
         raise demo.Invalid(f"{path} is not a version {DOCUMENT_VERSION} replay document")
-    if doc.get("server") not in SERVERS:
-        raise demo.Invalid(f"{path} names server {doc.get('server')!r}; this runner knows "
-                           f"{sorted(SERVERS)}")
+    entry = doc.get("entry")
+    if not (isinstance(entry, str) and entry and Path(entry).name == entry
+            and entry.endswith(".py")):
+        raise demo.Invalid(f"{path} names no server entry file (`entry`, a `.py` file of the "
+                           "repository the replay runs from)")
     steps, start, needs = doc.get("steps"), doc.get("start", {}), doc.get("needs", {})
     if not isinstance(steps, list) or not steps or not all(isinstance(s, dict) for s in steps):
         raise demo.Invalid(f"{path} holds no steps, or one that is not an object, so a replay "
                            "would demonstrate nothing")
     states = needs.get("states", []) if isinstance(needs, dict) else None
-    if not isinstance(start, dict) or not (
-            isinstance(states, list) and all(isinstance(s, str) for s in states)):
-        raise demo.Invalid(f"{path}: `start` is an object of arguments and `needs.states` a list "
-                           "of state names")
+    declared = needs.get("declarations", []) if isinstance(needs, dict) else None
+    if not isinstance(start, dict) or not all(
+            isinstance(x, list) and all(isinstance(s, str) for s in x)
+            for x in (states, declared)):
+        raise demo.Invalid(f"{path}: `start` is an object of arguments, and `needs.states` and "
+                           "`needs.declarations` lists of names")
+    if not any(s.get(RECORDED) for s in steps):
+        raise demo.Invalid(f"{path}: no step carries `{RECORDED}`, so a replay would hold "
+                           "nothing to anything: nothing held to")
     return doc
 
 
 def _needs(states: Sequence[str]) -> Callable[[demo.Reply, demo.Run], str]:
     def check(reply: demo.Reply, run: demo.Run) -> str:
-        have = {s.get("name") for s in reply.get("states", []) if isinstance(s, dict)}
+        listed = reply.get("states")
+        if not isinstance(listed, list):
+            raise demo.Invalid(f"the server's `state_list` answered no list: {reply}")
+        have = {s.get("name") for s in listed if isinstance(s, dict)}
         missing = [s for s in states if s not in have]
         if missing:
             raise demo.Invalid(f"the document loads saved states the server does not have: "
                                f"{missing}")
-        return f"{len(states)} saved states the document loads, all there"
+        return f"{prose.counted(len(states), 'saved state')} the document loads, all there"
     return check
 
 
 def _refused_start(reply: demo.Reply, run: demo.Run) -> str:
     raise demo.Invalid(f"the server refused the start: {reply.get('summary') or reply}")
+
+
+def _broke(reply: demo.Reply, run: demo.Run) -> str:
+    """A call around the steps the server did not answer: no verdict about the steps."""
+    raise demo.Invalid(f"the server did not answer: {reply.get('summary') or reply}")
+
+
+def _declarations(recorded: Sequence[str]) -> Callable[[demo.Reply, demo.Run], str]:
+    """The store's declarations as the replay starts, against the recorded start's: a replay
+    armed otherwise would stop where the session did not, which is no verdict about it."""
+    def check(reply: demo.Reply, run: demo.Run) -> str:
+        have: list[str] = []
+        for name, key in (("breakpoint_list", "breakpoints"), ("watch_list", "watches")):
+            listed = run.replies[name].get(key) if name in run.replies else None
+            have += [str(r["ref"]) for r in listed or [] if isinstance(r, dict) and "ref" in r]
+        have.sort()
+        want = sorted(recorded)
+        if have != want:
+            raise demo.Invalid(f"the store declares {have} where the recorded session's start "
+                               f"found {want}: clear or declare those first")
+        return f"{prose.counted(len(want), 'declaration')}, as the recorded start found them"
+    return check
 
 
 def _played(steps: Sequence[Mapping[str, Any]]) -> Callable[[demo.Reply, demo.Run], str]:
@@ -70,12 +107,19 @@ def _played(steps: Sequence[Mapping[str, Any]]) -> Callable[[demo.Reply, demo.Ru
         if done != len(steps):         # an ok list can end early (a wait ran out): not a hold
             why = reply.get("note") or reply.get("verdict") or "no reason given"
             raise demo.StepFailed(f"{done} of {len(steps)} steps ran: {why}")
-        return f"{done} steps, {held} holding to a recorded answer"
+        if reply.get("held") != held:  # the server's own count, held to the document's
+            raise demo.StepFailed(f"the server says {reply.get('held')!r} steps held to their "
+                                  f"recorded answer and the document records {held}")
+        return f"{prose.counted(int(done), 'step')}, {held} holding to a recorded answer"
     return line
 
 
 def _failed(steps: Sequence[Mapping[str, Any]]) -> Callable[[demo.Reply, demo.Run], str]:
     def why(reply: demo.Reply, run: demo.Run) -> str:
+        if reply.get("code") not in STEP_CODES:
+            # An error result, or a list refused whole: the server did not play it.
+            raise demo.Invalid(f"the server did not play the list: "
+                               f"{reply.get('message') or reply.get('summary') or reply}")
         at = reply.get("failed_at")
         op, where = "?", f"step {at}"
         if isinstance(at, int) and 0 <= at < len(steps):
@@ -91,19 +135,26 @@ def _failed(steps: Sequence[Mapping[str, Any]]) -> Callable[[demo.Reply, demo.Ru
 def build(doc: dict[str, Any], root: Path, name: str) -> demo.Demo:
     """The document as a demo of its server: start, the states it needs, the steps, close."""
     steps = doc["steps"]
-    states = list((doc.get("needs") or {}).get("states") or [])
+    needs = doc.get("needs") or {}
+    states, declared = list(needs.get("states") or []), list(needs.get("declarations") or [])
     plan: list[demo.Step] = [demo.Step("start", "start", dict(doc.get("start") or {}),
                                        lambda r, run: str(r.get("summary", "started")),
-                                       options=True, failure=_refused_start)]
+                                       options=True, failure=_refused_start,
+                                       broken_is_invalid=True)]
+    plan += [demo.Step("breakpoint_list", "breakpoint_list", {},
+                       lambda r, run: "read", failure=_broke, broken_is_invalid=True),
+             demo.Step("watch_list", "watch_list", {}, _declarations(declared),
+                       failure=_broke, broken_is_invalid=True)]
     if states:
-        plan.append(demo.Step("states", "state_list", {}, _needs(states)))
+        plan.append(demo.Step("states", "state_list", {}, _needs(states), failure=_broke,
+                              broken_is_invalid=True))
     plan += [demo.Step("perform", "perform", {"steps": steps, "summaries": True},
-                       _played(steps), failure=_failed(steps)),
-             demo.Step("close", "close", {}, lambda r, run: "closed")]
+                       _played(steps), failure=_failed(steps), broken_is_invalid=True),
+             demo.Step("close", "close", {}, lambda r, run: "closed", failure=_broke,
+                       broken_is_invalid=True)]
     return demo.Demo(name=name, root=root,
-                     server=[sys.executable, str(root / SERVERS[doc["server"]])],
-                     readme=root / "README.md", steps=plan,
-                     capture=lambda run: run.dir / "no-capture", offers=frozenset({"rompath"}),
+                     server=[sys.executable, str(root / doc["entry"])],
+                     steps=plan, offers=frozenset({"rompath"}),
                      verdict=lambda total, ok: f"REPLAY {name}: " + (
                          "every step held" if ok == total else "it did not hold"))
 

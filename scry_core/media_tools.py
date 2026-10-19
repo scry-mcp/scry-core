@@ -17,7 +17,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
-from scry_core import goldens, judges, raster, series, wav
+from scry_core import goldens, judges, prose, raster, series, wav
 from scry_core.recording import ExportAs
 from scry_core.reply_contract import Invalid
 
@@ -311,7 +311,7 @@ def _series_diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
 def _region_track_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     total = reply["transitions_total"]
     cut = f", the first {len(reply['transitions'])} listed" if reply.get("omitted") else ""
-    return (f"region_track {reply['measure']}: {total} transition{'' if total == 1 else 's'} "
+    return (f"region_track {reply['measure']}: {prose.counted(total, 'transition')} "
             f"over {reply['frames']} frames{cut}")
 
 

@@ -7,6 +7,7 @@ import asyncio
 import json
 import shlex
 import threading
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,11 @@ import pytest
 from scry_core import boundary, cancel, recording
 from scry_core.envelope import Envelope
 from scry_core.reply_contract import Invalid
+
+#: The double's tool names, which a real server declares as its own.
+VOCABULARY: dict[str, Any] = {"outside": frozenset({"close"}),
+                              "sequences": frozenset({"perform", "drive"}),
+                              "start_tool": "start", "states": ("state_save", "state_load", "name")}
 
 
 class _Machine:
@@ -27,6 +33,7 @@ class _Machine:
         self.unreadable = False
         self.bare = False          # a server whose stops carry no fields (dosbox-x's are counted)
         self.up = False            # a session is live, which a second start is refused over
+        self.start_raises = False  # a start whose body fails, ending with no reply
 
     def read(self) -> recording.Machine:
         if self.unreadable:
@@ -39,19 +46,35 @@ class _Machine:
         self.running, self.frame, self.seq = False, frame, self.seq + 1
 
 
+#: The double's own `perform` step limit, which it declares to its recorder.
+RECORD_MAX = 5000
+
+
 class _Server:
     """A boundary with a recorder and the tools a session uses, each moving `_Machine`."""
 
+    def tool(self, title: str, **kw: Any) -> Callable[[Callable[..., Any]], Any]:
+        """`Boundary.tool` with the double's line, the tool's name."""
+        def register(fn: Callable[..., Any]) -> Any:
+            def line(args: dict[str, Any], reply: dict[str, Any], name: str = fn.__name__) -> str:
+                return name
+            return self.b.tool(title, summary=line, **kw)(fn)
+        return register
+
     def __init__(self, plan: str | None = None) -> None:
         self.m = _Machine()
-        self.recorder = recording.Recorder("double", self.m.read, lambda: self.m.up,
-                                        stop_fields=("pc", "frame"), plan=plan)
+        self.declared: list[str] = []
+        self.recorder = recording.Recorder("double", "double.py", RECORD_MAX, self.m.read,
+                                           lambda: self.m.up, declarations=lambda: self.declared,
+                                           stop_fields=("pc", "frame"), plan=plan,
+                                           **VOCABULARY)
         self.b = boundary.Boundary(
             Envelope("t", instructions="i", refusal=lambda *a: {}), threading.RLock(),
-            invoke=lambda fn, sig, a, k: dict(fn(*a, **k)), end=lambda n, o: ("stopped", None),
-            line=lambda n, a, r: n, session_block=lambda: {}, take_cancelled=lambda: None,
+            invoke=lambda fn, bound: dict(fn(*bound.args, **bound.kwargs)),
+            end=lambda n, o: ("stopped", None),
+            refusal_line=lambda n, r: n, session_block=lambda: {}, take_cancelled=lambda: None,
             keep_cancelled=lambda r: None, doc=lambda n, t: t, recorder=self.recorder)
-        b, m = self.b, self.m
+        b, m = self, self.m
 
         def stopped() -> dict[str, Any]:
             return {"status": "ok", "pc": f"0x{m.seq:x}", "frame": m.frame}
@@ -65,6 +88,8 @@ class _Server:
             if fails:
                 return {"status": "INVALID", "code": "bad_argument", "message": "no",
                         "session": {"alive": False}}
+            if m.start_raises:
+                raise RuntimeError("the start failed in its body")
             m.running, m.frame, m.seq, m.up = False, 100, 1, True
             for step in plan or []:
                 got = ops[step["op"]](**{k: v for k, v in step.items() if k != "op"})
@@ -100,6 +125,16 @@ class _Server:
             if ref == "bad":
                 return {"status": "INVALID", "code": "unknown_ref", "message": "no such ref"}
             return {"status": "ok"}
+
+        @b.tool("declare")
+        def declare(ref: str) -> dict[str, Any]:
+            self.declared.append(ref)            # a breakpoint_at, say: the store grows
+            return {"status": "ok"}
+
+        @b.tool("record")
+        def record(dest: str, frames: int) -> dict[str, Any]:
+            m.stop_at((m.frame or 0) + frames)      # a run that writes a file the caller named
+            return {"status": "ok", "path": dest, **stopped()}
 
         @b.tool("peek", read_only=True)
         def peek() -> dict[str, Any]:
@@ -175,12 +210,13 @@ class _Server:
         def perform_export(path: str, overwrite: bool = False) -> dict[str, Any]:
             return {"status": "ok", **recording.export(self.recorder, path, overwrite)}
 
-        ops = {"run_for": run_for, "write": write, "read_memory": read_memory, "resume": resume}
+        ops = {"run_for": run_for, "write": write, "read_memory": read_memory, "resume": resume,
+               "declare": declare}
         self.tools = {f.__name__: f for f in (start, run_for, resume, stop, write, peek,
                                               look, golden_check, series_capture, go_refused,
                                               wait_out, crashes, close, read_memory, log,
                                               poke_and_look, snapshot, state_save, state_load,
-                                              perform, perform_export)}
+                                              perform, perform_export, record, declare)}
 
     def __getattr__(self, name: str) -> Any:
         return self.tools[name]
@@ -242,16 +278,31 @@ def test_a_plans_steps_are_recorded_after_the_start_and_the_start_drops_the_plan
     assert [(c.op, dict(c.args)) for c in rec.calls] == [("run_for", {"frames": 5})]
 
 
-def test_the_recording_stops_at_its_cap_and_the_export_says_where(
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(recording, "RECORD_MAX", 3)
+def test_the_recording_stops_at_its_cap_and_the_export_says_where() -> None:
+    """The cap counts the calls an export keeps: reads it drops cost nothing."""
     s = _Server()
+    s.recorder.record_max = 3
     s.start(system="board")
     for v in range(5):
+        s.log()
         s.write(ref="a", value=v)
     doc, out = s.document()
     assert len(doc["steps"]) == 3
-    assert out.cut == {"call": 4, "op": None, "why": "the recording holds at most 3 calls"}
+    assert out.cut == {"call": 8, "op": None,
+                       "why": "the recording holds at most 3 calls a replay keeps"}
+
+
+def test_a_recording_of_reads_alone_is_bounded_too() -> None:
+    s = _Server()
+    s.recorder.record_max = 2
+    s.start(system="board")
+    for _ in range(recording.STORED_PER_KEPT * 2 + 5):
+        s.log()
+    assert s.recorder.recording is not None
+    assert len(s.recorder.recording.calls) == recording.STORED_PER_KEPT * 2
+    assert s.recorder.recording.full
+    _, out = s.document()
+    assert out.cut is not None and "the ones an export drops included" in out.cut["why"]
 
 
 # ============================================================================ the export
@@ -271,7 +322,8 @@ def test_a_run_and_a_check_are_kept_and_each_step_holds_to_where_it_stopped() ->
         {"op": "look"},                                # it moved nothing, so it holds to nothing
         {"op": "read_memory", "ref": "score", "recorded": {"hex": "beef"}}]
     assert out.checks == 1 and out.cut is None and out.dropped == []
-    assert doc["version"] == 1 and doc["server"] == "double" and doc["needs"] == {"states": []}
+    assert doc["version"] == 2 and doc["server"] == "double"
+    assert doc["needs"] == {"states": [], "declarations": []}
 
 
 def test_refused_calls_unchecked_reads_and_host_writers_are_dropped_and_named() -> None:
@@ -285,7 +337,7 @@ def test_refused_calls_unchecked_reads_and_host_writers_are_dropped_and_named() 
                                                            (3, "snapshot")]
     assert "refused it (INVALID)" in out.dropped[0]["why"]
     assert "a read the export does not check" in out.dropped[1]["why"]
-    assert "a write to the host only" in out.dropped[2]["why"]
+    assert "changes nothing in the emulated machine" in out.dropped[2]["why"]
 
 
 def test_a_release_no_call_saw_end_cuts_the_document_at_the_release() -> None:
@@ -303,7 +355,7 @@ def test_a_state_loaded_and_not_saved_in_the_recording_is_what_the_document_need
     s.state_load(name="mine")
     s.state_load(name="theirs")
     doc, _out = s.document()
-    assert doc["needs"] == {"states": ["theirs"]}
+    assert doc["needs"] == {"states": ["theirs"], "declarations": []}
 
 
 def test_the_export_writes_the_document_and_accounts_for_it(tmp_path: Path) -> None:
@@ -369,9 +421,6 @@ def test_a_step_holds_to_every_recorded_field_and_names_the_first_it_does_not() 
     assert recording.diverged({"hex": "ab"}, {}) == ("hex", "ab", None)
 
 
-
-
-
 def test_a_refusal_that_moved_the_machine_cuts_the_document_and_one_that_did_not_is_dropped(
         ) -> None:
     s = _Server()
@@ -396,8 +445,9 @@ def test_a_call_that_ended_with_no_reply_cuts_the_document(cancelled: bool) -> N
     assert s.b.nested == 0
 
 
-def test_a_start_that_ended_with_no_reply_takes_the_recording_with_it(
+def test_a_start_cancelled_as_it_returns_keeps_the_recording_its_reply_describes(
         monkeypatch: pytest.MonkeyPatch) -> None:
+    """The reply was in hand: the session it says is up is the one recorded."""
     s = _Server()
     s.start(system="one")
     calls = [0]
@@ -410,6 +460,16 @@ def test_a_start_that_ended_with_no_reply_takes_the_recording_with_it(
         real()
     monkeypatch.setattr(cancel, "check", cancelled_as_it_returns)
     with pytest.raises(asyncio.CancelledError):
+        s.start(system="two")
+    assert s.recorder.recording is not None
+    assert s.recorder.recording.start == {"system": "two"}
+
+
+def test_a_start_that_ended_with_no_reply_takes_the_recording_with_it() -> None:
+    s = _Server()
+    s.start(system="one")
+    s.m.start_raises = True
+    with pytest.raises(RuntimeError):
         s.start(system="two")
     assert s.recorder.recording is None
 
@@ -599,7 +659,6 @@ def test_a_wall_tool_that_came_back_with_the_machine_moved_cuts_the_document() -
     assert out.cut == {"call": 2, "op": "resume", "why": recording.RUN_STOPPED_INSIDE}, out.cut
 
 
-
 @pytest.mark.parametrize("names", ["the manifest", "a file in the directory",
                                    "the manifest its reply named, with no dest"])
 def test_a_check_of_a_dropped_series_by_its_manifest_is_dropped(names: str) -> None:
@@ -642,3 +701,87 @@ def test_a_refused_call_that_left_the_machine_running_is_a_release() -> None:
     s.write(ref="a", value=1)
     doc, out = s.document()
     assert doc["steps"] == [] and out.cut is not None and out.cut["op"] == "go_refused", out.cut
+
+
+def test_a_step_that_writes_a_file_the_session_named_cuts_the_document_there() -> None:
+    """A replay would find that file there and be refused: what came before is the bench."""
+    s = _Server()
+    s.start(system="board")
+    s.run_for(frames=2)
+    s.record(dest="/tmp/take.avi", frames=3)
+    s.run_for(frames=1)
+    doc, out = s.document()
+    assert [st["op"] for st in doc["steps"]] == ["run_for"]
+    assert out.cut == {"call": 2, "op": "record",
+                       "why": "it writes /tmp/take.avi, a file the session named, which a replay "
+                              "finds there already and is refused"}
+
+
+def test_the_machine_moved_between_two_recorded_calls_cuts_the_document() -> None:
+    """Something outside every recorded call moved it (an `after` hook that raised on the success
+    path, a call the recording did not take): every recorded answer after would be shifted."""
+    s = _Server()
+    s.start(system="board")
+    s.run_for(frames=2)
+    s.m.stop_at(500)                         # moved by nobody the recording saw
+    s.run_for(frames=1)
+    doc, out = s.document()
+    assert len(doc["steps"]) == 1
+    assert out.cut is not None and out.cut["call"] == 2
+    assert "not where the call before it left it" in out.cut["why"]
+
+
+def test_a_call_with_nothing_to_add_to_is_this_modules_defect_said_as_one() -> None:
+    r = recording.Recorder("x", "x.py", 10, lambda: recording.UNREAD, lambda: False,
+                           declarations=lambda: [], stop_fields=(), **VOCABULARY)
+    with pytest.raises(RuntimeError, match="was taken with no recording to add it to"):
+        r.end("write", None, {}, {"status": "ok"}, recording.UNREAD)
+
+
+def test_the_document_names_its_entry_file_and_the_declarations_its_start_found() -> None:
+    s = _Server()
+    s.declared = ["0x40", "w:0x80"]
+    s.start(system="board")
+    s.declared = ["changed later"]
+    s.run_for(frames=2)
+    doc, _ = s.document()
+    assert doc["entry"] == "double.py"
+    assert doc["needs"]["declarations"] == ["0x40", "w:0x80"]
+
+
+def test_a_server_that_cannot_list_its_declarations_records_none() -> None:
+    s = _Server()
+
+    def broken() -> list[str]:
+        raise OSError("the store cannot be read")
+    s.recorder._declarations = broken
+    s.start(system="board")
+    s.run_for(frames=2)
+    assert s.document()[0]["needs"]["declarations"] == []
+
+
+def test_the_state_tools_are_the_servers_own_words() -> None:
+    s = _Server()
+    s.recorder.states = ("save_it", "load_it", "slot")
+    s.start(system="board")
+    s.state_load(name="theirs")
+    doc, _ = s.document()
+    assert doc["needs"]["states"] == [], "`state_load` is not this server's load"
+
+
+def test_unrecorded_takes_nothing() -> None:
+    u = recording.Unrecorded()
+    u.declare("x", None, True)
+    assert u.begin("x", None, {}) is None and u.recording is None
+    u.end("x", None, {}, {}, None)
+    u.ended("x", None, {}, None)
+
+
+def test_the_declarations_are_the_stores_before_the_plan_declares_its_own() -> None:
+    """A replay's `start` re-arms what the store held before the plan ran: the plan's own
+    declarations are steps of the document, which the replay takes after it."""
+    s = _Server(plan="plan")
+    s.declared = ["0x40"]
+    s.start(system="board", plan=[{"op": "declare", "ref": "0x80"}, {"op": "run_for", "frames": 1}])
+    doc, _ = s.document()
+    assert doc["needs"]["declarations"] == ["0x40"]

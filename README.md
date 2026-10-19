@@ -6,12 +6,13 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | Module | What it holds |
 |---|---|
 | `scry_core.reply_contract` | the refusal contract (`status`, `code`, `message`), its class and its envelope check |
-| `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, and the reply every path closes with; the server's vocabulary handed in as hooks |
+| `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, and the reply every path closes with, its summary line first; the server's vocabulary handed in as hooks |
 | `scry_core.ends_table` | a server reference's table of how a cancelled call ends, held against what its tools declare |
 | `scry_core.envelope` | the MCP boundary's server object: the schema's refusal given the server's envelope, off the event loop, and a tool's picture attached |
 | `scry_core.progress` | the progress line of a bounded wait: one a second, one short line, never backwards, none once the call is cancelled, bridged from the tool's worker thread to the request |
 | `scry_core.cancel` | a cancelled call: the poll every bounded wait makes, the shield its end runs under, how each tool declares it ends, and the record the next reply carries |
 | `scry_core.strict_arguments` | the schema as part of a tool's contract: what it does not declare is refused |
+| `scry_core.prose` | how a count is said in a summary, a note or a refusal: the one plural rule, and the verb that agrees with it |
 | `scry_core.value_format` | the grammar of a watched value: scalars, arrays, strings, structs, pointers |
 | `scry_core.reply_shapes` | the pytest plugin running the test-time guard (`reply_shapes_guard`) that holds one word to one shape in every reply |
 | `scry_core.client_cap` | the prefix of a text the MCP client delivers, in its own unit |

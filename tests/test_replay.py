@@ -17,14 +17,19 @@ from scry_core import replay
 FIXTURE = Path(__file__).parent / "fixtures" / "replay_server.py"
 
 
+#: A step that holds to what the double answers, so a document carries something to hold to.
+HELD1 = {"op": "run_for", "frames": 1, "recorded": {"pc": "0x10", "frame": 1}}
+HELD2 = {"op": "run_for", "frames": 2, "recorded": {"pc": "0x10", "frame": 2}}
 
 
 def _repo(tmp_path: Path, steps: list[dict[str, Any]], states: list[str] | None = None,
-          server: str = "mame") -> Path:
-    shutil.copyfile(FIXTURE, tmp_path / replay.SERVERS[server])
+          server: str = "mame", declarations: list[str] | None = None) -> Path:
+    shutil.copyfile(FIXTURE, tmp_path / "server.py")
     doc = tmp_path / "session.json"
-    doc.write_text(json.dumps({"version": 1, "server": server, "start": {"system": "board"},
-                               "steps": steps, "needs": {"states": states or []}}))
+    doc.write_text(json.dumps({"version": 2, "server": server, "entry": "server.py",
+                               "start": {"system": "board"}, "steps": steps,
+                               "needs": {"states": states or [],
+                                         "declarations": declarations or []}}))
     return doc
 
 
@@ -41,7 +46,7 @@ def test_a_document_whose_steps_hold_replays_with_exit_0(
     assert _run(monkeypatch, tmp_path, doc, "--binary", "/opt/mame") == 0
     out = capsys.readouterr().out
     assert "OK start: started board on /opt/mame" in out
-    assert "OK perform: 1 steps, 1 holding to a recorded answer" in out
+    assert "OK perform: 1 step, 1 holding to a recorded answer" in out
     assert "REPLAY session: every step held" in out
     assert (tmp_path / "tmp" / "replays" / "session" / "transcript.md").is_file()
 
@@ -60,7 +65,7 @@ def test_a_step_that_diverges_is_exit_1_naming_the_step_and_the_field(
 def test_a_step_that_fails_is_exit_1_in_the_servers_own_words(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
         ) -> None:
-    doc = _repo(tmp_path, [{"op": "run_for", "frames": 1}, {"op": "fails"}])
+    doc = _repo(tmp_path, [HELD1, {"op": "fails"}])
     assert _run(monkeypatch, tmp_path, doc) == 1
     assert "FAIL perform: step 2 of 2 (fails) failed: no such op" in capsys.readouterr().out
 
@@ -74,7 +79,7 @@ def test_the_runner_runs_as_a_module() -> None:
 def test_a_state_the_document_needs_and_the_server_lacks_is_exit_3(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
         ) -> None:
-    doc = _repo(tmp_path, [{"op": "run_for", "frames": 1}], states=["boot", "missing"])
+    doc = _repo(tmp_path, [HELD1], states=["boot", "missing"])
     assert _run(monkeypatch, tmp_path, doc) == 3
     out = capsys.readouterr().out
     assert "the server does not have: ['missing']" in out
@@ -84,7 +89,7 @@ def test_a_state_the_document_needs_and_the_server_lacks_is_exit_3(
 def test_a_start_the_server_refuses_is_exit_3_with_no_verdict(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
         ) -> None:
-    doc = _repo(tmp_path, [{"op": "run_for", "frames": 1}])
+    doc = _repo(tmp_path, [HELD1])
     monkeypatch.setenv("REPLAY_DOUBLE_REFUSES_START", "1")
     assert _run(monkeypatch, tmp_path, doc) == 3
     out = capsys.readouterr().out
@@ -94,7 +99,7 @@ def test_a_start_the_server_refuses_is_exit_3_with_no_verdict(
 def test_a_server_that_does_not_start_is_exit_3(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
         ) -> None:
-    doc = _repo(tmp_path, [{"op": "run_for", "frames": 1}])
+    doc = _repo(tmp_path, [HELD1])
     (tmp_path / "server.py").write_text("raise SystemExit(5)\n")
     assert _run(monkeypatch, tmp_path, doc) == 3
     assert "INVALID: the server did not start" in capsys.readouterr().out
@@ -102,13 +107,15 @@ def test_a_server_that_does_not_start_is_exit_3(
 
 @pytest.mark.parametrize("text, says", [
     ("not json", "not a readable document"),
-    ('{"version": 2}', "not a version 1 replay document"),
-    ('{"version": 1, "server": "other", "steps": [{}]}', "names server 'other'"),
-    ('{"version": 1, "server": "mame", "steps": []}', "holds no steps"),
-    ('{"version": 1, "server": "mame", "steps": [1]}', "one that is not an object"),
-    ('{"version": 1, "server": "mame", "steps": [{}], "start": []}', "`start` is an object"),
-    ('{"version": 1, "server": "mame", "steps": [{}], "needs": {"states": "boot"}}',
-     "a list of state names"),
+    ('{"version": 1}', "not a version 2 replay document"),
+    ('{"version": 2, "steps": [{}]}', "names no server entry file"),
+    ('{"version": 2, "entry": "../x.py", "steps": [{}]}', "names no server entry file"),
+    ('{"version": 2, "entry": "x.py", "steps": []}', "holds no steps"),
+    ('{"version": 2, "entry": "x.py", "steps": [1]}', "one that is not an object"),
+    ('{"version": 2, "entry": "x.py", "steps": [{}], "start": []}', "`start` is an object"),
+    ('{"version": 2, "entry": "x.py", "steps": [{}], "needs": {"states": "boot"}}',
+     "lists of names"),
+    ('{"version": 2, "entry": "x.py", "steps": [{"op": "run_for"}]}', "nothing held to"),
 ])
 def test_a_document_that_is_not_one_is_exit_3(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str],
@@ -131,7 +138,7 @@ def test_a_document_that_is_not_text_is_exit_3(
 def test_anything_else_that_stops_the_run_before_a_verdict_is_exit_3(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
         ) -> None:
-    doc = _repo(tmp_path, [{"op": "run_for", "frames": 1}])
+    doc = _repo(tmp_path, [HELD1])
     (tmp_path / "a-file").write_text("")
     assert _run(monkeypatch, tmp_path, doc, "--transcript",
                 str(tmp_path / "a-file" / "t.md")) == 3
@@ -147,19 +154,70 @@ def test_an_unknown_option_is_a_usage_error() -> None:
 def test_the_perform_line_counts_the_steps_in_either_servers_word(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
         ) -> None:
-    doc = _repo(tmp_path, [{"op": "run_for", "frames": 1}, {"op": "run_for", "frames": 2}],
+    doc = _repo(tmp_path, [HELD1, HELD2],
                 server="dosbox-x")
     monkeypatch.setenv("REPLAY_DOUBLE_SAYS_COMPLETED", "1")
     assert _run(monkeypatch, tmp_path, doc) == 0
-    assert "OK perform: 2 steps, 0 holding to a recorded answer" in capsys.readouterr().out
+    assert "OK perform: 2 steps, 2 holding to a recorded answer" in capsys.readouterr().out
 
 
 def test_a_list_that_ended_before_its_last_step_is_exit_1_naming_what_ran(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
         ) -> None:
-    doc = _repo(tmp_path, [{"op": "run_for", "frames": 1}, {"op": "run_for", "frames": 2}])
+    doc = _repo(tmp_path, [HELD1, HELD2])
     monkeypatch.setenv("REPLAY_DOUBLE_ENDS_EARLY", "1")
     assert _run(monkeypatch, tmp_path, doc) == 1
     out = capsys.readouterr().out
     assert "FAIL perform: 1 of 2 steps ran: the last step was not sent" in out
     assert "every step held" not in out
+
+
+def test_a_server_that_says_another_count_of_held_steps_is_exit_1(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        ) -> None:
+    doc = _repo(tmp_path, [HELD1, {"op": "run_for", "frames": 3}])
+    monkeypatch.setenv("REPLAY_DOUBLE_LIES", "1")
+    assert _run(monkeypatch, tmp_path, doc) == 1
+    assert "the server says 2 steps held to their recorded answer and the document records 1" \
+        in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("env, says", [
+    ("REPLAY_DOUBLE_REFUSES_LIST", "the server did not play the list: step 0 names no op"),
+    ("REPLAY_DOUBLE_RAISES", "INVALID perform"),
+    ("REPLAY_DOUBLE_DIES", "INVALID"),
+])
+def test_a_server_that_breaks_instead_of_answering_is_exit_3_not_a_failure(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        env: str, says: str) -> None:
+    doc = _repo(tmp_path, [HELD1])
+    monkeypatch.setenv(env, "1")
+    assert _run(monkeypatch, tmp_path, doc) == 3
+    out = capsys.readouterr().out
+    assert says in out and "REPLAY board" not in out and "REPLAY session" not in out, out
+
+
+def test_a_store_that_declares_otherwise_than_the_recorded_start_found_is_exit_3(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        ) -> None:
+    doc = _repo(tmp_path, [HELD1], declarations=["0x10", "w:0x20"])
+    monkeypatch.setenv("REPLAY_DOUBLE_DECLARED", "0x10")
+    assert _run(monkeypatch, tmp_path, doc) == 3
+    assert "the store declares ['0x10'] where the recorded session's start found " \
+        "['0x10', 'w:0x20']" in capsys.readouterr().out
+    monkeypatch.setenv("REPLAY_DOUBLE_DECLARED", "0x10,w:0x20")
+    assert _run(monkeypatch, tmp_path, doc) == 0
+
+
+@pytest.mark.parametrize("env, says", [
+    ("REPLAY_DOUBLE_LISTS_FAIL", "INVALID breakpoint_list: the server did not answer"),
+    ("REPLAY_DOUBLE_START_DIES", "INVALID start"),
+    ("REPLAY_DOUBLE_STATES_NOT_A_LIST", "answered no list"),
+])
+def test_a_server_that_breaks_around_the_steps_is_exit_3_too(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        env: str, says: str) -> None:
+    doc = _repo(tmp_path, [HELD1], states=["boot"])
+    monkeypatch.setenv(env, "1")
+    assert _run(monkeypatch, tmp_path, doc) == 3
+    assert says in capsys.readouterr().out

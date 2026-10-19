@@ -46,6 +46,12 @@ def _demo(tmp_path: Path, steps: list[d.Step] | None = None, **kw: Any) -> d.Dem
     return d.Demo(**fields)
 
 
+def _readme(demo: d.Demo) -> Path:
+    """The demo's README, which every demo of these cases has."""
+    assert demo.readme is not None
+    return demo.readme
+
+
 def _run(demo: d.Demo, tmp_path: Path, *argv: str) -> int:
     return d.main(demo, ["--transcript", str(tmp_path / "out" / "transcript.md"), *argv])
 
@@ -196,7 +202,7 @@ def test_a_session_that_ends_in_an_error_after_its_steps_fails(
     assert capsys.readouterr().out.splitlines()[:3] == [
         "OK boot: value 7", "FAIL x: the session with the server ended in an error "
         f"(RuntimeError: the transport closed badly); its stderr is in {stderr}",
-        "DEMO x: 1 steps, 1 OK"]
+        "DEMO x: 1 step, 1 OK"]
 
 
 @pytest.mark.parametrize("argv", [["--bogus"], ["--update"], ["--rompath", "/x"], ["--shared"]])
@@ -267,14 +273,14 @@ def test_update_readme_rewrites_the_block_and_the_capture(
         tmp_path: Path, log: Path) -> None:
     demo = _demo(tmp_path)
     assert _run(demo, tmp_path, "--update-readme") == d.EXIT_OK
-    text = demo.readme.read_text()
+    text = _readme(demo).read_text()
     assert d.block_of(text) == _norm(tmp_path).strip("\n")
     assert text.startswith("# A demo\n\nBefore.\n\n") and text.endswith("\n\nAfter.\n")
-    assert (demo.readme.parent / "screen.png").read_bytes() == _shot(tmp_path).read_bytes()
+    assert (_readme(demo).parent / "screen.png").read_bytes() == _shot(tmp_path).read_bytes()
     normalised = tmp_path / "out" / "transcript.normalised.md"
-    assert d.readme_drift(demo.readme, normalised) == ""
+    assert d.readme_drift(_readme(demo), normalised) == ""
     normalised.write_text(normalised.read_text().replace("value 7", "value 8", 1))
-    assert d.readme_drift(demo.readme, normalised).startswith("line 1: the README has ")
+    assert d.readme_drift(_readme(demo), normalised).startswith("line 1: the README has ")
 
 
 @pytest.mark.parametrize("readme", ["no markers\n", f"{d.BEGIN}\n{d.BEGIN}\n{d.END}\n",
@@ -282,17 +288,17 @@ def test_update_readme_rewrites_the_block_and_the_capture(
 def test_markers_not_there_once_are_invalid_and_write_nothing(
         tmp_path: Path, log: Path, readme: str) -> None:
     demo = _demo(tmp_path)
-    demo.readme.write_text(readme)
+    _readme(demo).write_text(readme)
     assert _run(demo, tmp_path, "--update-readme") == d.EXIT_INVALID
-    assert demo.readme.read_text() == readme
-    assert not (demo.readme.parent / "screen.png").exists()
+    assert _readme(demo).read_text() == readme
+    assert not (_readme(demo).parent / "screen.png").exists()
     assert _calls(log) == [], "the server ran although the README could not take the block"
 
 
 def test_a_failed_run_leaves_the_readme_as_it_was(tmp_path: Path, log: Path) -> None:
     demo = _demo(tmp_path, [d.Step("no", "refuse", {}, lambda reply, run: "")])
     assert _run(demo, tmp_path, "--update-readme") == d.EXIT_FAILED
-    assert demo.readme.read_text() == README
+    assert _readme(demo).read_text() == README
 
 
 def test_a_capture_this_run_did_not_write_leaves_the_readme_as_it_was(
@@ -302,8 +308,8 @@ def test_a_capture_this_run_did_not_write_leaves_the_readme_as_it_was(
     _shot(tmp_path).write_bytes(b"an old picture")
     demo = _demo(tmp_path, [d.Step("boot", "start", {}, _said("value"))])
     assert _run(demo, tmp_path, "--update-readme") == d.EXIT_INVALID
-    assert demo.readme.read_text() == README
-    assert not (demo.readme.parent / "screen.png").exists()
+    assert _readme(demo).read_text() == README
+    assert not (_readme(demo).parent / "screen.png").exists()
     assert "INVALID: the capture" in capsys.readouterr().out
 
 
