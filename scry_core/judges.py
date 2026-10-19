@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import re
 from pathlib import Path
 from typing import Any, TypeGuard
 
@@ -14,6 +15,38 @@ from scry_core import png
 from scry_core.reply_contract import Invalid
 
 Rect = tuple[int, int, int, int]
+
+#: The annotation of a number a caller may also spell in hex: a JSON integer or a `0x` string,
+#: so the schema a client reads offers both and `number` decides.
+NumberArg = int | str
+#: A hex spelling of a number: `0x` and its digits, whatever their case.
+HEX = re.compile(r"0[xX][0-9a-fA-F]+")
+
+
+def number(name: str, value: object, bits: int, holder: str) -> int:
+    """`value` as the integer it is or spells in hex (`0x`), or the refusal naming `name`:
+    empty text, decimal text (bare digits read either way), a bool, a float, a sign written
+    before `0x`, and anything wider than `bits`, the widest number `holder` holds. A negative
+    integer is an integer: the tool's own range is judged after this, on the integer."""
+    if isinstance(value, bool) or not isinstance(value, int | str):
+        raise Invalid("bad_argument",
+                      f"{name} is an integer or a `0x` hex string; got {value!r}")
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            raise Invalid("bad_argument", f"{name} is empty: an integer or a `0x` hex string")
+        if text[:2].lower() == "0x" and not HEX.fullmatch(text):
+            raise Invalid("bad_argument", f"{name}={value!r} starts like hex and is not: `0x` "
+                                          "is followed by hex digits")
+        if not HEX.fullmatch(text):
+            raise Invalid("bad_argument", f"{name}={value!r} is not an integer or a `0x` hex "
+                                          "string: decimal text is refused, since bare digits "
+                                          "read either way")
+        value = int(text, 16)
+    if value.bit_length() > bits:
+        raise Invalid("bad_argument", f"{name} is wider than {bits} bits, the widest "
+                                      f"number {holder} holds")
+    return value
 
 
 def whole(value: object, lo: int = 0, hi: int | None = None) -> TypeGuard[int]:

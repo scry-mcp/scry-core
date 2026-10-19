@@ -123,3 +123,22 @@ def test_a_file_the_filesystem_will_not_look_at_is_refused_not_raised(
     with pytest.raises(Invalid, match="cannot be looked at") as e:
         judges.existing_file("a", str(tmp_path / "x.png"))
     assert e.value.code == "bad_argument"
+
+
+@pytest.mark.parametrize(("value", "want"), [(7, 7), ("0x1F", 0x1F), (" 0xff ", 0xFF), (0, 0)])
+def test_a_number_is_an_integer_or_the_hex_it_spells(value: object, want: int) -> None:
+    assert judges.number("value", value, 32, "the debugger") == want
+
+
+@pytest.mark.parametrize(("value", "words"), [
+    (True, "an integer or a `0x` hex string"), (1.5, "an integer or a `0x` hex string"),
+    ("12", "decimal text is refused"), ("0xZZ", "starts like hex and is not"),
+    ("", "is empty: an integer or a `0x` hex string"), ("  ", "is empty"),
+    ("-0x1", "not an integer or a `0x` hex string"), (1 << 32, "wider than 32 bits"),
+    ("0x100000000", "wider than 32 bits, the widest number the debugger holds")])
+def test_a_number_refuses_what_it_does_not_spell_naming_the_argument(
+        value: object, words: str) -> None:
+    with pytest.raises(Invalid) as refused:
+        judges.number("value", value, 32, "the debugger")
+    assert refused.value.code == "bad_argument" and words in str(refused.value), refused.value
+    assert "value" in str(refused.value)
