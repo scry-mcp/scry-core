@@ -306,3 +306,23 @@ def test_a_frame_whose_bytes_match_but_are_no_picture_is_refused_naming_it(
     with pytest.raises(Invalid, match=f"frame {row['frame']}'s file") as e:
         _read(manifest)
     assert e.value.code == "bad_argument"
+
+
+def test_a_frame_the_server_signed_is_not_decoded_back(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    folder = tmp_path / "s"
+    folder.mkdir()
+    frames = {1: _frame({(0, 0)}), 2: _frame(set())}
+    for n, picture in frames.items():
+        (folder / series.frame_name(n)).write_bytes(png.encode(picture))
+    signed = {1: raster.picture_signature(frames[1])}
+    decoded: list[int] = []
+    real = png.decode
+    def counted(data: bytes) -> png.Raster:
+        decoded.append(1)
+        return real(data)
+    monkeypatch.setattr(png, "decode", counted)
+    got = series.write_manifest(folder, "test", "frame_number", None, [1, 2], signed)
+    assert decoded == [1], "frame 2 decoded, frame 1 taken as signed"
+    rows = json.loads(Path(got["manifest"]).read_text())["frames"]
+    assert [r["signature"] for r in rows] == [signed[1], raster.picture_signature(frames[2])]

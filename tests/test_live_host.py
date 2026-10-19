@@ -448,3 +448,13 @@ def test_a_run_is_closed_once(run: host.LiveRun) -> None:
     closed: list[bool] = []
     assert run.close(lambda: closed.append(True)) == ""
     assert run.close(lambda: pytest.fail("closed twice")) == "" and closed == [True]
+
+
+def test_a_start_time_ps_cannot_give_never_fails_the_launch(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken(*_a: object, **_k: object) -> None:
+        raise OSError("no ps on this host")
+    monkeypatch.setattr(subprocess, "run", broken)
+    ledger = host.EmulatorLedger(tmp_path / "ledger")
+    ledger.record(7, "/opt/dosbox-x")
+    assert (tmp_path / "ledger").read_text() == "7\tdosbox-x\t\n"

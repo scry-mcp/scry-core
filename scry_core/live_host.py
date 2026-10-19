@@ -151,8 +151,11 @@ def _signal(pid: int, pgid: int, sig: signal.Signals) -> None:
 def _started(pid: int) -> str:
     """When `pid` started, as `ps` says it (`lstart`), or empty when it cannot say: with the
     name, what tells the emulator a run launched from a later process the system gave its pid."""
-    done = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True,
-                          text=True, check=False)
+    try:
+        done = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True,
+                              text=True, check=False)
+    except Exception:  # noqa: BLE001 -- it sharpens the guard and never fails the launch
+        return ""
     return " ".join(done.stdout.split()) if done.returncode == 0 else ""
 
 

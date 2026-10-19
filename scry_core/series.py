@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -92,11 +92,14 @@ def tail(asked: int, kept: bool, source: str) -> dict[str, Any]:
 
 
 def write_manifest(folder: Path, server: str, source: str, crop: Sequence[int] | None,
-                   frames: Sequence[int]) -> dict[str, Any]:
-    """The manifest of the PNGs a capture wrote into `folder` as `frame_name(n)`, each decoded
-    for its signature and hashed, written beside them; answers the reply's half: `manifest`,
-    `count`, `first`, `last`, `distinct` (signatures). No `source` word or no frame is the
-    server's bug, a `ValueError`."""
+                   frames: Sequence[int],
+                   signed: Mapping[int, str] | None = None) -> dict[str, Any]:
+    """The manifest of the PNGs a capture wrote into `folder` as `frame_name(n)`, each hashed
+    and signed, written beside them; answers the reply's half: `manifest`, `count`, `first`,
+    `last`, `distinct` (signatures). A frame's signature is decoded off its file unless the
+    server encoded that file itself and hands the signature of the picture it encoded
+    (`signed`): decoding back what was just encoded is a whole frame's work for an answer in
+    hand. No `source` word or no frame is the server's bug, a `ValueError`."""
     if not source or not frames:
         raise ValueError(f"a series of {len(frames)} frames from source {source!r}")
     rows = []
@@ -104,12 +107,13 @@ def write_manifest(folder: Path, server: str, source: str, crop: Sequence[int] |
         path = folder / frame_name(frame)
         try:
             data = path.read_bytes()
-            picture = png.decode(data)
+            signature = (signed[frame] if signed is not None and frame in signed
+                         else raster.picture_signature(png.decode(data)))
         except (OSError, png.NotAPicture) as e:
             raise Invalid("host_failed", f"frame {frame}'s picture {path} was not written as a "
                           f"readable PNG: {e}") from None
         rows.append({"frame": frame, "path": path.name, "sha256": hashlib.sha256(data).hexdigest(),
-                     "bytes": len(data), "signature": raster.picture_signature(picture)})
+                     "bytes": len(data), "signature": signature})
     doc = {"format": MANIFEST_FORMAT, "server": server, "source": source,
            "crop": list(crop) if crop is not None else None, "frames": rows}
     manifest = folder / MANIFEST_NAME
