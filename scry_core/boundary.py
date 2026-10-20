@@ -24,6 +24,9 @@ reply to say: those of a reply cancelled as it returned, those the end of a canc
 (`End` returns them in a reply's own shape), and those of every step that answered inside an
 outermost call that was then cancelled (a `perform`'s finished steps).
 
+A LISTENER HEARS EACH OUTERMOST CALL begin and end (`CallListener`), whichever way it ended,
+which is what the presence indicator lights and dims the window by.
+
 THE HOOKS ARE BOUND WHEN THE BOUNDARY IS BUILT, once, as the server's own functions: a test or a
 runtime that rebinds one of those names afterwards reaches nothing here.
 """
@@ -63,6 +66,16 @@ Summary = Callable[[dict[str, Any], Reply], str]
 RefusalLine = Callable[[str, Reply], str]
 #: The one-time accounts a reply nobody will read carried, put back for the next reply.
 GiveBack = Callable[[Reply], None]
+
+
+class CallListener(Protocol):
+    """What hears every OUTERMOST call begin and end (presence's, on both servers): told the
+    tool's name, under the lock, whichever way the call ended. It runs inside the call's own
+    bookkeeping, so it must not block; one that raises fails that call, and only that call."""
+
+    def began(self, tool: str) -> None: ...
+
+    def ended(self, tool: str) -> None: ...
 
 
 class Recorded(Protocol):
@@ -113,7 +126,8 @@ class Boundary:
                  keep_cancelled: Callable[[cancel.Cancelled], None],
                  doc: Callable[[str, str], str], after: After = _nothing_after,
                  give_back: GiveBack = _nothing_to_give_back,
-                 recorder: Recorded | None = None) -> None:
+                 recorder: Recorded | None = None,
+                 listener: CallListener | None = None) -> None:
         self.mcp = mcp
         self._lock = lock
         self._invoke = invoke
@@ -122,6 +136,7 @@ class Boundary:
         self._give_back = give_back
         #: The session's recording (`scry_core.recording`), fed with every call it takes.
         self.recorder: Recorded = recorder if recorder is not None else Unrecorded()
+        self._listener = listener
         # THE CALLS IN FLIGHT INSIDE THE LOCK, outermost first: a call's parent is the one above,
         # and how many there are is how deep the call is nested. Read and written under the lock.
         self._calls: list[str] = []
@@ -237,6 +252,8 @@ class Boundary:
                     reply: Reply | None = None
                     back: list[Reply] = []
                     try:
+                        if parent is None and self._listener is not None:
+                            self._listener.began(fn.__name__)
                         reply = self._invoke(fn, bound)
                         if parent is not None:
                             # A STEP'S PICTURE IS NEVER ATTACHED, only a reply's own: said in
@@ -269,6 +286,9 @@ class Boundary:
                             # accounts: what goes back is for the NEXT reply.
                             for account in back:
                                 self._give_back(account)
+                            # LAST, once the boundary's own bookkeeping is whole.
+                            if parent is None and self._listener is not None:
+                                self._listener.ended(fn.__name__)
                     self.recorder.end(fn.__name__, parent, given, reply, taken)
                     if parent is not None:
                         self._answered.append(reply)

@@ -9,7 +9,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.log_wait` | a wait for a line of a log: what the log already holds answered first, then the wait, ended by a match, its bound, a stopped machine or a gone emulator |
 | `scry_core.sequence_account` | the account of a list of steps run in one call: compact rows, the two files, and the count of the stops numbered while it ran |
 | `scry_core.steps` | a step of a list judged against the tool it names before any step runs: its `recorded` check, no `ctx`, names the tool takes, scalars of the declared type |
-| `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, and the reply every path closes with, its summary line first; the server's vocabulary handed in as hooks |
+| `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, the listener that hears each outermost call begin and end, and the reply every path closes with, its summary line first; the server's vocabulary handed in as hooks |
 | `scry_core.ends_table` | a server reference's table of how a cancelled call ends, held against what its tools declare |
 | `scry_core.envelope` | the MCP boundary's server object: the schema's refusal given the server's envelope, off the event loop, and a tool's picture attached |
 | `scry_core.progress` | the progress line of a bounded wait: one a second, one short line, never backwards, none once the call is cancelled, bridged from the tool's worker thread to the request |
@@ -30,7 +30,11 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.recording` | a session as a bench: what a server did, recorded from its `start` through its call boundary, and exported as `perform`'s own document (`perform_export`); the check a replayed step holds to |
 | `scry_core.comment_file` | the comment file both servers read and write (version 1): its header, columns, text and stamp rules, parse and render, each server's `ref` and `cpu` columns handed in as a `Policy` |
 | `scry_core.replay` | the runner of that document: the server over stdio, its steps in one `perform`, with no model |
-| `scry_core.focus_watch` | whether a live run took the owner's focus or moved their Space: the frontmost application and each display's Space sampled from outside the run (macOS) |
+| `scry_core.focus_watch` | whether a live run took the owner's focus or moved their Space: the frontmost application and each display's Space, keyed by the display, sampled from outside the run (macOS), and the judge of a window of samples |
+| `scry_core.focus_gate` | the flow a live section takes the watch through: the control (a start in front, one behind, the owner's Space moved and put back), the verdict after it, each in `live_pool`'s words |
+| `scry_core.presence` | the presence indicator: a session's state (held, acting), the one look both emulators draw, the writer that delivers the latest state off the call's path, and the check that holds a server's declaration of which tools drive against its registry |
+| `scry_core.guardian` | the process beside every emulator that kills it when its server dies or its session's wall-clock bound passes (POSIX) |
+| `scry_core.process_name` | the name a server's process, and its guardians', go by in the host's process list |
 | `scry_core.narrowing` | a reply that answers less than everything and says so: `omitted` and `how`, and the `sections` list a caller narrows by |
 | `scry_core.traffic` | what a server's replies and its tool list cost the model, per tool, in the client's unit, and the visual tokens of the pictures replies attach, read from `list_tools()` and, when given, live transcripts |
 | `scry_core.live_pool` | a live tier's independent jobs run as parallel child processes, merged from the summaries they declare |
@@ -85,10 +89,10 @@ reply_shapes_anchors = ["scry_core.reply_contract", "server"]
 ## Focus watch
 
 A live tier that runs beside somebody working wraps its run in `scry_core.focus_watch.FocusWatch`,
-takes the `control` in the same harness (one start that must be seen in front, one that must not,
-and the owner's Space moved and put back, which must be seen moved), and judges the run after it
-with `verdict`; each outcome is PASS, FAIL or BLOCKED, mapped onto the tier's own cells. The
-module docstring is the contract.
+takes `scry_core.focus_gate.control` in the same harness (one start that must be seen in front,
+one that must not, and the owner's Space moved and put back, which must be seen moved), and
+judges the run after it with `focus_gate.verdict`; each outcome is OK, FAIL or BLOCKED,
+`live_pool`'s words, put on the tier's own cells. The two module docstrings are the contract.
 
 ## Parallel live tiers
 

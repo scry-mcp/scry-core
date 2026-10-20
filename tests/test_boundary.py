@@ -21,7 +21,7 @@ from scry_core.envelope import Envelope
 class _Server:
     """A server of doubles: every hook appends what it was asked to `log`."""
 
-    def __init__(self) -> None:
+    def __init__(self, listener: boundary.CallListener | None = None) -> None:
         self.log: list[tuple[Any, ...]] = []
         self.pending: cancel.Cancelled | None = None
         self.given_back: list[dict[str, Any]] = []
@@ -32,7 +32,7 @@ class _Server:
             refusal_line=lambda name, reply: f"{name} refused",
             session_block=lambda: {"altered": False}, take_cancelled=self.take,
             keep_cancelled=self.keep, doc=lambda name, text: f"{name}: {text}",
-            give_back=self.given_back.append)
+            give_back=self.given_back.append, listener=listener)
         self.after_raises = False
 
     def tool(self, title: str, **kw: Any) -> Callable[[Callable[..., Any]], Any]:
@@ -560,3 +560,93 @@ def test_a_steps_picture_is_marked_unattached_before_its_line_and_its_record_rea
     step = got["ran"][0]
     assert step["image"]["inline"] is False and step["image"]["not_inlined"] == "nested"
     assert step["summary"] == "view not inlined" == lines[-1]
+
+
+class _Heard:
+    """A `CallListener` that records what it heard, and whether the lock was held when it did."""
+
+    def __init__(self) -> None:
+        self.log: list[tuple[str, str, bool]] = []
+        self.server: _Server | None = None
+
+    def began(self, tool: str) -> None:
+        assert self.server is not None
+        self.log.append(("began", tool, self.server.held()))
+
+    def ended(self, tool: str) -> None:
+        assert self.server is not None
+        self.log.append(("ended", tool, self.server.held()))
+
+
+def test_the_outermost_call_is_heard_beginning_and_ending_under_the_lock_and_its_steps_are_not(
+) -> None:
+    heard = _Heard()
+    s = _Server(listener=heard)
+    heard.server = s
+
+    @s.tool("Step")
+    def step() -> dict[str, Any]:
+        return {"status": "ok"}
+
+    @s.tool("Sequence")
+    def sequence() -> dict[str, Any]:
+        step()
+        step()
+        return {"status": "ok"}
+
+    sequence()
+    assert heard.log == [("began", "sequence", True), ("ended", "sequence", True)]
+
+
+def test_a_call_that_raised_or_answered_a_refusal_is_heard_ending_too() -> None:
+    heard = _Heard()
+    s = _Server(listener=heard)
+    heard.server = s
+
+    @s.tool("Lookup")
+    def lookup() -> dict[str, Any]:
+        raise LookupError("nothing there")
+
+    @s.tool("Broken")
+    def broken() -> dict[str, Any]:
+        raise RuntimeError("a defect")
+
+    assert lookup()["status"] == "INVALID"
+    with pytest.raises(RuntimeError):
+        broken()
+    assert [e[:2] for e in heard.log] == [("began", "lookup"), ("ended", "lookup"),
+                                          ("began", "broken"), ("ended", "broken")]
+
+
+def test_a_cancelled_call_is_heard_ending_so_presence_never_stays_lit() -> None:
+    heard = _Heard()
+    s = _Server(listener=heard)
+    heard.server = s
+
+    @s.tool("Wait", on_cancel="stop")
+    def wait(ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
+        _cancelled()
+        return {"status": "ok"}
+
+    with pytest.raises(asyncio.CancelledError):
+        wait()
+    assert [e[:2] for e in heard.log] == [("began", "wait"), ("ended", "wait")]
+
+
+def test_a_listener_that_raises_fails_its_call_and_leaves_the_boundary_whole() -> None:
+    class Broken:
+        def began(self, tool: str) -> None:
+            raise OSError("the listener broke")
+
+        def ended(self, tool: str) -> None:
+            pass
+
+    s = _Server(listener=Broken())
+
+    @s.tool("Count")
+    def count() -> dict[str, Any]:
+        return {"status": "ok"}
+
+    with pytest.raises(OSError, match="listener broke"):
+        count()
+    assert s.b.nested == 0, "the call was left on the stack, and every later call is a step"

@@ -1,0 +1,257 @@
+"""`scry_core.presence`: the states a session's calls set, the one writer that delivers only the
+latest (a quick call still shown, a failed delivery sent again), a delivery that fails said in
+`reply` and never in a call's own reply, and the declaration of which tools drive held against a
+registry."""
+
+from __future__ import annotations
+
+import inspect
+import threading
+import time
+from collections.abc import Callable
+from typing import Any
+
+import pytest
+
+from scry_core import boundary, presence
+from scry_core.envelope import Envelope
+
+#: Long enough for an idle writer to have sent anything it was going to.
+QUIET_S = 0.2
+
+
+class _Adapter:
+    """Records every state shown; `gate` holds a delivery until it is set, `fail` raises."""
+
+    def __init__(self) -> None:
+        self.shown: list[presence.State] = []
+        self.gate = threading.Event()
+        self.gate.set()
+        self.fail: BaseException | None = None
+        self.entered = threading.Event()
+
+    def show(self, state: presence.State) -> None:
+        self.entered.set()
+        self.gate.wait(5)
+        if self.fail is not None:
+            raise self.fail
+        self.shown.append(state)
+
+
+def _settle(adapter: _Adapter, n: int) -> None:
+    """Until `n` states were shown, then quiet: the assertion after it sees the whole run."""
+    deadline = time.monotonic() + 5
+    while len(adapter.shown) < n and time.monotonic() < deadline:
+        time.sleep(0.01)
+    time.sleep(QUIET_S)
+
+
+def _open(adapter: _Adapter, driving: tuple[str, ...] = ("run_for",)) -> presence.Presence:
+    p, said = presence.Presence.open(adapter, driving)
+    assert p is not None and said is True
+    return p
+
+
+def test_open_shows_held_before_it_answers_and_starts_a_daemon_writer() -> None:
+    a = _Adapter()
+    p = _open(a)
+    assert a.shown == ["held"] and p.reply() is True
+    assert p._thread.is_alive() and p._thread.daemon, "a server that exits must not wait on it"
+    p.close()
+
+
+@pytest.mark.parametrize(("raised", "why"), [
+    (presence.Unavailable("no window to draw on"), "no window to draw on"),
+    (OSError("refused"), "the first delivery failed: OSError: refused"),
+])
+def test_open_that_cannot_draw_says_why_in_place_of_true(raised: BaseException, why: str) -> None:
+    a = _Adapter()
+    a.fail = raised
+    p, said = presence.Presence.open(a, ("run_for",))
+    assert p is None and said == {"available": False, "why": why}
+
+
+def test_a_driving_call_turns_it_acting_and_its_end_back_to_held() -> None:
+    a = _Adapter()
+    p = _open(a)
+    p.began("run_for")
+    _settle(a, 2)
+    p.ended("run_for")
+    _settle(a, 3)
+    assert a.shown == ["held", "acting", "held"]
+    p.close()
+
+
+def test_a_still_call_changes_nothing() -> None:
+    a = _Adapter()
+    p = _open(a)
+    p.began("registers")
+    with p._cv:
+        assert (p._want, p._pulse) == ("held", False), "a still call set nothing"
+    p.ended("registers")
+    time.sleep(QUIET_S)
+    assert a.shown == ["held"]
+    p.close()
+
+
+def test_the_writer_sends_only_the_latest_state_once_a_slow_delivery_returns() -> None:
+    a = _Adapter()
+    p = _open(a)
+    a.gate.clear()
+    a.entered.clear()
+    p.began("run_for")                      # in flight, held at the gate
+    assert a.entered.wait(5)
+    p.ended("run_for")
+    p.began("run_for")
+    p.ended("run_for")                      # three changes while the first is in flight
+    a.gate.set()
+    _settle(a, 3)
+    # the one in flight lands, then the latest; the two between are skipped, never reordered
+    assert a.shown == ["held", "acting", "held"]
+    p.close()
+
+
+def test_a_call_never_waits_on_a_delivery_in_flight() -> None:
+    a = _Adapter()
+    p = _open(a)
+    a.gate.clear()
+    a.entered.clear()
+    p.began("run_for")
+    assert a.entered.wait(5)                # the writer is stuck in the adapter
+    t = time.monotonic()
+    p.ended("run_for")
+    p.began("run_for")
+    assert time.monotonic() - t < 0.1
+    a.gate.set()
+    p.close()
+
+
+def test_a_driving_call_over_before_the_writer_woke_is_still_shown_acting() -> None:
+    a = _Adapter()
+    p = _open(a)
+    with p._cv:                             # the writer cannot wake between the two
+        p.began("run_for")
+        p.ended("run_for")
+    _settle(a, 3)
+    assert a.shown == ["held", "acting", "held"]
+    p.close()
+
+
+def test_a_delivery_that_fails_is_said_by_reply_and_sent_again_until_it_lands(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(presence, "RETRY_S", 0.05)
+    a = _Adapter()
+    p = _open(a)
+    a.fail = ConnectionError("the channel dropped")
+    p.began("run_for")
+    p.ended("run_for")
+    deadline = time.monotonic() + 5
+    while p.reply() is True and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert p.reply() == {"available": False,
+                         "why": "a delivery failed: ConnectionError: the channel dropped"}
+    a.fail = None                           # the emulator answers again, nothing else changes
+    _settle(a, 3)
+    assert a.shown == ["held", "acting", "held"] and p.reply() is True
+    p.close()
+
+
+def test_redeliver_sends_the_same_state_again() -> None:
+    a = _Adapter()
+    p = _open(a)
+    p.redeliver()
+    _settle(a, 2)
+    assert a.shown == ["held", "held"]
+    p.close()
+
+
+def test_close_lets_a_stuck_delivery_land_and_sends_nothing_after_it() -> None:
+    a = _Adapter()
+    p = _open(a)
+    a.gate.clear()
+    a.entered.clear()
+    p.began("run_for")
+    assert a.entered.wait(5)                # the writer is inside `acting`
+    p.ended("run_for")                      # a change that must never be sent
+    t = time.monotonic()
+    p.close()
+    assert time.monotonic() - t < presence.CLOSE_WAIT_S + 0.5
+    a.gate.set()
+    time.sleep(QUIET_S)
+    assert a.shown == ["held", "acting"] and not p._thread.is_alive()
+
+
+def test_close_wakes_an_idle_writer() -> None:
+    a = _Adapter()
+    p = _open(a)
+    assert p._thread.is_alive()
+    p.close()
+    assert not p._thread.is_alive()
+
+
+def test_one_string_for_the_driving_tools_is_refused() -> None:
+    with pytest.raises(TypeError, match="never one string"):
+        presence.Presence(_Adapter(), "run_for")
+    with pytest.raises(TypeError, match="never one string"):
+        presence.check_classified(["run_for"], "run_for", [])
+
+
+def test_a_slot_routes_to_the_session_s_presence_and_to_nothing_without_one() -> None:
+    a = _Adapter()
+    current: list[presence.Presence | None] = [None]
+    slot = presence.Slot(lambda: current[0])
+    slot.began("run_for")                   # no session: nothing happens
+    held = _open(a)
+    current[0] = held
+    slot.began("run_for")
+    _settle(a, 2)
+    slot.ended("run_for")
+    _settle(a, 3)
+    current[0] = None
+    slot.ended("run_for")
+    assert a.shown == ["held", "acting", "held"]
+    held.close()
+
+
+def test_a_failing_delivery_never_reaches_the_reply_of_the_call_it_marks() -> None:
+    a = _Adapter()
+    p = _open(a)
+    a.fail = RuntimeError("the emulator is gone")
+    lock = threading.RLock()
+
+    def invoke(fn: Callable[..., Any], bound: inspect.BoundArguments) -> dict[str, Any]:
+        return dict(fn(*bound.args, **bound.kwargs))
+
+    b = boundary.Boundary(Envelope("t", instructions="i", refusal=lambda *a: {}), lock,
+                          invoke=invoke, end=lambda n, o: ("stopped", None),
+                          refusal_line=lambda n, r: n, session_block=lambda: {},
+                          take_cancelled=lambda: None, keep_cancelled=lambda r: None,
+                          doc=lambda n, t: t, listener=presence.Slot(lambda: p))
+
+    @b.tool("Run", summary=lambda args, reply: "ran")
+    def run_for() -> dict[str, Any]:
+        return {"status": "ok", "ran": True}
+
+    assert run_for() == {"summary": "ran", "status": "ok", "ran": True, "session": {}}
+    deadline = time.monotonic() + 5
+    while p.reply() is True and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert p.reply() == {"available": False,
+                         "why": "a delivery failed: RuntimeError: the emulator is gone"}
+    p.close()
+
+
+def test_check_classified_names_every_tool_off_its_one_side() -> None:
+    assert presence.check_classified(["a", "b"], {"a"}, {"b"}) == []
+    assert presence.check_classified(["a", "b", "c"], {"a", "x"}, {"a", "b"}) == [
+        "c: registered but declared neither driving nor still",
+        "x: declared but not registered",
+        "a: declared both driving and still"]
+
+
+def test_held_is_a_share_of_acting_whatever_acting_is() -> None:
+    assert presence.Look(acting_alpha=0.6).held_alpha == pytest.approx(0.2)
+    assert presence.LOOK.held_alpha == pytest.approx(presence.LOOK.acting_alpha / 3)
+    rows = presence.LOOK.pointer
+    assert len({len(r) for r in rows}) == 1 and set("".join(rows)) <= {"X", "o", "."}

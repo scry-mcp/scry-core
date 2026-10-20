@@ -45,12 +45,8 @@ def test_a_start_behind_is_clean_though_another_app_held_the_front(
     assert (v.examined, v.sample, v.distinct_pointers) == (37, None, 1)
 
 
-def test_the_whole_capture_is_not_clean_and_excluding_the_front_window_is(
-        captured: list[fw.Sample]) -> None:
+def test_the_whole_capture_is_not_clean(captured: list[fw.Sample]) -> None:
     assert fw.judge(captured, {"dosbox-x"}).status == "TOOK_FOCUS"
-    v = fw.judge(captured, {"dosbox-x"}, exclude=[FRONT])
-    assert v.status == "CLEAN", v
-    assert v.examined == len(captured) - 37
 
 
 def test_names_decide_and_another_project_s_emulator_is_not_this_run_s(
@@ -74,8 +70,6 @@ def test_the_window_edges_are_inclusive() -> None:
     assert fw.judge(samples, {"dosbox-x"}, start_ms=1000, end_ms=1000).status == "TOOK_FOCUS"
     assert fw.judge(samples, {"dosbox-x"}, start_ms=3000, end_ms=3000).status == "TOOK_FOCUS"
     assert fw.judge(samples, {"dosbox-x"}, start_ms=1001, end_ms=2999).status == "CLEAN"
-    edge = fw.judge(samples, {"dosbox-x"}, exclude=[(1000, 1000), (3000, 3000)])
-    assert (edge.status, edge.examined) == ("CLEAN", 1)
 
 
 def test_a_window_with_no_sample_is_invalid_never_clean(captured: list[fw.Sample]) -> None:
@@ -96,25 +90,27 @@ def test_a_stretch_nobody_sampled_makes_the_window_invalid() -> None:
     assert fw.judge(at_bound, {"dosbox-x"}, start_ms=0, end_ms=fw.MAX_GAP_MS).status == "CLEAN"
 
 
-def test_an_excluded_stretch_is_not_a_gap_but_the_judged_rest_still_is() -> None:
-    around = [_finder(0), _finder(1000), _finder(60_000), _finder(61_000)]
-    assert fw.judge(around, {"dosbox-x"}, exclude=[(1000, 60_000)]).status == "CLEAN"
-    assert fw.judge(around, {"dosbox-x"}, exclude=[(5000, 60_000)]).status == "INVALID"
-    outside = fw.judge(around, {"dosbox-x"}, start_ms=0, end_ms=1000,
-                       exclude=[(50_000, 70_000)])
-    assert outside.status == "CLEAN", outside
-
-
-def test_one_sample_the_instrument_could_not_take_makes_the_window_invalid(
+def test_one_sample_the_instrument_could_not_take_is_a_short_gap_not_a_verdict(
         captured: list[fw.Sample]) -> None:
-    broken = fw.Sample(BEHIND[0][0] + 5, error="System Events did not answer")
-    v = fw.judge([*captured, broken], {"dosbox-x"}, start_ms=BEHIND[0][0],
-                 end_ms=BEHIND[0][1])
-    assert v.status == "INVALID" and v.sample == broken
-    assert "did not answer" in v.reason
-    outside = fw.judge([*captured, broken], {"dosbox-x"}, start_ms=BEHIND[1][0],
-                       end_ms=BEHIND[1][1])
-    assert outside.status == "CLEAN"
+    """A process that exits under the sampler fails one sample: a blink of blindness, judged as
+    the gap it is, so the window around it still clears."""
+    broken = fw.Sample(BEHIND[0][0] + 5, error="Can't get application process 1234")
+    v = fw.judge(sorted([*captured, broken], key=lambda s: s.epoch_ms), {"dosbox-x"},
+                 start_ms=BEHIND[0][0], end_ms=BEHIND[0][1])
+    assert (v.status, v.examined) == ("CLEAN", 37), v
+
+
+def test_samples_that_failed_for_longer_than_the_gap_bound_make_the_window_invalid() -> None:
+    blind = [_finder(0), *(fw.Sample(ms, error="System Events did not answer")
+                           for ms in range(500, fw.MAX_GAP_MS + 1000, 500)),
+             _finder(fw.MAX_GAP_MS + 1000)]
+    v = fw.judge(blind, {"dosbox-x"})
+    assert v.status == "INVALID" and "not watched throughout" in v.reason, v
+
+
+def test_a_window_whose_every_sample_failed_is_invalid_and_says_why() -> None:
+    v = fw.judge([fw.Sample(1, error="osascript did not answer: boom")], {"dosbox-x"})
+    assert (v.status, v.examined) == ("INVALID", 0) and "boom" in v.reason
 
 
 def test_a_theft_seen_is_reported_over_a_sample_that_failed(captured: list[fw.Sample]) -> None:
@@ -134,7 +130,8 @@ def test_a_moved_pointer_is_recorded_and_not_judged() -> None:
     fw.Sample(11, "Code Helper", 7, None),
     fw.Sample(12, error="osascript did not answer: boom"),
     fw.Sample(13),
-    fw.Sample(14, "Finder", 9, (0, 0), spaces=(1, 4)),
+    fw.Sample(14, "Finder", 9, (0, 0), spaces=(("00000000-0000-0000-0000-000000000004", 1),
+                                              ("Main", 4))),
 ])
 def test_a_sample_survives_its_line(sample: fw.Sample) -> None:
     assert fw.parse(sample.line()) == sample
@@ -175,7 +172,7 @@ def test_the_watch_samples_until_it_exits_and_writes_each_sample(tmp_path: Path)
     assert fw.load(path) == watch.samples
 
 
-def test_a_sampler_that_raises_leaves_an_error_sample_and_the_window_invalid(
+def test_a_sampler_that_raises_leaves_an_error_sample_and_a_short_gap(
         tmp_path: Path) -> None:
     calls = iter(range(1000))
 
@@ -188,7 +185,8 @@ def test_a_sampler_that_raises_leaves_an_error_sample_and_the_window_invalid(
         _wait_for(watch, 6)
     errors = [s for s in watch.samples if s.error]
     assert len(errors) == 1 and "RuntimeError: boom" in errors[0].error
-    assert fw.judge(watch.samples, {"dosbox-x"}).status == "INVALID"
+    # a failed sample is no verdict of its own: the window is judged on the samples taken
+    assert fw.judge(watch.samples, {"dosbox-x"}).status == "CLEAN"
 
 
 def test_a_record_that_cannot_be_written_stops_the_watch_and_says_so(
@@ -239,11 +237,12 @@ def test_a_named_frontmost_process_is_stamped_inside_the_call(
     monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.setattr(fw, "_MACOS", True)
     monkeypatch.setattr(subprocess, "run", _fake_run("dosbox-x\t68339\n"))
-    monkeypatch.setattr(fw, "_spaces", lambda: (1, 4))
+    monkeypatch.setattr(fw, "spaces", lambda: (("A", 1), ("B", 4)))
+    monkeypatch.setattr(fw, "spaces_missing", lambda: "")
     before = int(time.time() * 1000)
     s = fw.sample_host()
     after = int(time.time() * 1000)
-    assert (s.app, s.pid, s.error, s.spaces) == ("dosbox-x", 68339, "", (1, 4))
+    assert (s.app, s.pid, s.error, s.spaces) == ("dosbox-x", 68339, "", (("A", 1), ("B", 4)))
     assert before + 5 <= s.epoch_ms <= after - 5
 
 
@@ -280,7 +279,8 @@ def test_no_coregraphics_means_no_pointer(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def _on(ms: int, *spaces: int) -> fw.Sample:
-    return fw.Sample(ms, "Finder", 9, (0, 0), spaces=spaces)
+    return fw.Sample(ms, "Finder", 9, (0, 0),
+                     spaces=tuple((f"D{i}", n) for i, n in enumerate(spaces)))
 
 
 def test_a_space_that_moved_inside_the_window_is_its_own_verdict() -> None:
@@ -319,7 +319,7 @@ def test_the_window_s_own_first_sample_is_the_baseline() -> None:
 
 
 def test_a_theft_of_the_focus_is_reported_over_a_moved_space() -> None:
-    front = fw.Sample(3, "dosbox-x", 42, (0, 0), spaces=(2, 4))
+    front = fw.Sample(3, "dosbox-x", 42, (0, 0), spaces=(("D0", 2), ("D1", 4)))
     assert fw.judge([_on(1, 1, 4), front], {"dosbox-x"}).status == "TOOK_FOCUS"
 
 
@@ -328,8 +328,27 @@ def test_a_moved_space_is_reported_over_a_sample_that_failed() -> None:
     assert fw.judge([_on(1, 1, 4), broken, _on(3, 2, 4)], {"dosbox-x"}).status == "SPACE_CHANGED"
 
 
-def test_a_record_written_before_spaces_were_read_still_loads() -> None:
+def test_a_record_with_no_spaces_field_loads() -> None:
     assert fw.parse("12\tFinder\t9\t0,0") == fw.Sample(12, "Finder", 9, (0, 0))
+
+
+def test_a_bare_number_space_is_keyed_by_position() -> None:
+    assert fw.parse("12\tFinder\t9\t0,0\t1,4").spaces == (("#0", 1), ("#1", 4))
+
+
+def test_the_same_displays_listed_in_another_order_are_the_same_spaces() -> None:
+    a = fw.Sample(1, "Finder", 9, (0, 0), spaces=(("A", 1), ("B", 4)))
+    b = fw.Sample(2, "Finder", 9, (0, 0), spaces=(("B", 4), ("A", 1)))
+    assert fw.judge([a, b], {"dosbox-x"}).status == "CLEAN"
+    moved = fw.Sample(3, "Finder", 9, (0, 0), spaces=(("B", 5), ("A", 1)))
+    assert fw.judge([a, b, moved], {"dosbox-x"}).status == "SPACE_CHANGED"
+
+
+def test_a_display_swapped_for_another_is_a_change_of_displays_not_a_move() -> None:
+    a = fw.Sample(1, "Finder", 9, (0, 0), spaces=(("A", 1), ("B", 4)))
+    b = fw.Sample(2, "Finder", 9, (0, 0), spaces=(("A", 1), ("C", 4)))
+    v = fw.judge([a, b], {"dosbox-x"})
+    assert v.status == "INVALID" and "displays changed" in v.reason
 
 
 def test_spaces_that_cannot_be_read_make_the_sample_an_error(
@@ -337,8 +356,9 @@ def test_spaces_that_cannot_be_read_make_the_sample_an_error(
     monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.setattr(fw, "_MACOS", True)
     monkeypatch.setattr(subprocess, "run", _fake_run("Finder\t9\n"))
+    monkeypatch.setattr(fw, "spaces_missing", lambda: "")
     for unread in (None, ()):
-        monkeypatch.setattr(fw, "_spaces", lambda unread=unread: unread)
+        monkeypatch.setattr(fw, "spaces", lambda unread=unread: unread)
         s = fw.sample_host()
         assert "Spaces could not be read" in s.error
         assert fw.judge([s], {"dosbox-x"}).status == "INVALID"
@@ -348,13 +368,30 @@ def test_no_coregraphics_means_no_spaces(monkeypatch: pytest.MonkeyPatch) -> Non
     fw._graphics.cache_clear()
     monkeypatch.setattr(ctypes.util, "find_library", lambda _name: None)
     try:
-        assert fw._spaces() is None
+        assert fw.spaces() is None and fw.spaces_missing() == ""
     finally:
         fw._graphics.cache_clear()
 
 
+def test_a_host_without_the_space_symbols_samples_without_spaces_and_says_which(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    class Bare:
+        CGSMainConnectionID = object()
+    assert fw.spaces_missing(Bare()) == "CGSCopyManagedDisplaySpaces"
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(fw, "_MACOS", True)
+    monkeypatch.setattr(subprocess, "run", _fake_run("Finder\t9\n"))
+    monkeypatch.setattr(fw, "_graphics", lambda: (Bare(), Bare()))
+    monkeypatch.setattr(fw, "_pointer", lambda: (1, 2))
+    s = fw.sample_host()
+    assert (s.error, s.spaces, s.app) == ("", (), "Finder")
+    assert fw.spaces() is None
+    v = fw.judge([s], {"dosbox-x"}, start_ms=s.epoch_ms, end_ms=s.epoch_ms)
+    assert v.status == "CLEAN" and "no Space was recorded" in v.reason
+
+
 class _Graphics:
-    """CoreGraphics and CoreFoundation as `_spaces` calls them: the managed list, its data,
+    """CoreGraphics and CoreFoundation as `spaces` calls them: the managed list, its data,
     and the bytes, each of which the window server may fail to hand over."""
 
     def __init__(self, managed: int, data: int, raw: bytes) -> None:
@@ -383,12 +420,12 @@ class _Graphics:
 
 def _plist(*current: int) -> bytes:
     import plistlib
-    return plistlib.dumps([{"Current Space": {"ManagedSpaceID": n}} for n in current],
-                          fmt=plistlib.FMT_BINARY)
+    return plistlib.dumps([{"Display Identifier": f"D{i}", "Current Space": {"ManagedSpaceID": n}}
+                           for i, n in enumerate(current)], fmt=plistlib.FMT_BINARY)
 
 
 @pytest.mark.parametrize(("managed", "data", "raw", "want", "released"), [
-    (7, 8, _plist(1, 4), (1, 4), [8, 7]),
+    (7, 8, _plist(1, 4), (("D0", 1), ("D1", 4)), [8, 7]),
     (0, 8, _plist(1), None, []),
     (7, 0, _plist(1), None, [7]),
     (7, 8, b"not a plist", None, [8, 7]),
@@ -396,10 +433,10 @@ def _plist(*current: int) -> bytes:
 ])
 def test_spaces_reads_the_window_server_s_list_and_releases_what_it_was_handed(
         monkeypatch: pytest.MonkeyPatch, managed: int, data: int, raw: bytes,
-        want: tuple[int, ...] | None, released: list[int]) -> None:
+        want: tuple[tuple[str, int], ...] | None, released: list[int]) -> None:
     g = _Graphics(managed, data, raw)
     monkeypatch.setattr(fw, "_graphics", lambda: (g, g))
-    assert fw._spaces() == want
+    assert fw.spaces() == want
     assert g.released == released, "every reference handed over is released, once"
 
 
@@ -410,112 +447,8 @@ def test_spaces_reads_a_capture_of_the_window_server_s_own_list(
     raw = (CAPTURE.parent / "managed-display-spaces.plist").read_bytes()
     g = _Graphics(7, 8, raw)
     monkeypatch.setattr(fw, "_graphics", lambda: (g, g))
-    assert fw._spaces() == (1, 4)
-
-
-class _Desk:
-    """Spaces in a row and the owner on one of them; the shortcuts move along the row. `late`
-    moves the owner and still reports the keystroke as unanswered, as an osascript that timed
-    out after System Events had acted does."""
-
-    def __init__(self, row: int, at: int, refuse: bool = False, lost: bool = False,
-                 late: bool = False) -> None:
-        self.row, self.at, self.refuse, self.lost, self.late = row, at, refuse, lost, late
-        self.pressed: list[int] = []
-        self.events: list[str] = []
-
-    def spaces(self) -> tuple[int, ...]:
-        self.events.append("read")
-        return (self.at, 9)
-
-    def clock(self) -> int:
-        self.events.append("clock")
-        return len(self.events)
-
-    def press(self, key: int) -> str:
-        self.pressed.append(key)
-        self.events.append("press")
-        if self.refuse:
-            return "System Events refused the keystroke: not allowed"
-        step = 1 if key == fw.KEY_RIGHT else -1
-        if 1 <= self.at + step <= self.row and not (self.lost and step < 0):
-            self.at += step
-        return "osascript did not answer: timed out" if self.late else ""
-
-
-@pytest.mark.parametrize(("desk", "keys", "why"), [
-    (_Desk(3, 1), [124, 123], ""),
-    (_Desk(3, 3), [124, 123, 124], ""),
-    (_Desk(1, 1), [124, 123], "no other Space"),
-    (_Desk(3, 1, refuse=True), [124], "refused the keystroke"),
-    (_Desk(3, 1, lost=True), [124, 123], "left on"),
-    (_Desk(3, 1, late=True), [124, 123], "did not answer"),
-    (_Desk(3, 3, late=True), [124], "did not answer"),
-])
-def test_move_space_moves_along_and_back_or_says_why_not(
-        monkeypatch: pytest.MonkeyPatch, desk: _Desk, keys: list[int], why: str) -> None:
-    at = desk.at
-    monkeypatch.setattr(fw, "_spaces", desk.spaces)
-    monkeypatch.setattr(fw, "_press", desk.press)
-    slept: list[float] = []
-    monkeypatch.setattr(time, "sleep", slept.append)
-    monkeypatch.setattr(fw, "now_ms", desk.clock)
-    began, ended, said = fw.move_space(settle_s=0.5)
-    assert desk.pressed == keys
-    assert (why in said) if why else said == ""
-    if not desk.lost:
-        assert desk.at == at, "the owner is back where they started, whatever a key reported"
-    assert desk.events[0] == "clock" and desk.events[-1] == "clock", \
-        "the window opens before the first key and closes after the last reading"
-    assert began < ended
-    assert slept == [0.5] * len(keys), "each key pressed is given its settle, and only those"
-
-
-def test_move_space_presses_nothing_when_the_spaces_cannot_be_read(
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    desk = _Desk(3, 1)
-    monkeypatch.setattr(fw, "_spaces", lambda: None)
-    monkeypatch.setattr(fw, "_press", desk.press)
-    monkeypatch.setattr(time, "sleep", lambda _s: None)
-    _began, _ended, said = fw.move_space(settle_s=0.5)
-    assert desk.pressed == [] and "could not be read" in said
-
-
-def test_move_space_presses_no_way_back_when_a_reading_fails_after_a_key(
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    desk = _Desk(3, 1)
-    monkeypatch.setattr(fw, "_spaces", lambda: None if desk.pressed else desk.spaces())
-    monkeypatch.setattr(fw, "_press", desk.press)
-    monkeypatch.setattr(time, "sleep", lambda _s: None)
-    _began, _ended, said = fw.move_space(settle_s=0.5)
-    assert desk.pressed == [fw.KEY_RIGHT], "a key back on a blind reading may move the owner"
-    assert "could not be read after a key" in said and "left on None" in said
-
-
-def test_press_sends_mission_control_s_shortcut_and_survives_any_bytes(
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[tuple[list[str], dict[str, object]]] = []
-
-    def run(argv: list[str], **kw: object) -> subprocess.CompletedProcess[str]:
-        seen.append((argv, kw))
-        return subprocess.CompletedProcess(argv, 0, "", "")
-    monkeypatch.setattr(subprocess, "run", run)
-    assert fw._press(fw.KEY_RIGHT) == ""
-    argv, kw = seen[0]
-    assert argv[0] == "osascript" and argv[-1].endswith("key code 124 using control down")
-    assert kw["errors"] == "replace" and kw["timeout"] == fw.OSASCRIPT_TIMEOUT_S
-
-
-def test_press_says_why_a_keystroke_did_not_go(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(subprocess, "run", _fake_run("", 1, "not allowed to send keystrokes"))
-    assert "not allowed" in fw._press(124)
-
-    def hang(*_a: object, **_k: object) -> None:
-        raise subprocess.TimeoutExpired("osascript", 5)
-    monkeypatch.setattr(subprocess, "run", hang)
-    assert "did not answer" in fw._press(124)
-    monkeypatch.setattr(subprocess, "run", _fake_run(""))
-    assert fw._press(123) == ""
+    assert fw.spaces() == (("00000000-0000-0000-0000-000000000004", 1),
+                           ("00000000-0000-0000-0000-000000000007", 4))
 
 
 def test_a_change_in_the_number_of_displays_is_invalid_not_a_move() -> None:
@@ -530,110 +463,33 @@ def test_samples_with_and_without_a_space_reading_cannot_be_judged() -> None:
     assert old.status == "CLEAN" and "no Space was recorded" in old.reason
 
 
-# THE CONTROL AND THE VERDICT: what each window judged is decided here, and each server maps the
-# outcome onto its own cell call.
-class _Watched:
-    def __init__(self, samples: list[fw.Sample]) -> None:
-        self.samples, self.path, self.exited = samples, Path("w.tsv"), False
-
-    def __exit__(self, *exc: object) -> None:
-        self.exited = True
-
-
-def _app(ms: int, app: str = "Finder", spaces: tuple[int, ...] = (1,)) -> fw.Sample:
-    return fw.Sample(ms, app, 9, (0, 0), spaces=spaces)
-
-
-def _control_case(monkeypatch: pytest.MonkeyPatch, front_app: str, behind_app: str,
-                  moved: bool, why: str = "", blind: tuple[int, int] | None = None) -> fw.Control:
-    """`blind` is a stretch whose samples are errors: the instrument could not read the host."""
-    samples = [fw.Sample(ms, error="osascript did not answer")
-               if blind is not None and blind[0] <= ms <= blind[1] else
-               _app(ms, front_app if 1000 <= ms <= 2000 else
-                    behind_app if 3000 <= ms <= 4000 else "Finder",
-                    (2,) if moved and 5500 <= ms <= 5600 else (1,))
-               for ms in range(1000, 6001, 100)]
-    # Each start's window is the one ITS mode was given, so a control that held them the other
-    # way round would judge the front start over the behind window.
-    asked: list[bool] = []
-
-    def hold(background: bool) -> tuple[int, int]:
-        asked.append(background)
-        return (3000, 4000) if background else (1000, 2000)
-    monkeypatch.setattr(fw, "move_space", lambda: (5000, 6000, why))
-    c = fw.control(_Watched(samples), {"mame"}, hold)
-    assert asked == [False, True], asked
-    return c
-
-
-def test_a_control_window_the_instrument_could_not_read_is_blocked_not_failed(
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    c = _control_case(monkeypatch, "mame", "Finder", moved=True, blind=(1000, 2000))
-    assert c.front.status == "BLOCKED" and c.since is None, c
-    c = _control_case(monkeypatch, "mame", "Finder", moved=True, blind=(3000, 4000))
-    assert c.behind.status == "BLOCKED" and c.since is None, c
-
-
-def test_a_control_that_holds_passes_its_three_cells_and_opens_the_judged_window(
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    c = _control_case(monkeypatch, "mame", "Finder", moved=True)
-    assert [o.status for o in (c.front, c.behind, c.space)] == ["PASS", "PASS", "PASS"]
-    assert c.since == 6000
-
-
-@pytest.mark.parametrize("front, behind, moved, why, want", [
-    ("Finder", "Finder", True, "", ("FAIL", "PASS", "PASS")),
-    ("mame", "mame", True, "", ("PASS", "FAIL", "PASS")),
-    ("mame", "Finder", False, "", ("PASS", "PASS", "FAIL")),
-    ("mame", "Finder", True, "a keystroke was refused", ("PASS", "PASS", "FAIL")),
-])
-def test_a_control_that_does_not_hold_clears_nothing(
-        monkeypatch: pytest.MonkeyPatch, front: str, behind: str, moved: bool, why: str,
-        want: tuple[str, str, str]) -> None:
-    c = _control_case(monkeypatch, front, behind, moved, why)
-    assert (c.front.status, c.behind.status, c.space.status) == want
-    assert c.since is None
-    if why:
-        assert c.space.reason.startswith(why)
-
-
-def test_a_space_move_inside_the_behind_window_blocks_that_cell_and_names_nobody(
-        monkeypatch: pytest.MonkeyPatch) -> None:
-    samples = [_app(ms, "mame" if 1000 <= ms <= 2000 else "Finder",
-                    (2,) if ms == 3500 or 5500 <= ms <= 5600 else (1,))
-               for ms in range(1000, 6001, 100)]
-    windows = iter([(1000, 2000), (3000, 4000)])
-    monkeypatch.setattr(fw, "move_space", lambda: (5000, 6000, ""))
-    c = fw.control(_Watched(samples), {"mame"}, lambda background: next(windows))
-    assert c.behind.status == "BLOCKED" and "Spaces" in c.behind.reason
-    assert c.front.status == c.space.status == "PASS" and c.since is None
-
-
-@pytest.mark.parametrize("samples, since, end, status, says", [
-    ([_app(ms) for ms in range(0, 70_001, 500)], 0, 70_000, "PASS", "none of"),
-    ([_app(ms, "mame" if ms == 30_000 else "Finder") for ms in range(0, 70_001, 500)],
-     0, 70_000, "FAIL", "TOOK_FOCUS"),
-    ([_app(ms) for ms in range(0, 70_001, 500)], None, 70_000, "BLOCKED", "did not hold"),
-    ([_app(ms) for ms in range(0, 30_001, 500)], 0, 30_000, "BLOCKED", "too little to judge"),
-    ([_app(ms, spaces=(2,) if ms > 40_000 else (1,)) for ms in range(0, 70_001, 500)],
-     0, 70_000, "BLOCKED", "nothing names who moved it"),
-    ([_app(ms) for ms in range(0, 70_001, 5000)], 0, 70_000, "BLOCKED", "cannot judge the run"),
-])
-def test_the_verdict_is_judged_only_after_a_control_and_a_window_long_enough(
-        samples: list[fw.Sample], since: int | None, end: int, status: str, says: str) -> None:
-    watch = _Watched(samples)
-    v = fw.verdict(watch, {"mame"}, since, end)
-    assert (v.status, watch.exited) == (status, True)
-    assert says in v.reason and "w.tsv" in v.reason
-
-
-@pytest.mark.parametrize("window_ms, status", [(fw.MIN_WINDOW_MS - 1, "BLOCKED"),
-                                               (fw.MIN_WINDOW_MS, "PASS")])
-def test_a_window_is_long_enough_from_its_minimum_on(window_ms: int, status: str) -> None:
-    samples = [_app(ms) for ms in range(0, window_ms + 1, 500)] + [_app(window_ms)]
-    assert fw.verdict(_Watched(samples), {"mame"}, 0, window_ms).status == status
-
-
 def test_now_ms_is_the_epoch_in_milliseconds() -> None:
     before = int(time.time() * 1000)
     assert before <= fw.now_ms() <= int(time.time() * 1000)
+
+
+def test_binding_a_coregraphics_without_the_space_symbols_binds_the_rest_and_raises_nothing(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    class Function:
+        restype: object = None
+        argtypes: object = None
+
+    class Library:
+        def __init__(self, names: tuple[str, ...]) -> None:
+            for name in names:
+                setattr(self, name, Function())
+
+    cg_names = ("CGEventCreate", "CGEventGetLocation")
+    cf_names = ("CFPropertyListCreateData", "CFDataGetLength", "CFDataGetBytePtr", "CFRelease")
+    made = iter([Library(cg_names), Library(cf_names)])
+    fw._graphics.cache_clear()
+    monkeypatch.setattr(ctypes.util, "find_library", lambda name: name)
+    monkeypatch.setattr(ctypes, "CDLL", lambda _path: next(made))
+    try:
+        libs = fw._graphics()
+        assert libs is not None
+        cg = libs[0]
+        assert cg.CGEventCreate.restype is ctypes.c_void_p
+        assert fw.spaces_missing(cg) == "CGSMainConnectionID" and fw.spaces() is None
+    finally:
+        fw._graphics.cache_clear()
