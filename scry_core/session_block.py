@@ -10,25 +10,36 @@ server's to say; how the block is put together is held here.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
-from scry_core import narrowing
+from scry_core import client_cap, narrowing
 
 #: The tools whose replies carry the whole block.
 WHOLE_ON = frozenset({"start", "status"})
-#: What the short block says about the half it left out, in as few units as it takes: naming the
-#: omission must cost less than the facts it stands for, or the short block grows the reply.
+#: What the short block says about the half it left out.
 HOW = "call `status`"
 
 
 def block(alarms: dict[str, Any], fixed: dict[str, Any], whole: bool) -> dict[str, Any]:
     """The block: `alarms` always; `fixed` whole, or named in `omitted` beside `how`. A key in
-    both is the server's bug, a `ValueError`: the short block would omit what it carries."""
+    both is the server's bug, a `ValueError`: the short block would omit what it carries.
+
+    A FIXED HALF CHEAPER THAN ITS NAMING RIDES WHOLE: the short block exists to cut the reply, so
+    when the names and the sentence would cost the client more units than the facts themselves
+    (MAME's lone `altering_writes` once `console` is an alarm), the facts go instead."""
     if both := alarms.keys() & fixed.keys():
         raise ValueError(f"{sorted(both)} are both an alarm and a fixed fact")
+    full = {**alarms, **fixed}
     if whole:
-        return {**alarms, **fixed}
-    return {**alarms, **narrowing.omission(list(fixed), HOW)}
+        return full
+    short = {**alarms, **narrowing.omission(list(fixed), HOW)}
+    return short if _units(short) < _units(full) else full
+
+
+def _units(block: dict[str, Any]) -> int:
+    """A block's cost in the client's unit, as `traffic` counts a reply."""
+    return client_cap.utf16_units(json.dumps(block, ensure_ascii=False, separators=(",", ":")))
 
 
 def whole_for(tool: str) -> bool:
