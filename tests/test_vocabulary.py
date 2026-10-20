@@ -26,6 +26,8 @@ def test_a_range_publishes_its_bounds() -> None:
     assert _schema(Annotated[int, vocabulary.bounds(1, 400)]) == {
         "type": "integer", "minimum": 1, "maximum": 400}
     assert _schema(Annotated[float, vocabulary.bounds(0, 600.0)])["maximum"] == 600.0
+    assert _schema(Annotated[float, vocabulary.bounds(0, 600.0, open_lo=True)]) == {
+        "type": "number", "exclusiveMinimum": 0, "maximum": 600.0}
 
 
 def test_a_folded_vocabulary_matches_every_case_of_its_words_and_nothing_else() -> None:

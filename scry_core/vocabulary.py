@@ -37,9 +37,11 @@ def _escaped(c: str) -> str:
     return f"\\{c}" if c in r"\^$.|?*+()[]{}" else c
 
 
-def bounds(lo: float, hi: float) -> Any:
-    """The schema half of a range, `minimum` and `maximum`."""
-    return Field(json_schema_extra={"minimum": lo, "maximum": hi})
+def bounds(lo: float, hi: float, *, open_lo: bool = False) -> Any:
+    """The schema half of a range, `minimum` (`exclusiveMinimum` when `open_lo`, a bound the
+    judge refuses itself, as a wait's 0) and `maximum`."""
+    low = "exclusiveMinimum" if open_lo else "minimum"
+    return Field(json_schema_extra={low: lo, "maximum": hi})
 
 
 def one_of(name: str, value: object, options: Words, tail: str = "") -> None:
