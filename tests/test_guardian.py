@@ -302,6 +302,7 @@ def test_a_ps_that_says_nothing_for_a_live_pid_cannot_say_rather_than_gone(
     assert seen and seen[0]["TZ"] == "UTC" and seen[0]["LC_ALL"] == "C"
 
 
+@POSIX
 def test_proc_gives_the_kernels_start_time_past_a_name_with_spaces(tmp_path: Path) -> None:
     (tmp_path / "77").mkdir()
     fields = " ".join(str(n) for n in range(3, 30))           # field 3 on: the state, ...
@@ -310,6 +311,7 @@ def test_proc_gives_the_kernels_start_time_past_a_name_with_spaces(tmp_path: Pat
     assert guardian.started(78, proc=str(tmp_path)) == ""
 
 
+@POSIX
 def test_the_guardian_imports_from_the_servers_own_path(tmp_path: Path) -> None:
     """`-I` drops PYTHONPATH and the user's site: the path the program carries is what reaches
     a `scry_core` found there."""
@@ -325,12 +327,14 @@ def test_the_guardian_imports_from_the_servers_own_path(tmp_path: Path) -> None:
     assert "''" not in guardian.program([""]) and guardian.name_of("scry-x") == "scry-x-guardian"
 
 
+@POSIX
 def test_a_proc_that_cannot_be_read_falls_back_to_ps(tmp_path: Path) -> None:
     not_a_dir = tmp_path / "proc"
     not_a_dir.write_text("")
     assert guardian.started(os.getpid(), proc=str(not_a_dir))
 
 
+@POSIX
 def test_a_pid_ps_says_nothing_of_and_we_may_not_signal_cannot_be_told(
         monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(subprocess, "run",
