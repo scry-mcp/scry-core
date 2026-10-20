@@ -34,9 +34,6 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Literal, TypeVar, get_args
 
-#: The contract's version: a consumer can assert the contract it was written against.
-CONTRACT_VERSION = 6
-
 Code = Literal[
     "no_session",         # no live machine: `start` first
     "session_live",       # `start` over a live session: `close` it first
@@ -164,34 +161,8 @@ def check_envelope(reply: dict[str, Any]) -> dict[str, Any]:
 # ------------------------------------------------------------- the contract's own audit
 #
 # Checks every server's suite runs, kept HERE so the suites cannot drift apart in what they hold
-# a reply to: a refusal's shape, a reply's nulls, and the codes written in a tree.
-
-
-def nulls_in(value: Any) -> list[str]:
-    """Every null in a reply, each named by the path a reader follows to it (`rows[0].x`), in
-    the order the reply lists them; a reply that is itself null is `(the reply)`."""
-    return ["(the reply)"] if value is None else _nulls_at(value, "")
-
-
-def _nulls_at(value: Any, at: str) -> list[str]:
-    if value is None:
-        return [at]
-    found: list[str] = []
-    if isinstance(value, dict):
-        for key, item in value.items():
-            found += _nulls_at(item, f"{at}.{key}" if at else str(key))
-    elif isinstance(value, list | tuple):
-        for i, item in enumerate(value):
-            found += _nulls_at(item, f"{at}[{i}]")
-    return found
-
-
-def check_no_null(name: str, reply: dict[str, Any]) -> None:
-    """Raises AssertionError naming the tool and every null's path, so a suite that runs this on
-    every reply it builds reads one failure per tool."""
-    found = nulls_in(reply)
-    if found:
-        raise AssertionError(f"{name}: a null at {found}: {reply}")
+# a reply to: a refusal's shape and the codes written in a tree (a reply's nulls are the shape
+# guard's, which walks every reply a suite builds).
 
 
 def check_refusal(name: str, reply: dict[str, Any], code: str | None = None) -> None:

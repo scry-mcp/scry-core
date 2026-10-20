@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from scry_core import progress as mprogress
+from scry_core import prose
 
 #: How often the wait reads the log again.
 POLL_S = 0.1
@@ -136,3 +137,24 @@ def wait(rx: re.Pattern[str], fresh: Callable[[], list[str]], *, seconds: float,
         return Ended("GONE", out.arrived_during, out.lines_examined, out.waited_s,
                      at_bound=True)
     return out
+
+
+def timeout_note(pattern: str, ended: Ended, where: str, writer: str) -> str:
+    """The `note` of a wait whose bound ran out: what arrived and what was examined (`where` says
+    over what span of the log), so an expired bound is never read as "there was nothing to match
+    against", and a silent `writer` (the guest, the driver) is said as such."""
+    silent = ("" if ended.arrived_during else
+              f" The {writer} wrote NOTHING at all in this window, so the question may be "
+              "whether it is still writing rather than what it wrote.")
+    return (f"nothing matched /{pattern}/ in {ended.waited_s} s: "
+            f"{prose.counted(ended.arrived_during, 'line')} arrived DURING the wait "
+            f"({ended.lines_examined} {where}), so this is a bound that expired and not 'there "
+            f"was nothing to match against'.{silent} The machine is still running")
+
+
+def gone_message(pattern: str, ended: Ended, seconds: float) -> str:
+    """The refusal of a wait whose emulator went away: nothing more will be written, so a longer
+    wait cannot help."""
+    return (f"the emulator is GONE, {ended.waited_s} s into a {seconds:g} s wait for /{pattern}/, "
+            "and a final read of the log after it died found nothing matching either. Nothing "
+            "more will be written, so this needs a new session, not a bigger bound")

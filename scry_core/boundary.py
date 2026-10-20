@@ -195,7 +195,13 @@ class Boundary:
              ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register `fn` as an MCP tool serialised over the one machine, its reply led by the
         line `summary` writes (REQUIRED, so a tool registered without one fails at import).
-        `read_only` and `idempotent` become the protocol's hints. A tool that takes a `ctx` (the
+        `title` is what the client shows. `read_only` becomes `readOnlyHint`, which lets a client
+        run readers in parallel (honest, since every tool takes the lock): anything that advances
+        the machine, writes to it or writes a FILE is not one. `idempotent` becomes
+        `idempotentHint`, a STRONGER claim (calling again changes nothing AND answers the same),
+        false unless the tool's own data cannot change: declared wrongly it invites a client to
+        repeat a call whose answer moved underneath it. `session_before` keeps the `session`
+        block the body built (`close`'s, the state before the kill). A tool that takes a `ctx` (the
         protocol's `Context`, for the progress line of a bounded wait) must declare `on_cancel`
         or fails at import, because a wait cancelled with no declared end would leave the machine
         in a state nobody chose; any other tool ends `none` when a cancel meets it. The `ctx` is

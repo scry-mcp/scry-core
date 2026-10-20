@@ -9,6 +9,7 @@ import shlex
 import threading
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -26,7 +27,7 @@ def _held(refs: list[str]) -> dict[str, Any]:
 VOCABULARY: dict[str, Any] = {"outside": frozenset({"close"}),
                               "sequences": frozenset({"perform", "drive"}),
                               "start_tool": "start", "states": ("state_save", "state_load", "name"),
-                              "lists": {"breakpoint_list": "breakpoints"}}
+                              "kinds": {"breakpoint": ("breakpoint_list", "breakpoints")}}
 
 
 class _Machine:
@@ -72,7 +73,9 @@ class _Server:
         self.declared: list[str] = []
         self.recorder = recording.Recorder("double", "double.py", RECORD_MAX, self.m.read,
                                            lambda: self.m.up,
-                                           declarations=lambda: {"breakpoint_list": self.declared},
+                                           declarations=lambda: [
+                                               SimpleNamespace(kind="breakpoint", ref=r)
+                                               for r in self.declared],
                                            stop_fields=("pc", "frame"), plan=plan,
                                            **VOCABULARY)
         self.b = boundary.Boundary(
@@ -87,7 +90,7 @@ class _Server:
             return {"status": "ok", "pc": f"0x{m.seq:x}", "frame": m.frame}
 
         @b.tool("start")
-        def start(system: str, plan: list[dict[str, Any]] | None = None,
+        def start(system: str, plan: list[dict[str, Any]] | None = None, bound: float = 0.0,
                   fails: bool = False, over_live: bool = False) -> dict[str, Any]:
             if over_live:                      # refused before anything is spawned
                 return {"status": "INVALID", "code": "session_live", "message": "close first",
@@ -283,6 +286,15 @@ def test_a_plans_steps_are_recorded_after_the_start_and_the_start_drops_the_plan
     rec = s.recorder.recording
     assert rec is not None and rec.start == {"system": "board"}
     assert [(c.op, dict(c.args)) for c in rec.calls] == [("run_for", {"frames": 5})]
+
+
+def test_an_argument_that_only_bounds_the_plan_leaves_the_start_with_it() -> None:
+    s = _Server(plan="plan")
+    s.recorder.plan_with = ("bound",)
+    s.start(system="board", plan=[{"op": "run_for", "frames": 5}], bound=5)
+    assert s.recorder.recording is not None and s.recorder.recording.start == {"system": "board"}
+    s.start(system="board", bound=5)      # no plan: the server judges it, the record keeps it
+    assert s.recorder.recording.start == {"system": "board", "bound": 5}
 
 
 def test_the_recording_stops_at_its_cap_and_the_export_says_where() -> None:
@@ -742,7 +754,7 @@ def test_the_machine_moved_between_two_recorded_calls_cuts_the_document() -> Non
 
 def test_a_call_with_nothing_to_add_to_is_this_modules_defect_said_as_one() -> None:
     r = recording.Recorder("x", "x.py", 10, lambda: recording.UNREAD, lambda: False,
-                           declarations=dict, stop_fields=(), **VOCABULARY)
+                           declarations=list, stop_fields=(), **VOCABULARY)
     with pytest.raises(RuntimeError, match="was taken with no recording to add it to"):
         r.end("write", None, {}, {"status": "ok"}, recording.UNREAD)
 
@@ -761,7 +773,7 @@ def test_the_document_names_its_entry_file_and_the_declarations_its_start_found(
 def test_a_server_that_cannot_list_its_declarations_records_none() -> None:
     s = _Server()
 
-    def broken() -> dict[str, list[str]]:
+    def broken() -> list[recording.Declaration]:
         raise OSError("the store cannot be read")
     s.recorder._declarations = broken
     s.start(system="board")
@@ -794,3 +806,13 @@ def test_the_declarations_are_the_stores_before_the_plan_declares_its_own() -> N
     s.start(system="board", plan=[{"op": "declare", "ref": "0x80"}, {"op": "run_for", "frames": 1}])
     doc, _ = s.document()
     assert doc["needs"]["declarations"] == _held(["0x40"])
+
+
+def test_the_exports_line_says_what_it_holds_and_where_it_was_cut() -> None:
+    reply = {"steps": 3, "checks": 1, "dropped_total": 2, "path": "/x.json",
+             "cut": {"call": 7, "op": "resume", "why": "a release"}}
+    assert recording.export_summary({}, reply) == \
+        "perform_export: 3 steps, 1 check, 2 dropped, cut at call 7 to /x.json"
+    whole = {**reply, "cut": {"available": False, "why": "nothing was cut"}}
+    assert recording.export_summary({}, whole).endswith("2 dropped to /x.json")
+    assert str(recording.DROPPED_SHOWN) in recording.DOC_VALUES["EXPORT_REPLY"]

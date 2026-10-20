@@ -195,3 +195,10 @@ def picture_file(name: str, path: Path, sha256: str | None = None) -> tuple[png.
         return png.decode(data), digest
     except png.NotAPicture as e:
         raise Invalid("bad_argument", f"{name}: {path}: {e}") from None
+
+
+def file_facts(path: Path) -> dict[str, Any]:
+    """A file a tool wrote, as every reply names one: `path`, `bytes` and `sha256`, the size and
+    the hash taken off ONE read of the file."""
+    data = path.read_bytes()
+    return {"path": str(path), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}

@@ -142,3 +142,10 @@ def test_a_number_refuses_what_it_does_not_spell_naming_the_argument(
         judges.number("value", value, 32, "the debugger")
     assert refused.value.code == "bad_argument" and words in str(refused.value), refused.value
     assert "value" in str(refused.value)
+
+
+def test_a_written_file_is_named_by_its_path_size_and_hash(tmp_path: Path) -> None:
+    f = tmp_path / "x.png"
+    f.write_bytes(b"abc")
+    assert judges.file_facts(f) == {"path": str(f), "bytes": 3,
+                                    "sha256": hashlib.sha256(b"abc").hexdigest()}

@@ -135,26 +135,3 @@ def test_a_verdict_is_one_word_of_the_measurements() -> None:
     with pytest.raises(TypeError, match=r"carries \['verdict'\]"):
         contract.check_envelope({"status": "INVALID", "code": "wait_expired", "message": "m",
                                  "verdict": "TIMEOUT"})
-
-
-@pytest.mark.parametrize(("reply", "paths"), [
-    ({"a": 1, "b": "x", "c": [1, {"d": False}]}, []),
-    ({"a": None}, ["a"]),
-    ({"a": {"b": [0, None]}}, ["a.b[1]"]),
-    ({"rows": [{"x": None}, {"y": {"z": None}}]}, ["rows[0].x", "rows[1].y.z"]),
-    ([None], ["[0]"]),
-    ({"t": (1, None)}, ["t[1]"]),
-    (None, ["(the reply)"]),
-])
-def test_the_null_walker_names_every_null_by_its_path(reply: Any, paths: list[str]) -> None:
-    """A null anywhere in a reply, a row of a list or a block inside a block included, is
-    named by the path a reader would follow to it, so a suite that walks every reply can
-    say which key of which tool broke the rule."""
-    assert contract.nulls_in(reply) == paths
-
-
-def test_check_no_null_names_the_tool_and_every_path() -> None:
-    """The check passes a reply with no null and names the tool and each path otherwise."""
-    contract.check_no_null("status", {"status": "ok", "session": {"alive": False}})
-    with pytest.raises(AssertionError, match=r"resume: a null at \['stopped_at', 'x\.y'\]"):
-        contract.check_no_null("resume", {"stopped_at": None, "x": {"y": None}})

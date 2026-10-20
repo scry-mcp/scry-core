@@ -42,7 +42,6 @@ from typing import Any
 
 import pytest
 
-from scry_core import reply_contract as contract
 from scry_core.reply_shapes import ANCHORS_INI
 
 # THE TABLE HOLDS A WORD ONLY ONCE TWO REPLIES HAVE SPELLED IT WITH TWO SHAPES: `truncated`, a
@@ -73,16 +72,18 @@ def _judge(value: Any, where: str) -> None:
     """Every `SHAPES` key anywhere in a reply carries the shape the table gives it (`_shapes`),
     and no value anywhere is a null: a datum that could not be read or does not apply is the
     contract's `unavailable(why)` in its place, so a null is a reply that skipped the one
-    spelling. The nulls are the contract's own walk (`nulls_in`), every one named at once."""
-    _shapes(value, where)
-    if found := contract.nulls_in(value):
-        raise AssertionError(f"{where} carries a null at {', '.join(found)}; no reply carries a "
-                             f"null: a datum that could not be read or does not apply is "
-                             f"`unavailable(why)` in its place")
+    spelling. ONE walk judges both, and names every null at once."""
+    nulls: list[str] = []
+    _walk(value, where, nulls)
+    if nulls:
+        raise AssertionError(f"a null at {', '.join(nulls)}; no reply carries a null: a datum "
+                             f"that could not be read or does not apply is `unavailable(why)` "
+                             f"in its place")
 
 
-def _shapes(value: Any, where: str) -> None:
-    """Every `SHAPES` key anywhere in `value` carries the shape the table gives it.
+def _walk(value: Any, where: str, nulls: list[str]) -> None:
+    """Every `SHAPES` key anywhere in `value` carries the shape the table gives it, and every
+    null is added to `nulls` by its path.
 
     IT WALKS, and does not stop at the top level: a key's shape is a property of the word,
     not of how deep in the reply it happens to sit, so a row inside `symbols` answering
@@ -93,7 +94,9 @@ def _shapes(value: Any, where: str) -> None:
     bool)` is False, so an int cannot pass for the boolean. (The reverse, a bool passing for an
     `int` row, is a trap the day this table grows one, and it belongs to that row's own case.)
     """
-    if isinstance(value, dict):
+    if value is None:
+        nulls.append(where)
+    elif isinstance(value, dict):
         for key, sub in value.items():
             want = SHAPES.get(key)
             if want is not None and not isinstance(sub, want):
@@ -101,13 +104,13 @@ def _shapes(value: Any, where: str) -> None:
                     f"{where}[{key!r}] is {sub!r}, of type {type(sub).__name__}; every "
                     f"server holds `{key}` to {want.__name__} everywhere it is spelled. One word, "
                     f"one shape: give the other meaning its own name")
-            _shapes(sub, f"{where}[{key!r}]")
+            _walk(sub, f"{where}[{key!r}]", nulls)
     elif isinstance(value, list | tuple):
         # A TUPLE TOO, because the battery reads a reply BEFORE it is serialised: on the wire
         # everything is JSON and a tuple cannot survive, but in process it can, and in process
         # is where every case here looks.
         for i, sub in enumerate(value):
-            _shapes(sub, f"{where}[{i}]")
+            _walk(sub, f"{where}[{i}]", nulls)
 
 
 def _wrap_envelope(original: Envelope) -> Envelope:

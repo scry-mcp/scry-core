@@ -26,9 +26,10 @@ def test_the_shape_it_holds_passes_and_a_bool_is_not_an_int() -> None:
 
 
 @pytest.mark.parametrize(("reply", "where"), [
-    ({"pc": None}, r"reply carries a null at pc;"),
-    ({"rows": [{"name": "a", "linear": None}], "x": None}, r"at rows\[0\]\.linear, x;"),
-    ({"pairs": (None,)}, r"at pairs\[0\];"),
+    ({"pc": None}, r"a null at reply\['pc'\];"),
+    ({"rows": [{"name": "a", "linear": None}], "x": None},
+     r"at reply\['rows'\]\[0\]\['linear'\], reply\['x'\];"),
+    ({"pairs": (None,)}, r"at reply\['pairs'\]\[0\];"),
 ])
 def test_a_null_is_refused_at_any_depth_naming_where(reply: dict[str, Any], where: str) -> None:
     """No reply carries a null: a datum that could not be read, or does not apply, is the

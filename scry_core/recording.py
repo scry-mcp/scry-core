@@ -46,12 +46,12 @@ from __future__ import annotations
 import json
 import os
 import shlex
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, get_args
+from typing import Any, Literal, Protocol, get_args
 
-from scry_core import fresh, judges
+from scry_core import fresh, judges, prose
 from scry_core.reply_contract import Invalid, unavailable
 
 #: The most calls a recording keeps beside the ones its export would drop, whatever its
@@ -145,39 +145,55 @@ class Declared:
     read_only: bool
 
 
+class Declaration(Protocol):
+    """What the Recorder reads of a server's stored declaration: its family and its ref."""
+
+    @property
+    def kind(self) -> str: ...
+
+    @property
+    def ref(self) -> str: ...
+
+
 class Recorder:
     """One server's recording, fed by its `scry_core.boundary.Boundary`. `server` and `entry`
     name the server and its entry file, which a runner starts; `record_max` the most calls an
     export keeps, the server's own bound; `machine` reads the machine (`Machine`); `live` says
-    whether a session is up, as the start refuses over one; `declarations` the references the
-    store holds as a start succeeds (what it re-arms), by the list tool that lists them, and
-    `lists` each such tool with the reply field its rows are under; `stop_fields` names the
+    whether a session is up, as the start refuses over one; `declarations` the declarations the
+    store holds as a start succeeds (what it re-arms), each with its `kind` and `ref`, and
+    `kinds` each kind's list tool and the reply field its rows are under (two kinds may share
+    one list); `stop_fields` names the
     fields of a reply that say where a stop is; `sequences` the tools whose steps are recorded
     in their place; `start_tool` the tool that begins a recording and `plan` its argument whose
-    steps are recorded after it; `outside` the tools that are no step a replay could take
+    steps are recorded after it, `plan_with` the arguments that only bound the plan and leave the
+    start with it (a replayed start runs no plan, and the server refuses its bound alone);
+    `outside` the tools that are no step a replay could take
     (`close`, the exporter's own); `states` the tools that save and load a state and the
     argument that names it. Each is the server's own vocabulary, declared by the server: nothing
     here names a tool."""
 
     def __init__(self, server: str, entry: str, record_max: int, machine: Callable[[], Machine],
                  live: Callable[[], bool], *,
-                 declarations: Callable[[], Mapping[str, Sequence[str]]],
-                 lists: Mapping[str, str],
+                 declarations: Callable[[], Iterable[Declaration]],
+                 kinds: Mapping[str, tuple[str, str]],
                  stop_fields: tuple[str, ...], outside: frozenset[str], sequences: frozenset[str],
-                 start_tool: str, states: tuple[str, str, str], plan: str | None = None) -> None:
+                 start_tool: str, states: tuple[str, str, str], plan: str | None = None,
+                 plan_with: tuple[str, ...] = ()) -> None:
         self.server = server
         self.entry = entry
         self.record_max = record_max
         self._machine = machine
         self._live = live
         self._declarations = declarations
-        self.lists = dict(lists)
+        self.kinds = dict(kinds)
+        self.lists = dict(kinds.values())
         self._found_live = False
         self.stop_fields = stop_fields
         self.outside = outside | {EXPORT_TOOL}
         self.sequences = sequences
         self.start_tool = start_tool
         self.plan = plan
+        self.plan_with = plan_with
         self.states = states
         self.declared: dict[str, Declared] = {}
         self.recording: Recording | None = None
@@ -208,7 +224,9 @@ class Recorder:
         if tool in self.outside:
             return None
         if parent is None and tool == self.start_tool:
-            self._starting = Recording({k: v for k, v in given.items() if k != self.plan})
+            planned = self.plan is not None and bool(given.get(self.plan))
+            dropped = {self.plan, *self.plan_with} if planned else {self.plan}
+            self._starting = Recording({k: v for k, v in given.items() if k not in dropped})
             self._found_live = self._was_live()
             self._found_declared = None
             return None
@@ -289,8 +307,11 @@ class Recorder:
         """The declarations the store holds as a start succeeds, sorted, by list tool; none when
         the server cannot say, which a replay then has nothing to compare against."""
         try:
-            held = self._declarations()
-            return {tool: sorted(held.get(tool, ())) for tool in self.lists}
+            held: dict[str, list[str]] = {tool: [] for tool in self.lists}
+            for d in self._declarations():
+                if d.kind in self.kinds:
+                    held[self.kinds[d.kind][0]].append(d.ref)
+            return {tool: sorted(refs) for tool, refs in held.items()}
         except Exception:  # noqa: BLE001 -- as `_read`: a recorder never fails a call
             return {}
 
@@ -534,3 +555,28 @@ class Unrecorded:
     def ended(self, tool: str, parent: str | None, given: Mapping[str, Any],
               began: Machine | None) -> None:
         """No recording to add to."""
+
+
+#: `perform_export`'s description halves both servers share, filled by each into its docstring
+#: (`docs.filled`) around what that server keeps and cuts: what the document is for, and what
+#: the path takes and the reply says.
+EXPORTS = ("Write what this session did since its `start` to `path` as `perform`'s own document, "
+           "so an investigation becomes a bench: `uv run python -m scry_core.replay <path>`, from "
+           "this server's repository, plays it with no model and exits 0 when every step held. "
+           "Answers in any state, a closed session's included.")
+EXPORT_REPLY = ("`path` absolute or `~`-led, ending `.json`; refused if it is there unless "
+                "`overwrite`. Reply: `path`, `steps`, `checks`, `dropped` (the last "
+                f"{DROPPED_SHOWN}, each `call`, `op`, `why`) and `dropped_total`, `cut` (`call`, "
+                "`op`, `why`, or unavailable) and `replay`, the runner's command line. "
+                "`no_recording` before a `start` succeeded, after one was cancelled, or when no "
+                "recorded call is a step a replay could take.")
+DOC_VALUES = {"EXPORTS": EXPORTS, "EXPORT_REPLY": EXPORT_REPLY}
+
+
+def export_summary(args: dict[str, Any], reply: dict[str, Any]) -> str:
+    """`perform_export`'s one line: what the document holds, what was dropped, where the cut
+    fell, and where it went."""
+    cut = f", cut at call {reply['cut']['call']}" if "call" in reply.get("cut", {}) else ""
+    return (f"perform_export: {prose.counted(reply['steps'], 'step')}, "
+            f"{prose.counted(reply['checks'], 'check')}, "
+            f"{reply['dropped_total']} dropped{cut} to {reply['path']}")

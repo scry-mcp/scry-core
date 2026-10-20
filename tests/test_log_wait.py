@@ -104,3 +104,18 @@ def test_the_wait_reports_its_progress_under_its_label(monkeypatch: pytest.Monke
                   progress=lambda done, total, line: said.append(line), label="log_wait /G{O}/")
     assert said and said[-1].startswith("log_wait /G{O}/: "), said
     assert "1 lines arrived, last: b {x}" in said[0], said
+
+
+def test_a_timeouts_note_says_what_arrived_and_a_silent_writer() -> None:
+    quiet = log_wait.Ended("TIMEOUT", 0, 4, 2.0)
+    note = log_wait.timeout_note("GO", quiet, "since the mark", "guest")
+    assert note.startswith("nothing matched /GO/ in 2.0 s: 0 lines arrived DURING the wait (4 "
+                           "since the mark)"), note
+    assert "The guest wrote NOTHING" in note and note.endswith("The machine is still running")
+    busy = log_wait.timeout_note("GO", log_wait.Ended("TIMEOUT", 3, 7, 2.0), "in the log", "x")
+    assert "3 lines arrived" in busy and "NOTHING" not in busy
+
+
+def test_a_gone_emulator_is_said_with_the_bound() -> None:
+    said = log_wait.gone_message("GO", log_wait.Ended("GONE", 0, 0, 1.5), 30.0)
+    assert said.startswith("the emulator is GONE, 1.5 s into a 30 s wait for /GO/"), said

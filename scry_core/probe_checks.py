@@ -8,7 +8,12 @@ repository's own cases. What only one server has (its own judge's cases, a tool'
 stays in that server's suite.
 
 A repository keeps its probe at `SERVERS_FILE` and `TASKS_DIR` under its root, which the hook
-reads too, and its captures where the probe derives them.
+reads too, and its captures where the probe derives them. Its `load()` hands back the server's
+MODULE by its registered name (`.mcp` the server, each tool the attribute of the same name), and
+imports the server with the file, so the repository's root must already be importable (the hook
+runs from it; a test puts it on `sys.path` first), and a test configures the probe at COLLECTION,
+never inside a test body: the shape guard wraps its declared anchors once collection ends, and
+fails on one imported after it.
 """
 
 from __future__ import annotations

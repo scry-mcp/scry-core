@@ -8,6 +8,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.reply_contract` | the refusal contract (`status`, `code`, `message`), its class and its envelope check; a datum that could not be read as `unavailable(why)`, never a null; a wait's `verdict` words |
 | `scry_core.log_wait` | a wait for a line of a log: what the log already holds answered first, then the wait, ended by a match, its bound, a stopped machine or a gone emulator |
 | `scry_core.sequence_account` | the account of a list of steps run in one call: compact rows, the two files, and the count of the stops numbered while it ran |
+| `scry_core.steps` | a step of a list judged against the tool it names before any step runs: its `recorded` check, no `ctx`, names the tool takes, scalars of the declared type |
 | `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, and the reply every path closes with, its summary line first; the server's vocabulary handed in as hooks |
 | `scry_core.ends_table` | a server reference's table of how a cancelled call ends, held against what its tools declare |
 | `scry_core.envelope` | the MCP boundary's server object: the schema's refusal given the server's envelope, off the event loop, and a tool's picture attached |
@@ -17,14 +18,17 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.prose` | how a count is said in a summary, a note or a refusal: the one plural rule, and the verb that agrees with it |
 | `scry_core.value_format` | the grammar of a watched value: scalars, arrays, strings, structs, pointers |
 | `scry_core.reply_shapes` | the pytest plugin running the test-time guard (`reply_shapes_guard`) that holds one word to one shape in every reply |
+| `scry_core.reply_shapes_guard` | what that plugin runs: every key of a reply in the one shape the table gives it, and no null anywhere, in one walk |
 | `scry_core.client_cap` | the prefix of a text the MCP client delivers, in its own unit |
 | `scry_core.probe` | what a model calls when all it holds is what the client delivers |
 | `scry_core.probe_checks` | what each server's suite checks on its own probe surface: tasks, captures, the cap |
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
 | `scry_core.live_host` | the host a live tier runs on: a canary that refuses one which cannot start the emulator, the ledger that proves no emulator outlived a run, and the run's scratch left as its verdict says |
+| `scry_core.binaries` | which emulator a session runs: the caller's `binary`, else the server's variable, else the PATH's, and what the build says it is |
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, and the probe's tasks |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, and the README block they generate |
 | `scry_core.recording` | a session as a bench: what a server did, recorded from its `start` through its call boundary, and exported as `perform`'s own document (`perform_export`); the check a replayed step holds to |
+| `scry_core.comment_file` | the comment file both servers read and write (version 1): its header, columns, text and stamp rules, parse and render, each server's `ref` and `cpu` columns handed in as a `Policy` |
 | `scry_core.replay` | the runner of that document: the server over stdio, its steps in one `perform`, with no model |
 | `scry_core.focus_watch` | whether a live run took the owner's focus or moved their Space: the frontmost application and each display's Space sampled from outside the run (macOS) |
 | `scry_core.narrowing` | a reply that answers less than everything and says so: `omitted` and `how`, and the `sections` list a caller narrows by |
@@ -36,9 +40,10 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.series` | a series of frames on disk (`scry-series/1`): its manifest and its reply's tail, and series against series and a region through a series, each with its control |
 | `scry_core.goldens` | files against goldens written by `shasum -a 256`, by name |
 | `scry_core.media_tools` | the tools that read media files and no emulator, one body, description, summary and judge each, registered by each server through its own decorator |
-| `scry_core.judges` | the argument judges both servers share: a number as an integer or its `0x` spelling, whole numbers, rectangles, shifts, the one path rule (absolute or `~`-led, `~` expanded), a file to write, the picture a path names |
+| `scry_core.judges` | the argument judges both servers share: a number as an integer or its `0x` spelling, whole numbers, a written file's path, size and hash, rectangles, shifts, the one path rule (absolute or `~`-led, `~` expanded), a file to write, the picture a path names |
 | `scry_core.fresh` | files and directories created new, never over another, never left half written, and a directory taken back when the work that fills it fails |
 | `scry_core.avi` | an AVI's main header: its frame size, and its frames, by the header once the file is finished and by its chunks while it is written |
+| `scry_core.wav` | what a recording says, measured from the WAV: whether it sounded, how loud, when, whether it clipped, and how close two recordings are |
 | `scry_core.docs` | a tool description's `{NAME}` placeholders, filled from the constants that enforce them |
 | `scry_core.screen_map` | screen maps (`scry-map/1`): which screen of an application a machine shows, off one read of it, and its named controls, in a file layer and a session layer |
 
