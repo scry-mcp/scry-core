@@ -585,3 +585,12 @@ def test_where_a_crop_lies_is_never_judged_before_the_read() -> None:
     screen_map.check_add("x", [[70000, 0, 1, 1]], [{"name": "c", "rect": [0, 90000, 1, 1]}])
     with pytest.raises(Invalid, match=r"leaves screen 'x' \(8x4\)"):
         Maps().add("x", [[70000, 0, 1, 1]], [], Reads(TITLE))
+
+
+def test_map_save_names_the_file_it_writes_dest_in_its_refusals_and_its_description(
+        tmp_path: Path) -> None:
+    with pytest.raises(Invalid, match=r"^dest: .*x\.json is not named"):
+        screen_map.check_save(str(tmp_path / "x.json"), False)
+    with pytest.raises(Invalid, match=r"^dest: .* is not named"):
+        Maps().save(str(tmp_path / "x.json"), False)
+    assert "`dest` is the file to write" in screen_map.SAVE_DESCRIBED

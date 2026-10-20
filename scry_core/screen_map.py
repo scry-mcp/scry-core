@@ -73,10 +73,12 @@ LOAD_DESCRIBED = (
     "an `application` other than the file's name says (`bad_argument`)")
 SAVE_DESCRIBED = (
     "The file layer and the session layer written as ONE map, the session's screens winning, "
-    "and that file made the file layer (the session's screens are `promoted`). `path` as "
-    "`map_load`'s; one already there is refused unless `overwrite`. Any state.\n\n"
-    "    Reply: `path`, `application`, `screens`, `controls`, `promoted`. Refused: nothing mapped "
-    "(`needs_call`); a path a load would refuse, or there without `overwrite` (`bad_argument`)")
+    "and that file made the file layer (the session's screens are `promoted`). `dest` is the file "
+    "to write, named as `map_load`'s `path` is; one already there is refused unless `overwrite`. "
+    "Any state.\n\n"
+    "    Reply: `path` (the `dest` written), `application`, `screens`, `controls`, `promoted`. "
+    "Refused: nothing mapped (`needs_call`); a `dest` not named as a map is, or there without "
+    "`overwrite` (`bad_argument`)")
 #: What a tool's description fills from here (`scry_core.docs.filled`).
 DOC_VALUES = {"MAP_LOAD": LOAD_DESCRIBED, "MAP_SAVE": SAVE_DESCRIBED}
 
@@ -237,11 +239,11 @@ class Maps:
         return {"matched": False, "kind": grid.kind, "size": [grid.width, grid.height],
                 "screens_tried": tried, "screens_mapped": len(candidates)}
 
-    def save(self, path_arg: object, overwrite: bool) -> dict[str, Any]:
-        """The file layer and the session layer written as one map, the session winning, and
-        made the file layer."""
-        check_save(path_arg, overwrite)
-        path = _map_path("path", path_arg)
+    def save(self, dest: object, overwrite: bool) -> dict[str, Any]:
+        """The file layer and the session layer written as one map to `dest`, the session
+        winning, and made the file layer."""
+        check_save(dest, overwrite)
+        path = _map_path("dest", dest)
         merged = {**self.file, **self.session}
         if not merged:
             raise Invalid("needs_call", "no screen is mapped: `map_add` the screen in front of "
@@ -251,7 +253,7 @@ class Maps:
                "screens": [s.doc() for s in merged.values()]}
         data = (json.dumps(doc, indent=1) + "\n").encode()
         if overwrite:
-            fresh.replace(path, data, "path:")
+            fresh.replace(path, data, "dest:")
         else:
             fresh.create(path, data, "the map", named_by_caller=True)
         promoted = sorted(self.session)
@@ -468,9 +470,9 @@ def check_add(screen: object, match: object, controls: object = None) -> None:
              "controls": controls if controls is not None else []}, "the screen", 0, "match")
 
 
-def check_save(path: object, overwrite: object) -> None:
-    """`map_save`'s machine-independent half: the path, and `overwrite` a yes or a no."""
-    _map_path("path", path)
+def check_save(dest: object, overwrite: object) -> None:
+    """`map_save`'s machine-independent half: `dest`, and `overwrite` a yes or a no."""
+    _map_path("dest", dest)
     if not isinstance(overwrite, bool):
         raise Invalid("bad_argument", f"overwrite={overwrite!r} is true or false")
 

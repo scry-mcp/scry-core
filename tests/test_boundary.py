@@ -25,12 +25,13 @@ class _Server:
         self.log: list[tuple[Any, ...]] = []
         self.pending: cancel.Cancelled | None = None
         self.given_back: list[dict[str, Any]] = []
+        self.wholes: list[bool] = []         # what each block was asked for: whole or short
         self.lock = threading.RLock()
         self.mcp = Envelope("t", instructions="i", refusal=self.refusal)
         self.b = boundary.Boundary(
             self.mcp, self.lock, invoke=self.invoke, end=self.end, after=self.after,
             refusal_line=lambda name, reply: f"{name} refused",
-            session_block=lambda: {"altered": False}, take_cancelled=self.take,
+            session_block=self.block, take_cancelled=self.take,
             keep_cancelled=self.keep, doc=lambda name, text: f"{name}: {text}",
             give_back=self.given_back.append, listener=listener)
         self.after_raises = False
@@ -42,6 +43,10 @@ class _Server:
                 return f"{name} {sorted(args.items())}"
             return self.b.tool(title, summary=line, **kw)(fn)
         return register
+
+    def block(self, whole: bool) -> dict[str, Any]:
+        self.wholes.append(whole)
+        return {"altered": False}
 
     def held(self) -> bool:
         return bool(self.lock._is_owned())  # type: ignore[attr-defined]
@@ -330,7 +335,7 @@ def test_a_server_with_nothing_to_do_after_a_call_needs_no_after_hook() -> None:
         Envelope("t", instructions="i", refusal=lambda *a: {}), lock,
         invoke=lambda fn, bound: dict(fn(*bound.args, **bound.kwargs)),
         end=lambda n, o: ("stopped", None),
-        refusal_line=lambda n, r: n, session_block=lambda: {"alive": False},
+        refusal_line=lambda n, r: n, session_block=lambda whole: {"alive": False},
         take_cancelled=lambda: None,
         keep_cancelled=lambda r: None, doc=lambda n, t: t)
 
@@ -669,3 +674,14 @@ def test_a_give_back_that_raises_still_lets_the_listener_hear_the_end() -> None:
     with pytest.raises(OSError, match="give-back broke"):
         wait()
     assert [e[:2] for e in heard.log] == [("began", "wait"), ("ended", "wait")]
+
+
+def test_the_block_is_asked_whole_for_start_and_status_and_short_for_every_other_tool() -> None:
+    s = _Server()
+    s.b.summaries.update({n: lambda args, reply: "line" for n in ("start", "status",
+                                                                  "read_memory", "close")})
+    for name in ("start", "status", "read_memory"):
+        s.b.finished(name, {}, {"status": "ok"})
+    assert s.wholes == [True, True, False]
+    s.b.finished("close", {}, {"status": "ok", "session": {"kept": 1}}, session_before=True)
+    assert s.wholes == [True, True, False]       # close keeps the block of the state before

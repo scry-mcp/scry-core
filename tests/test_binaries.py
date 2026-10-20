@@ -80,3 +80,13 @@ def test_a_version_is_the_first_line_printed_or_why_there_is_none(
 def test_a_version_that_cannot_run_is_unavailable(tmp_path: Path) -> None:
     got = binaries.version(str(tmp_path / "gone"))
     assert isinstance(got, dict) and "could not run" in got["why"]
+
+
+def test_the_version_probe_is_spawned_with_the_environment_it_is_handed(
+        tmp_path: Path) -> None:
+    build = str(_build(tmp_path, "import os; print(os.environ.get('SCRY_HINT', 'none'))"))
+    bare = {k: v for k, v in os.environ.items() if k != "SCRY_HINT"}
+    assert binaries.version(build, bare) == "none"
+    assert binaries.version(build, {**bare, "SCRY_HINT": "behind"}) == "behind"
+    resolved = binaries.Resolved(build, "binary")
+    assert binaries.facts(resolved, {**os.environ, "SCRY_HINT": "behind"})["version"] == "behind"

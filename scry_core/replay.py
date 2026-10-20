@@ -29,6 +29,19 @@ from scry_core.recording import DOCUMENT_VERSION, RECORDED
 STEP_CODES = frozenset({"step_failed", "diverged"})
 
 
+#: Arguments a recorded step may carry under an earlier name, read under the current one:
+#: op -> (earlier, current).
+RENAMED = {"map_save": ("path", "dest")}
+
+
+def _current(step: dict[str, Any]) -> dict[str, Any]:
+    """`step` with an earlier argument name read as the current one (`RENAMED`)."""
+    old, new = RENAMED.get(str(step.get("op")), ("", ""))
+    if not old or old not in step or new in step:
+        return step
+    return {(new if k == old else k): v for k, v in step.items()}
+
+
 def _read(path: Path) -> dict[str, Any]:
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
@@ -52,6 +65,7 @@ def _read(path: Path) -> dict[str, Any]:
                        and _names(v.get("refs")) for v in declared.values()):
         raise demo.Invalid(f"{path}: `start` is an object of arguments, `needs.states` a list "
                            "of names, and `needs.declarations` each list tool's `key` and `refs`")
+    doc["steps"] = steps = [_current(s) for s in steps]
     if not any(s.get(RECORDED) for s in steps):
         raise demo.Invalid(f"{path}: no step carries `{RECORDED}`, so a replay would hold "
                            "nothing to anything: nothing held to")

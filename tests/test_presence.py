@@ -29,6 +29,9 @@ class _Adapter:
         self.gate.set()
         self.fail: BaseException | None = None
         self.entered = threading.Event()
+        #: Whether `still()` held at each repaint asked for.
+        self.repaints: list[bool] = []
+        self.repaint_fails = False
 
     def show(self, state: presence.State) -> None:
         self.entered.set()
@@ -36,6 +39,11 @@ class _Adapter:
         if self.fail is not None:
             raise self.fail
         self.shown.append(state)
+
+    def repaint(self, still: Callable[[], bool]) -> None:
+        self.repaints.append(still())
+        if self.repaint_fails:
+            raise RuntimeError("the console is gone")
 
 
 def _settle(adapter: _Adapter, n: int) -> None:
@@ -226,7 +234,7 @@ def test_a_failing_delivery_never_reaches_the_reply_of_the_call_it_marks() -> No
 
     b = boundary.Boundary(Envelope("t", instructions="i", refusal=lambda *a: {}), lock,
                           invoke=invoke, end=lambda n, o: ("stopped", None),
-                          refusal_line=lambda n, r: n, session_block=lambda: {},
+                          refusal_line=lambda n, r: n, session_block=lambda whole: {},
                           take_cancelled=lambda: None, keep_cancelled=lambda r: None,
                           doc=lambda n, t: t, listener=presence.Slot(lambda: p))
 
@@ -269,3 +277,68 @@ def test_driving_lights_a_block_as_a_driving_call_would() -> None:
     with presence.Shown().driving():                 # not drawn: the block still runs
         pass
     assert presence.Shown().reply() is False
+
+
+def test_the_held_after_a_driving_call_is_repainted_once_and_never_at_open() -> None:
+    a = _Adapter()
+    p = _open(a)
+    time.sleep(QUIET_S)
+    assert a.repaints == []                  # `open` shows held itself, before any call
+    p.began("run_for")
+    _settle(a, 2)
+    p.ended("run_for")
+    _settle(a, 3)
+    assert a.shown == ["held", "acting", "held"] and a.repaints == [True]
+    p.close()
+
+
+def test_a_call_that_begins_before_the_repaint_makes_it_moot() -> None:
+    a = _Adapter()
+    p = _open(a)
+    p.began("run_for")
+    _settle(a, 2)
+    a.gate.clear()                           # the held after the call is held in delivery...
+    a.entered.clear()
+    p.ended("run_for")
+    assert a.entered.wait(5)
+    p.began("run_for")                       # ...while the next call begins
+    a.gate.set()
+    _settle(a, 4)
+    assert a.shown == ["held", "acting", "held", "acting"] and a.repaints == []
+    p.close()
+
+
+def test_a_repaint_that_fails_is_said_by_reply_until_a_delivery_lands() -> None:
+    a = _Adapter()
+    a.repaint_fails = True
+    p = _open(a)
+    p.began("run_for")
+    p.ended("run_for")
+    _settle(a, 2)
+    deadline = time.monotonic() + 5
+    while p.reply() is True and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert p.reply() == {"available": False,
+                         "why": "a repaint failed: RuntimeError: the console is gone"}
+    p.began("run_for")
+    _settle(a, 4)
+    assert a.shown[-1] == "acting" and p.reply() is True
+    p.close()
+
+
+def test_a_repaint_reads_still_false_once_a_call_began_while_it_ran() -> None:
+    seen: list[bool] = []
+
+    class Slow(_Adapter):
+        def repaint(self, still: Callable[[], bool]) -> None:
+            seen.append(still())
+            p.began("run_for")              # a call begins while the repaint runs
+            seen.append(still())
+
+    a = Slow()
+    p = _open(a)
+    p.began("run_for")
+    p.ended("run_for")
+    _settle(a, 3)
+    assert seen[:2] == [True, False]
+    p.close()

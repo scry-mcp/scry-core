@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -81,8 +82,10 @@ def why_not(path: str) -> str:
     return "not executable"
 
 
-def version(binary: str) -> str | dict[str, Any]:
-    """The first line `<binary> -version` prints, or why there is none.
+def version(binary: str, env: Mapping[str, str] | None = None) -> str | dict[str, Any]:
+    """The first line `<binary> -version` prints, or why there is none. `env` is the environment
+    the server launches the emulator with (None: the server's own): a build that does not know
+    `-version` may start instead of answering, and must start as a real launch would.
 
     THE EXIT CODE IS NOT THE SIGNAL: a build may print its banner on stderr and exit non-zero
     for an informational option, so a version is the first non-blank line, stdout before
@@ -92,7 +95,7 @@ def version(binary: str) -> str | dict[str, Any]:
     try:
         got = subprocess.run([binary, "-version"], capture_output=True, text=True,
                              errors="replace", check=False, timeout=VERSION_TIMEOUT_S,
-                             stdin=subprocess.DEVNULL)
+                             stdin=subprocess.DEVNULL, env=env)
     except subprocess.TimeoutExpired:
         return {"available": False,
                 "why": f"`{binary} -version` did not return in {VERSION_TIMEOUT_S:g} s"}
@@ -105,7 +108,7 @@ def version(binary: str) -> str | dict[str, Any]:
             "why": f"`{binary} -version` printed nothing (rc={got.returncode})"}
 
 
-def facts(resolved: Resolved) -> dict[str, Any]:
-    """The three fields a launch answers about its binary."""
+def facts(resolved: Resolved, env: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """The three fields a launch answers about its binary, its version probed with `env`."""
     return {"binary": resolved.path, "binary_origin": resolved.origin,
-            "version": version(resolved.path)}
+            "version": version(resolved.path, env)}

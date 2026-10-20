@@ -43,6 +43,7 @@ from typing import Any, Protocol
 from mcp.types import ToolAnnotations
 
 from scry_core import cancel, picture
+from scry_core import session_block as blocks
 from scry_core import strict_arguments as strict
 from scry_core.envelope import Envelope
 from scry_core.recording import ExportAs, Machine, Unrecorded
@@ -121,7 +122,7 @@ class Boundary:
     `keep_cancelled` stores a new one), because its state is what a caller's `status` reads."""
 
     def __init__(self, mcp: Envelope, lock: threading.RLock, *, invoke: Invoke, end: End,
-                 refusal_line: RefusalLine, session_block: Callable[[], dict[str, Any]],
+                 refusal_line: RefusalLine, session_block: Callable[[bool], dict[str, Any]],
                  take_cancelled: Callable[[], cancel.Cancelled | None],
                  keep_cancelled: Callable[[cancel.Cancelled], None],
                  doc: Callable[[str, str], str], after: After = _nothing_after,
@@ -182,11 +183,13 @@ class Boundary:
 
         THE `session` BLOCK IS COMPOSED HERE, AFTER THE BODY, from the state the server holds: a
         body that released the machine once its envelope was built would otherwise hand back a
-        block describing the machine before it did. `session_before` keeps the block the body
-        built: `close`'s, the state BEFORE the close."""
+        block describing the machine before it did. The block is whole on the tools that answer
+        what the session is, short on the rest (`scry_core.session_block`). `session_before`
+        keeps the block the body built: `close`'s, the state BEFORE the close."""
         body = {k: v for k, v in reply.items() if k != "session"}
         kept = reply.get("session") if session_before else None
-        session = kept if kept is not None else self._session_block()
+        session = (kept if kept is not None
+                   else self._session_block(blocks.whole_for(name)))
         summary = _summary(name, args, reply, self.line)
         if outer and (record := self._take_cancelled()) is not None:
             # WHAT A CANCELLED CALL LEFT, said first by the next reply: the cancelled call had none.

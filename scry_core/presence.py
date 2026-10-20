@@ -19,7 +19,9 @@ before the writer woke is still shown, `acting` before the `held` after it, or t
 would never light the window. A delivery that fails is retried every `RETRY_S` until one lands or
 the state moves on, and is said where it is asked for (`Presence.reply`, which `start` and
 `status` carry); it never changes a call's own reply, because presence is a display and not a
-contract of the call.
+contract of the call. After a `held` lands the writer asks the adapter to repaint
+(`Adapter.repaint`), skipped when a call began meanwhile; a repaint that fails is said the same
+way and not retried.
 """
 
 from __future__ import annotations
@@ -106,6 +108,13 @@ class Adapter(Protocol):
 
     def show(self, state: State) -> None: ...
 
+    def repaint(self, still: Callable[[], bool]) -> None:
+        """Have a STOPPED emulator draw the `held` just shown: an emulator that repaints only
+        when told (MAME at its debugger) would otherwise keep the bright edge of the call's stop.
+        It runs on the writer, so it returns promptly, takes the server's lock (between calls)
+        and does nothing unless `still()` holds there and the machine is stopped. A no-op for
+        an emulator that repaints on its own."""
+
 
 #: How long `close` waits for a delivery in flight.
 CLOSE_WAIT_S = 1.0
@@ -191,7 +200,7 @@ class Presence:
             self._cv.notify()
 
     def reply(self) -> bool | dict[str, Any]:
-        """What `status` says: `true`, or why the last delivery did not land."""
+        """What `status` says: `true`, or why the last delivery or repaint did not land."""
         with self._cv:
             failure = self._failure
         return unavailable(failure) if failure else True
@@ -233,12 +242,32 @@ class Presence:
                 self._failure = failure
                 if not failure:
                     self._sent = state
+                    repaint = state == "held"
                 else:
                     # SENT AGAIN, after a pause, unless the state moves on first: a window left
                     # showing the state before a lost delivery would show it until the next call.
                     self._sent = None
                     self._pulse = self._pulse or state == "acting"
                     self._cv.wait(RETRY_S)
+                    continue
+            if repaint:
+                self._repaint()
+
+    def _still_held(self) -> bool:
+        """Whether `held` is still the last word and nothing moved on since it was shown."""
+        with self._cv:
+            return not self._closed and not self._due()
+
+    def _repaint(self) -> None:
+        """The adapter's repaint of the `held` just shown, unless a call made it moot; a failure
+        is recorded as a delivery's is, and the next state that lands clears it."""
+        if not self._still_held():
+            return
+        try:
+            self._adapter.repaint(self._still_held)
+        except Exception as e:  # recorded for `status`: a display never fails a call
+            with self._cv:
+                self._failure = f"a repaint failed: {type(e).__name__}: {e}"
 
 
 @dataclass

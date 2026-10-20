@@ -244,3 +244,15 @@ def test_the_lists_a_replay_reads_are_the_ones_the_document_names(
     doc.write_text(json.dumps(data))
     assert _run(monkeypatch, tmp_path, doc) == 3
     assert "regpoint_list" in capsys.readouterr().out
+
+
+def test_a_document_written_when_map_save_took_path_reads_it_as_dest(tmp_path: Path) -> None:
+    doc = _repo(tmp_path, [HELD1, {"op": "map_save", "path": "/x/a.scry-map.json"},
+                           {"op": "map_save", "dest": "/x/b.scry-map.json"},
+                           {"op": "map_load", "path": "/x/a.scry-map.json"},
+                           {"op": "map_save", "path": "/x/c", "dest": "/x/d.scry-map.json"}])
+    steps = replay._read(doc)["steps"]
+    assert steps[1:] == [{"op": "map_save", "dest": "/x/a.scry-map.json"},
+                         {"op": "map_save", "dest": "/x/b.scry-map.json"},
+                         {"op": "map_load", "path": "/x/a.scry-map.json"},
+                         {"op": "map_save", "path": "/x/c", "dest": "/x/d.scry-map.json"}]

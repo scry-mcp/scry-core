@@ -82,7 +82,8 @@ class _Server:
             Envelope("t", instructions="i", refusal=lambda *a: {}), threading.RLock(),
             invoke=lambda fn, bound: dict(fn(*bound.args, **bound.kwargs)),
             end=lambda n, o: ("stopped", None),
-            refusal_line=lambda n, r: n, session_block=lambda: {}, take_cancelled=lambda: None,
+            refusal_line=lambda n, r: n, session_block=lambda whole: {},
+            take_cancelled=lambda: None,
             keep_cancelled=lambda r: None, doc=lambda n, t: t, recorder=self.recorder)
         b, m = self, self.m
 
@@ -398,7 +399,7 @@ def test_the_export_writes_the_document_and_accounts_for_it(tmp_path: Path) -> N
 
 @pytest.mark.parametrize("path, absolute, says", [
     ("relative.json", False, "must be an absolute path or start with `~`"),
-    ("session.txt", True, "ends in `.json`"),
+    ("session.txt", True, "must end in `.json`"),
     ("no/such/dir/session.json", True, "is not a directory"),
 ])
 def test_an_export_to_a_path_it_cannot_take_is_refused(tmp_path: Path, path: str, absolute: bool,
@@ -816,3 +817,11 @@ def test_the_exports_line_says_what_it_holds_and_where_it_was_cut() -> None:
     whole = {**reply, "cut": {"available": False, "why": "nothing was cut"}}
     assert recording.export_summary({}, whole).endswith("2 dropped to /x.json")
     assert str(recording.DROPPED_SHOWN) in recording.DOC_VALUES["EXPORT_REPLY"]
+
+
+def test_perform_export_names_the_file_it_writes_dest(tmp_path: Path) -> None:
+    with pytest.raises(Invalid, match=r"^dest='.*x\.txt' must end in `\.json`"):
+        recording.export(_Server().recorder, str(tmp_path / "x.txt"))
+    assert recording.EXPORTS.startswith("Write what this session did since its `start` to "
+                                        "`dest`")
+    assert recording.EXPORT_REPLY.startswith("`dest` absolute")

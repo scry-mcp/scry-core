@@ -465,16 +465,16 @@ def _dropped_why(declared: Declared) -> str:
             "it changes nothing in the emulated machine")
 
 
-def export(recorder: Recorder, path: str, overwrite: bool = False) -> dict[str, Any]:
-    """`perform_export`'s body: the recording written to `path` (absolute or `~`-led, `.json`,
+def export(recorder: Recorder, dest: str, overwrite: bool = False) -> dict[str, Any]:
+    """`perform_export`'s body: the recording written to `dest` (absolute or `~`-led, `.json`,
     refused if it is there unless `overwrite`), and the account: `path`, `steps`, `checks`,
     `dropped` (the newest `DROPPED_SHOWN`) with `dropped_total`, `cut`, and `replay`, the
     runner's command line. `no_recording` when no `start` succeeded since the server began, or
     when the recording holds no step a replay could take (cut at its first, or every call
     dropped)."""
-    target = judges.writable_file("path", path)
+    target = judges.writable_file("dest", dest)
     if target.suffix != ".json":
-        raise Invalid("bad_argument", f"path={path!r} ends in `.json`: the document is JSON")
+        raise Invalid("bad_argument", f"dest={dest!r} must end in `.json`: the document is JSON")
     if target.is_dir():
         raise Invalid("bad_argument", f"{target} is a directory")
     if os.path.lexists(target) and not overwrite:
@@ -559,17 +559,17 @@ class Unrecorded:
 
 #: `perform_export`'s description halves both servers share, filled by each into its docstring
 #: (`docs.filled`) around what that server keeps and cuts: what the document is for, and what
-#: the path takes and the reply says.
-EXPORTS = ("Write what this session did since its `start` to `path` as `perform`'s own document, "
-           "so an investigation becomes a bench: `uv run python -m scry_core.replay <path>`, from "
+#: `dest` takes and the reply says.
+EXPORTS = ("Write what this session did since its `start` to `dest` as `perform`'s own document, "
+           "so an investigation becomes a bench: `uv run python -m scry_core.replay <dest>`, from "
            "this server's repository, plays it with no model and exits 0 when every step held. "
            "Answers in any state, a closed session's included.")
-EXPORT_REPLY = ("`path` absolute or `~`-led, ending `.json`; refused if it is there unless "
-                "`overwrite`. Reply: `path`, `steps`, `checks`, `dropped` (the last "
-                f"{DROPPED_SHOWN}, each `call`, `op`, `why`) and `dropped_total`, `cut` (`call`, "
-                "`op`, `why`, or unavailable) and `replay`, the runner's command line. "
-                "`no_recording` before a `start` succeeded, after one was cancelled, or when no "
-                "recorded call is a step a replay could take.")
+EXPORT_REPLY = ("`dest` absolute or `~`-led, ending `.json`; refused if it is there unless "
+                "`overwrite`. Reply: `path` (the file written), `steps`, `checks`, `dropped` "
+                f"(the last {DROPPED_SHOWN}, each `call`, `op`, `why`) and `dropped_total`, "
+                "`cut` (`call`, `op`, `why`, or unavailable) and `replay`, the runner's command "
+                "line. `no_recording` before a `start` succeeded, after one was cancelled, or when "
+                "no recorded call is a step a replay could take.")
 DOC_VALUES = {"EXPORTS": EXPORTS, "EXPORT_REPLY": EXPORT_REPLY}
 
 
