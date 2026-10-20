@@ -479,7 +479,7 @@ def test_binding_a_coregraphics_without_the_space_symbols_binds_the_rest_and_rai
             for name in names:
                 setattr(self, name, Function())
 
-    cg_names = ("CGEventCreate", "CGEventGetLocation")
+    cg_names = ("CGEventCreate", "CGEventGetLocation", "CGWindowListCopyWindowInfo")
     cf_names = ("CFPropertyListCreateData", "CFDataGetLength", "CFDataGetBytePtr", "CFRelease")
     made = iter([Library(cg_names), Library(cf_names)])
     fw._graphics.cache_clear()
@@ -493,3 +493,33 @@ def test_binding_a_coregraphics_without_the_space_symbols_binds_the_rest_and_rai
         assert fw.spaces_missing(cg) == "CGSMainConnectionID" and fw.spaces() is None
     finally:
         fw._graphics.cache_clear()
+
+
+def test_a_property_list_that_will_not_serialise_is_none_and_still_released() -> None:
+    released: list[int] = []
+
+    class Refusing:
+        def CFPropertyListCreateData(self, *_a: object) -> int:  # noqa: N802
+            return 0
+
+        def CFRelease(self, ref: int) -> None:  # noqa: N802
+            released.append(ref)
+    assert fw.plist_of(Refusing(), 77) is None  # type: ignore[arg-type]
+    assert released == [77]
+
+
+def test_space_counts_reads_each_displays_spaces(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(fw, "_managed", lambda: [{"Spaces": [1, 2, 3]}, {"Spaces": [4]}])
+    assert fw.space_counts() == (3, 1)
+    monkeypatch.setattr(fw, "_managed", lambda: [{"no": 1}])
+    assert fw.space_counts() is None
+    monkeypatch.setattr(fw, "_managed", lambda: None)
+    assert fw.space_counts() is None
+
+
+def test_no_windows_and_no_spaces_where_the_host_cannot_be_asked(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(fw, "_graphics", lambda: None)
+    assert fw.windows() == []
+    monkeypatch.setattr(fw, "_managed", lambda: [{"Display Identifier": "A"}])
+    assert fw.spaces() is None

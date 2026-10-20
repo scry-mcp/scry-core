@@ -47,9 +47,9 @@ def _settle(adapter: _Adapter, n: int) -> None:
 
 
 def _open(adapter: _Adapter, driving: tuple[str, ...] = ("run_for",)) -> presence.Presence:
-    p, said = presence.Presence.open(adapter, driving)
-    assert p is not None and said is True
-    return p
+    shown = presence.Presence.open(adapter, driving)
+    assert shown.held is not None and shown.reply() is True and shown.adapter is adapter
+    return shown.held
 
 
 def test_open_shows_held_before_it_answers_and_starts_a_daemon_writer() -> None:
@@ -67,8 +67,9 @@ def test_open_shows_held_before_it_answers_and_starts_a_daemon_writer() -> None:
 def test_open_that_cannot_draw_says_why_in_place_of_true(raised: BaseException, why: str) -> None:
     a = _Adapter()
     a.fail = raised
-    p, said = presence.Presence.open(a, ("run_for",))
-    assert p is None and said == {"available": False, "why": why}
+    shown = presence.Presence.open(a, ("run_for",))
+    assert shown.held is None and shown.reply() == {"available": False, "why": why}
+    shown.close()                                   # nothing to stop: a no-op
 
 
 def test_a_driving_call_turns_it_acting_and_its_end_back_to_held() -> None:
@@ -255,3 +256,16 @@ def test_held_is_a_share_of_acting_whatever_acting_is() -> None:
     assert presence.LOOK.held_alpha == pytest.approx(presence.LOOK.acting_alpha / 3)
     rows = presence.LOOK.pointer
     assert len({len(r) for r in rows}) == 1 and set("".join(rows)) <= {"X", "o", "."}
+
+
+def test_driving_lights_a_block_as_a_driving_call_would() -> None:
+    a = _Adapter()
+    shown = presence.Presence.open(a, ())
+    with shown.driving():
+        _settle(a, 2)
+    _settle(a, 3)
+    assert a.shown == ["held", "acting", "held"]
+    shown.close()
+    with presence.Shown().driving():                 # not drawn: the block still runs
+        pass
+    assert presence.Shown().reply() is False

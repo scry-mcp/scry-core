@@ -11,14 +11,14 @@ ships with the system, so reading it needs nothing more than the standard librar
 
 from __future__ import annotations
 
-import ctypes
-import ctypes.util
-import plistlib
 import struct
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+from scry_core import focus_watch
+from scry_core.presence import LOOK, Look
 
 #: How long a host capture or a conversion may take before it is a capture that failed.
 CAPTURE_TIMEOUT_S = 15.0
@@ -28,42 +28,13 @@ class Blocked(Exception):
     """The host could not capture the window, and why: the cell is BLOCKED."""
 
 
-def _windows() -> list[dict[str, object]]:
-    """Every window the window server lists, as CoreGraphics describes them."""
-    cg = ctypes.CDLL(ctypes.util.find_library("CoreGraphics") or "CoreGraphics")
-    cf = ctypes.CDLL(ctypes.util.find_library("CoreFoundation") or "CoreFoundation")
-    cg.CGWindowListCopyWindowInfo.restype = ctypes.c_void_p
-    cg.CGWindowListCopyWindowInfo.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
-    cf.CFPropertyListCreateData.restype = ctypes.c_void_p
-    cf.CFPropertyListCreateData.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long,
-                                            ctypes.c_long, ctypes.c_void_p]
-    cf.CFDataGetLength.restype = ctypes.c_long
-    cf.CFDataGetLength.argtypes = [ctypes.c_void_p]
-    cf.CFDataGetBytePtr.restype = ctypes.c_void_p
-    cf.CFDataGetBytePtr.argtypes = [ctypes.c_void_p]
-    cf.CFRelease.argtypes = [ctypes.c_void_p]
-    listed = cg.CGWindowListCopyWindowInfo(0, 0)        # every window, on screen or not
-    if not listed:
-        return []
-    try:
-        data = cf.CFPropertyListCreateData(None, listed, 200, 0, None)
-        try:
-            raw = ctypes.string_at(cf.CFDataGetBytePtr(data), cf.CFDataGetLength(data))
-        finally:
-            cf.CFRelease(data)
-    finally:
-        cf.CFRelease(listed)
-    windows: list[dict[str, object]] = plistlib.loads(raw)
-    return windows
-
-
 def window_of(pid: int) -> int | None:
     """The window number of the largest layer-0 window `pid` owns, or None."""
     def area(w: dict[str, object]) -> float:
         bounds = w.get("kCGWindowBounds")
         return (float(bounds["Width"]) * float(bounds["Height"])
                 if isinstance(bounds, dict) else 0.0)
-    mine = [w for w in _windows()
+    mine = [w for w in focus_watch.windows()
             if w.get("kCGWindowOwnerPID") == pid and w.get("kCGWindowLayer") == 0]
     if not mine:
         return None
@@ -71,13 +42,28 @@ def window_of(pid: int) -> int | None:
     return int(number) if isinstance(number, int) else None
 
 
+Pixel = tuple[int, int, int]
+
+
 @dataclass(frozen=True)
 class Image:
-    """A capture as rows of (r, g, b), top row first."""
+    """A capture as rows of packed red-green-blue bytes, top row first: a row is compared whole,
+    and only a row that differs is looked at pixel by pixel."""
 
     width: int
     height: int
-    rows: tuple[tuple[tuple[int, int, int], ...], ...]
+    rows: tuple[bytes, ...]
+
+    @classmethod
+    def of(cls, pixels: list[list[Pixel]] | tuple[tuple[Pixel, ...], ...]) -> Image:
+        """An image from rows of (r, g, b)."""
+        return cls(len(pixels[0]) if pixels else 0, len(pixels),
+                   tuple(bytes(c for px in row for c in px) for row in pixels))
+
+    def pixels(self, y: int) -> list[Pixel]:
+        """Row `y` as (r, g, b)."""
+        row = self.rows[y]
+        return [(row[i], row[i + 1], row[i + 2]) for i in range(0, len(row), 3)]
 
 
 def read_bmp(path: Path) -> Image:
@@ -102,9 +88,10 @@ def read_bmp(path: Path) -> Image:
     rows = []
     for y in range(abs(height)):
         start = offset + y * stride
-        row = tuple((data[start + x * step + 2], data[start + x * step + 1],
-                     data[start + x * step]) for x in range(width))
-        rows.append(row)
+        stored = data[start:start + width * step]
+        row = bytearray(width * 3)
+        row[0::3], row[1::3], row[2::3] = stored[2::step], stored[1::step], stored[0::step]
+        rows.append(bytes(row))
     if height > 0:                      # stored bottom-up
         rows.reverse()
     return Image(width, abs(height), tuple(rows))
@@ -138,7 +125,7 @@ def capture(pid: int, dest: Path) -> Image:
             KeyError) as e:
         # WHATEVER THE HOST'S TOOLS DO WRONG is a capture this host could not make.
         raise Blocked(f"the window could not be captured: {type(e).__name__}: {e}") from None
-    if len({px for row in image.rows for px in row}) < 2:
+    if len(set(image.rows)) < 2 and len(set(image.pixels(0))) < 2:
         # A capture of one colour shows no window content: some hosts answer a capture they
         # will not make with a blank image rather than a refusal.
         raise Blocked(f"the capture of window {number} holds one colour, so it shows nothing")
@@ -171,7 +158,10 @@ def difference(before: Image, after: Image) -> Difference:
     points: list[tuple[int, int]] = []
     sums = [0, 0, 0]
     for y, (row_a, row_b) in enumerate(zip(before.rows, after.rows, strict=True)):
-        for x, (a, b) in enumerate(zip(row_a, row_b, strict=True)):
+        if row_a == row_b:
+            continue
+        for x in range(before.width):
+            a, b = row_a[3 * x:3 * x + 3], row_b[3 * x:3 * x + 3]
             if a != b:
                 points.append((x, y))
                 for i in range(3):
@@ -193,3 +183,24 @@ def difference(before: Image, after: Image) -> Difference:
                       ((x1 - x0 + 1) / before.width, (y1 - y0 + 1) / before.height),
                       deepest / side, (sides[0], sides[1], sides[2], sides[3]),
                       (sums[0] / n, sums[1] / n, sums[2] / n))
+
+
+#: How far from a side the edge may reach in a capture, in edge widths, with room for scaling.
+EDGE_REACH = 2.5
+#: How much of the window a drawn edge's changed box spans: the content, but not the title bar.
+CONTENT_SPAN = 0.75
+
+
+def edge_verdict(d: Difference, look: Look = LOOK) -> tuple[bool, str]:
+    """Whether `d`, a capture with the edge drawn against one without, is the edge: a frame
+    round the content on all four sides, nowhere deeper than the edge reaches, towards orange;
+    and what was measured."""
+    x0, y0, x1, y1 = d.box
+    perimeter = 2 * ((x1 - x0) + (y1 - y0))
+    reach = EDGE_REACH * look.edge
+    drawn = (d.changed >= perimeter and min(d.span) >= CONTENT_SPAN and min(d.sides) > 0
+             and d.deepest <= reach and d.delta[0] > d.delta[1] > d.delta[2])
+    return drawn, (f"{d.changed} pixels changed (a frame of the box needs {perimeter}) over "
+                   f"{d.span[0]:.2f} x {d.span[1]:.2f} of the window, by side {d.sides}, the "
+                   f"deepest {d.deepest:.4f} of the box's shorter side in (bound {reach:.4f}), "
+                   f"mean change ({d.delta[0]:.1f}, {d.delta[1]:.1f}, {d.delta[2]:.1f})")

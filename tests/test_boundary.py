@@ -650,3 +650,22 @@ def test_a_listener_that_raises_fails_its_call_and_leaves_the_boundary_whole() -
     with pytest.raises(OSError, match="listener broke"):
         count()
     assert s.b.nested == 0, "the call was left on the stack, and every later call is a step"
+
+
+def test_a_give_back_that_raises_still_lets_the_listener_hear_the_end() -> None:
+    heard = _Heard()
+    s = _Server(listener=heard)
+    heard.server = s
+
+    def refuses(_account: dict[str, Any]) -> None:
+        raise OSError("the give-back broke")
+    s.b._give_back = refuses
+
+    @s.tool("Wait", on_cancel="stop")
+    def wait(ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
+        _cancelled()
+        return {"status": "ok"}
+
+    with pytest.raises(OSError, match="give-back broke"):
+        wait()
+    assert [e[:2] for e in heard.log] == [("began", "wait"), ("ended", "wait")]

@@ -9,6 +9,7 @@ import signal
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import pytest
 
@@ -22,7 +23,7 @@ SERVER = """
 import subprocess, sys, time
 from scry_core import guardian
 child = subprocess.Popen(["sleep", "60"])
-guard = (guardian.spawn(child, "scry-test-guardian", float(sys.argv[2]))
+guard = (guardian.spawn(child, "scry-test", float(sys.argv[2]))
          if sys.argv[1] == "guarded" else None)
 print(child.pid, guard.pid if guard else 0, flush=True)
 time.sleep(60)
@@ -116,7 +117,7 @@ def test_a_deadline_ends_the_emulator_of_a_live_server() -> None:
 @POSIX
 def test_the_guardian_leaves_when_its_emulator_does_and_goes_by_its_name() -> None:
     child = subprocess.Popen(["sleep", "60"])
-    guard = guardian.spawn(child, "scry-test-guardian")
+    guard = guardian.spawn(child, "scry-test")
     try:
         assert guard is not None
         deadline = time.monotonic() + 5
@@ -156,7 +157,7 @@ def test_no_guardian_where_the_host_has_none(monkeypatch: pytest.MonkeyPatch) ->
 @POSIX
 def test_stop_ends_a_guardian_and_takes_none() -> None:
     child = subprocess.Popen(["sleep", "60"])
-    guard = guardian.spawn(child, "scry-test-guardian")
+    guard = guardian.spawn(child, "scry-test")
     try:
         guardian.stop(guard)
         assert guard is not None and guard.poll() is not None
@@ -286,3 +287,56 @@ def test_a_host_where_ps_cannot_be_asked_still_kills_by_the_pid(
     monkeypatch.setattr(os, "kill", kill)
     guardian.watch(os.getppid() + 1, 4242, 0.01, 0.0)
     assert killed == [4242]
+
+
+@POSIX
+def test_a_ps_that_says_nothing_for_a_live_pid_cannot_say_rather_than_gone(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[dict[str, str]] = []
+
+    def silent(*_a: object, **k: object) -> subprocess.CompletedProcess[str]:
+        seen.append(k["env"])  # type: ignore[arg-type]
+        return subprocess.CompletedProcess([], 1, "", "ps: lstart: keyword not found")
+    monkeypatch.setattr(subprocess, "run", silent)
+    assert guardian.started(os.getpid(), proc="/nonexistent") is None
+    assert seen and seen[0]["TZ"] == "UTC" and seen[0]["LC_ALL"] == "C"
+
+
+def test_proc_gives_the_kernels_start_time_past_a_name_with_spaces(tmp_path: Path) -> None:
+    (tmp_path / "77").mkdir()
+    fields = " ".join(str(n) for n in range(3, 30))           # field 3 on: the state, ...
+    (tmp_path / "77" / "stat").write_text(f"77 (a) b) {fields}\n")
+    assert guardian.started(77, proc=str(tmp_path)) == "22"
+    assert guardian.started(78, proc=str(tmp_path)) == ""
+
+
+def test_the_guardian_imports_from_the_servers_own_path(tmp_path: Path) -> None:
+    """`-I` drops PYTHONPATH and the user's site: the path the program carries is what reaches
+    a `scry_core` found there."""
+    package = tmp_path / "scry_core"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    (package / "guardian.py").write_text(
+        "def main(argv):\n    open(argv[0], 'w').write('found')\n")
+    marker = tmp_path / "marker"
+    subprocess.run([sys.executable, "-I", "-c", guardian.program([str(tmp_path), ""]),
+                    str(marker)], check=False, capture_output=True, timeout=30)
+    assert marker.read_text() == "found"
+    assert "''" not in guardian.program([""]) and guardian.name_of("scry-x") == "scry-x-guardian"
+
+
+def test_a_proc_that_cannot_be_read_falls_back_to_ps(tmp_path: Path) -> None:
+    not_a_dir = tmp_path / "proc"
+    not_a_dir.write_text("")
+    assert guardian.started(os.getpid(), proc=str(not_a_dir))
+
+
+def test_a_pid_ps_says_nothing_of_and_we_may_not_signal_cannot_be_told(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(subprocess, "run",
+                        lambda *_a, **_k: subprocess.CompletedProcess([], 1, "", ""))
+
+    def denied(_pid: int, _sig: int) -> None:
+        raise PermissionError("not ours")
+    monkeypatch.setattr(os, "kill", denied)
+    assert guardian.started(1, proc="/nonexistent") is None

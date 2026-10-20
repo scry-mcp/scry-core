@@ -60,7 +60,7 @@ from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
-from typing import Literal, TextIO
+from typing import Any, Literal, TextIO
 
 # The pause between samples; each one also spends an osascript call, so the period is longer.
 INTERVAL_S = 0.25
@@ -161,6 +161,8 @@ def _graphics() -> tuple[ctypes.CDLL, ctypes.CDLL] | None:
     cg.CGEventCreate.argtypes = [ctypes.c_void_p]
     cg.CGEventGetLocation.restype = _Point
     cg.CGEventGetLocation.argtypes = [ctypes.c_void_p]
+    cg.CGWindowListCopyWindowInfo.restype = ctypes.c_void_p
+    cg.CGWindowListCopyWindowInfo.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
     # THE PRIVATE HALF, guarded: a host whose CoreGraphics lacks these is one with no Spaces to
     # read, said by `spaces_missing`, never an exception in the middle of a sample.
     if not spaces_missing(cg):
@@ -198,20 +200,11 @@ def _pointer() -> tuple[int, int] | None:
 _BINARY_PLIST = 200
 
 
-def spaces() -> tuple[tuple[str, int], ...] | None:
-    """The current Space of every display, keyed by its `Display Identifier`, or None where it
-    cannot be read. The list is the window server's own (`CGSCopyManagedDisplaySpaces`, private
-    but the one reading there is), serialised to a plist so no CoreFoundation type has to be
-    walked by hand."""
-    libs = _graphics()
-    if libs is None or spaces_missing(libs[0]):
-        return None
-    cg, cf = libs
-    managed = cg.CGSCopyManagedDisplaySpaces(cg.CGSMainConnectionID())
-    if not managed:
-        return None
+def plist_of(cf: ctypes.CDLL, ref: int) -> Any:
+    """A CoreFoundation property list, released here, as `plistlib` reads it; None when it
+    cannot be serialised or read. Serialised so no CoreFoundation type is walked by hand."""
     try:
-        data = cf.CFPropertyListCreateData(None, managed, _BINARY_PLIST, 0, None)
+        data = cf.CFPropertyListCreateData(None, ref, _BINARY_PLIST, 0, None)
         if not data:
             return None
         try:
@@ -219,11 +212,58 @@ def spaces() -> tuple[tuple[str, int], ...] | None:
         finally:
             cf.CFRelease(data)
     finally:
-        cf.CFRelease(managed)
+        cf.CFRelease(ref)
+    try:
+        return plistlib.loads(raw)
+    except plistlib.InvalidFileException:
+        return None
+
+
+def windows() -> list[dict[str, Any]]:
+    """Every window the window server lists, on screen or not, as CoreGraphics describes them;
+    none where it cannot be asked."""
+    libs = _graphics()
+    if libs is None:
+        return []
+    cg, cf = libs
+    listed = cg.CGWindowListCopyWindowInfo(0, 0)
+    found = plist_of(cf, listed) if listed else None
+    return found if isinstance(found, list) else []
+
+
+def spaces() -> tuple[tuple[str, int], ...] | None:
+    """The current Space of every display, keyed by its `Display Identifier`, or None where it
+    cannot be read. The list is the window server's own (`CGSCopyManagedDisplaySpaces`, private
+    but the one reading there is)."""
+    listed = _managed()
+    if listed is None:
+        return None
     try:
         return tuple((str(d["Display Identifier"]), int(d["Current Space"]["ManagedSpaceID"]))
-                     for d in plistlib.loads(raw))
-    except (plistlib.InvalidFileException, KeyError, TypeError, ValueError):
+                     for d in listed)
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _managed() -> list[Any] | None:
+    """The window server's list of displays and their Spaces, or None where it cannot be read."""
+    libs = _graphics()
+    if libs is None or spaces_missing(libs[0]):
+        return None
+    cg, cf = libs
+    managed = cg.CGSCopyManagedDisplaySpaces(cg.CGSMainConnectionID())
+    listed = plist_of(cf, managed) if managed else None
+    return listed if isinstance(listed, list) else None
+
+
+def space_counts() -> tuple[int, ...] | None:
+    """How many Spaces each display holds, or None where it cannot be read."""
+    listed = _managed()
+    if listed is None:
+        return None
+    try:
+        return tuple(len(d["Spaces"]) for d in listed)
+    except (KeyError, TypeError):
         return None
 
 

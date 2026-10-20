@@ -284,11 +284,15 @@ class Boundary:
                                 self._answered = []
                             # AFTER the call's own hook, which closes the call's one-time
                             # accounts: what goes back is for the NEXT reply.
-                            for account in back:
-                                self._give_back(account)
-                            # LAST, once the boundary's own bookkeeping is whole.
-                            if parent is None and self._listener is not None:
-                                self._listener.ended(fn.__name__)
+                            try:
+                                for account in back:
+                                    self._give_back(account)
+                            finally:
+                                # After the hook and the give-back, whatever they did: the
+                                # listener never hears of a call still in flight, nor misses
+                                # the end of one.
+                                if parent is None and self._listener is not None:
+                                    self._listener.ended(fn.__name__)
                     self.recorder.end(fn.__name__, parent, given, reply, taken)
                     if parent is not None:
                         self._answered.append(reply)

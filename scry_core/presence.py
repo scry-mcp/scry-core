@@ -10,7 +10,8 @@ against the server's registry, so a new tool has to be put on one side. The boun
 every outermost call's begin and end through a `Slot`.
 
 THE LOOK IS HELD HERE, ONCE (`LOOK`), for two emulators that draw it in different ways, each
-server translating it for its own: a tuning lands in both from this one place.
+server translating it for its own: a tuning lands in both from this one place. The edge is drawn
+by both; the pointer where the emulator has a guest pointer to mark.
 
 DELIVERY IS OFF THE CALL'S PATH. One writer per session sends only the latest state, so a call
 never waits on the emulator and two states can never arrive out of order. A driving call over
@@ -24,8 +25,9 @@ contract of the call.
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable, Collection, Iterable
-from dataclasses import dataclass
+from collections.abc import Callable, Collection, Iterable, Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
 from scry_core.reply_contract import unavailable
@@ -59,10 +61,11 @@ ARROW = (
 
 @dataclass(frozen=True)
 class Look:
-    """How presence is drawn, by both emulators. Colours are 0xRRGGBB; alphas run 0 to 1."""
+    """How presence is drawn: the edge by both emulators, the pointer where there is a guest
+    pointer. Colours are 0xRRGGBB; alphas run 0 to 1."""
 
     rgb: int = 0xFF8C00
-    #: The edge's width, as a fraction of the window's shorter side.
+    #: The edge's width, as a fraction of the shorter side of the picture the emulator draws on.
     edge: float = 0.025
     #: The bands the edge's gradient is drawn in, strongest at the rim and fading inwards.
     steps: int = 6
@@ -136,20 +139,20 @@ class Presence:
         self._thread = threading.Thread(target=self._write, name="presence", daemon=True)
 
     @classmethod
-    def open(cls, adapter: Adapter, driving: Collection[str]
-             ) -> tuple[Presence | None, bool | dict[str, Any]]:
+    def open(cls, adapter: Adapter, driving: Collection[str]) -> Shown:
         """The session's presence, its first `held` delivered NOW, before `start` answers, so the
-        reply can say whether it is drawn; `(None, unavailable(why))` when it cannot be."""
+        reply can say whether it is drawn; unavailable with why when it cannot be."""
         p = cls(adapter, driving)
         try:
             adapter.show("held")
         except Unavailable as e:
-            return None, unavailable(str(e))
+            return Shown(refused=unavailable(str(e)), adapter=adapter)
         except Exception as e:  # any failure of the first delivery is the reply's to say
-            return None, unavailable(f"the first delivery failed: {type(e).__name__}: {e}")
+            return Shown(refused=unavailable(
+                f"the first delivery failed: {type(e).__name__}: {e}"), adapter=adapter)
         p._sent = "held"
         p._thread.start()
-        return p, True
+        return Shown(held=p, adapter=adapter)
 
     def began(self, tool: str) -> None:
         """A call to `tool` began: `acting` if it drives."""
@@ -159,6 +162,16 @@ class Presence:
     def ended(self, tool: str) -> None:
         """A call to `tool` ended: back to `held` if it drove."""
         if tool in self._driving:
+            self._set("held")
+
+    @contextmanager
+    def driving(self) -> Iterator[None]:
+        """`acting` for the block, as a driving call is: for what drives the machine without
+        being a call of its own (a plan run inside `start`)."""
+        self._set("acting")
+        try:
+            yield
+        finally:
             self._set("held")
 
     def redeliver(self) -> None:
@@ -223,6 +236,35 @@ class Presence:
                     self._sent = None
                     self._pulse = self._pulse or state == "acting"
                     self._cv.wait(RETRY_S)
+
+
+@dataclass
+class Shown:
+    """One session's presence as a server keeps it: the writer when it is drawn (`held`), else
+    what `start` answered about it (`refused`: `false` asked off, or why it could not be), and
+    the adapter it was opened on."""
+
+    held: Presence | None = None
+    refused: bool | dict[str, Any] = False
+    adapter: Adapter | None = field(default=None, repr=False)
+
+    def reply(self) -> bool | dict[str, Any]:
+        """What `start` and `status` say: `true` drawn, `false` asked off, or why not (the last
+        delivery's failure included)."""
+        return self.held.reply() if self.held is not None else self.refused
+
+    @contextmanager
+    def driving(self) -> Iterator[None]:
+        """`Presence.driving`, or nothing when it is not drawn."""
+        if self.held is None:
+            yield
+            return
+        with self.held.driving():
+            yield
+
+    def close(self) -> None:
+        if self.held is not None:
+            self.held.close()
 
 
 class Slot:

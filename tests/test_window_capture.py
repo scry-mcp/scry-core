@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from scry_core import focus_watch as fw
 from scry_core import window_capture as wc
 
 Pixel = tuple[int, int, int]
@@ -37,7 +38,7 @@ def test_a_bmp_comes_back_top_row_first_in_rgb(tmp_path: Path, bpp: int, top_dow
     rows = [[(1, 2, 3), (4, 5, 6), (7, 8, 9)], [(10, 11, 12), (13, 14, 15), (16, 17, 18)]]
     image = wc.read_bmp(_bmp(tmp_path / "a.bmp", rows, bpp, top_down))
     assert (image.width, image.height) == (3, 2)
-    assert [list(r) for r in image.rows] == rows
+    assert [image.pixels(y) for y in range(image.height)] == rows
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "window_capture"
@@ -48,7 +49,7 @@ KNOWN = [[(255, 0, 0), (0, 255, 0), (0, 0, 255)], [(255, 140, 0), (10, 20, 30), 
 @pytest.mark.parametrize("name", ["sips-rgb24.bmp", "sips-rgba32.bmp"])
 def test_what_sips_writes_reads_back_as_the_picture_it_was(name: str) -> None:
     image = wc.read_bmp(FIXTURES / name)
-    assert [list(r) for r in image.rows] == KNOWN
+    assert [image.pixels(y) for y in range(image.height)] == KNOWN
 
 
 def test_bitfields_in_another_order_is_refused_rather_than_read_swapped(tmp_path: Path) -> None:
@@ -79,8 +80,8 @@ def test_what_is_not_a_bmp_this_reads_is_refused(tmp_path: Path) -> None:
 def _image(width: int, height: int, paint: dict[tuple[int, int], Pixel] | None = None
            ) -> wc.Image:
     paint = paint or {}
-    return wc.Image(width, height, tuple(tuple(paint.get((x, y), (0, 0, 0))
-                                               for x in range(width)) for y in range(height)))
+    return wc.Image.of([[paint.get((x, y), (0, 0, 0)) for x in range(width)]
+                        for y in range(height)])
 
 
 def test_a_frame_on_the_inner_edges_is_shallow_and_spans_the_content() -> None:
@@ -99,8 +100,7 @@ def test_a_change_on_two_sides_only_leaves_the_other_two_empty() -> None:
     w, h = 20, 20
     l_shape = {(x, y): (9, 9, 9) for x in range(w) for y in range(h) if x == 0 or y == 0}
     l_shape[(w - 1, h - 1)] = (9, 9, 9)          # one far corner, so the box is the whole image
-    d = wc.difference(wc.Image(w, h, tuple(tuple((0, 0, 0) for _ in range(w))
-                                           for _ in range(h))), _image(w, h, l_shape))
+    d = wc.difference(_image(w, h), _image(w, h, l_shape))
     # only the corners tie onto the far sides: a frame drawn on two sides is not one on four
     assert d.sides[0] > 0 and d.sides[2] > 0 and d.sides[1] + d.sides[3] <= 2
 
@@ -128,13 +128,13 @@ def test_the_window_of_a_pid_is_its_largest_ordinary_one(monkeypatch: pytest.Mon
         {"kCGWindowOwnerPID": 8, "kCGWindowLayer": 0, "kCGWindowNumber": 4,
          "kCGWindowBounds": {"Width": 900, "Height": 900}},
     ]
-    monkeypatch.setattr(wc, "_windows", lambda: listed)
+    monkeypatch.setattr(fw, "windows", lambda: listed)
     assert wc.window_of(7) == 2 and wc.window_of(9) is None
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="the window server is macOS's")
 def test_the_window_server_lists_windows() -> None:
-    assert isinstance(wc._windows(), list)
+    assert isinstance(fw.windows(), list)
 
 
 def test_off_macos_a_capture_is_blocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -193,7 +193,8 @@ def test_a_refused_capture_or_conversion_is_blocked_and_a_good_one_read(
             Path(argv[-1]).write_bytes((FIXTURES / "sips-rgb24.bmp").read_bytes())
         return subprocess.CompletedProcess(argv, 0, "", "")
     monkeypatch.setattr(subprocess, "run", real)
-    assert [list(r) for r in wc.capture(1, tmp_path / "w4.png").rows] == KNOWN
+    got = wc.capture(1, tmp_path / "w4.png")
+    assert [got.pixels(y) for y in range(got.height)] == KNOWN
 
 
 @pytest.mark.parametrize("raised", [subprocess.TimeoutExpired("screencapture", 15),
@@ -207,3 +208,15 @@ def test_a_host_tool_that_hangs_or_is_missing_is_blocked(
     monkeypatch.setattr(subprocess, "run", fail)
     with pytest.raises(wc.Blocked, match="could not be captured"):
         wc.capture(1, tmp_path / "w.png")
+
+
+def test_the_edge_verdict_takes_a_frame_and_refuses_a_box_in_the_middle() -> None:
+    w, h = 100, 80
+    edge = max(1, round(w * 0.025))
+    ring = {(x, y): (255, 140, 0) for x in range(w) for y in range(h)
+            if min(x, y, w - 1 - x, h - 1 - y) < edge}
+    drawn, said = wc.edge_verdict(wc.difference(_image(w, h), _image(w, h, ring)))
+    assert drawn, said
+    blob = {(x, y): (255, 140, 0) for x in range(40, 60) for y in range(30, 50)}
+    drawn, said = wc.edge_verdict(wc.difference(_image(w, h), _image(w, h, blob)))
+    assert not drawn and "pixels changed" in said

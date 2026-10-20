@@ -36,6 +36,9 @@ SPACE_KEYS = (KEY_RIGHT, KEY_LEFT)
 SPACE_SETTLE_S = 1.5
 #: What `move_space` says when every display holds one Space.
 NO_OTHER_SPACE = "no other Space to move to"
+#: What it says when a display holds more and the shortcuts moved nothing.
+SHORTCUTS_OFF = ("the shortcuts moved nothing though a display holds {} Spaces: Mission "
+                 "Control's \"Move left a space\" and \"Move right a space\" may be off")
 
 
 def _press(key: int) -> str:
@@ -66,9 +69,9 @@ def move_space(settle_s: float = SPACE_SETTLE_S) -> Moved:
     Space to the right. Whether a key moved the owner is read off the Spaces, never off the
     keystroke's own answer, since one that timed out may still have acted; so the way back is
     pressed whenever the owner moved, and the owner is checked to end where they began. `why` is
-    "" when all of that held, else what did not (a keystroke refused, which needs Accessibility
-    for this process; the owner left elsewhere); a host whose Spaces cannot be read, which
-    presses nothing, or one with no other Space to move to, is not `taken`."""
+    "" when all of that held, else what did not. Not `taken`, so BLOCKED and never a FAIL: a
+    host whose Spaces cannot be read, which presses nothing; a keystroke refused, which needs
+    Accessibility for this process; no other Space to move to; shortcuts that moved nothing."""
     began = focus_watch.now_ms()
     if missing := focus_watch.spaces_missing():
         return Moved(began, focus_watch.now_ms(),
@@ -96,8 +99,11 @@ def move_space(settle_s: float = SPACE_SETTLE_S) -> Moved:
     if back is not None:
         whys.append(_press(back))
         time.sleep(settle_s)
-    elif not any(whys):
-        whys.append(NO_OTHER_SPACE)
+    elif any(whys):
+        taken = False                       # a keystroke refused: the move was never made
+    else:
+        most = max(focus_watch.space_counts() or (1,))
+        whys.append(SHORTCUTS_OFF.format(most) if most > 1 else NO_OTHER_SPACE)
         taken = False
     after = focus_watch.spaces()
     if not after or not focus_watch.same_spaces(after, before):
@@ -162,8 +168,12 @@ def control(watch: Watched, names: Collection[str],
 def verdict(watch: Watched, names: Collection[str], since: int | None, end_ms: int) -> Judged:
     """The run's verdict, the watch ended first: judged only after a control that held
     (`since`), over a window of at least `MIN_WINDOW_MS`."""
-    watch.__exit__(None, None, None)
     record = f"record {watch.path}"
+    try:
+        watch.__exit__(None, None, None)
+    except Exception as e:  # the watch's own failure, raised at its end: a record not written
+        return Judged("BLOCKED", f"the watch failed ({type(e).__name__}: {e}), so the run "
+                                 f"cannot be judged; {record}")
     if since is None:
         return Judged("BLOCKED", f"the control did not hold, so the watch clears nothing; {record}")
     if end_ms - since < MIN_WINDOW_MS:

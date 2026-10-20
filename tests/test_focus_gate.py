@@ -26,8 +26,9 @@ class _Desk:
     out after System Events had acted does."""
 
     def __init__(self, row: int, at: int, refuse: bool = False, lost: bool = False,
-                 late: bool = False) -> None:
+                 late: bool = False, off: bool = False) -> None:
         self.row, self.at, self.refuse, self.lost, self.late = row, at, refuse, lost, late
+        self.off = off                  # the host's Mission Control shortcuts turned off
         self.pressed: list[int] = []
         self.events: list[str] = []
 
@@ -45,34 +46,43 @@ class _Desk:
         if self.refuse:
             return "System Events refused the keystroke: not allowed"
         step = 1 if key == fg.KEY_RIGHT else -1
-        if 1 <= self.at + step <= self.row and not (self.lost and step < 0):
+        if not self.off and 1 <= self.at + step <= self.row and not (self.lost and step < 0):
             self.at += step
         return "osascript did not answer: timed out" if self.late else ""
 
 
-@pytest.mark.parametrize(("desk", "keys", "why"), [
-    (_Desk(3, 1), [124, 123], ""),
-    (_Desk(3, 3), [124, 123, 124], ""),
-    (_Desk(1, 1), [124, 123], fg.NO_OTHER_SPACE),
-    (_Desk(3, 1, refuse=True), [124], "refused the keystroke"),
-    (_Desk(3, 1, lost=True), [124, 123], "left on"),
-    (_Desk(3, 1, late=True), [124, 123], "did not answer"),
-    (_Desk(3, 3, late=True), [124], "did not answer"),
-])
-def test_move_space_moves_along_and_back_or_says_why_not(
-        monkeypatch: pytest.MonkeyPatch, desk: _Desk, keys: list[int], why: str) -> None:
-    at = desk.at
+def _on(monkeypatch: pytest.MonkeyPatch, desk: _Desk) -> list[float]:
+    """`move_space` pointed at `desk`: its Spaces, its keys, its count, and the settles taken."""
     monkeypatch.setattr(fw, "spaces", desk.spaces)
     monkeypatch.setattr(fw, "spaces_missing", lambda: "")
+    monkeypatch.setattr(fw, "space_counts", lambda: (desk.row, 1))
     monkeypatch.setattr(fg, "_press", desk.press)
     slept: list[float] = []
     monkeypatch.setattr(time, "sleep", slept.append)
+    return slept
+
+
+@pytest.mark.parametrize(("desk", "keys", "why", "taken"), [
+    (_Desk(3, 1), [124, 123], "", True),
+    (_Desk(3, 3), [124, 123, 124], "", True),
+    (_Desk(1, 1), [124, 123], fg.NO_OTHER_SPACE, False),
+    (_Desk(3, 1, refuse=True), [124], "refused the keystroke", False),
+    (_Desk(3, 1, lost=True), [124, 123], "left on", True),
+    (_Desk(3, 1, late=True), [124, 123], "did not answer", True),
+    (_Desk(3, 3, late=True), [124], "did not answer", False),
+    (_Desk(3, 1, off=True), [124, 123], "may be off", False),
+])
+def test_move_space_moves_along_and_back_or_says_why_not(
+        monkeypatch: pytest.MonkeyPatch, desk: _Desk, keys: list[int], why: str,
+        taken: bool) -> None:
+    at = desk.at
+    slept = _on(monkeypatch, desk)
     monkeypatch.setattr(fw, "now_ms", desk.clock)
     m = fg.move_space(settle_s=0.5)
     began, ended, said = m.began, m.ended, m.why
     assert desk.pressed == keys
     assert (why in said) if why else said == ""
-    assert m.taken == (why != fg.NO_OTHER_SPACE)
+    assert m.taken == taken, m
     if not desk.lost:
         assert desk.at == at, "the owner is back where they started, whatever a key reported"
     assert desk.events[0] == "clock" and desk.events[-1] == "clock", \
@@ -269,10 +279,7 @@ class _Shuffled(_Desk):
 def test_the_same_displays_listed_in_another_order_are_no_move_and_press_no_way_back(
         monkeypatch: pytest.MonkeyPatch) -> None:
     desk = _Shuffled(1, 1)                  # one Space: no key moves the owner
-    monkeypatch.setattr(fw, "spaces", desk.spaces)
-    monkeypatch.setattr(fw, "spaces_missing", lambda: "")
-    monkeypatch.setattr(fg, "_press", desk.press)
-    monkeypatch.setattr(time, "sleep", lambda _s: None)
+    _on(monkeypatch, desk)
     m = fg.move_space(settle_s=0.5)
     assert desk.pressed == [fg.KEY_RIGHT, fg.KEY_LEFT], "a key back was pressed on a reorder"
     assert m.why == fg.NO_OTHER_SPACE and not m.taken
@@ -290,9 +297,14 @@ class _Drifting(_Desk):
 def test_an_owner_found_elsewhere_with_no_key_having_moved_them_fails_the_control(
         monkeypatch: pytest.MonkeyPatch) -> None:
     desk = _Drifting(1, 1)
-    monkeypatch.setattr(fw, "spaces", desk.spaces)
-    monkeypatch.setattr(fw, "spaces_missing", lambda: "")
-    monkeypatch.setattr(fg, "_press", desk.press)
-    monkeypatch.setattr(time, "sleep", lambda _s: None)
+    _on(monkeypatch, desk)
     m = fg.move_space(settle_s=0.5)
     assert "left on" in m.why and m.taken, m
+
+
+def test_a_watch_that_failed_at_its_end_is_a_blocked_verdict_not_an_exception() -> None:
+    class Failed(_Watched):
+        def __exit__(self, *_a: object) -> None:
+            raise OSError(28, "No space left on device")
+    v = fg.verdict(Failed([_app(ms) for ms in range(0, 70_001, 500)]), {"mame"}, 0, 70_000)
+    assert v.status == "BLOCKED" and "No space left" in v.reason
