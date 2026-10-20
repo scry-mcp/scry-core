@@ -16,8 +16,9 @@ from scry_core import narrowing
 
 #: The tools whose replies carry the whole block.
 WHOLE_ON = frozenset({"start", "status"})
-#: What the short block says about the half it left out.
-HOW = "`status` answers the whole block: what is fixed for this session as well as its alarms"
+#: What the short block says about the half it left out, in as few units as it takes: naming the
+#: omission must cost less than the facts it stands for, or the short block grows the reply.
+HOW = "call `status`"
 
 
 def block(alarms: dict[str, Any], fixed: dict[str, Any], whole: bool) -> dict[str, Any]:
