@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from test_media_tools import judged_by_its_model  # noqa: F401  (every reply held to its model)
 
 from scry_core import media_tools, wav
 from scry_core.reply_contract import Invalid

@@ -4,17 +4,34 @@ handing every tool to the server's own decorator."""
 
 from __future__ import annotations
 
+import functools
 import hashlib
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from scry_core import media_tools, png, series
+from scry_core import media_replies, media_tools, png, reply_schema, series
 from scry_core.client_cap import CLIENT_TEXT_CAP, utf16_units
 from scry_core.reply_contract import Invalid
 
 RED, BLACK = (255, 0, 0), (0, 0, 0)
+
+
+@pytest.fixture(autouse=True)
+def judged_by_its_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every reply a tool here builds is held to the model both servers publish for it
+    (`scry_core.media_replies`), as their batteries hold their own."""
+    for name, model in media_replies.MODELS.items():
+        judge = reply_schema.judged(model)
+        body = getattr(media_tools, name)
+
+        @functools.wraps(body)
+        def checked(*a: Any, _body: Any = body, _judge: Any = judge, **k: Any) -> Any:
+            out = _body(*a, **k)
+            _judge.validate_python({"status": "ok", **out})
+            return out
+        monkeypatch.setattr(media_tools, name, checked)
 
 
 def _png(path: Path, lit: set[tuple[int, int]], width: int = 4, height: int = 3) -> str:

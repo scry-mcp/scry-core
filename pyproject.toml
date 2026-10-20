@@ -1,6 +1,6 @@
 [project]
 name = "scry-core"
-version = "0.37.1"
+version = "0.38.0"
 description = "What the Scry emulator MCP servers share: the reply contract, the probe, the live bench and the pre-commit"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,6 +14,9 @@ dependencies = [
     # `strict_arguments` builds pydantic models itself, so the bound is this package's to state
     # rather than one it inherits through `mcp`.
     "pydantic>=2,<3",
+    # `reply_schema`'s models are `TypedDict`s pydantic reads, and below Python 3.12 pydantic
+    # takes only this package's spelling of it. Already installed beside pydantic.
+    "typing-extensions>=4.12",
     # Names a server's process (`process_name`, which says why). 1.3 is where the Activity
     # Monitor gets the name too; the major is bounded as above.
     "setproctitle>=1.3,<2",

@@ -11,6 +11,8 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.steps` | a step of a list judged against the tool it names before any step runs: its `recorded` check, no `ctx`, names the tool takes, scalars of the declared type |
 | `scry_core.sequence` | the executor of a list of steps run in one call (`perform`, `drive`'s act, `start`'s plan): the wait for a stop before a step that needs one, the end at a failed or diverged step, the tail and its verdict, the machine's own answers handed in as a `Machine` and a repeated list as a `Cycle` |
 | `scry_core.vocabulary` | a closed vocabulary or a range, the judge and the schema half from one tuple: `enum`, a `pattern` for the words taken in any case, `minimum` and `maximum`, and `one_of`'s one sentence |
+| `scry_core.reply_schema` | each tool's reply model published as its `outputSchema` (the field names, no value constrained), the envelope every reply carries, and the strict check of every reply the battery builds, any field also taking `unavailable(why)` |
+| `scry_core.media_replies` | the reply models of the file tools both servers share |
 | `scry_core.session_block` | the `session` block that closes every reply: the alarms on every one, the fixed half on `start` and `status`, the short block naming what it left out |
 | `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, the listener that hears each outermost call begin and end, and the reply every path closes with, its summary line first; the server's vocabulary handed in as hooks |
 | `scry_core.ends_table` | a server reference's table of how a cancelled call ends, held against what its tools declare |
@@ -21,7 +23,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.prose` | how a count is said in a summary, a note or a refusal: the one plural rule, and the verb that agrees with it |
 | `scry_core.value_format` | the grammar of a watched value: scalars, arrays, strings, structs, pointers |
 | `scry_core.reply_shapes` | the pytest plugin running the test-time guard (`reply_shapes_guard`) that holds one word to one shape in every reply |
-| `scry_core.reply_shapes_guard` | what that plugin runs: every key of a reply in the one shape the table gives it, and no null anywhere, in one walk |
+| `scry_core.reply_shapes_guard` | what that plugin runs: every key of a reply in the one shape the table gives it, no null anywhere, and the reply held to its tool's declared model (`reply_schema.check`) |
 | `scry_core.client_cap` | the prefix of a text the MCP client delivers, in its own unit |
 | `scry_core.probe` | what a model calls when all it holds is what the client delivers |
 | `scry_core.probe_checks` | what each server's suite checks on its own probe surface: tasks, captures, the cap |

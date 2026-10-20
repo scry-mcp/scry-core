@@ -1,4 +1,5 @@
-"""One spelling, one shape: the guard that holds every reply a server's battery builds to it.
+"""One spelling, one shape: the guard that holds every reply a server's battery builds to it, and
+to the model its tool declares (`scry_core.reply_schema`).
 
 `reply_shapes` is the pytest plugin that runs it; this module is what it runs, imported only once
 a session has begun (the plugin says why).
@@ -41,7 +42,9 @@ from collections.abc import Callable, Iterator
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
+from scry_core import reply_schema
 from scry_core.reply_shapes import ANCHORS_INI
 
 # THE TABLE HOLDS A WORD ONLY ONCE TWO REPLIES HAVE SPELLED IT WITH TWO SHAPES: `truncated`, a
@@ -126,9 +129,15 @@ def _wrap_envelope(original: Envelope) -> Envelope:
 
 def _wrap_summary(original: Summary) -> Summary:
     """The reply as the CALLER receives it, judged before the summary line is composed from
-    it."""
+    it: the shape table, and the tool's own declared model (`scry_core.reply_schema`)."""
     def checked(name: str, args: dict[str, Any], reply: dict[str, Any], *rest: Any) -> str:
         _judge(reply, f"{name}'s reply")
+        try:
+            reply_schema.check(name, reply)
+        except ValidationError as e:
+            raise AssertionError(f"{name}'s reply is not the shape its model declares, so its "
+                                 f"published schema would lie: {e}. Name the field in the "
+                                 f"tool's reply model, or give it the declared type") from None
         return original(name, args, reply, *rest)
     return checked
 
