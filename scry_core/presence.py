@@ -78,6 +78,9 @@ class Look:
     pointer_outline_rgb: int = 0x2A1400
     #: The arrow's height, as a fraction of the window's shorter side.
     pointer_size: float = 0.06
+    #: How long the pointer takes to glide to where the guest's moved, easing out: it moves the
+    #: way a hand does, and nothing waits on it, since it is drawing only.
+    pointer_glide_s: float = 0.2
 
     @property
     def held_alpha(self) -> float:
