@@ -269,3 +269,20 @@ def test_watch_leaves_when_the_child_is_already_gone_and_sleeps_while_all_is_wel
     monkeypatch.setattr(time, "time", lambda: next(clock))
     guardian.watch(os.getppid(), 4242, 0.25, 7.0)          # well at 0 and 5, past it at 10
     assert (slept, killed) == ([0.25, 0.25], [4242])
+
+
+@POSIX
+def test_a_host_where_ps_cannot_be_asked_still_kills_by_the_pid(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    def no_ps(*_a: object, **_k: object) -> None:
+        raise FileNotFoundError("ps")
+    monkeypatch.setattr(subprocess, "run", no_ps)
+    assert guardian.started(1) is None
+    killed: list[int] = []
+
+    def kill(pid: int, sig: int) -> None:
+        if sig == signal.SIGKILL:
+            killed.append(pid)
+    monkeypatch.setattr(os, "kill", kill)
+    guardian.watch(os.getppid() + 1, 4242, 0.01, 0.0)
+    assert killed == [4242]

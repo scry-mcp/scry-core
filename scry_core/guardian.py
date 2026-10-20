@@ -29,8 +29,6 @@ import subprocess
 import sys
 import time
 
-from scry_core import process_name
-
 #: How often the guardian looks: a second, against an emulator that would otherwise run until
 #: reboot.
 POLL_S = 1.0
@@ -72,10 +70,14 @@ def stop(guard: subprocess.Popen[bytes] | None) -> None:
         guard.wait(timeout=STOP_GRACE_S)
 
 
-def started(pid: int) -> str:
-    """When `pid` started, as `ps` tells it, or "" for a pid with no process."""
-    run = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True,
-                         check=False)
+def started(pid: int) -> str | None:
+    """When `pid` started, as `ps` tells it; "" for a pid with no process, None when `ps` itself
+    could not be asked, so the identity cannot be checked at all."""
+    try:
+        run = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True,
+                             text=True, check=False)
+    except OSError:
+        return None
     return run.stdout.strip() if run.returncode == 0 else ""
 
 
@@ -90,7 +92,9 @@ def watch(server: int, child: int, poll_s: float, deadline: float) -> None:
         except (ProcessLookupError, PermissionError):
             return
         if os.getppid() != server or (deadline and time.time() >= deadline):
-            if born and started(child) == born:
+            # A HOST WHERE `ps` CANNOT BE ASKED kills by the pid alone, as a guardian did before
+            # it could check: an emulator left running is the worse of the two.
+            if born is None or (born and started(child) == born):
                 with contextlib.suppress(ProcessLookupError, PermissionError):
                     os.kill(child, signal.SIGKILL)
             return
@@ -101,7 +105,9 @@ def main(argv: list[str]) -> None:
     """The guardian's program, over `spawn`'s arguments: named, then watching. A name the host
     refuses costs the name, never the watch."""
     server, child, poll_s, deadline, name = argv
+    # IMPORTED HERE, so a naming that cannot even import costs the name and never the watch.
     with contextlib.suppress(Exception):
+        from scry_core import process_name
         process_name.set_title(name)
     watch(int(server), int(child), float(poll_s), float(deadline))
 

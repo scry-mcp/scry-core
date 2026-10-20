@@ -34,6 +34,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.focus_gate` | the flow a live section takes the watch through: the control (a start in front, one behind, the owner's Space moved and put back), the verdict after it, each in `live_pool`'s words |
 | `scry_core.presence` | the presence indicator: a session's state (held, acting), the one look both emulators draw, the writer that delivers the latest state off the call's path, and the check that holds a server's declaration of which tools drive against its registry |
 | `scry_core.guardian` | the process beside every emulator that kills it when its server dies or its session's wall-clock bound passes (POSIX) |
+| `scry_core.window_capture` | what the host shows of an emulator's window, for a live tier: the window found by its owner's pid, captured by the host (macOS, a refusal raised as `Blocked`), and two captures compared by where they differ |
 | `scry_core.process_name` | the name a server's process, and its guardians', go by in the host's process list |
 | `scry_core.narrowing` | a reply that answers less than everything and says so: `omitted` and `how`, and the `sections` list a caller narrows by |
 | `scry_core.traffic` | what a server's replies and its tool list cost the model, per tool, in the client's unit, and the visual tokens of the pictures replies attach, read from `list_tools()` and, when given, live transcripts |

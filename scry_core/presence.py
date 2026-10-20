@@ -83,6 +83,11 @@ class Look:
 
 LOOK = Look()
 
+#: `start`'s `presence` argument as its schema describes it, the same on both servers.
+ARGUMENT = ("Draw an edge around the emulator's window while this session is open: dim while "
+            "idle, bright while a call runs the machine. No capture, recording or screen reader "
+            "of this server carries it; a recording of the window made from outside does.")
+
 
 class Unavailable(Exception):
     """The emulator cannot draw presence at all, and why (no window, a build whose channel has
