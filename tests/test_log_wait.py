@@ -119,3 +119,17 @@ def test_a_timeouts_note_says_what_arrived_and_a_silent_writer() -> None:
 def test_a_gone_emulator_is_said_with_the_bound() -> None:
     said = log_wait.gone_message("GO", log_wait.Ended("GONE", 0, 0, 1.5), 30.0)
     assert said.startswith("the emulator is GONE, 1.5 s into a 30 s wait for /GO/"), said
+
+
+def test_a_mark_inside_a_line_leaves_that_lines_rest_out(tmp_path: Path) -> None:
+    """A mark taken while the writer was mid-line: the rest of that line is not a line of what
+    came after it, and a line still unfinished there yields nothing until it ends."""
+    log = tmp_path / "e.log"
+    log.write_bytes(b"one\nhalf")
+    mark = log.stat().st_size
+    assert log_wait.lines_since(log, mark) == ([], mark), "no newline yet: nothing whole"
+    with log.open("ab") as fh:
+        fh.write(b" done\nafter\n")
+    lines, nxt = log_wait.lines_since(log, mark)
+    assert lines == ["after"] and nxt == log.stat().st_size, (lines, nxt)
+    assert log_wait.lines_since(log, 4)[0] == ["half done", "after"], "a mark on a line's start"

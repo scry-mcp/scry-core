@@ -1,0 +1,44 @@
+"""`since_mark`, the position `log` and `log_wait` read after, and the `mark` `state_load` answers:
+the descriptions, the schema bound and the refusals both servers give in the same words."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import Field
+
+from scry_core.reply_contract import Invalid
+
+#: The argument's description, said once for both servers' tools.
+SINCE_MARK_DOC = ("`since_mark`, a byte position in the channel's log (the number `state_load`'s "
+                  "`mark` gives for it): only what was written after it is read; 0, the "
+                  "default, reads the whole log")
+#: `state_load`'s `mark`, said once for both servers' descriptions.
+MARK_DOC = ("`mark` (where each log channel ended as the load was sent: `log`/`log_wait`'s "
+            "`since_mark` for that channel reads only what the loaded machine wrote)")
+#: The descriptions' placeholders, filled by each server's `docs`.
+DOC_VALUES = {"SINCE_MARK": SINCE_MARK_DOC, "MARK": MARK_DOC}
+#: Its schema half: a position is never negative; the end it may not pass is the log's, now.
+SINCE_MARK_BOUND: Any = Field(json_schema_extra={"minimum": 0})
+
+
+def check_position(since_mark: int, channel: str) -> None:
+    """The half that needs no log, run before anything is read: a position is a whole number, 0
+    or more (a bool is no position, though Python counts it as one)."""
+    if isinstance(since_mark, bool) or since_mark < 0:
+        raise Invalid("bad_argument",
+                      f"since_mark={since_mark} is a byte position in the log, 0 or more: the "
+                      f"number `state_load`'s `mark` gives for the {channel} channel")
+
+
+def check_since_mark(since_mark: int, end: int, channel: str) -> None:
+    """Refuse a `since_mark` that names no position of the `channel` log as it stands, `end`
+    bytes long (0 when it does not exist yet): a negative one, and one past its end, which no
+    mark of this session can be."""
+    check_position(since_mark, channel)
+    if since_mark > end:
+        raise Invalid("bad_argument",
+                      f"since_mark={since_mark} is past where the {channel} log ends now ({end} "
+                      f"bytes): a mark is where the log ended when it was taken, so it is never "
+                      f"past the end. One from another session, or a log rewritten shorter, "
+                      f"names nothing here")

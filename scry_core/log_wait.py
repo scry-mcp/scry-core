@@ -35,14 +35,20 @@ def lines_since(log: Path, mark: int) -> tuple[list[str], int]:
     newline, so a line is only ever seen whole, and once, however the writer's flushes fall. A
     log that is not there yet, or that is SHORTER than the mark (rewritten), is read from its
     start: a mark past the end describes a file that no longer exists. A byte-order mark is the
-    file's, not its first line's, and the mark returned still counts its bytes."""
+    file's, not its first line's, and the mark returned still counts its bytes. A mark inside a
+    line (a size taken while the writer was mid-line) leaves that line's rest out: a line begun
+    before the mark belongs to before it."""
     if not log.exists():
         return [], 0
     if mark > log.stat().st_size:
         mark = 0
     with open(log, "rb") as fh:
-        fh.seek(mark)
+        fh.seek(max(mark - 1, 0))
+        before = fh.read(1) if mark else b"\n"
         raw = fh.read()
+    if before != b"\n":
+        head = raw.find(b"\n") + 1           # 0 when the line has not ended yet: nothing whole
+        mark, raw = mark + head, raw[head:]
     bom = len(codecs.BOM_UTF8) if mark == 0 and raw.startswith(codecs.BOM_UTF8) else 0
     raw = raw[bom:]
     cut = raw.rfind(b"\n") + 1
