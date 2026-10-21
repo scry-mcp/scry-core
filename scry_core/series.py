@@ -50,27 +50,27 @@ def frame_name(frame: int) -> str:
     return f"f{frame:06d}.png"
 
 
-def frame_list(frames: Sequence[int] | None, first: int | None, last: int | None,
+def frame_list(at_frames: Sequence[int] | None, first: int | None, last: int | None,
                step: int = 1) -> list[int]:
-    """The frames a capture asks for: `frames` (a list, ascending, each once) or `first`..`last`
+    """The frames a capture asks for: `at_frames` (a list, ascending, each once) or `first`..`last`
     by `step`, never both and never neither, at most `SERIES_MAX`."""
-    if (frames is None) == (first is None and last is None):
-        raise Invalid("bad_argument", "name the frames either as `frames` (a list) or as "
+    if (at_frames is None) == (first is None and last is None):
+        raise Invalid("bad_argument", "name the frames either as `at_frames` (a list) or as "
                       "`first` and `last` (with `step`), one of the two")
-    if frames is not None:
-        if not (isinstance(frames, list | tuple) and frames
-                and all(judges.whole(f) for f in frames)):
-            raise Invalid("bad_argument", f"frames={frames!r} is a non-empty list of frame "
+    if at_frames is not None:
+        if not (isinstance(at_frames, list | tuple) and at_frames
+                and all(judges.whole(f) for f in at_frames)):
+            raise Invalid("bad_argument", f"at_frames={at_frames!r} is a non-empty list of frame "
                           "numbers at or above zero")
         if step != 1:
-            raise Invalid("bad_argument", "`step` goes with `first` and `last`; a `frames` list "
-                          "names each frame itself")
-        if any(b <= a for a, b in zip(frames, frames[1:], strict=False)):
-            raise Invalid("bad_argument", f"frames={frames!r} is ascending, each frame once")
-        if len(frames) > SERIES_MAX:
-            raise Invalid("bad_argument", f"{len(frames)} frames; a series holds at most "
+            raise Invalid("bad_argument", "`step` goes with `first` and `last`; an `at_frames` "
+                          "list names each frame itself")
+        if any(b <= a for a, b in zip(at_frames, at_frames[1:], strict=False)):
+            raise Invalid("bad_argument", f"at_frames={at_frames!r} is ascending, each frame once")
+        if len(at_frames) > SERIES_MAX:
+            raise Invalid("bad_argument", f"{len(at_frames)} frames; a series holds at most "
                           f"{SERIES_MAX}")
-        return list(frames)
+        return list(at_frames)
     if not (judges.whole(first) and judges.whole(last) and judges.whole(step, 1)):
         raise Invalid("bad_argument", f"first={first!r}, last={last!r}, step={step!r}: frame "
                       "numbers at or above zero and a step above it")

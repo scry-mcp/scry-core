@@ -103,6 +103,12 @@ from typing import Any
 
 from scry_core.client_cap import delivered
 
+# Re-exported: callers spell these `probe.<name>`.
+from scry_core.verdict import EXIT_FAIL as EXIT_FAIL
+from scry_core.verdict import EXIT_INVALID as EXIT_INVALID
+from scry_core.verdict import EXIT_PASS as EXIT_PASS
+from scry_core.verdict import Invalid as Invalid
+
 #: Where a run writes and where the captures live, under the repository's root: the contract
 #: `--help` states, so no option moves them.
 RUNS_UNDER_ROOT = Path("tmp") / "mcp_probe"
@@ -122,7 +128,6 @@ CLAUDE = ["claude", "--print", "--model", "haiku", "--effort", "low", "--max-bud
           "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"]
 STATIC = [*CLAUDE, "--tools", "", "--output-format", "json"]
 
-EXIT_PASS, EXIT_FAIL, EXIT_INVALID = 0, 1, 3
 #: How `--check` begins each line: a server covered, or one problem it refuses. A caller reading
 #: the check's output (a pre-commit) matches these, never its own spelling of them.
 CHECK_OK, CHECK_REFUSED = "OK ", "REFUSED "
@@ -156,10 +161,6 @@ When no tool of this server can do what a task asks, answer that task with:
 
 
 TASKS_HEAD = "=== TASKS ==="
-
-
-class Invalid(Exception):
-    """The probe could not produce a verdict: nothing here is a PASS or a FAIL."""
 
 
 def broke(what: str, e: Exception) -> str:

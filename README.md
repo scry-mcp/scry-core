@@ -27,9 +27,10 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.value_format` | the grammar of a watched value: scalars, arrays, strings, structs, pointers |
 | `scry_core.reply_shapes` | the pytest plugin running the test-time guard (`reply_shapes_guard`) that holds one word to one shape in every reply |
 | `scry_core.reply_shapes_guard` | what that plugin runs: every key of a reply in the one shape the table gives it, no null anywhere, and the reply held to its tool's declared model (`reply_schema.check`) |
+| `scry_core.verdict` | what the probe and the cap check answer when they have no verdict: `Invalid` and the exit codes 0, 1 and 3 |
 | `scry_core.client_cap` | the prefix of a text the MCP client delivers, in its own unit |
 | `scry_core.probe` | what a model calls when all it holds is what the client delivers |
-| `scry_core.probe_checks` | what each server's suite checks on its own probe surface: tasks, captures, the cap |
+| `scry_core.probe_checks` | what each server's suite checks on its own probe surface: tasks, captures, the cap and its margins |
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
 | `scry_core.live_host` | the host a live tier runs on: a canary that refuses one which cannot start the emulator, the ledger that proves no emulator outlived a run, and the run's scratch left as its verdict says |
 | `scry_core.binaries` | which emulator a session runs: the caller's `binary`, else the server's variable, else the PATH's, and what the build says it is |

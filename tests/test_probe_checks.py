@@ -84,6 +84,10 @@ def test_over_cap_measures_the_objects_the_probe_reads(repo: probe.ProbeRepo) ->
                                        list_tools=list_tools)
     over = probe_checks.over_cap(dataclasses.replace(repo, modules={"long": module}))
     assert over == [f'long t {CLIENT_TEXT_CAP + 3} > {CLIENT_TEXT_CAP}: "cut"']
+    shown = probe_checks.margins(dataclasses.replace(repo, modules={"long": module}))
+    assert shown == [f"long t {CLIENT_TEXT_CAP + 3} units, margin -3",
+                     f"long instructions 1 units, margin {CLIENT_TEXT_CAP - 1}"]
+    assert len(probe_checks.margins(repo)) <= probe_checks.MARGINS_SHOWN * len(repo.modules)
 
 
 def test_judge_line_judges_one_answer_on_the_narrowed_surface(repo: probe.ProbeRepo) -> None:

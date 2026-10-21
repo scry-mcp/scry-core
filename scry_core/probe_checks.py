@@ -22,8 +22,7 @@ import dataclasses
 from pathlib import Path
 from typing import Any
 
-from scry_core import probe
-from scry_core.client_cap import over_the_cap
+from scry_core import client_cap, probe
 
 #: Where a repository keeps its probe, under its root: the servers file and the tasks directory.
 SERVERS_FILE = Path("mcp_probe") / "servers.py"
@@ -52,7 +51,18 @@ def over_cap(repo: probe.ProbeRepo) -> list[str]:
     """Every `instructions` and tool description of the repository's servers past the client's
     cap, measured on the server objects the probe loads, before the cut the probe makes."""
     return [line for name, module in repo.modules.items()
-            for line in over_the_cap(name, module.mcp)]
+            for line in client_cap.over_the_cap(name, module.mcp)]
+
+
+#: How many texts of each server `margins` lists, nearest the cap first.
+MARGINS_SHOWN = 8
+
+
+def margins(repo: probe.ProbeRepo) -> list[str]:
+    """The `MARGINS_SHOWN` texts of each of the repository's servers nearest the client's cap,
+    with their margin (`client_cap.margins`): not a problem list, what a suite prints every run."""
+    return [line for name, module in repo.modules.items()
+            for line in client_cap.margins(name, module.mcp, MARGINS_SHOWN)]
 
 
 def narrowed(surface: probe.Surface, tasks: list[dict[str, Any]]) -> probe.Surface:

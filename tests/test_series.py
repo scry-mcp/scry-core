@@ -181,31 +181,31 @@ def test_runs_are_inclusive_and_split_at_a_gap() -> None:
 
 
 @pytest.mark.parametrize("kw, want", [
-    ({"frames": [0, 5, 9]}, [0, 5, 9]),
-    ({"frames": (2, 3)}, [2, 3]),
+    ({"at_frames": [0, 5, 9]}, [0, 5, 9]),
+    ({"at_frames": (2, 3)}, [2, 3]),
     ({"first": 2, "last": 8, "step": 3}, [2, 5, 8]),
     ({"first": 4, "last": 4}, [4]),
 ])
 def test_the_frames_a_capture_asks_for(kw: dict[str, object], want: list[int]) -> None:
-    assert series.frame_list(kw.get("frames"), kw.get("first"), kw.get("last"),  # type: ignore[arg-type]
+    assert series.frame_list(kw.get("at_frames"), kw.get("first"), kw.get("last"),  # type: ignore[arg-type]
                              kw.get("step", 1)) == want  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("kw, said", [
     ({}, "one of the two"),
-    ({"frames": [1], "first": 1, "last": 2}, "one of the two"),
-    ({"frames": []}, "non-empty list"),
-    ({"frames": [3, 3]}, "ascending, each frame once"),
-    ({"frames": [-1]}, "at or above zero"),
-    ({"frames": [1, 2], "step": 2}, "`step` goes with `first` and `last`"),
+    ({"at_frames": [1], "first": 1, "last": 2}, "one of the two"),
+    ({"at_frames": []}, "non-empty list"),
+    ({"at_frames": [3, 3]}, "ascending, each frame once"),
+    ({"at_frames": [-1]}, "at_frames=\\[-1\\] is a non-empty list"),
+    ({"at_frames": [1, 2], "step": 2}, "`step` goes with `first` and `last`"),
     ({"first": 5, "last": 4}, "before first=5"),
     ({"first": 0, "last": 4, "step": 0}, "a step above it"),
     ({"first": 0, "last": series.SERIES_MAX}, f"at most {series.SERIES_MAX}"),
-    ({"frames": list(range(series.SERIES_MAX + 1))}, f"at most {series.SERIES_MAX}"),
+    ({"at_frames": list(range(series.SERIES_MAX + 1))}, f"at most {series.SERIES_MAX}"),
 ])
 def test_frames_of_the_wrong_shape_are_refused(kw: dict[str, object], said: str) -> None:
     with pytest.raises(Invalid, match=said):
-        series.frame_list(kw.get("frames"), kw.get("first"), kw.get("last"),  # type: ignore[arg-type]
+        series.frame_list(kw.get("at_frames"), kw.get("first"), kw.get("last"),  # type: ignore[arg-type]
                           kw.get("step", 1))  # type: ignore[arg-type]
 
 
