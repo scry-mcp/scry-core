@@ -49,6 +49,9 @@ def check_since_mark(since_mark: int, end: int, channel: str) -> None:
 
 #: How many of the newest lines a stop's log block shows: its count is always whole.
 STOP_LINES_SHOWN = 8
+#: How much of a channel's end rides on a reply that reports one (`close`, a refused `start`):
+#: the last lines are where a fatal error lands, and a whole boot log is not.
+TAIL_CHARS = 1500
 
 
 def stop_block(lines: list[str], mark: int, channel: str, limit_max: int) -> dict[str, Any]:
