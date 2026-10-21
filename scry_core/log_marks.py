@@ -15,7 +15,8 @@ SINCE_MARK_DOC = ("`since_mark`, a byte position in the channel's log (the numbe
                   "default, reads the whole log")
 #: `state_load`'s `mark`, said once for both servers' descriptions.
 MARK_DOC = ("`mark` (where each log channel ended as the load was sent: `log`/`log_wait`'s "
-            "`since_mark` for that channel reads only what the loaded machine wrote)")
+            "`since_mark` for that channel reads what came after it; a position in the file, "
+            "not a moment, so a line written before the load and not yet flushed lands after)")
 #: The descriptions' placeholders, filled by each server's `docs`.
 DOC_VALUES = {"SINCE_MARK": SINCE_MARK_DOC, "MARK": MARK_DOC}
 #: Its schema half: a position is never negative; the end it may not pass is the log's, now.
