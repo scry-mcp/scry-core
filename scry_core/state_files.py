@@ -17,6 +17,15 @@ _KINDS = ((stat.S_ISDIR, "a directory"), (stat.S_ISFIFO, "a FIFO"), (stat.S_ISSO
           (stat.S_ISCHR, "a character device"), (stat.S_ISBLK, "a block device"))
 
 
+#: Windows' long-path prefix, which its `readlink` puts on an absolute target.
+_LONG_PATH = "\\\\?\\"
+
+
+def _target(path: Path) -> str:
+    """Where the link at `path` points, as a path a reader types (`_LONG_PATH` dropped)."""
+    return os.readlink(path).removeprefix(_LONG_PATH)
+
+
 def not_a_state(path: Path) -> str | None:
     """Why the state file at `path` holds no state, else None (a regular file, or nothing there,
     a name that went away while it was looked at included)."""
@@ -26,10 +35,10 @@ def not_a_state(path: Path) -> str | None:
     linked = os.path.islink(path)
     try:
         if not os.path.exists(path):
-            return (f"the file is a link to {os.readlink(path)}, and no file is reached through "
+            return (f"the file is a link to {_target(path)}, and no file is reached through "
                     "it" if linked else None)
         mode = os.stat(path).st_mode
-        target = os.readlink(path) if linked else ""
+        target = _target(path) if linked else ""
     except FileNotFoundError:
         return None      # gone since it was looked for: nothing is there
     if stat.S_ISREG(mode):

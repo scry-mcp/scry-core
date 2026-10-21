@@ -54,3 +54,15 @@ def test_a_link_to_a_fifo_is_named_with_its_target(tmp_path: Path) -> None:
     (tmp_path / "l.sav").symlink_to(tmp_path / "f")
     assert not_a_state(tmp_path / "l.sav") == (
         f"the file is a link to {tmp_path / 'f'}, which is a FIFO, not a state")
+
+
+def test_a_link_target_is_named_without_the_windows_long_path_prefix(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Windows' `readlink` answers an absolute target as `\\\\?\\C:\\...`, a form for its own API
+    that no reader types back: the target is named as a path."""
+    (tmp_path / "d.sav").mkdir()
+    (tmp_path / "l.sav").symlink_to(tmp_path / "d.sav")
+    monkeypatch.setattr(os, "readlink", lambda _p: "\\\\?\\C:\\states\\d.sav")
+    said = not_a_state(tmp_path / "l.sav")
+    assert said == ("the file is a link to C:\\states\\d.sav, which is a directory, "
+                    "not a state"), said
