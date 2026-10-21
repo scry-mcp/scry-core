@@ -160,3 +160,10 @@ def test_every_scalar_the_table_names_parses_alone_and_in_an_array(
     assert vf.parse("u64").kind == "scalar"
     assert vf.parse("u64[2]").size == 16
     assert vf.parse("{v:u64}").size == 8
+
+
+def test_the_refusals_name_every_shape_and_a_positive_length() -> None:
+    with pytest.raises(vf.FormatError, match="a pointer like ptr32"):
+        vf.parse("ptr64")
+    with pytest.raises(vf.FormatError, match="positive whole number"):
+        vf.parse("u32").width_for(-4)

@@ -7,14 +7,14 @@ grammar names the shape, so a struct reads as its fields and a name as text:
     u16[8]           an array, eight of them, the width implied
     char[16]         a string of up to 16 bytes, cut at the first NUL
     {x:i16,y:i16,flags:u8,name:char[8]}   a struct, fields in declaration order
-    ptr32            a pointer, 4 bytes (ptr16: 2), rendered as the address it holds
+    ptr32            a pointer, 4 bytes (ptr16: 2), read as the number it holds
     ptr32{x:i16,y:i16}   a pointer AND what it points at, so `base->field` knows the
                      field's offset and format; the pointer's width is part of the type
     ptr16@CODE{...}  a pointer whose TARGET lives in a named class: on a board relocated
                      by class (a linker map with `bases`) the pointer's value is an offset
                      in that class's segment, and the class decides the base it is placed
                      under; without it the base symbol's own class does. A server with no
-                     classes (DOSBox-X) reads the type and applies nothing.
+                     classes reads the type and applies nothing.
 
 A format that names its own size (an array, a string, a struct) needs no `length`, and a
 bare scalar with none reads as one value; `length` is TOTAL bytes, a whole number of the
@@ -78,9 +78,10 @@ class Format:
         if width == 0:
             return elem
         if width < 0 or width % elem:
-            raise FormatError(f"a length of {width} is not a whole number of {self.spec} values "
-                              f"({elem} bytes each): `length` is the TOTAL bytes read as that "
-                              "format, one value per scalar; leave it out for one value")
+            raise FormatError(f"a length of {width} is not a positive whole number of "
+                              f"{self.spec} values ({elem} bytes each): `length` is the TOTAL "
+                              "bytes read as that format, one value per scalar; leave it out "
+                              "for one value")
         return width
 
     def decode(self, raw: bytes, order: str, width: int = 0) -> Value:
@@ -120,7 +121,8 @@ def parse(spec: str) -> Format:
             klass = at[1:].strip()
             if not _CLASS.match(klass):
                 raise FormatError(f"{spec}: the class after `@` is a name like CODE or DATA "
-                                  f"(letters, digits, underscore); got {klass!r}")
+                                  f"(a letter or underscore, then letters, digits, underscore); "
+                                  f"got {klass!r}")
             klass = klass.upper()      # classes are keyed upper-case
         if rest.startswith("@"):
             raise FormatError(f"{spec}: the class goes right after the width, `ptr{bits}@CODE`")
@@ -162,8 +164,8 @@ def parse(spec: str) -> Format:
         return Format(spec, "struct", sum(f.size or 0 for _n, f in fields),
                       fields=tuple(fields))
     raise FormatError(f"{spec!r} is not a format: a scalar ({', '.join(SCALARS)}), an array "
-                      "like u16[8], a string like char[16], or a struct like "
-                      "{x:i16,y:i16,flags:u8}")
+                      "like u16[8], a string like char[16], a struct like "
+                      "{x:i16,y:i16,flags:u8}, or a pointer like ptr32 or ptr32{x:i16}")
 
 
 def _fields_of(spec: str) -> list[str]:
