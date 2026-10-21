@@ -62,7 +62,7 @@ def test_a_line_that_arrives_is_found_with_what_arrived_before_it() -> None:
 
 def test_a_bound_that_runs_out_is_a_timeout_with_its_counts() -> None:
     got = wait(feed(["a"], ["b"]), seconds=0.05)
-    assert isinstance(got, log_wait.Ended) and got.how == "TIMEOUT", got
+    assert isinstance(got, log_wait.Ended) and got.ending == "TIMEOUT", got
     assert (got.arrived_during, got.lines_examined) == (1, 2) and got.waited_s >= 0.0
 
 
@@ -71,7 +71,7 @@ def test_a_bound_that_runs_out_is_a_timeout_with_its_counts() -> None:
 def test_a_stop_or_a_death_ends_the_wait_after_one_last_read(
         stopped: Callable[[], bool], alive: Callable[[], bool], how: str) -> None:
     got = wait(feed(["a"], ["b"]), stopped=stopped, alive=alive)
-    assert isinstance(got, log_wait.Ended) and got.how == how, got
+    assert isinstance(got, log_wait.Ended) and got.ending == how, got
     assert got.lines_examined == 2, "the last read looked at what the log gained"
     late = wait(feed(["a"], ["GO late"]), stopped=stopped, alive=alive)
     assert isinstance(late, log_wait.Found) and late.line == "GO late", late
@@ -81,7 +81,7 @@ def test_a_stop_that_lands_as_the_bound_runs_out_is_the_stop() -> None:
     lands = time.monotonic() + 0.03                    # the bound's own instant
     got = log_wait.wait(re.compile("GO"), feed(["a"]), seconds=0.03,
                         stopped=lambda: time.monotonic() >= lands, alive=lambda: True)
-    assert isinstance(got, log_wait.Ended) and got.how == "STOPPED", got
+    assert isinstance(got, log_wait.Ended) and got.ending == "STOPPED", got
     assert got.at_bound, got
     inside = wait(feed(["a"]), stopped=lambda: True)
     assert isinstance(inside, log_wait.Ended) and not inside.at_bound, inside
@@ -93,7 +93,7 @@ def test_an_emulator_that_died_as_the_bound_ran_out_is_gone_not_a_timeout() -> N
     dies = time.monotonic() + 0.03
     got = log_wait.wait(re.compile("GO"), feed(["a"]), seconds=0.03,
                         stopped=lambda: False, alive=lambda: time.monotonic() < dies)
-    assert isinstance(got, log_wait.Ended) and got.how == "GONE", got
+    assert isinstance(got, log_wait.Ended) and got.ending == "GONE", got
 
 
 def test_the_wait_reports_its_progress_under_its_label(monkeypatch: pytest.MonkeyPatch) -> None:

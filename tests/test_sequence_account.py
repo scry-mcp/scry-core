@@ -11,13 +11,14 @@ import pytest
 
 from scry_core import sequence_account as sa
 
-SHAPE = sa.Shape(kept=("stop_seq", "pc"), how=lambda stop: str(stop.get("how", "?")).upper(),
+SHAPE = sa.Shape(kept=("stop_seq", "pc"),
+                 cause_key=lambda stop: str(stop.get("cause", "?")).upper(),
                  extra=lambda reply, cut: cut.update(hit=reply["hit"]) if "hit" in reply
                  else None)
 
 
-def stop(seq: int, how: str = "bp", **more: Any) -> dict[str, Any]:
-    return {"summary": f"stop {seq}", "status": "ok", "stop_seq": seq, "pc": "0x10", "how": how,
+def stop(seq: int, cause: str = "bp", **more: Any) -> dict[str, Any]:
+    return {"summary": f"stop {seq}", "status": "ok", "stop_seq": seq, "pc": "0x10", "cause": cause,
             "regs": {"A": "0x1"}, **more}
 
 
@@ -42,7 +43,7 @@ def test_the_stops_counted_name_the_range_and_what_no_reply_surveyed() -> None:
                stop(9)]
     got = sa.stops(replies, 2, 5, SHAPE)
     assert got == {"stop_seq_first": 2, "stop_seq_last": 5, "surveyed": 3,
-                   "by_how": {"BP": 2, "WATCH": 1}, "unaccounted": 1}
+                   "by_cause": {"BP": 2, "WATCH": 1}, "unaccounted": 1}
     none = sa.stops([], 3, 2, SHAPE)
     assert none["stop_seq_first"]["available"] is False and none["unaccounted"] == 0
 
@@ -77,7 +78,7 @@ def test_a_stop_the_tail_carries_is_counted_once(tmp_path: Path) -> None:
     got = sa.account(ran, True, True, 1, 0, SHAPE, lambda: tmp_path / "b",
                      also=[stop(2), stop(3, "watch")], rows_shown=24)
     assert got["stops"] == {"stop_seq_first": 2, "stop_seq_last": 3, "surveyed": 2,
-                            "by_how": {"BP": 1, "WATCH": 1}, "unaccounted": 0}
+                            "by_cause": {"BP": 1, "WATCH": 1}, "unaccounted": 0}
 
 
 def test_rows_are_written_with_jsons_own_escapes(tmp_path: Path) -> None:

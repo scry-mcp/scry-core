@@ -21,9 +21,12 @@ def test_the_class_refuses_what_the_contract_forbids() -> None:
     with pytest.raises(TypeError, match="message"):
         contract.Invalid("bad_argument", "  ")
     # `code` and `message` cannot even be passed twice: they are the class's own parameters.
-    for word in ("summary", "status", "session", "verdict", "why", "reason", "cause"):
+    for word in ("summary", "status", "session", "verdict", "why", "reason"):
         with pytest.raises(TypeError, match="reserved"):
             contract.Invalid("bad_argument", "x", **{word: "x"})
+    # A refusal that met a stop carries the stop's `cause` as it carries the rest of it.
+    assert contract.Invalid("bad_argument", "x", cause="target irq").fields == {
+        "cause": "target irq"}
     got = contract.Invalid("bad_argument", "x", left_armed=["0x4a0"])
     assert got.code == "bad_argument" and str(got) == "x"
     assert got.fields == {"left_armed": ["0x4a0"]}
@@ -88,7 +91,7 @@ def test_the_source_scan_reads_a_keyword_code_and_leaves_other_calls_alone(tmp_p
     ({"status": "ok", "message": "x"}, "an `ok` reply carries"),
     ({"status": "maybe"}, "status"),
     *[({"status": "INVALID", "code": "bad_argument", "message": "x", word: "x"}, word)
-      for word in ("verdict", "why", "reason", "cause")],
+      for word in ("verdict", "why", "reason")],
 ])
 def test_the_envelope_refuses_a_malformed_reply(reply: dict[str, Any], said: str) -> None:
     with pytest.raises(TypeError, match=said):

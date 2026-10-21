@@ -149,3 +149,12 @@ def test_a_written_file_is_named_by_its_path_size_and_hash(tmp_path: Path) -> No
     f.write_bytes(b"abc")
     assert judges.file_facts(f) == {"path": str(f), "bytes": 3,
                                     "sha256": hashlib.sha256(b"abc").hexdigest()}
+
+
+def test_a_value_is_shown_at_its_holders_width_in_the_spelling_number_takes_back() -> None:
+    from scry_core.judges import hex_at_width, number
+
+    assert hex_at_width(0x40, 16) == "0x0040"
+    assert hex_at_width(0, 1) == "0x0"
+    assert hex_at_width(0x1F, 5) == "0x1f"
+    assert number("v", hex_at_width(0xBEEF, 32), 32, "a register") == 0xBEEF

@@ -49,6 +49,18 @@ def number(name: str, value: object, bits: int, holder: str) -> int:
     return value
 
 
+def hex_at_width(value: int, bits: int) -> str:
+    """`value` as a reply shows a value the machine holds, written the way `number` takes it
+    back: `0x` and its digits at the holder's width, a width that is not a multiple of four
+    rounded up to the next whole digit, since a value cannot be shown in a fraction of one."""
+    return f"{value:#0{2 + (bits + 3) // 4}x}"
+
+
+#: A list of hits a call answers (a value scan's survivors): the most it shows, and how many when
+#: the caller names none; what a server shows past the most is its own to say.
+HITS_MAX, HITS_DEFAULT = 400, 40
+
+
 def whole(value: object, lo: int = 0, hi: int | None = None) -> TypeGuard[int]:
     """`value` is an int in `lo..hi`. A JSON `true` is a Python int and is never one here."""
     return (isinstance(value, int) and not isinstance(value, bool) and value >= lo

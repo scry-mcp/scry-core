@@ -8,8 +8,8 @@ registers, a listing and the watches, so the reply crossed the client's ceiling 
 saved and queried for the few fields that mattered; cut to a summary line, it lost every stop's
 cause, and the count a reader then assembled was the number that came out wrong.
 
-What a stop keeps in its compact row and how a stop's cause is counted are each server's own:
-both are handed in as a `Shape`.
+What a stop keeps in its compact row and the key its `cause` is counted under are each server's
+own: both are handed in as a `Shape`.
 """
 
 from __future__ import annotations
@@ -31,9 +31,10 @@ def _nothing(reply: dict[str, Any], cut: dict[str, Any]) -> None:
 class Shape:
     """A server's half of the account: the keys a stop's compact row keeps besides its summary
     line (`kept`), what else it keeps from the reply (`extra`, writing into the row), and the
-    key a stop's cause is counted under (`how`)."""
+    key a stop is counted under (`cause_key`: its `cause` with what varies from one stop to the
+    next, an address or a writer's pc, taken off)."""
     kept: tuple[str, ...]
-    how: Callable[[dict[str, Any]], str]
+    cause_key: Callable[[dict[str, Any]], str]
     extra: Callable[[dict[str, Any], dict[str, Any]], None] = field(default=_nothing)
 
 
@@ -73,15 +74,15 @@ def stops(replies: list[dict[str, Any]], first: int, last: int, shape: Shape) ->
         for stop in stops_in(reply):
             seq = int(stop["stop_seq"])
             if first <= seq <= last:
-                seen[seq] = shape.how(stop)
-    by_how: dict[str, int] = {}
-    for how in seen.values():
-        by_how[how] = by_how.get(how, 0) + 1
+                seen[seq] = shape.cause_key(stop)
+    by_cause: dict[str, int] = {}
+    for cause in seen.values():
+        by_cause[cause] = by_cause.get(cause, 0) + 1
     numbered = last >= first
     none = unavailable("no stop was numbered in the list")
     return {"stop_seq_first": first if numbered else none,
             "stop_seq_last": last if numbered else none, "surveyed": len(seen),
-            "by_how": by_how, "unaccounted": last - first + 1 - len(seen) if numbered else 0}
+            "by_cause": by_cause, "unaccounted": last - first + 1 - len(seen) if numbered else 0}
 
 
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> str:

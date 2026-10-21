@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pytest
 
+from scry_core import log_marks
 from scry_core.log_marks import check_since_mark
 from scry_core.reply_contract import Invalid
 
@@ -40,3 +41,20 @@ def test_the_descriptions_both_servers_fill_name_the_argument_and_the_mark() -> 
 def test_a_bool_is_no_position() -> None:
     with pytest.raises(Invalid, match="0 or more"):
         check_since_mark(True, 100, "guest")
+
+
+def test_a_stops_block_shows_the_newest_lines_and_the_mark_they_start_at() -> None:
+    """At the cut and one past it: whole up to `STOP_LINES_SHOWN`, then the newest ones with
+    `truncated` and a `how` that names the channel and the mark."""
+    n = log_marks.STOP_LINES_SHOWN
+    whole = log_marks.stop_block([f"l{i}" for i in range(n)], 120, "guest", 400)
+    assert whole == {"lines_total": n, "truncated": False,
+                     "lines": [f"l{i}" for i in range(n)], "mark": 120}
+    cut = log_marks.stop_block([f"l{i}" for i in range(n + 1)], 120, "guest", 400)
+    assert cut["truncated"] and cut["lines"] == [f"l{i}" for i in range(1, n + 1)]
+    assert cut["how"] == (f'`log(pattern=".", channel="guest", since_mark=120, limit={n + 1})` '
+                          "reads them all")
+    many = log_marks.stop_block(["x"] * 401, 0, "guest", 400)
+    assert many["how"].endswith("limit=400)` reads the newest 400"), many["how"]
+    assert log_marks.stop_block([], 0, "emulator", 400) == {"lines_total": 0, "truncated": False,
+                                                            "lines": [], "mark": 0}

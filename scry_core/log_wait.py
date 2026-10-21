@@ -82,7 +82,7 @@ class Ended:
     """A wait that found nothing: how it ended, the lines that arrived while it waited and
     every line it examined, and how long it waited; `at_bound` a stop found as the bound ran
     out rather than by a poll inside it."""
-    how: Ending
+    ending: Ending
     arrived_during: int
     lines_examined: int
     waited_s: float
@@ -112,11 +112,11 @@ def wait(rx: re.Pattern[str], fresh: Callable[[], list[str]], *, seconds: float,
         total += len(new)
         return new, [ln for ln in new if rx.search(ln)]
 
-    def ended(how: Ending) -> Found | Ended:
+    def ended(ending: Ending) -> Found | Ended:
         new, hits = look()
         if hits:
             return found(hits, new, False)
-        return Ended(how, total - len(first), total, round(clock.seconds(), 1))
+        return Ended(ending, total - len(first), total, round(clock.seconds(), 1))
 
     hits = [ln for ln in first if rx.search(ln)]
     if hits:

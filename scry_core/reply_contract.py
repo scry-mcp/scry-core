@@ -68,8 +68,9 @@ CODES: frozenset[str] = frozenset(get_args(Code))
 
 # What a refusal may not carry beside the three fields: the envelope's own names, the words
 # other parts of a reply own (a measurement's `verdict`, a row's or a field's `why`), and the
-# spellings `message` replaced.
-NOT_A_REFUSALS_WORDS: frozenset[str] = frozenset({"verdict", "why", "reason", "cause"})
+# spelling `message` replaced. `cause` is a stop's own field, which a refusal that met a stop
+# carries like the rest of it.
+NOT_A_REFUSALS_WORDS: frozenset[str] = frozenset({"verdict", "why", "reason"})
 RESERVED: frozenset[str] = frozenset({"summary", "status", "code", "message", "session"}
                                      | NOT_A_REFUSALS_WORDS)
 
