@@ -24,6 +24,8 @@ def test_no_date_a_naive_date_and_a_non_date_have_no_age() -> None:
 def test_a_stamp_ahead_of_the_clock_is_negative_never_clamped() -> None:
     ahead = (NOW + timedelta(seconds=5)).astimezone(timezone(timedelta(hours=-3)))
     assert rows.age_s(ahead.isoformat(), NOW) == -5
+    part = NOW + timedelta(seconds=4.1)
+    assert rows.age_s(part.isoformat(), NOW) == -5, "floored, never truncated toward zero"
 
 
 def _row(origin: str | None, cpu: str | None = ":maincpu",

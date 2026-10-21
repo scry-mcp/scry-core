@@ -33,6 +33,8 @@ def test_the_descriptions_both_servers_fill_name_the_argument_and_the_mark() -> 
     from scry_core.log_marks import DOC_VALUES
     assert set(DOC_VALUES) == {"SINCE_MARK", "MARK"}
     assert "`since_mark`" in DOC_VALUES["SINCE_MARK"] and "`mark`" in DOC_VALUES["MARK"]
+    assert "0, the default, reads the whole log" in DOC_VALUES["SINCE_MARK"], "the caller's cue"
+    assert "only what was written after it" in DOC_VALUES["SINCE_MARK"]
 
 
 def test_a_bool_is_no_position() -> None:
