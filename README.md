@@ -7,14 +7,15 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 |---|---|
 | `scry_core.reply_contract` | the refusal contract (`status`, `code`, `message`), its class and its envelope check; a datum that could not be read as `unavailable(why)`, never a null; a wait's `verdict` words |
 | `scry_core.log_wait` | a wait for a line of a log: what the log already holds answered first, then the wait, ended by a match, its bound, a stopped machine or a gone emulator |
-| `scry_core.sequence_account` | the account of a list of steps run in one call: compact rows, the two files, and the count of the stops numbered while it ran |
-| `scry_core.steps` | a step of a list judged against the tool it names before any step runs: its `recorded` check, no `ctx`, names the tool takes, scalars of the declared type |
+| `scry_core.sequence_account` | the account of a list of steps run in one call: compact rows, the two files, and the count of the stops numbered while it ran; the fields a sequence's reply names (`SequenceFields`), `summaries`' description and check, and `drive`'s look after its act |
+| `scry_core.steps` | a step of a list judged against the tool it names before any step runs: its `recorded` check, no `ctx`, names the tool takes, scalars of the declared type; the ops a list may name, read off the registry (`step_ops`) |
 | `scry_core.sequence` | the executor of a list of steps run in one call (`perform`, `drive`'s act, `start`'s plan): the wait for a stop before a step that needs one, the end at a failed or diverged step, the tail and its verdict, the machine's own answers handed in as a `SequenceMachine` and a repeated list as a `Cycle` |
-| `scry_core.vocabulary` | a closed vocabulary or a range, the judge and the schema half from one tuple: `enum`, a `pattern` for the words taken in any case, `minimum` and `maximum` (`exclusiveMinimum` for a floor the judge itself refuses, a wait's 0), and `one_of`'s one sentence |
-| `scry_core.reply_schema` | each tool's reply model published as its `outputSchema` (the field names, no value constrained), the envelope every reply carries, and the strict check of every reply the battery builds, any field also taking `unavailable(why)` |
+| `scry_core.vocabulary` | a closed vocabulary or a range, the judge and the schema half from one tuple: `enum`, a `pattern` for the words taken in any case, `minimum` and `maximum` (`exclusiveMinimum` for a floor the judge itself refuses, a wait's 0), `one_of`'s one sentence and `check_bool`'s, and the one ceiling on a wait (`WAIT_MAX_S`, `WAIT_BOUNDS`, `WAIT_FROM_ZERO_BOUNDS`) |
+| `scry_core.reply_schema` | each tool's reply model published as its `outputSchema` (the field names, no value constrained), the envelope every reply carries, the strict check of every reply the battery builds, any field also taking `unavailable(why)`, and the names a description's `Reply:` sentence gives that its model does not hold |
+| `scry_core.roster` | a server's tools by family: the `instructions`' roster and the sentence naming what answers a running machine, both rendered from one table that partitions the registry |
 | `scry_core.media_replies` | the reply models of the file tools both servers share |
 | `scry_core.session_block` | the `session` block that closes every reply: the alarms on every one, the fixed half on `start` and `status`, the short block naming what it left out, or the half itself where naming it would cost more |
-| `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, the listener that hears each outermost call begin and end, and the reply every path closes with, its summary line first; the server's vocabulary handed in as hooks |
+| `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, the listener that hears each outermost call begin and end, and the reply every path closes with, its summary line first and its `session` block last; the server's vocabulary handed in as hooks; and `ServerLock`, the lock whose last release wakes a writer waiting for it to be free |
 | `scry_core.ends_table` | a server reference's table of how a cancelled call ends, held against what its tools declare |
 | `scry_core.envelope` | the MCP boundary's server object: the schema's refusal given the server's envelope, off the event loop, and a tool's picture attached |
 | `scry_core.progress` | the progress line of a bounded wait: one a second, one short line, never backwards, none once the call is cancelled, bridged from the tool's worker thread to the request |
@@ -24,12 +25,14 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.declaration_rows` | the identity every listed declaration carries on both servers: ref, how declared, cpu, when and in which session, whether that session is this one, and its age |
 | `scry_core.log_marks` | the argument `log` and `log_wait` take to read what came after a mark: its description and `state_load`'s `mark`'s, its schema bound, and the refusals of a position that names none |
 | `scry_core.state_files` | what sits under a saved state's name and holds no state (a dangling link, a directory, a FIFO), said instead of opened, and the load's refusal of it |
-| `scry_core.value_format` | the grammar of a watched value: scalars, arrays, strings, structs, pointers |
+| `scry_core.value_format` | how a watched value is typed: the format of its bytes (scalars, arrays, strings, structs, pointers), the `types` file naming one per symbol, and the pointer ref read through one |
 | `scry_core.reply_shapes` | the pytest plugin running the test-time guard (`reply_shapes_guard`) that holds one word to one shape in every reply |
 | `scry_core.reply_shapes_guard` | what that plugin runs: every key of a reply in the one shape the table gives it, no null anywhere, and the reply held to its tool's declared model (`reply_schema.check`) |
-| `scry_core.verdict` | what the probe and the cap check answer when they have no verdict: `Invalid` and the exit codes 0, 1 and 3 |
+| `scry_core.verdict` | what every instrument here answers when it has no verdict (the probe, the cap check, the live bench, the demo, the replay, the hook): `Invalid` and the exit codes 0, 1 and 3 |
 | `scry_core.client_cap` | the prefix of a text the MCP client delivers, in its own unit |
 | `scry_core.probe` | what a model calls when all it holds is what the client delivers |
+| `scry_core.probe_any_of` | a task's expected values: JSON equality that keeps a bool from passing for a number, and the `any_of` alternatives |
+| `scry_core.probe_captures` | the capture store: one file per task with the lines a real run answered it with, written from a run and judged again, free, against the surface as it is now |
 | `scry_core.probe_checks` | what each server's suite checks on its own probe surface: tasks, captures, the cap and its margins |
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
 | `scry_core.live_host` | the host a live tier runs on: a canary that refuses one which cannot start the emulator, the ledger that proves no emulator outlived a run, and the run's scratch left as its verdict says |

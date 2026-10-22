@@ -4,12 +4,14 @@ one, the machine's count of the stops numbered in the list, and the pair of file
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from scry_core import sequence_account as sa
+from scry_core.reply_contract import Invalid
 
 SHAPE = sa.Shape(kept=("stop_seq", "pc"),
                  cause_key=lambda stop: str(stop.get("cause", "?")).upper(),
@@ -120,3 +122,22 @@ def test_a_scratch_that_refuses_costs_the_pair_and_never_the_account(
     assert got["ran_path"]["why"].strip(), got["ran_path"]
     assert not list(tmp_path.iterdir()), "the pair or neither"
     assert got["stops"]["surveyed"] == 1, "the account stands without the files"
+
+
+def test_the_look_cuts_to_the_last_lines_and_says_what_it_cut() -> None:
+    got = sa.looked("guest", ["a1", "b", "a2", "a3"], 7, re.compile("a"), 2)
+    assert got == {"guest": {"available": True, "since_mark": 7, "lines_written": 4,
+                             "lines_total": 3, "truncated": True, "lines": ["a2", "a3"],
+                             "pattern": "a"}}
+
+
+@pytest.mark.parametrize("value", [1, "yes", None])
+def test_summaries_is_true_or_false_in_one_sentence(value: object) -> None:
+    with pytest.raises(Invalid, match="summaries is true or false"):
+        sa.check_summaries(value)
+    sa.check_summaries(True)
+
+
+def test_the_summaries_argument_names_the_rows_shown() -> None:
+    said = sa.summaries_argument(24)
+    assert "the first 24" in said and "never of a step" in said

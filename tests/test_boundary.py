@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import threading
 from collections.abc import Callable
 from typing import Any
 
@@ -26,7 +25,7 @@ class _Server:
         self.pending: cancel.Cancelled | None = None
         self.given_back: list[dict[str, Any]] = []
         self.wholes: list[bool] = []         # what each block was asked for: whole or short
-        self.lock = threading.RLock()
+        self.lock = boundary.ServerLock()
         self.mcp = Envelope("t", instructions="i", refusal=self.refusal)
         self.b = boundary.Boundary(
             self.mcp, self.lock, invoke=self.invoke, end=self.end, after=self.after,
@@ -49,7 +48,7 @@ class _Server:
         return {"altered": False}
 
     def held(self) -> bool:
-        return bool(self.lock._is_owned())  # type: ignore[attr-defined]
+        return self.lock.held_here()
 
     def invoke(self, fn: Callable[..., Any], bound: inspect.BoundArguments) -> dict[str, Any]:
         self.log.append(("invoke", fn.__name__, self.held()))
@@ -330,7 +329,7 @@ def test_an_end_that_raises_still_runs_the_after_hook_and_gives_the_nesting_back
 
 
 def test_a_server_with_nothing_to_do_after_a_call_needs_no_after_hook() -> None:
-    lock = threading.RLock()
+    lock = boundary.ServerLock()
     b = boundary.Boundary(
         Envelope("t", instructions="i", refusal=lambda *a: {}), lock,
         invoke=lambda fn, bound: dict(fn(*bound.args, **bound.kwargs)),

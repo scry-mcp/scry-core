@@ -78,6 +78,15 @@ def test_a_suite_that_declares_no_anchor_is_refused_before_it_runs(
     result.stderr.fnmatch_lines(["*has no `reply_shapes_anchors` to wrap*"])
 
 
+def test_a_declared_anchor_no_import_can_find_is_refused_before_it_runs(
+        pytester: pytest.Pytester) -> None:
+    """A misspelt name wraps nothing, and would otherwise read as a run that imported none."""
+    _suite(pytester, ["fake_server", "fake_sever"], "def test_x():\n    pass\n")
+    result = pytester.runpytest("-p", "no:cacheprovider")
+    assert result.ret == pytest.ExitCode.USAGE_ERROR
+    result.stderr.fnmatch_lines(["*names fake_sever, which no import can find*"])
+
+
 def test_a_run_that_imports_no_declared_anchor_says_so_and_passes(
         pytester: pytest.Pytester) -> None:
     """A partial run is not the battery: neutral, in one line, never an error."""
@@ -156,3 +165,8 @@ def test_the_teardown_restores_the_module_it_patched_even_when_it_left_sys_modul
     result.assert_outcomes(passed=1)
     assert (pytester.path / "held.txt").read_text() == "_summary"
 
+
+
+def test_a_name_no_import_can_parse_is_not_findable() -> None:
+    from scry_core import reply_shapes_guard as guard
+    assert guard._findable("") is False and guard._findable("scry_core.boundary") is True

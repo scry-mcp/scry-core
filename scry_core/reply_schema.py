@@ -13,18 +13,23 @@ adds at run time is the published schema, and a refusal to start a server with a
 model.
 
 THE SCHEMA NEVER REACHES A MODEL'S CONTEXT in the client this fleet runs: the tool list it hands a
-model carries no output schema, and a reply reaches it as its structured content.
+model carries no output schema, and a reply reaches it as its structured content. So what a model
+reads of a reply is the description's `Reply` paragraph, and each server's battery holds the names
+that paragraph gives to the model (`reply_sentence_names`, `unmodelled`): a sentence that promised
+a field no reply can carry would be believed.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any, Literal, Required, get_type_hints
+import re
+from collections.abc import Iterable, Mapping
+from typing import Any, Literal, Required, get_args, get_type_hints
 
 from mcp.server.mcpserver import MCPServer
 from pydantic import ConfigDict, TypeAdapter
 from typing_extensions import TypedDict
 
+from scry_core import reply_contract as contract
 from scry_core.strict_arguments import registered
 
 
@@ -109,3 +114,71 @@ def _as_on_the_wire(value: Any) -> Any:
     if isinstance(value, list | tuple):
         return [_as_on_the_wire(v) for v in value]
     return value
+
+
+#: Where a `Reply` paragraph begins: the word, what qualifies it on its line (`(on a stop)`,
+#: `, at the top`), and the colon that ends that.
+_REPLY = re.compile(r"\bReply\b[^:\n]*:")
+
+
+def reply_sentence_names(doc: str) -> list[str]:
+    """The fields a docstring's `Reply` paragraphs name at their top level: each backticked
+    identifier outside any parenthesis, and outside the list a colon opens until its sentence
+    ends (inside either is a field's own part, a row's, or a value), in order. A paragraph opens
+    however a docstring writes it (`Reply:`, `Reply (on a stop):`, `Reply, at the top:`), and a
+    docstring with several (one per mode) has each read. Empty when it has none."""
+    names: list[str] = []
+    for found in _REPLY.finditer(doc):
+        # AN OPENING THAT NAMES A FIELD (`Reply, per channel in `measures`:`) names the one the
+        # list after its colon belongs to: that field is top level, the list its parts.
+        opened = _top_level(doc[found.start() + len("Reply"):found.end() - 1])
+        text = doc[found.end():]
+        end = text.find("\n\n")
+        words = opened + _top_level(text if end < 0 else text[:end], listing=bool(opened))
+        for word in words:
+            if word not in names:
+                names.append(word)
+    return names
+
+
+def _top_level(text: str, listing: bool = False) -> list[str]:
+    """The backticked identifiers of `text` outside a parenthesis and outside a colon's list
+    (`listing` when `text` begins inside one)."""
+    names: list[str] = []
+    depth, i = 0, 0
+    while i < len(text):
+        c = text[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth = max(depth - 1, 0)
+        elif depth == 0 and c == ":":
+            listing = True
+        elif depth == 0 and c in ".;" and text[i + 1:i + 2] in ("", " ", "\n"):
+            listing = False
+        elif c == "`":
+            close = text.find("`", i + 1)
+            if close < 0:
+                break
+            word = text[i + 1:close]
+            if depth == 0 and not listing and word.isidentifier():
+                names.append(word)
+            i = close
+        i += 1
+    return names
+
+
+def own_fields(model: type) -> list[str]:
+    """The fields `model` adds to the envelope every reply carries."""
+    shared = set(_fields(ReplyEnvelope))
+    return [f for f in _fields(model) if f not in shared]
+
+
+def unmodelled(doc: str, model: type, not_fields: Iterable[str] = ()) -> list[str]:
+    """The names a docstring's `Reply:` paragraph gives at its top level that `model` does not
+    hold: a sentence promising a field the reply cannot carry. The paragraph also names what is
+    no field, and those are left out: a refusal's code, a verdict, and `not_fields` (the server's
+    tools, the tool's own arguments, and the values it quotes)."""
+    held = set(_fields(model))
+    other = set(contract.CODES) | set(get_args(contract.Verdict)) | set(not_fields)
+    return [n for n in reply_sentence_names(doc) if n not in held and n not in other]

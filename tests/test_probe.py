@@ -23,7 +23,8 @@ from typing import Any
 
 import pytest
 
-from scry_core import probe, probe_checks
+from scry_core import probe, probe_captures, probe_checks
+from scry_core import probe_any_of as any_of
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "probe"
 SERVERS_FILE = FIXTURES / "servers.py"
@@ -178,7 +179,7 @@ def _captured_by_hand(tmp_path: Path) -> tuple[Path, Path]:
 
 
 def _problems(captured: Path, tasks_file: Path) -> list[str]:
-    return probe.capture_problems(REPO, "mame", captured, tasks_file)
+    return probe_captures.capture_problems(REPO, "mame", captured, tasks_file)
 
 
 def test_a_capture_of_every_task_judged_as_it_was_has_no_problem(tmp_path: Path) -> None:
@@ -324,7 +325,7 @@ def test_what_the_writer_captures_is_judged_as_it_was(
     run_dir = _a_run(capsys)
     assert _capture(run_dir, "M1,M2,M3", capsys)[0] == probe.EXIT_PASS
     assert _written(probe_env, "M1")["runs"][1]["right"] is False
-    assert probe.capture_problems(REPO, "mame", probe_env / "captured" / "mame",
+    assert probe_captures.capture_problems(REPO, "mame", probe_env / "captured" / "mame",
                                   probe_env / "tasks" / "mame.json") == []
 
 
@@ -453,7 +454,7 @@ def test_a_task_naming_the_tree_round_trips_through_the_mark(
     m4 = _written(probe_env, "M4")
     assert m4["task"] == task and str(REPO.root) not in json.dumps(m4)
     assert [r["right"] for r in m4["runs"]] == [True] * 3
-    assert probe.capture_problems(REPO, "mame", probe_env / "captured" / "mame",
+    assert probe_captures.capture_problems(REPO, "mame", probe_env / "captured" / "mame",
                                   probe_env / "tasks" / "mame.json") == []
 
 
@@ -550,9 +551,9 @@ def test_equivalent_whole_calls_are_each_right() -> None:
 
 
 def test_true_is_not_one() -> None:
-    assert probe.same(1, 1.0) and not probe.same(True, 1) and not probe.same(1, True)
-    assert probe.same({"a": [1, "x"]}, {"a": [1.0, "x"]}) and not probe.same([1], [1, 2])
-    assert not probe.same({"a": 1}, {"b": 1}) and not probe.same("1", 1)
+    assert any_of.same(1, 1.0) and not any_of.same(True, 1) and not any_of.same(1, True)
+    assert any_of.same({"a": [1, "x"]}, {"a": [1.0, "x"]}) and not any_of.same([1], [1, 2])
+    assert not any_of.same({"a": 1}, {"b": 1}) and not any_of.same("1", 1)
 
 
 def test_a_cannot_task_is_right_only_as_a_refusal() -> None:
@@ -611,9 +612,9 @@ def test_a_value_the_description_holds_is_contamination(
 
 
 def test_the_model_is_shown_only_what_the_client_delivers() -> None:
-    """A text past the client's cap is cut where the client cuts it, in the surface the probe
-    loads and in the prompt it writes, so no task can PASS on words the client never delivers;
-    the server's own cap test still refuses the text in its battery."""
+    """A text past the client's cap is cut where the client cuts it, once, in the surface the
+    probe loads, and the prompt carries that surface, so no task can PASS on words the client
+    never delivers; the server's own cap test still refuses the text in its battery."""
     from scry_core.client_cap import CLIENT_TEXT_CAP
 
     long = "x" * CLIENT_TEXT_CAP + " PASTTHECUT"
@@ -630,9 +631,7 @@ def test_the_model_is_shown_only_what_the_client_delivers() -> None:
                                        list_tools=list_tools)
     surface = probe.load_surface(dataclasses.replace(REPO, modules={"long": module}), "long")
     assert "PASTTHECUT" not in surface.instructions + surface.tools["read_memory"].description
-    by_hand = dataclasses.replace(whole, instructions=long, tools={
-        "read_memory": dataclasses.replace(whole.tools["read_memory"], description=long)})
-    assert "PASTTHECUT" not in probe.prompt_for(by_hand, _tasks("mame"))
+    assert "PASTTHECUT" not in probe.prompt_for(surface, [])
 
 
 def test_a_hex_literal_in_the_prompt_is_checked_too() -> None:
@@ -649,8 +648,8 @@ def test_a_hex_literal_in_the_prompt_is_checked_too() -> None:
 
 
 def test_values_are_read_at_every_depth() -> None:
-    assert list(probe._leaves({"a": [1, {"any_of": [2, "x"]}], "b": {"c": 3}})) == [1, 2, "x", 3]
-    assert probe.concrete({"a": [{"any_of": [1, 2]}], "b": {"any_of": ["x", "y"]}}) == {
+    assert list(any_of.leaves({"a": [1, {"any_of": [2, "x"]}], "b": {"c": 3}})) == [1, 2, "x", 3]
+    assert any_of.concrete({"a": [{"any_of": [1, 2]}], "b": {"any_of": ["x", "y"]}}) == {
         "a": [1], "b": "x"}
 
 
@@ -792,7 +791,7 @@ def test_a_probe_that_breaks_is_invalid_not_a_fail(
     def broken(*_: Any) -> None:
         raise KeyError("verdicts")
 
-    monkeypatch.setattr(probe, "run_static", broken)
+    monkeypatch.setattr(probe, "run_model", broken)
     rc, lines = _run(["mame"], capsys)
     assert (rc, lines[0]) == (probe.EXIT_INVALID, "INVALID the probe broke, so nothing here is "
                                                   "a verdict: KeyError: 'verdicts'")
@@ -954,8 +953,8 @@ def test_the_model_is_asked_with_nothing_but_the_prompt(
     argv = _fake_claude(probe_env, monkeypatch, "claude-ok.json")
     rc, lines = _run(["mame", "--runs", "1"], capsys)
     assert rc == probe.EXIT_PASS, lines
-    # WRITTEN OUT, not read back from `STATIC`: what keeps settings, MCP servers and tools away
-    # from the model is these exact words, so a change to any of them is a change to see here.
+    # WRITTEN OUT, not read back from `MODEL_COMMAND`: what keeps settings, MCP servers and tools
+    # away from the model is these exact words, so a change to any of them is a change to see here.
     assert argv.read_text().splitlines() == [
         "--print", "--model", "haiku", "--effort", "low", "--max-budget-usd", "1",
         "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config", "--tools", "",
@@ -1271,5 +1270,11 @@ def test_a_capture_check_on_a_task_file_with_no_id_is_invalid(tmp_path: Path) ->
     captured, tasks_file = _captured_by_hand(tmp_path)
     _edit(tasks_file, "\n]}", ',\n  "oops"\n]}')
     with pytest.raises(probe.Invalid, match="not a task with an `id`"):
-        probe.capture_problems(REPO, "mame", captured, tasks_file)
+        probe_captures.capture_problems(REPO, "mame", captured, tasks_file)
 
+
+
+def test_an_expected_object_matches_key_by_key_with_alternatives_inside() -> None:
+    expected = {"a": {"any_of": [1, 2]}, "b": [3]}
+    assert any_of.matches(expected, {"a": 2, "b": [3]})
+    assert not any_of.matches(expected, {"a": 2, "b": [3], "c": 0})

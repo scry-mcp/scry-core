@@ -68,9 +68,11 @@ def test_why_a_path_is_no_executable_is_said_in_its_owners_words(tmp_path: Path)
 
 @pytest.mark.parametrize(("body", "said"), [
     ("import sys; sys.stderr.write('banner\\n'); sys.exit(1)", "banner"),
+    ("print(); print('  v 1.2  ')", "v 1.2"),
     ("pass", "printed nothing (rc=0)"),
     ("import time; time.sleep(5)", "did not return in 0.2 s"),
-], ids=["a banner on stderr with rc 1", "nothing printed", "a build that hangs"])
+], ids=["a banner on stderr with rc 1", "a blank first line, the version padded",
+        "nothing printed", "a build that hangs"])
 def test_a_version_is_the_first_line_printed_or_why_there_is_none(
         tmp_path: Path, body: str, said: str) -> None:
     # The bound shortened only where it is the case: a busy host starts a program slowly.
@@ -171,3 +173,72 @@ def test_on_windows_the_probe_is_its_own_group_and_the_tree_is_ended(
     hangs[0] = True
     assert "did not return" in str(binaries.version("C:/emu/emu.exe", seconds=0.1))
     assert ran == [["taskkill", "/F", "/T", "/PID", "4242"]]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="links and relative PATH entries, POSIX spellings")
+class TestThePathAnswered:
+    """What `resolve` answers is the file `which` approved, spelled as it found it: never
+    collapsed by spelling through a link, a relative PATH entry joined to the working
+    directory, and a relative value refused at whichever rung held it."""
+
+    def test_through_a_linked_directory_the_spelling_is_kept(self, tmp_path: Path) -> None:
+        target = tmp_path / "real" / "deep"
+        target.mkdir(parents=True)
+        _build(tmp_path / "real")
+        (tmp_path / "link").symlink_to(target)
+        given = str(tmp_path / "link" / ".." / "emu")
+        assert LADDER.resolve(given).path == given
+
+    def test_a_relative_path_entry_is_joined_never_normalised(
+            self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("EMU_BINARY", raising=False)
+        _build(tmp_path / "rel")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("PATH", "rel")
+        assert LADDER.resolve("") == binaries.Resolved(os.path.join(str(tmp_path), "rel", "emu"),
+                                                       "PATH")
+        target = tmp_path / "real" / "deep"
+        target.mkdir(parents=True)
+        _build(tmp_path / "real" / "bin")
+        (tmp_path / "link").symlink_to(target)
+        monkeypatch.setenv("PATH", "link/../bin")
+        got = LADDER.resolve("")
+        assert Path(got.path).resolve() == (tmp_path / "real" / "bin" / "emu").resolve(), got
+
+    @pytest.mark.parametrize("given", ["emu", "bin/emu", "./emu"])
+    def test_a_relative_value_is_refused_at_its_rung(
+            self, given: str, monkeypatch: pytest.MonkeyPatch) -> None:
+        with pytest.raises(Invalid, match="binary=") as refusal:
+            LADDER.resolve(given)
+        assert refusal.value.code == "bad_argument"
+        monkeypatch.setenv("EMU_BINARY", given)
+        with pytest.raises(Invalid, match="EMU_BINARY=") as refusal:
+            LADDER.resolve("")
+        assert refusal.value.code == "bad_argument"
+
+
+
+@pytest.mark.skipif(os.name == "nt", reason="exec bits and links, POSIX spellings")
+def test_each_rung_s_refusal_names_what_every_rung_held_and_why_the_taken_one_is_none(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The refusal is the whole ladder in one sentence, so its owner fixes the rung taken:
+    what the argument and the variable held, why the one taken is no executable, the PATH's."""
+    monkeypatch.delenv("EMU_BINARY", raising=False)
+    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    gone = tmp_path / "gone"
+    with pytest.raises(Invalid) as refusal:
+        LADDER.resolve(str(gone))
+    assert str(refusal.value) == (
+        f"no Emu binary resolves from the argument rung: the argument `binary` held {gone} "
+        "(no such file), EMU_BINARY held nothing, and the PATH holds no `emu`. The first rung "
+        "holding a value is the one taken, and it has to name an executable file")
+    monkeypatch.setenv("EMU_BINARY", str(tmp_path))
+    with pytest.raises(Invalid) as refusal:
+        LADDER.resolve("")
+    assert (f"`binary` held nothing, EMU_BINARY held {tmp_path} (a directory), and the PATH "
+            "holds no `emu`") in str(refusal.value)
+    on_path = _build(tmp_path / "bin")
+    monkeypatch.setenv("PATH", str(tmp_path / "bin"))
+    with pytest.raises(Invalid) as refusal:
+        LADDER.resolve("")
+    assert f"and the PATH holds {on_path}." in str(refusal.value)

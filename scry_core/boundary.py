@@ -121,7 +121,8 @@ class Boundary:
     cancelled call is the server's to keep (`take_cancelled` hands it over and clears it,
     `keep_cancelled` stores a new one), because its state is what a caller's `status` reads."""
 
-    def __init__(self, mcp: Envelope, lock: threading.RLock, *, invoke: Invoke, end: End,
+    def __init__(self, mcp: Envelope, lock: ServerLock, *, invoke: Invoke,
+                 end: End,
                  refusal_line: RefusalLine, session_block: Callable[[bool], dict[str, Any]],
                  take_cancelled: Callable[[], cancel.Cancelled | None],
                  keep_cancelled: Callable[[cancel.Cancelled], None],
@@ -323,3 +324,59 @@ class Boundary:
         self._keep_cancelled(cancel.recorded(self._take_cancelled(), name,
                                              time.monotonic() - began, left))
         return found
+
+
+class ServerLock:
+    """THE ONE LOCK OVER THE ONE MACHINE, re-entrant, whose last release wakes whoever waits for
+    it to be free (`acquire_while`): a writer between calls (the presence's repaint) sleeps
+    until a call ends, never asking twenty times a second through a long still call."""
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+        self._freed = threading.Condition(threading.Lock())
+        self._depth = 0          # how deep the holder is: the lock is free again only at 0
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        took = self._lock.acquire(blocking, timeout)
+        if took:
+            self._depth += 1
+        return took
+
+    def release(self) -> None:
+        self._depth -= 1
+        freed = self._depth == 0
+        self._lock.release()
+        if freed:
+            with self._freed:
+                self._freed.notify_all()
+
+    def __enter__(self) -> ServerLock:
+        self.acquire()
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.release()
+
+    def held_here(self) -> bool:
+        """Whether the calling thread holds the lock."""
+        # `RLock` knows its owner and says so only through this private method; the public
+        # surface has no other way to ask (`threading.RLock`'s own source).
+        return bool(self._lock._is_owned())  # type: ignore[attr-defined]
+
+    def wake(self) -> None:
+        """Have whoever waits in `acquire_while` ask its `due()` again now, without the lock
+        being freed: what made the wait moot (a writer closed) happened under the lock."""
+        with self._freed:
+            self._freed.notify_all()
+
+    def acquire_while(self, due: Callable[[], bool]) -> bool:
+        """The lock taken while `due()` holds, asked once now and again at each release that
+        frees it: True with the lock held (the caller releases it), False once it went moot.
+        The check and the sleep are one step under the condition, so no release slips between
+        them."""
+        with self._freed:
+            while due():
+                if self.acquire(blocking=False):
+                    return True
+                self._freed.wait()
+        return False

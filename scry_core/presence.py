@@ -115,6 +115,11 @@ class Adapter(Protocol):
         and does nothing unless `still()` holds there and the machine is stopped. A no-op for
         an emulator that repaints on its own."""
 
+    def wake(self) -> None:
+        """Have a repaint that waits for the lock ask `still()` again now: the writer closed
+        under the lock, so no release will come to wake it before `close` gives up waiting.
+        A no-op for an adapter whose repaint never waits."""
+
 
 #: How long `close` waits for a delivery in flight.
 CLOSE_WAIT_S = 1.0
@@ -212,6 +217,7 @@ class Presence:
         with self._cv:
             self._closed = True
             self._cv.notify()
+        self._adapter.wake()
         if self._thread.is_alive():
             self._thread.join(CLOSE_WAIT_S)
 

@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from scry_core import goldens, judges, narrowing, prose, raster, series, wav
+from scry_core import vocabulary as vocab
 from scry_core.recording import ExportAs
 from scry_core.reply_contract import Invalid
 
@@ -243,8 +244,7 @@ def _judge_audio_diff(a: object, b: object, window: object, align: object) -> No
     judges.absolute("a", a)
     judges.absolute("b", b)
     judges.window("window", window)
-    if not isinstance(align, bool):
-        raise Invalid("bad_argument", f"align={align!r} is true or false")
+    vocab.check_bool("align", align)
 
 
 def audio_diff(a: str, b: str, window: list[float] | None = None,

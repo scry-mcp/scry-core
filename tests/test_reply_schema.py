@@ -75,3 +75,29 @@ def test_the_shape_guard_fails_a_reply_its_model_does_not_declare() -> None:
     assert summary("status", {}, {"status": "ok", "alive": True}) == "status: ok"
     with pytest.raises(AssertionError, match="not the shape its model declares"):
         summary("status", {}, {"status": "ok", "alive": True, "extra": 1})
+
+
+def test_the_reply_sentence_names_its_top_level_fields() -> None:
+    doc = ("Read it.\n\n    Reply: `rows` (`addr`, `bytes`), `truncated`, and `path` when\n"
+           "    `dest` was given (`none` otherwise); `trace`: `cpu`, `set_path`. `note`.\n\n"
+           "    Reference: x.")
+    assert reply_schema.reply_sentence_names(doc) == ["rows", "truncated", "path", "dest",
+                                                      "trace", "note"]
+    assert reply_schema.reply_sentence_names("No reply sentence.") == []
+
+
+class _Model(reply_schema.ReplyEnvelope, total=False):
+    rows: list[int]
+
+
+def test_a_sentence_field_the_model_lacks_is_named_and_the_rest_are_not() -> None:
+    doc = "Reply: `rows`, `extra`, `TARGET`, `bad_argument`, `quoted`, and `unclosed"
+    assert reply_schema.unmodelled(doc, _Model, ["quoted"]) == ["extra"]
+
+
+def test_a_reply_paragraph_is_found_however_it_opens() -> None:
+    for opening in ("Reply:", "Reply (on a stop):", "Reply, at the top:"):
+        assert reply_schema.reply_sentence_names(f"Do it.\n\n{opening} `rows`.") == ["rows"]
+    assert reply_schema.own_fields(_Model) == ["rows"]
+    per_row = "Reply, per channel in `measures` (`channel`): `peak`, `rms`. `path` too."
+    assert reply_schema.reply_sentence_names(per_row) == ["measures", "path"]

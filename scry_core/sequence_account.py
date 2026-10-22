@@ -10,16 +10,24 @@ cause, and the count a reader then assembled was the number that came out wrong.
 
 What a stop keeps in its compact row and the key its `cause` is counted under are each server's
 own: both are handed in as a `Shape`.
+
+Beside it, the rest a sequence's reply shares on both servers: the fields its model names
+(`SequenceFields`), `summaries`' own description (`summaries_argument`) and its one check
+(`check_summaries`), and the LOOK `drive` takes after its act (`looked`).
 """
 
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from typing_extensions import TypedDict
+
+from scry_core import vocabulary as vocab
 from scry_core.reply_contract import unavailable
 
 
@@ -111,6 +119,57 @@ def files(stem: Callable[[], Path], rows: list[dict[str, Any]],
             path.unlink(missing_ok=True)
         why = str(e) or f"the scratch refused the files ({type(e).__name__})"
         return {"ran_path": unavailable(why), "replies_path": unavailable(why)}
+
+
+class SequenceFields(TypedDict, total=False):
+    """The fields a sequence's reply names on both servers (`perform`'s, and `drive`'s `act`),
+    beside each server's envelope and its own. `typing_extensions`' class, as the envelope's
+    (`reply_schema.ReplyEnvelope`): a reply model is built on both and one metaclass serves
+    them."""
+
+    errors: list[Any]
+    failed: dict[str, Any]
+    failed_at: int | dict[str, Any]
+    field: str
+    got: Any
+    held: int
+    note: str
+    ran: list[Any]
+    ran_path: str | dict[str, Any]
+    recorded: Any
+    replies_path: str | dict[str, Any]
+    steps_completed: int
+    steps_total: int
+    still_running: bool
+    stopped: dict[str, Any]
+    stops: dict[str, Any]
+    truncated: bool
+    verdict: str
+
+
+def looked(channel: str, since: list[str], mark: int, rx: re.Pattern[str],
+           limit: int) -> dict[str, Any]:
+    """`drive`'s LOOK after its act: `channel`'s lines since the mark matching `rx`, cut to the
+    last `limit`, with the counts that say what was cut, in `log`'s own words."""
+    kept = [ln for ln in since if rx.search(ln)]
+    return {channel: {"available": True, "since_mark": mark, "lines_written": len(since),
+                      "lines_total": len(kept), "truncated": len(kept) > limit,
+                      "lines": kept[-limit:], "pattern": rx.pattern}}
+
+
+def check_summaries(summaries: object) -> None:
+    """`summaries` is a yes or a no, in the one sentence both batch tools of both servers use."""
+    vocab.check_bool("summaries", summaries)
+
+
+def summaries_argument(rows_shown: int) -> str:
+    """`summaries`' own description on both servers' `perform` and `drive`, the argument's
+    half of what `account` does with it."""
+    return (f"True keeps a long list readable (an argument of the call, never of a step): each "
+            f"step but the one the list ended on becomes a compact row (a failed one stays whole "
+            f"under `failed`); `ran` shows the first "
+            f"{rows_shown} (`truncated`, of `steps_total`), `ran_path` and `replies_path` hold "
+            f"all, and `stops` counts the stops.")
 
 
 def account(ran: list[dict[str, Any]], summaries: bool, keep_last: bool, since: int,

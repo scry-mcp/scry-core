@@ -21,7 +21,8 @@ class Double(sequence.SequenceMachine):
     stoppers = "A breakpoint or a watch"
     undeclared = "no breakpoint"
 
-    def __init__(self, waits: list[sequence.Waited] | None = None, running: bool = False,
+    def __init__(self, waits: list[sequence.Waited | Exception] | None = None,
+                 running: bool = False,
                  can_stop: bool = True, missed_ops: frozenset[str] = frozenset(),
                  rests: bool = False, began: bool | None = None) -> None:
         self.waits = list(waits or [])
@@ -48,6 +49,8 @@ class Double(sequence.SequenceMachine):
     def wait_for_stop(self, seconds: float, progress: Any, tail: bool = False) -> sequence.Waited:
         self.asked_waits.append((seconds, tail))
         state = self.waits.pop(0) if self.waits else "stopped"
+        if isinstance(state, Exception):
+            raise state
         if state == "stopped":
             self.is_running = False
         return state
@@ -141,7 +144,7 @@ def test_a_step_that_fails_ends_the_list_beside_the_steps_before_it() -> None:
                         fail="read_memory")
     assert calls == ["status", "read_memory"]
     assert ended.code == "step_failed"
-    assert ended.message.startswith("step 1 ('read_memory') failed: no")
+    assert ended.message.startswith("step 2 ('read_memory') failed: no")
     assert [e["op"] for e in ended.fields["ran"]] == ["status"]
     assert ended.fields["failed"]["op"] == "read_memory"
     assert ended.fields["failed_at"] == 1
@@ -179,7 +182,7 @@ def test_a_steps_own_missed_wait_ends_the_list_where_the_machine_says_so() -> No
     ended, calls = _run(m, [{"op": "log_wait"}, {"op": "status"}])
     assert calls == ["log_wait"]
     assert ended.fields["verdict"] == contract.TIMEOUT
-    assert "step 0 ('log_wait') waited for what it was to see" in ended.fields["note"]
+    assert "step 1 ('log_wait') waited for what it was to see" in ended.fields["note"]
     # A machine that says nothing of a step's own wait goes on.
     plain = Double()
     _, calls = _run(plain, [{"op": "log_wait"}, {"op": "status"}])
@@ -251,13 +254,16 @@ class Window(sequence.Cycle):
     def __init__(self, done_after: int = 0, refuse_at: int = 0, expire_at: int = 0) -> None:
         self.done_after, self.refuse_at, self.expire_at = done_after, refuse_at, expire_at
         self.seen = 0
+        self.named: list[str] = []
 
     def expired(self) -> bool:
         return bool(self.expire_at) and self.seen >= self.expire_at
 
-    def after(self, reply: dict[str, Any], steps_completed: int) -> sequence.Stop | bool:
+    def after(self, reply: dict[str, Any], steps_completed: int,
+              step: str) -> sequence.Stop | bool:
         self.seen += 1
         assert steps_completed == self.seen
+        self.named.append(step)
         if self.refuse_at and self.seen == self.refuse_at:
             return sequence.Stop("unexpected_answer", "no frame", {"frame_reached": 3})
         return bool(self.done_after) and self.seen >= self.done_after
@@ -273,8 +279,11 @@ class Window(sequence.Cycle):
 
 def test_a_cycle_repeats_the_list_until_it_is_done_and_every_ending_carries_its_fields() -> None:
     held = {"op": "status", recording.RECORDED: {"value": 1}}
-    ended, calls = _run(Double(), [held, {"op": "read_memory"}], cycle=Window(done_after=5))
+    window = Window(done_after=5)
+    ended, calls = _run(Double(), [held, {"op": "read_memory"}], cycle=window)
     assert calls == ["status", "read_memory", "status", "read_memory", "status"]
+    # THE CYCLE NAMES A STEP AS EVERY MESSAGE DOES: inside its pass, from 1.
+    assert window.named[2:4] == ["step 1 ('status') of pass 2", "step 2 ('read_memory') of pass 2"]
     assert ended.fields["until_frame"] == 99
     assert ended.fields["verdict"] == contract.TARGET      # a cycle waited for its window
     assert ended.held == 3
@@ -372,3 +381,34 @@ def test_the_base_machine_and_cycle_cannot_stand_in_for_a_server() -> None:
     assert sequence.SequenceMachine.rested(m, []) is None
     assert sequence.SequenceMachine.began_running(Double(running=True)) is True
     sequence.SequenceMachine.noted(m, "op", {})
+
+
+def test_a_channel_that_fails_during_a_mid_list_wait_ends_the_list_with_what_ran() -> None:
+    """A terminal that overflows, or a machine that dies, while the list waits for a stop: the
+    caller gets the account of what ran, the failure as its end, never a bare refusal that hides
+    the steps already sent."""
+    m = Double(waits=[contract.Invalid("unexpected_answer", "the terminal buffer overflowed")])
+    ended, calls = _run(m, [{"op": "send_keys"}, {"op": "resume"}, {"op": "read_memory"}])
+    assert calls == ["send_keys", "resume"], calls
+    assert ended.code == "unexpected_answer" and ended.fields["failed_at"] == 2, ended
+    assert "overflowed" in ended.message and "step 3 ('read_memory')" in ended.message, ended
+    assert [e["op"] for e in ended.fields["ran"]] == ["send_keys", "resume"]
+
+
+def test_a_channel_that_fails_during_the_tail_s_wait_ends_with_what_ran() -> None:
+    m = Double(waits=[contract.Invalid("session_broken", "the stub hung up")])
+    ended, _ = _run(m, [{"op": "status"}, {"op": "resume"}])
+    assert ended.code == "session_broken" and "stub hung up" in ended.message, ended
+    assert [e["op"] for e in ended.fields["ran"]] == ["status", "resume"]
+
+
+def test_where_an_act_stopped_counts_from_one() -> None:
+    assert sequence.where_stopped(0) == "at step 1"
+    assert sequence.where_stopped(sequence.none_failed()) == "after its last step"
+
+
+def test_a_refusal_carrying_the_list_s_own_fields_ends_it_all_the_same() -> None:
+    """A wait's refusal that names a `failed_at` of its own is the list's to place: the list's
+    ending states where it failed, and the refusal's other fields ride beside it."""
+    e = contract.Invalid("unexpected_answer", "cut", failed_at=7, keep_last=False, extra=1)
+    assert sequence._own(e) == {"extra": 1}

@@ -62,8 +62,7 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult
 
 from scry_core import prose
-
-EXIT_OK, EXIT_FAILED, EXIT_INVALID = 0, 1, 3
+from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 BEGIN = "<!-- demo-transcript:begin -->"
 END = "<!-- demo-transcript:end -->"
@@ -100,10 +99,6 @@ VOLATILE: Mapping[str, str] = {
 
 class StepFailed(Exception):
     """A step's answer was not the one its check asked for: the message says why."""
-
-
-class Invalid(Exception):
-    """Nothing was demonstrated: no verdict about the server."""
 
 
 @dataclass(frozen=True)
@@ -372,7 +367,7 @@ class Outcome:
 
     lines: list[str]
     transcripts: Transcripts
-    code: int = EXIT_OK
+    code: int = EXIT_PASS
 
 
 async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> Outcome:
@@ -394,13 +389,13 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                     out.transcripts.add(n, step.tool, args, reply, line, step.volatile)
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
-                        out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAILED
+                        out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
                         break
                     passed += 1
                 if not closed:
                     await _cleanup(client, out)
         except Exception as e:  # anything the session itself raised, outside a step
-            out.code = EXIT_FAILED if started else EXIT_INVALID
+            out.code = EXIT_FAIL if started else EXIT_INVALID
             out.lines.append(
                 f"FAIL {demo.name}: the session with the server ended in an error ({_why(e)}); "
                 f"its stderr is in {stderr_path}" if started else
@@ -556,7 +551,7 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
     if out.transcripts.whole:
         print(f"transcript: {transcript}")
         print(f"normalised: {normalised}")
-    if out.code == EXIT_OK and update_readme and capture is not None:
+    if out.code == EXIT_PASS and update_readme and capture is not None:
         _update_readme(demo, capture, normalised)
     return out.code
 

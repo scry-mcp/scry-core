@@ -23,6 +23,7 @@ from typing import Any
 
 from scry_core import demo, prose
 from scry_core.recording import DOCUMENT_VERSION, RECORDED
+from scry_core.verdict import EXIT_INVALID, Invalid
 
 #: The codes of a `perform` that answered in its own words about a step: a verdict (1), where any
 #: other refusal of the list is the server's failure to play it (3).
@@ -46,28 +47,28 @@ def _read(path: Path) -> dict[str, Any]:
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:              # unreadable, not UTF-8, not JSON
-        raise demo.Invalid(f"{path} is not a readable document: {e}") from None
+        raise Invalid(f"{path} is not a readable document: {e}") from None
     if not isinstance(doc, dict) or doc.get("version") != DOCUMENT_VERSION:
-        raise demo.Invalid(f"{path} is not a version {DOCUMENT_VERSION} replay document")
+        raise Invalid(f"{path} is not a version {DOCUMENT_VERSION} replay document")
     entry = doc.get("entry")
     if not (isinstance(entry, str) and entry and Path(entry).name == entry
             and entry.endswith(".py")):
-        raise demo.Invalid(f"{path} names no server entry file (`entry`, a `.py` file of the "
+        raise Invalid(f"{path} names no server entry file (`entry`, a `.py` file of the "
                            "repository the replay runs from)")
     steps, start, needs = doc.get("steps"), doc.get("start", {}), doc.get("needs", {})
     if not isinstance(steps, list) or not steps or not all(isinstance(s, dict) for s in steps):
-        raise demo.Invalid(f"{path} holds no steps, or one that is not an object, so a replay "
+        raise Invalid(f"{path} holds no steps, or one that is not an object, so a replay "
                            "would demonstrate nothing")
     states = needs.get("states", []) if isinstance(needs, dict) else None
     declared = needs.get("declarations", {}) if isinstance(needs, dict) else None
     if not isinstance(start, dict) or not _names(states) or not isinstance(declared, dict) \
             or not all(isinstance(v, dict) and isinstance(v.get("key"), str)
                        and _names(v.get("refs")) for v in declared.values()):
-        raise demo.Invalid(f"{path}: `start` is an object of arguments, `needs.states` a list "
+        raise Invalid(f"{path}: `start` is an object of arguments, `needs.states` a list "
                            "of names, and `needs.declarations` each list tool's `key` and `refs`")
     doc["steps"] = steps = [_current(s) for s in steps]
     if not any(s.get(RECORDED) for s in steps):
-        raise demo.Invalid(f"{path}: no step carries `{RECORDED}`, so a replay would hold "
+        raise Invalid(f"{path}: no step carries `{RECORDED}`, so a replay would hold "
                            "nothing to anything: nothing held to")
     return doc
 
@@ -76,23 +77,23 @@ def _needs(states: Sequence[str]) -> Callable[[demo.Reply, demo.Run], str]:
     def check(reply: demo.Reply, run: demo.Run) -> str:
         listed = reply.get("states")
         if not isinstance(listed, list):
-            raise demo.Invalid(f"the server's `state_list` answered no list: {reply}")
+            raise Invalid(f"the server's `state_list` answered no list: {reply}")
         have = {s.get("name") for s in listed if isinstance(s, dict)}
         missing = [s for s in states if s not in have]
         if missing:
-            raise demo.Invalid(f"the document loads saved states the server does not have: "
+            raise Invalid(f"the document loads saved states the server does not have: "
                                f"{missing}")
         return f"{prose.counted(len(states), 'saved state')} the document loads, all there"
     return check
 
 
 def _refused_start(reply: demo.Reply, run: demo.Run) -> str:
-    raise demo.Invalid(f"the server refused the start: {reply.get('summary') or reply}")
+    raise Invalid(f"the server refused the start: {reply.get('summary') or reply}")
 
 
 def _broke(reply: demo.Reply, run: demo.Run) -> str:
     """A call around the steps the server did not answer: no verdict about the steps."""
-    raise demo.Invalid(f"the server did not answer: {reply.get('summary') or reply}")
+    raise Invalid(f"the server did not answer: {reply.get('summary') or reply}")
 
 
 def _names(value: object) -> bool:
@@ -106,11 +107,11 @@ def _declarations(tool: str, key: str, recorded: Sequence[str]
     def check(reply: demo.Reply, run: demo.Run) -> str:
         listed = reply.get(key)
         if not isinstance(listed, list):
-            raise demo.Invalid(f"the server's `{tool}` answered no `{key}` list: {reply}")
+            raise Invalid(f"the server's `{tool}` answered no `{key}` list: {reply}")
         have = sorted(str(r["ref"]) for r in listed if isinstance(r, dict) and "ref" in r)
         want = sorted(recorded)
         if have != want:
-            raise demo.Invalid(f"`{tool}` lists {have} where the recorded session's start "
+            raise Invalid(f"`{tool}` lists {have} where the recorded session's start "
                                f"found {want}: clear or declare those first")
         return f"{prose.counted(len(want), 'declaration')}, as the recorded start found them"
     return check
@@ -136,7 +137,7 @@ def _failed(steps: Sequence[Mapping[str, Any]]) -> Callable[[demo.Reply, demo.Ru
     def why(reply: demo.Reply, run: demo.Run) -> str:
         if reply.get("code") not in STEP_CODES:
             # An error result, or a list refused whole: the server did not play it.
-            raise demo.Invalid(f"the server did not play the list: "
+            raise Invalid(f"the server did not play the list: "
                                f"{reply.get('message') or reply.get('summary') or reply}")
         at = reply.get("failed_at")
         op, where = "?", f"step {at}"
@@ -198,11 +199,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                    options={k: v for k, v in given.items() if v is not None})
     try:
         return demo.execute(build(_read(ns.document), root, name), run, transcript)
-    except demo.Invalid as e:
+    except Invalid as e:
         print(f"INVALID: {e}")
     except Exception as e:  # anything else before a verdict: nothing was demonstrated
         print(f"INVALID: {type(e).__name__}: {e}")
-    return demo.EXIT_INVALID
+    return EXIT_INVALID
 
 
 if __name__ == "__main__":

@@ -30,6 +30,7 @@ import pydantic_core
 from mcp.types import CallToolResult, ImageContent, TextContent
 
 from scry_core import fresh, png
+from scry_core import vocabulary as vocab
 from scry_core.judges import whole
 from scry_core.reply_contract import Invalid
 
@@ -94,8 +95,7 @@ def check_scale(scale: object) -> None:
 
 def check_attach(attach: object) -> None:
     """An `attach` is a yes or a no, said in one sentence on both servers."""
-    if not isinstance(attach, bool):
-        raise Invalid("bad_argument", f"attach is a boolean; got {attach!r}")
+    vocab.check_bool("attach", attach)
 
 
 #: A rectangle marked over a picture: `x`, `y`, `width`, `height` in source pixels, and its RGB.

@@ -63,6 +63,14 @@ class Policy:
     ref_fault: Callable[[str], str | None]
     cpu_fault: Callable[[str], str | None]
 
+    def parse(self, text: str, where: str = "the comment file") -> list[Row]:
+        """Every row of a comment file's text held to this server's columns (`parse`)."""
+        return parse(text, where, self)
+
+    def render(self, rows: Iterable[Row]) -> str:
+        """The file's text for `rows` held to this server's columns (`render`)."""
+        return render(rows, self)
+
 
 def text_fault(text: str) -> str | None:
     """Why `text` cannot be a comment, or None when it can. A comment is one visible line: not

@@ -37,6 +37,7 @@ discussed. Here it fails a run, which is where the discussion belongs.
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 from collections.abc import Callable, Iterator
 from typing import Any
@@ -158,14 +159,26 @@ _JUDGED = pytest.StashKey[list[str]]()
 
 
 def declared(config: pytest.Config) -> list[str]:
-    """The suite's declared anchors, or a usage error when it declares none."""
+    """The suite's declared anchors, or a usage error when it declares none or one no import
+    could find: a misspelt name would otherwise read as a partial run that imported none."""
     names: list[str] = config.getini(ANCHORS_INI)
     if not names:
         raise pytest.UsageError(
             f"the shape guard (scry_core.reply_shapes) has no `{ANCHORS_INI}` to wrap: declare "
             "the modules whose replies it judges in [tool.pytest.ini_options], or this run "
             "would report green having judged nothing")
+    if lost := [name for name in names if not _findable(name)]:
+        raise pytest.UsageError(
+            f"`{ANCHORS_INI}` names {', '.join(lost)}, which no import can find: a misspelt "
+            "anchor wraps nothing, and the run would read as one that imported none")
     return names
+
+
+def _findable(name: str) -> bool:
+    try:
+        return name in sys.modules or importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):
+        return False
 
 
 def summary_line(config: pytest.Config) -> str:

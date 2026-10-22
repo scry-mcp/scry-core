@@ -292,6 +292,6 @@ def test_a_rebuilt_reply_reads_as_the_sdk_writes_one(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("attach", ["no", 1, None])
 def test_an_attach_that_is_no_yes_or_no_is_refused(attach: object) -> None:
-    with pytest.raises(Invalid, match="attach is a boolean"):
+    with pytest.raises(Invalid, match="attach is true or false"):
         picture.check_attach(attach)
     picture.check_attach(False)

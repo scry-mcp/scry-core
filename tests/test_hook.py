@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from scry_core import hook
+from scry_core import hook, verdict
 
 
 def _program(path: Path, body: str) -> Path:
@@ -28,19 +28,20 @@ FLAGS = ("--baseline", "--fail-on-new-clones", "--reporters")
 
 
 def _jscpd(at: Path, sources: int, new: int, rc: int, report: bool = True) -> None:
-    """A jscpd that writes the real report with this case's `sources`, `newClones` and
-    `duplicatedLines` into the `--output` it is given, after checking it was asked for the
-    baseline, new clones and the JSON reporter."""
+    """A jscpd that writes the real report with this case's `sources`, `newClones` and the
+    duplicated lines (the tree's and the new clones') into the `--output` it is given, after
+    checking it was asked for the baseline, new clones and the JSON reporter."""
     write = ("doc = json.loads(pathlib.Path(sys.argv[0] + '.json').read_text())\n"
              f"doc['statistics']['total'].update(sources={sources}, newClones={new}, "
-             "duplicatedLines=640)\n"
+             "duplicatedLines=640, newDuplicatedLines=48)\n"
              "pathlib.Path(out, 'jscpd-report.json').write_text(json.dumps(doc))\n"
              ) if report else ""
     Path(f"{at}.json").write_text(REPORT.read_text())
-    _program(at, "import json, pathlib, sys\n"
+    _program(at, "import json, os, pathlib, sys\n"
                  f"if not all(f in sys.argv for f in {FLAGS!r}) or 'json' not in sys.argv:\n"
                  "    sys.exit(97)\n"
                  "out = sys.argv[sys.argv.index('--output') + 1]\n"
+                 "pathlib.Path(sys.argv[0] + '.cwd').write_text(os.getcwd())\n"
                  "pathlib.Path(out).mkdir(parents=True, exist_ok=True)\n" + write +
                  f"print('fake jscpd: sources={sources} newClones={new}')\nsys.exit({rc})\n")
 
@@ -76,16 +77,18 @@ def _hook(capsys: pytest.CaptureFixture[str]) -> tuple[int, str]:
 def test_a_clean_run_passes_from_anywhere_in_the_repository(
         repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_CLEAN, said
+    assert rc == verdict.EXIT_PASS, said
     assert "3 files, no new duplication" in said and "OK mame: 4 tasks cover 2 tools" in said
+    ran_in = Path((repo / "jscpd.cwd").read_text()).resolve()
+    assert ran_in == (repo / "repo").resolve(), "jscpd ran outside the repository's root"
 
 
 def test_new_duplication_blocks_naming_the_count_the_total_and_the_remedies(
         repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _jscpd(repo / "jscpd", 3, 3, 1)
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_BLOCKED
-    for words in ("BLOCKED", "3 new clone", "640 duplicated lines", "shrank or split",
+    assert rc == verdict.EXIT_FAIL
+    for words in ("BLOCKED", "3 new clone", "48 new duplicated lines", "shrank or split",
                   "--update-baseline"):
         assert words in said, words
 
@@ -99,7 +102,7 @@ def test_a_duplication_check_that_examined_nothing_is_invalid_even_at_exit_0(
         said: str) -> None:
     _jscpd(repo / "jscpd", sources, 0, 0, report=report)
     rc, out = _hook(capsys)
-    assert rc == hook.EXIT_INVALID and said in out, out
+    assert rc == verdict.EXIT_INVALID and said in out, out
 
 
 def test_a_report_that_cannot_be_read_is_invalid(
@@ -107,28 +110,28 @@ def test_a_report_that_cannot_be_read_is_invalid(
     _program(repo / "jscpd", "import pathlib, sys\nout = sys.argv[sys.argv.index('--output') + 1]\n"
                              "pathlib.Path(out, 'jscpd-report.json').write_text('{}')\n")
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_INVALID and "the jscpd report could not be read: KeyError" in said
+    assert rc == verdict.EXIT_INVALID and "the jscpd report could not be read: KeyError" in said
 
 
 def test_a_missing_baseline_names_the_file_and_not_the_tool(
         repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     (repo / "repo" / hook.BASELINE).unlink()
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_INVALID and f"{hook.BASELINE} is missing" in said
+    assert rc == verdict.EXIT_INVALID and f"{hook.BASELINE} is missing" in said
 
 
 def test_a_jscpd_that_cannot_be_run_is_invalid(
         repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PRECOMMIT_JSCPD", str(repo / "absent"))
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_INVALID and "jscpd could not be run" in said
+    assert rc == verdict.EXIT_INVALID and "jscpd could not be run" in said
 
 
 def test_an_uncovered_tool_blocks_naming_the_hole_and_how_to_measure_after(
         repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _probe(repo / "probe", "REFUSED no task on mame frame_grab", 1)
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_BLOCKED and "no task on mame frame_grab" in said
+    assert rc == verdict.EXIT_FAIL and "no task on mame frame_grab" in said
     assert ("from the repository root: python -m scry_core.probe <server> --check "
             "--servers mcp_probe/servers.py --tasks mcp_probe/tasks") in said
     assert "only for a task added for a new or changed tool" in said, (
@@ -146,7 +149,7 @@ def test_a_probe_check_that_did_not_judge_is_invalid(
         said: str) -> None:
     _probe(repo / "probe", printed, rc)
     code, out = _hook(capsys)
-    assert code == hook.EXIT_INVALID and said in out, out
+    assert code == verdict.EXIT_INVALID and said in out, out
     assert "Fix it in" not in out and "--runs 3" not in out, "a broken check got the task remedy"
 
 
@@ -156,17 +159,17 @@ def test_outside_a_repository_it_is_invalid(
     monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
     monkeypatch.chdir(tmp_path)
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_INVALID and "git does not say where the repository root is" in said
+    assert rc == verdict.EXIT_INVALID and "git does not say where the repository root is" in said
 
 
 def test_anything_else_that_stops_it_is_invalid_and_never_a_traceback(
         repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
-    def broken(_scratch: Path) -> str:
+    def broken(_root: Path, _scratch: Path) -> str:
         raise KeyError("boom")
 
     monkeypatch.setattr(hook, "duplication", broken)
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_INVALID and "stopped before its verdict: KeyError" in said
+    assert rc == verdict.EXIT_INVALID and "stopped before its verdict: KeyError" in said
     assert "Traceback" not in said
 
 
@@ -176,7 +179,7 @@ def test_the_real_probe_check_is_what_runs_without_its_seam(
     servers file: here there is none, so the real check answers INVALID about it."""
     monkeypatch.delenv("PRECOMMIT_PROBE")
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_INVALID and "mcp_probe/servers.py" in said, said
+    assert rc == verdict.EXIT_INVALID and "mcp_probe/servers.py" in said, said
 
 
 def test_an_unknown_option_is_usage() -> None:
@@ -189,21 +192,22 @@ def test_a_jscpd_that_fails_with_no_new_clone_is_invalid_and_not_a_block(
         repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _jscpd(repo / "jscpd", 3, 0, 2)
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_INVALID and "jscpd exited 2 and its report counts no new clone" in said
+    assert rc == verdict.EXIT_INVALID
+    assert "jscpd exited 2 and its report counts no new clone" in said
 
 
 def test_new_clones_block_even_when_jscpd_exits_0(
         repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _jscpd(repo / "jscpd", 3, 2, 0)
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_BLOCKED and "2 new clone(s)" in said
+    assert rc == verdict.EXIT_FAIL and "2 new clone(s)" in said
 
 
 def test_a_git_that_cannot_be_run_is_invalid(
         repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PATH", str(repo / "empty"))
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_INVALID and "git could not be run" in said
+    assert rc == verdict.EXIT_INVALID and "git could not be run" in said
 
 
 
@@ -245,5 +249,5 @@ def test_the_real_probe_check_passes_a_repository_whose_tasks_cover_its_server(
     (repo / "repo" / "mcp_probe" / "tasks" / "toy.json").write_text(TOY_TASKS)
     monkeypatch.delenv("PRECOMMIT_PROBE")
     rc, said = _hook(capsys)
-    assert rc == hook.EXIT_CLEAN, said
+    assert rc == verdict.EXIT_PASS, said
     assert "OK toy: 2 tasks cover 1 tools" in said

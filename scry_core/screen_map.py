@@ -45,6 +45,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from scry_core import fresh, judges, prose, raster
+from scry_core import vocabulary as vocab
 from scry_core.reply_contract import Invalid, or_unavailable
 
 FORMAT = "scry-map/1"
@@ -473,6 +474,5 @@ def check_add(screen: object, match: object, controls: object = None) -> None:
 def check_save(dest: object, overwrite: object) -> None:
     """`map_save`'s machine-independent half: `dest`, and `overwrite` a yes or a no."""
     _map_path("dest", dest)
-    if not isinstance(overwrite, bool):
-        raise Invalid("bad_argument", f"overwrite={overwrite!r} is true or false")
+    vocab.check_bool("overwrite", overwrite)
 

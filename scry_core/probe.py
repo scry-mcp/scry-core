@@ -77,7 +77,8 @@ writes it>, "runs": [{"lines": [<every line that answered it, the root's path as
 no model and makes no output directory. Exit 0 written; 2 usage (a server of `CAPTURED`,
 both options, no `--runs` or `--check`, no empty or repeated id); 3 INVALID: anything it cannot
 prove (a run on another surface, a task asked or judged otherwise now) writes nothing, and a write
-that fails part-way names the files it wrote.
+that fails part-way names the files it wrote. The store is `scry_core.probe_captures`; the
+algebra of an expected value, `scry_core.probe_any_of`.
 """
 
 from __future__ import annotations
@@ -102,6 +103,13 @@ from types import MappingProxyType, ModuleType
 from typing import Any
 
 from scry_core.client_cap import delivered
+from scry_core.probe_any_of import (
+    calls,
+    concrete,
+    has_empty_any_of,
+    leaves,
+    matches,
+)
 
 # Re-exported: callers spell these `probe.<name>`.
 from scry_core.verdict import EXIT_FAIL as EXIT_FAIL
@@ -126,7 +134,8 @@ DEFAULT_RUNS = 3
 #: `--strict-mcp-config` with no config keeps every MCP server out, and `--tools ""` the built-ins.
 CLAUDE = ["claude", "--print", "--model", "haiku", "--effort", "low", "--max-budget-usd", "1",
           "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"]
-STATIC = [*CLAUDE, "--tools", "", "--output-format", "json"]
+#: The one command the model is asked through: the above, with no tools and its answer as JSON.
+MODEL_COMMAND = [*CLAUDE, "--tools", "", "--output-format", "json"]
 
 #: How `--check` begins each line: a server covered, or one problem it refuses. A caller reading
 #: the check's output (a pre-commit) matches these, never its own spelling of them.
@@ -368,7 +377,7 @@ def _problems_by_task(surface: Surface, tasks: list[dict[str, Any]]) -> list[lis
         if "tool" not in task or tool is None:
             found.append(f"{where}: `tool` names no tool of this server")
             continue
-        if _has_empty_any_of(task.get("args", {})):
+        if has_empty_any_of(task.get("args", {})):
             found.append(f"{where}: an `any_of` with no alternative accepts nothing")
             continue
         alternatives = calls(task.get("args", {}))
@@ -382,23 +391,6 @@ def _problems_by_task(surface: Surface, tasks: list[dict[str, Any]]) -> list[lis
 
 def _is_scalar(value: Any) -> bool:
     return value is None or isinstance(value, str | int | float)
-
-
-def _has_empty_any_of(value: Any) -> bool:
-    """Whether an `any_of` anywhere in `value` is not a list of at least one alternative."""
-    if _is_any_of(value):
-        held = value["any_of"]
-        return not isinstance(held, list) or not held or any(_has_empty_any_of(v) for v in held)
-    if isinstance(value, dict):
-        return any(_has_empty_any_of(v) for v in value.values())
-    if isinstance(value, list):
-        return any(_has_empty_any_of(v) for v in value)
-    return False
-
-
-def calls(args: Any) -> list[Any]:
-    """The whole calls a task accepts: one, or each of an `any_of` of calls."""
-    return list(args["any_of"]) if _is_any_of(args) else [args]
 
 
 def _call_problems(surface: Surface, tool: Tool, where: str, args: dict[str, Any],
@@ -458,17 +450,6 @@ def coverage_holes(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
     return out
 
 
-def _leaves(value: Any) -> Iterator[Any]:
-    if isinstance(value, dict):
-        for v in (value["any_of"] if _is_any_of(value) else value.values()):
-            yield from _leaves(v)
-    elif isinstance(value, list):
-        for v in value:
-            yield from _leaves(v)
-    else:
-        yield value
-
-
 def _spellings(value: Any) -> list[str]:
     if isinstance(value, bool) or value is None:
         return []
@@ -495,7 +476,7 @@ def contamination(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
         if tool is None:
             continue
         grammar = {_folded(g) for g in task.get("grammar", [])}
-        values = [*_leaves(task.get("args", {})), *HEX_LITERAL.findall(task.get("prompt", ""))]
+        values = [*leaves(task.get("args", {})), *HEX_LITERAL.findall(task.get("prompt", ""))]
         for value in values:
             if _folded(value) in grammar:
                 continue
@@ -512,10 +493,12 @@ def contamination(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
 
 
 def prompt_for(surface: Surface, tasks: list[dict[str, Any]]) -> str:
+    """The prompt one run asks: the surface's texts as `load_surface` cut them to what the client
+    delivers (the one place the cut is made), then the tasks."""
     parts = [PROMPT_HEAD.format(server=surface.server), "=== SERVER INSTRUCTIONS ===",
-             delivered(surface.instructions), "", "=== TOOLS ==="]
+             surface.instructions, "", "=== TOOLS ==="]
     for tool in surface.tools.values():
-        parts += [f"--- tool: {tool.name}", delivered(tool.description).rstrip(),
+        parts += [f"--- tool: {tool.name}", tool.description.rstrip(),
                   f"input schema: {json.dumps(tool.schema, ensure_ascii=False)}", ""]
     parts.append(TASKS_HEAD)
     parts += [task_line(t) for t in tasks]
@@ -551,16 +534,16 @@ def ask(server: str, prompt: str, run: int, out: Path) -> str:
             raise Invalid(f"{ANSWERS_ENV} holds no {answer.name}")
         text = replayed.read_text(encoding="utf-8")
     else:
-        text = _claude(STATIC, prompt, answer.with_suffix(".json"))
+        text = _ask_model(prompt, answer.with_suffix(".json"))
     answer.write_text(text, encoding="utf-8")
     return text
 
 
-def _claude(command: list[str], prompt: str, saved: Path) -> str:
+def _ask_model(prompt: str, saved: Path) -> str:
     # A cwd of its own, outside the repository: no project instructions above it.
     with tempfile.TemporaryDirectory(prefix="mcp_probe-") as cwd:
         try:
-            proc = subprocess.run(command, input=prompt, capture_output=True, text=True,
+            proc = subprocess.run(MODEL_COMMAND, input=prompt, capture_output=True, text=True,
                                   errors="replace", cwd=cwd, timeout=CLAUDE_TIMEOUT_S,
                                   check=False)
         except FileNotFoundError:
@@ -616,46 +599,6 @@ def _answer(rests: list[str]) -> Answer:
             or not isinstance(doc.get("args", {}), dict)):
         return Answer("bad", rest, why='not {"tool": <name>, "args": {...}}')
     return Answer("call", rest, doc["tool"], dict(doc.get("args", {})))
-
-
-def same(a: Any, b: Any) -> bool:
-    """JSON equality that does not let `True` pass for `1`, and does let `5` pass for `5.0`."""
-    if isinstance(a, bool) or isinstance(b, bool):
-        return type(a) is type(b) and a == b
-    if isinstance(a, int | float) and isinstance(b, int | float):
-        return a == b
-    if isinstance(a, dict) and isinstance(b, dict):
-        return a.keys() == b.keys() and all(same(a[k], b[k]) for k in a)
-    if isinstance(a, list) and isinstance(b, list):
-        return len(a) == len(b) and all(same(x, y) for x, y in zip(a, b, strict=True))
-    return type(a) is type(b) and bool(a == b)
-
-
-def matches(expected: Any, got: Any) -> bool:
-    """`same`, with `{"any_of": [...]}` accepted at any depth of the expected value."""
-    if _is_any_of(expected):
-        return any(matches(e, got) for e in expected["any_of"])
-    if isinstance(expected, dict) and isinstance(got, dict):
-        return expected.keys() == got.keys() and all(matches(expected[k], got[k]) for k in got)
-    if isinstance(expected, list) and isinstance(got, list):
-        return len(expected) == len(got) and all(
-            matches(e, g) for e, g in zip(expected, got, strict=True))
-    return same(expected, got)
-
-
-def _is_any_of(value: Any) -> bool:
-    return isinstance(value, dict) and set(value) == {"any_of"}
-
-
-def concrete(expected: Any) -> Any:
-    """The expected value with each `any_of` taken at its first alternative: a call to test."""
-    if _is_any_of(expected):
-        return concrete(expected["any_of"][0])
-    if isinstance(expected, dict):
-        return {k: concrete(v) for k, v in expected.items()}
-    if isinstance(expected, list):
-        return [concrete(v) for v in expected]
-    return expected
 
 
 def _mismatch(tool: Tool, expected_args: dict[str, Any], allow: set[str],
@@ -720,7 +663,7 @@ class Outcome:
     failed: int
 
 
-def run_static(surface: Surface, tasks: list[dict[str, Any]], runs: int,
+def run_model(surface: Surface, tasks: list[dict[str, Any]], runs: int,
                out: Path) -> list[dict[str, Verdict]]:
     prompt = prompt_for(surface, tasks)
     prompt_file(out, surface.server).write_text(prompt, encoding="utf-8")
@@ -759,172 +702,6 @@ def _save_verdicts(out: Path, server: str, verdicts: list[dict[str, Verdict]]) -
            for run in verdicts]
     verdicts_file(out, server).write_text(json.dumps(doc, indent=1, ensure_ascii=False),
                                           encoding="utf-8")
-
-
-# ---- the per-task capture ----------------------------------------------------------------
-
-
-def capture_problems(repo: ProbeRepo, server: str, captured: Path,
-                     tasks_file: Path) -> list[str]:
-    """Why the captures in `captured` are not every task of `tasks_file` judged as it was, one
-    line per problem: none examined at all, a task with no capture, a file that is not the
-    capture of the task its name says, a capture of no task, one answered to another question, one
-    the surface cannot judge any more, and a stored verdict the current surface no longer gives. A
-    task file or a surface that cannot be read raises `Invalid`."""
-    files = sorted(captured.glob("*.json")) if captured.is_dir() else []
-    if not files:
-        return [f"INVALID: no capture examined ({captured} holds none)"]
-    raw, resolved = _tasks_by_id(repo, tasks_file)
-    surface = load_surface(repo, server)
-    out: list[str] = []
-    if missing := [tid for tid in raw if not (captured / f"{tid}.json").is_file()]:
-        out.append(f"{server}: no capture of task {', '.join(missing)}")
-    for f in files:
-        tid = f.stem
-        try:
-            task, runs = _read_capture(f)
-        except ValueError as e:
-            out.append(f"{server} {tid}: {e}")
-            continue
-        if tid not in raw:
-            out.append(f"{server} {tid}: captured, but the task file holds no task {tid}")
-            continue
-        if not same(task, raw[tid]):
-            out.append(f"{server} {tid}: captured for another question than the task file asks "
-                       "now")
-            continue
-        for k, run in enumerate(runs, start=1):
-            try:
-                now = rejudge(repo, surface, resolved[tid], run["lines"])
-            except (KeyError, Invalid) as e:
-                out.append(f"{server} {tid}: cannot be judged now: {type(e).__name__} {e}")
-                break
-            if now.right != run["right"]:
-                said = "right now" if now.right else f"wrong now ({now.why})"
-                out.append(f"{server} {tid} run {k}: judged {said}, captured as "
-                           f"{'right' if run['right'] else 'wrong'}")
-    return out
-
-
-def _tasks_by_id(repo: ProbeRepo, tasks_file: Path
-                 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
-    """Each task by id twice: as the file writes it, which a capture stores, and resolved to the
-    repository, which is what was asked and is judged. The ids are `--check`'s to keep unique, and
-    a file `--check` would refuse is `Invalid` here."""
-    def by_id(tasks: list[Any]) -> dict[str, dict[str, Any]]:
-        if not all(isinstance(t, dict) and isinstance(t.get("id"), str) for t in tasks):
-            raise Invalid(f"{tasks_file} holds an entry that is not a task with an `id`: "
-                          "`--check` names it")
-        return {t["id"]: t for t in tasks}
-
-    return by_id(read_tasks(repo, tasks_file, raw=True)), by_id(read_tasks(repo, tasks_file))
-
-
-def rejudge(repo: ProbeRepo, surface: Surface, task: dict[str, Any], lines: list[str]) -> Verdict:
-    """A run's stored lines for one task, judged again as the run's whole answer was."""
-    answers = parse(resolve_root(repo, "\n".join(lines)), [task["id"]])
-    return judge(surface, task, answers[task["id"]])
-
-
-def _read_capture(f: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """A capture's task and runs, or ValueError saying why the file is not the capture of the
-    task its name says."""
-    try:
-        doc = json.loads(f.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as e:
-        raise ValueError(f"{f.name} is not a capture: {e}") from None
-    task = doc.get("task") if isinstance(doc, dict) else None
-    runs = doc.get("runs") if isinstance(doc, dict) else None
-    if (not isinstance(task, dict) or not isinstance(runs, list) or not runs
-            or not all(isinstance(r, dict) and isinstance(r.get("right"), bool)
-                       and isinstance(r.get("lines"), list)
-                       and all(isinstance(ln, str) for ln in r["lines"]) for r in runs)):
-        raise ValueError(f"{f.name} is not a capture: it needs a `task` and at least one run of "
-                         "`lines` and `right`")
-    if task.get("id") != f.stem:
-        raise ValueError(f"{f.name} holds task {task.get('id')}")
-    return task, runs
-
-
-def capture(repo: ProbeRepo, server: str, run_dir: Path, ids: list[str]) -> int:
-    """Write one capture per id from a real run's directory, and nothing when any id cannot be
-    proved; a write that fails part-way has printed each file it wrote."""
-    try:
-        docs = _capture_docs(repo, server, run_dir, ids)
-        dest = repo.captured_dir / server
-        dest.mkdir(parents=True, exist_ok=True)
-        for tid, doc in docs.items():
-            path = dest / f"{tid}.json"
-            path.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n",
-                            encoding="utf-8")
-            print(f"captured {path}")
-    except Invalid as e:
-        print(f"INVALID {e}")
-        return EXIT_INVALID
-    except Exception as e:  # noqa: BLE001 -- see `broke`
-        print(broke("capture", e))
-        return EXIT_INVALID
-    print(f"SUMMARY {len(docs)} task(s) of {server} captured from {run_dir}")
-    return EXIT_PASS
-
-
-def _capture_docs(repo: ProbeRepo, server: str, run_dir: Path,
-                  ids: list[str]) -> dict[str, dict[str, Any]]:
-    """The capture of each id, built from the run and proved against the task file and surface
-    as they are now."""
-    raw, resolved = _tasks_by_id(repo, tasks_file(repo, server))
-    if unknown := [tid for tid in ids if tid not in raw]:
-        raise Invalid(f"{server}'s task file holds no task {', '.join(unknown)}")
-    prompt_path, verdicts_path = prompt_file(run_dir, server), verdicts_file(run_dir, server)
-    if not prompt_path.is_file() or not verdicts_path.is_file():
-        raise Invalid(f"{run_dir} holds no run of {server}: it needs {prompt_path.name} and "
-                      f"{verdicts_path.name}")
-    recorded = _recorded_verdicts(verdicts_path, ids)
-    texts: list[str] = []
-    for k in range(1, len(recorded) + 1):
-        answer = answer_file(run_dir, server, k)
-        if not answer.is_file():
-            raise Invalid(f"{run_dir} holds no {answer.name}, which its verdicts judged")
-        texts.append(answer.read_text(encoding="utf-8"))
-    surface_said, _, asked = prompt_path.read_text(encoding="utf-8").partition(f"{TASKS_HEAD}\n")
-    asked_block = "\n" + asked
-    surface = load_surface(repo, server)
-    if surface_said != prompt_for(surface, []).partition(f"{TASKS_HEAD}\n")[0]:
-        raise Invalid(f"the run in {run_dir} was made on another surface than the repository's "
-                      "(an instructions text or a tool changed since): run the probe again")
-    docs: dict[str, dict[str, Any]] = {}
-    for tid in ids:
-        if f"\n{task_line(resolved[tid])}\n" not in asked_block:
-            raise Invalid(f"{tid} was asked otherwise in {run_dir} than the task file asks now: "
-                          "run the probe again")
-        runs = [{"lines": [mark_root(repo, line) for t, line, _ in answer_lines(text)
-                           if t == tid],
-                 "right": verdicts[tid]["right"]}
-                for text, verdicts in zip(texts, recorded, strict=True)]
-        for k, run in enumerate(runs, start=1):
-            if (now := rejudge(repo, surface, resolved[tid], run["lines"]).right) != run["right"]:
-                raise Invalid(f"{tid} run {k} is judged {'right' if now else 'wrong'} now and was "
-                              f"{'right' if run['right'] else 'wrong'} in its run: the task or the "
-                              "surface changed since; run the probe again")
-        docs[tid] = {"task": raw[tid], "runs": runs}
-    return docs
-
-
-def _recorded_verdicts(path: Path, ids: list[str]) -> list[dict[str, Any]]:
-    """A run's verdicts, one dict per run, each holding every id asked with a boolean `right`."""
-    try:
-        recorded = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as e:
-        raise Invalid(f"{path}: {e}") from None
-    if not isinstance(recorded, list) or not recorded:
-        raise Invalid(f"{path} holds no run, so there is nothing to capture")
-    for k, run in enumerate(recorded, start=1):
-        for tid in ids:
-            if not isinstance(run, dict) or tid not in run:
-                raise Invalid(f"the run in {path.parent} judged no task {tid} in run {k}")
-            if not isinstance(run[tid], dict) or not isinstance(run[tid].get("right"), bool):
-                raise Invalid(f"{path}: run {k} holds no boolean `right` for {tid}")
-    return recorded
 
 
 def refusals(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
@@ -1028,7 +805,10 @@ def main(argv: list[str]) -> int:
         if opts.server not in repo.captured_servers:
             parser.error(f"{opts.server} has no capture: --capture takes one of "
                          f"{', '.join(repo.captured_servers) or 'none here'}")
-        return capture(repo, opts.server, opts.capture, ids)
+        # THE STORE IMPORTS THIS MODULE (the surface, the judge), so it is reached here, where
+        # `--capture` dispatches to it, and never at the top.
+        from scry_core import probe_captures
+        return probe_captures.capture(repo, opts.server, opts.capture, ids)
     names = repo.servers if opts.server == "all" else (opts.server,)
     if opts.check:
         return check(repo, names)
@@ -1049,7 +829,7 @@ def main(argv: list[str]) -> int:
         else:
             outcomes = []
             for surface, tasks in prepared:
-                verdicts = run_static(surface, tasks, runs, out)
+                verdicts = run_model(surface, tasks, runs, out)
                 _save_verdicts(out, surface.server, verdicts)
                 outcomes.append(tally(surface, tasks, verdicts))
             passed = sum(o.passed for o in outcomes)

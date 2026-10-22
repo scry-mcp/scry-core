@@ -38,48 +38,47 @@ from pathlib import Path
 
 from scry_core.probe import CHECK_OK, CHECK_REFUSED
 from scry_core.probe_checks import SERVERS_FILE, TASKS_DIR
+from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
-EXIT_CLEAN, EXIT_BLOCKED, EXIT_INVALID = 0, 1, 3
 BASELINE = ".jscpd-baseline.json"
 PROBE_CHECK = ["-m", "scry_core.probe", "all", "--check", "--servers", str(SERVERS_FILE),
                "--tasks", str(TASKS_DIR)]
-
-
-class Invalid(Exception):
-    """The hook could not reach a verdict: nothing here is a pass or a block."""
 
 
 class Blocked(Exception):
     """A verdict against the commit, with what to do about it."""
 
 
-def _run(argv: list[str], what: str) -> tuple[int, str]:
-    """`argv`'s exit code and its stdout and stderr together, or `Invalid` naming `what` when it
-    cannot be started."""
+def _run(argv: list[str], what: str, root: Path) -> tuple[int, str]:
+    """`argv`'s exit code and its stdout and stderr together, run at the repository's `root`, or
+    `Invalid` naming `what` when it cannot be started."""
     try:
-        done = subprocess.run(argv, capture_output=True, text=True, errors="replace", check=False)
+        done = subprocess.run(argv, capture_output=True, text=True, errors="replace", check=False,
+                              cwd=root)
     except OSError as e:
         raise Invalid(f"{what} could not be run ({argv[0]}): {e}") from None
     return done.returncode, done.stdout + done.stderr
 
 
-def duplication(scratch: Path) -> str:
+def duplication(root: Path, scratch: Path) -> str:
     """The duplication check's line for a clean tree; `Blocked` on new clones, `Invalid` when it
     examined nothing or wrote no report."""
-    if not Path(BASELINE).is_file():
+    if not (root / BASELINE).is_file():
         raise Invalid(f"{BASELINE} is missing, so there is nothing to judge NEW duplication "
                       "against. It is tracked; restore it, or create one with:\n"
                       f"    jscpd . --baseline {BASELINE} --update-baseline")
     jscpd = os.environ.get("PRECOMMIT_JSCPD") or "jscpd"
     rc, said = _run([jscpd, ".", "--baseline", BASELINE, "--fail-on-new-clones",
-                     "--reporters", "json", "--output", str(scratch)], "jscpd")
+                     "--reporters", "json", "--output", str(scratch)], "jscpd", root)
     report = scratch / "jscpd-report.json"
     if not report.is_file():
         raise Invalid(f"jscpd wrote no report (rc={rc}):\n{said}")
     try:
         total = json.loads(report.read_text(encoding="utf-8"))["statistics"]["total"]
         sources, new = int(total.get("sources", 0)), int(total.get("newClones", 0))
-        lines = total.get("duplicatedLines", "?")
+        # THE NEW CLONES' LINES, which jscpd counts apart from the baseline's beside them: the
+        # whole tree's `duplicatedLines` is what the advice below compares with HEAD's.
+        lines = total.get("newDuplicatedLines", "?")
     except (OSError, ValueError, KeyError, TypeError) as e:
         raise Invalid(f"the jscpd report could not be read: {type(e).__name__}: {e}") from None
     if sources == 0:
@@ -89,8 +88,8 @@ def duplication(scratch: Path) -> str:
     if new > 0:
         # jscpd keys a clone by its content, so one that shrank under an edit reads as new.
         raise Blocked(
-            f"{said}\n{new} new clone(s) over a baseline of accepted duplication, in {sources} "
-            f"files, {lines} duplicated lines (rc={rc}).\n"
+            f"{said}\n{new} new clone(s), {lines} new duplicated lines, over a baseline of "
+            f"accepted duplication, in {sources} files (rc={rc}).\n"
             "A clone that shrank or split under your edit is counted as new even when the "
             "duplication went DOWN. Compare the duplicated lines with HEAD's first:\n"
             "    d=$(mktemp -d); git archive HEAD | tar -x -C \"$d\"\n"
@@ -102,11 +101,11 @@ def duplication(scratch: Path) -> str:
     return f"   {sources} files, no new duplication"
 
 
-def probe_fit() -> str:
+def probe_fit(root: Path) -> str:
     """The probe check's own lines for a covered task set; `Blocked` on a refusal it names,
     `Invalid` on anything else."""
     seam = os.environ.get("PRECOMMIT_PROBE")
-    rc, said = _run([seam] if seam else [sys.executable, *PROBE_CHECK], "the probe check")
+    rc, said = _run([seam] if seam else [sys.executable, *PROBE_CHECK], "the probe check", root)
     lines = said.splitlines()
     if rc == 0:
         if not any(line.startswith(CHECK_OK) for line in lines):
@@ -142,15 +141,15 @@ def main(argv: list[str] | None = None) -> int:
                             formatter_class=argparse.RawDescriptionHelpFormatter,
                             allow_abbrev=False).parse_args(argv)
     try:
-        os.chdir(_root())
+        root = _root()
         with tempfile.TemporaryDirectory(prefix="scry-hook-") as scratch:
             print("== jscpd (new duplication against the baseline)")
-            print(duplication(Path(scratch)))
+            print(duplication(root, Path(scratch)))
         print("== mcp_probe (the probe's tasks still fit the MCP servers)")
-        print(probe_fit())
+        print(probe_fit(root))
     except Blocked as e:
         print(f"pre-commit: BLOCKED -- {e}", file=sys.stderr)
-        return EXIT_BLOCKED
+        return EXIT_FAIL
     except Invalid as e:
         print(f"pre-commit: INVALID -- {e}", file=sys.stderr)
         return EXIT_INVALID
@@ -158,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"pre-commit: INVALID -- the hook stopped before its verdict: "
               f"{type(e).__name__}: {e}", file=sys.stderr)
         return EXIT_INVALID
-    return EXIT_CLEAN
+    return EXIT_PASS
 
 
 if __name__ == "__main__":

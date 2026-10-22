@@ -22,7 +22,7 @@ import dataclasses
 from pathlib import Path
 from typing import Any
 
-from scry_core import client_cap, probe
+from scry_core import client_cap, probe, probe_captures
 
 #: Where a repository keeps its probe, under its root: the servers file and the tasks directory.
 SERVERS_FILE = Path("mcp_probe") / "servers.py"
@@ -43,8 +43,8 @@ def captures_misjudged(repo: probe.ProbeRepo, server: str) -> list[str]:
     """Every task of `server` judged on the whole surface, as a real run answers it: each task's
     capture judged again with the server's own judge gives back the verdict recorded when it ran,
     and a task with no capture is named."""
-    return probe.capture_problems(repo, server, repo.captured_dir / server,
-                                  probe.tasks_file(repo, server))
+    return probe_captures.capture_problems(repo, server, repo.captured_dir / server,
+                                           probe.tasks_file(repo, server))
 
 
 def over_cap(repo: probe.ProbeRepo) -> list[str]:

@@ -12,8 +12,8 @@ a verdict, `TARGET` when every wait it made ended at one.
 WHAT DIFFERS IS THE MACHINE'S, handed in as a `SequenceMachine`: how a stop is waited for and
 proved, which steps answer on a running machine, what can stop one, how a step is kept in the
 account, and the survey at the stop. MAME's window of frames (`until_frame`) is a `Cycle` of its
-own, and DOSBox-X's step whose own wait for what it was to see ran out
-(`SequenceMachine.missed`) ends the list as a run's wait does.
+own, and a step whose own wait for what it was to see ran out (`SequenceMachine.missed`) ends the
+list as a run's wait does.
 """
 
 from __future__ import annotations
@@ -38,6 +38,12 @@ NO_FAILURE_WHY = "no step failed"
 def none_failed() -> dict[str, Any]:
     """`failed_at` of a list no step of which failed."""
     return contract.unavailable(NO_FAILURE_WHY)
+
+
+def where_stopped(failed_at: object) -> str:
+    """Where a `drive` act stopped, counted from 1 as every message counts steps: at a step, or
+    after its last one when the tail's wait ended it (`failed_at` unavailable)."""
+    return f"at step {failed_at + 1}" if isinstance(failed_at, int) else "after its last step"
 
 
 class SequenceMachine(ABC):
@@ -136,9 +142,9 @@ class Cycle(ABC):
         """Whether the cycle's clock ran out, checked before each step."""
 
     @abstractmethod
-    def after(self, reply: dict[str, Any], steps_completed: int) -> Stop | bool:
-        """After a step that answered: why the list ends, True when the cycle is done, False to
-        go on."""
+    def after(self, reply: dict[str, Any], steps_completed: int, step: str) -> Stop | bool:
+        """After a step that answered, `step` named as every message names it: why the list
+        ends, True when the cycle is done, False to go on."""
 
     @abstractmethod
     def short(self, steps_completed: int) -> Stop | None:
@@ -191,10 +197,18 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
         op = str(step["op"])
         args = recording.step_arguments(step)
         if r.running and not machine.answers_running(op, args):
-            state = machine.wait_for_stop(settle_seconds, progress)
+            try:
+                state = machine.wait_for_stop(settle_seconds, progress)
+            except contract.Invalid as e:
+                # THE CHANNEL FAILED WHILE THE LIST WAITED (a terminal that overflowed, a stub
+                # that hung up): the steps already sent are the caller's to know, so the list
+                # ends with them, the failure as its end.
+                return r.ended(e.code, f"while the list waited for a stop before "
+                               f"{_named(i, op, len(steps), cycle)}: {e}", keep_last=True,
+                               **{**_own(e), "failed_at": i})
             if state == "gone":
                 return r.ended("session_broken", f"the emulator is GONE (its bound expired or it "
-                               f"crashed) before the console step {op!r} could run",
+                               f"crashed) before {_named(i, op, len(steps), cycle)} could run",
                                keep_last=True, failed_at=i)
             if state == "running":
                 why = (f"the machine was still running {settle_seconds:g}s after the previous "
@@ -217,7 +231,8 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
         else:
             reply = ops[op](**args)
         if reply.get("status") != "ok":
-            return r.ended("step_failed", f"step {i} ({op!r}) failed: {reply.get('message')}",
+            return r.ended("step_failed",
+                           f"{_named(i, op, len(steps), cycle)} failed: {reply.get('message')}",
                            keep_last=False, also=[reply], failed_at=i,
                            failed={"op": op, "reply": reply})
         if (apart := recording.diverged(step.get(recording.RECORDED) or {}, reply)) is not None:
@@ -232,8 +247,8 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
             # own does.
             return r.ended(None, "", keep_last=True, failed_at=none_failed(),
                            verdict=contract.TIMEOUT,
-                           note=f"step {i} ({op!r}) waited for what it was to see and it did "
-                                f"not come; the steps after it were not sent")
+                           note=f"{_named(i, op, len(steps), cycle)} waited for what it was to "
+                                f"see and it did not come; the steps after it were not sent")
         if not machine.answers_running(op, args):
             r.came_to_rest = False
             r.running = r.released_last = machine.leaves_running(op, reply)
@@ -244,16 +259,31 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
             r.came_to_rest = r.running and not machine.running()
             r.running = r.running and not r.came_to_rest
             r.released_last = False
-        i += 1
         if cycle is not None:
-            done = cycle.after(reply, len(r.ran))
+            done = cycle.after(reply, len(r.ran), _named(i, op, len(steps), cycle))
             if isinstance(done, Stop):
                 return r.stopped_by_cycle(done)
             if done:
+                i += 1
                 break
+        i += 1
     if cycle is not None and (short := cycle.short(len(r.ran))) is not None:
         return r.stopped_by_cycle(short)
     return _tail(r, settle_seconds, progress, tail_wait)
+
+
+def _own(e: contract.Invalid) -> dict[str, Any]:
+    """What a refusal that ended the list carries of its own, past what the list's ending
+    states itself (where it failed, what it keeps)."""
+    return {k: v for k, v in e.fields.items() if k not in ("failed_at", "keep_last", "also")}
+
+
+def _named(i: int, op: str, length: int, cycle: Cycle | None) -> str:
+    """Step `i` as the caller counts it, from 1 as the progress line does, and inside its pass
+    when a cycle repeats the list."""
+    if cycle is None:
+        return f"step {i + 1} ({op!r})"
+    return f"step {i % length + 1} ({op!r}) of pass {i // length + 1}"
 
 
 def _tail(r: _Run, settle_seconds: float, progress: mprogress.Progress,
@@ -281,7 +311,11 @@ def _tail(r: _Run, settle_seconds: float, progress: mprogress.Progress,
     elif r.came_to_rest and (rested := m.rested(r.ran)) is not None:
         final = {"stopped": rested}
     elif r.running:
-        state = m.wait_for_stop(settle_seconds, progress, tail=True)
+        try:
+            state = m.wait_for_stop(settle_seconds, progress, tail=True)
+        except contract.Invalid as e:
+            return r.ended(e.code, f"while the list's tail waited for its stop: {e}",
+                           keep_last=True, **{**_own(e), "failed_at": none_failed()})
         if state == "gone":
             return r.ended("session_broken", "the sequence ended with the machine running and "
                            "the emulator is now GONE (its bound expired or it crashed)",

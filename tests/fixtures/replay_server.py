@@ -61,7 +61,7 @@ def perform(steps: list[dict[str, Any]], summaries: bool = False) -> dict[str, A
         raise RuntimeError("the double broke")
     if os.environ.get("REPLAY_DOUBLE_REFUSES_LIST"):
         return {"summary": "perform: INVALID", "status": "INVALID", "code": "bad_argument",
-                "message": "step 0 names no op this server has", "session": {}}
+                "message": "step 1 names no op this server has", "session": {}}
     held = 0
     for i, step in enumerate(steps):
         if step.get("op") == "fails":

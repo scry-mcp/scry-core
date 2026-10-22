@@ -193,7 +193,7 @@ def test_a_server_that_says_another_count_of_held_steps_is_exit_1(
 
 
 @pytest.mark.parametrize("env, says", [
-    ("REPLAY_DOUBLE_REFUSES_LIST", "the server did not play the list: step 0 names no op"),
+    ("REPLAY_DOUBLE_REFUSES_LIST", "the server did not play the list: step 1 names no op"),
     ("REPLAY_DOUBLE_RAISES", "INVALID perform"),
     ("REPLAY_DOUBLE_DIES", "INVALID"),
 ])

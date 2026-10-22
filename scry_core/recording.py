@@ -528,10 +528,11 @@ def refuse_recorded(step: Mapping[str, Any]) -> str | None:
 def divergence(i: int, op: str, reply: Mapping[str, Any],
                apart: tuple[str, Any, Any]) -> tuple[str, dict[str, Any]]:
     """The message and the fields of the INVALID `diverged` a sequence answers when step `i`
-    (`op`) did not hold to its `recorded`: what the runner reads (`failed_at`, `field`,
+    (`op`, counted from 1 in the message as the progress line counts) did not hold to its
+    `recorded`: what the runner reads (`failed_at`, `field`,
     `recorded`, `got`) and the step's own reply under `failed`, as a failed step carries it."""
     field, recorded, got = apart
-    return (f"step {i} ({op!r}) diverged: `{field}` was recorded {recorded!r} and came back "
+    return (f"step {i + 1} ({op!r}) diverged: `{field}` was recorded {recorded!r} and came back "
             f"{got!r}", {"failed_at": i, "failed": {"op": op, "reply": dict(reply)},
                          "field": field, "recorded": recorded, "got": got})
 

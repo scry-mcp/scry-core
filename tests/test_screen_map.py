@@ -362,7 +362,7 @@ def test_map_add_and_save_refuse_what_their_arguments_cannot_be(tmp_path: Path) 
     with pytest.raises(Invalid, match="match is a list of at least one crop"):
         maps.add("a", "0,0,1,1", [], Reads(TITLE))
     maps.add("a", [[0, 0, 1, 1]], [], Reads(TITLE))
-    with pytest.raises(Invalid, match="overwrite='yes' is true or false"):
+    with pytest.raises(Invalid, match="overwrite is true or false; got 'yes'"):
         maps.save(str(tmp_path / "x.scry-map.json"), "yes")  # type: ignore[arg-type]
     taken = tmp_path / "dir.scry-map.json"
     taken.mkdir()
@@ -558,7 +558,7 @@ def test_a_load_that_would_make_the_two_layers_unsaveable_is_refused(
 
 def test_check_save_judges_the_path_and_the_overwrite(tmp_path: Path) -> None:
     screen_map.check_save(str(tmp_path / "demo.scry-map.json"), False)
-    with pytest.raises(Invalid, match="overwrite='yes' is true or false"):
+    with pytest.raises(Invalid, match="overwrite is true or false; got 'yes'"):
         screen_map.check_save(str(tmp_path / "demo.scry-map.json"), "yes")
     with pytest.raises(Invalid, match="is not named"):
         screen_map.check_save(str(tmp_path / "demo.json"), True)

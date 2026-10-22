@@ -46,16 +46,12 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-EXIT_OK, EXIT_FAILED, EXIT_INVALID = 0, 1, 3
+from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 #: The manifest's name inside its bench: the contract, so no caller names it.
 MANIFEST = "bench.json"
 KEYS = ("path", "sha256", "source_repo", "source_path", "source_commit")
 CAPTURE_TIMEOUT_S = 600
-
-
-class Invalid(Exception):
-    """Nothing was examined: no verdict about the bench."""
 
 
 @dataclass(frozen=True)
@@ -208,7 +204,7 @@ def _check(at: Path) -> int:
         print(line)
     if not found:
         print(f"OK {at}: {len(load(at / MANIFEST))} files match the manifest")
-    return EXIT_FAILED if found else EXIT_OK
+    return EXIT_FAIL if found else EXIT_PASS
 
 
 def _head(checkout: Path) -> str:
@@ -295,7 +291,7 @@ def _fill(at: Path, sources: dict[str, Path], record: bool) -> int:
                 "; manifest NOT recorded, so the copies made now are off their old pins")
     print(f"fill {at}: {copied} copied, {kept} already in place, {refused} refused, "
           f"{others} from sources not named{recorded}")
-    return EXIT_FAILED if refused else EXIT_OK
+    return EXIT_FAIL if refused else EXIT_PASS
 
 
 def _source(text: str) -> tuple[str, Path]:

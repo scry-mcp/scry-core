@@ -6,7 +6,6 @@ from __future__ import annotations
 import asyncio
 import json
 import shlex
-import threading
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -79,7 +78,7 @@ class _Server:
                                            stop_fields=("pc", "frame"), plan=plan,
                                            **VOCABULARY)
         self.b = boundary.Boundary(
-            Envelope("t", instructions="i", refusal=lambda *a: {}), threading.RLock(),
+            Envelope("t", instructions="i", refusal=lambda *a: {}), boundary.ServerLock(),
             invoke=lambda fn, bound: dict(fn(*bound.args, **bound.kwargs)),
             end=lambda n, o: ("stopped", None),
             refusal_line=lambda n, r: n, session_block=lambda whole: {},
@@ -574,7 +573,7 @@ def test_a_steps_arguments_leave_out_its_op_and_its_recorded() -> None:
 
 def test_a_divergence_carries_what_the_runner_reads_and_the_steps_own_reply() -> None:
     message, fields = recording.divergence(2, "read_memory", {"hex": "01"}, ("hex", "00", "01"))
-    assert message == "step 2 ('read_memory') diverged: `hex` was recorded '00' and came back '01'"
+    assert message == "step 3 ('read_memory') diverged: `hex` was recorded '00' and came back '01'"
     assert fields == {"failed_at": 2, "failed": {"op": "read_memory", "reply": {"hex": "01"}},
                       "field": "hex", "recorded": "00", "got": "01"}
 

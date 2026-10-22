@@ -32,6 +32,7 @@ class _Adapter:
         #: Whether `still()` held at each repaint asked for.
         self.repaints: list[bool] = []
         self.repaint_fails = False
+        self.wakes = 0
 
     def show(self, state: presence.State) -> None:
         self.entered.set()
@@ -39,6 +40,9 @@ class _Adapter:
         if self.fail is not None:
             raise self.fail
         self.shown.append(state)
+
+    def wake(self) -> None:
+        self.wakes += 1
 
     def repaint(self, still: Callable[[], bool]) -> None:
         self.repaints.append(still())
@@ -66,6 +70,14 @@ def test_open_shows_held_before_it_answers_and_starts_a_daemon_writer() -> None:
     assert a.shown == ["held"] and p.reply() is True
     assert p._thread.is_alive() and p._thread.daemon, "a server that exits must not wait on it"
     p.close()
+
+
+def test_close_wakes_a_repaint_that_waits_for_the_lock() -> None:
+    """The close happens under the lock, so no release would wake a repaint waiting for it."""
+    a = _Adapter()
+    p = _open(a)
+    p.close()
+    assert a.wakes == 1
 
 
 @pytest.mark.parametrize(("raised", "why"), [
@@ -227,7 +239,7 @@ def test_a_failing_delivery_never_reaches_the_reply_of_the_call_it_marks() -> No
     a = _Adapter()
     p = _open(a)
     a.fail = RuntimeError("the emulator is gone")
-    lock = threading.RLock()
+    lock = boundary.ServerLock()
 
     def invoke(fn: Callable[..., Any], bound: inspect.BoundArguments) -> dict[str, Any]:
         return dict(fn(*bound.args, **bound.kwargs))

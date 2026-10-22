@@ -1,7 +1,12 @@
-"""The FORMAT of a watched value: a scalar, an array of scalars, a string or a struct.
+"""How a watched value is TYPED, in three grammars that serve one question: the FORMAT of its
+bytes (`parse`, below), the `types` file that names a format per symbol (`read_types`), and the
+pointer REF that reads through one (`parse_pointer`: `[ref]+off` or `base->field`, the field
+found in the base's format). They live together because each of the other two is read through
+the first.
 
-A symbol table gives addresses, not types, so a watch declares how its bytes read, and the
-grammar names the shape, so a struct reads as its fields and a name as text:
+THE FORMAT: a scalar, an array of scalars, a string or a struct. A symbol table gives
+addresses, not types, so a watch declares how its bytes read, and the grammar names the shape,
+so a struct reads as its fields and a name as text:
 
     u16              one scalar; a `length` that is a whole number of them reads a list
     u16[8]           an array, eight of them, the width implied

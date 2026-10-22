@@ -211,7 +211,7 @@ def test_the_two_tools_answer_and_judge_their_arguments(tmp_path: Path) -> None:
             (media_tools.check_audio_measure, {"path": "/s", "window": [1, 0]}, "window="),
             (media_tools.check_audio_measure, {"path": "/s", "window": [-1, 2]}, "window="),
             (media_tools.check_audio_measure, {"path": "/s", "channel": True}, "channel="),
-            (media_tools.check_audio_diff, {"a": "/a", "b": "/b", "align": 1}, "align="),
+            (media_tools.check_audio_diff, {"a": "/a", "b": "/b", "align": 1}, "align is true"),
             (media_tools.check_audio_diff, {"a": "/a", "b": "b"}, "b='b'")):
         with pytest.raises(Invalid, match=said):
             check(**kw)

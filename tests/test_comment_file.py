@@ -60,3 +60,16 @@ def test_render_refuses_what_parse_would_and_names_the_place() -> None:
 def test_a_text_is_one_visible_line(value: str, said: str | None) -> None:
     fault = cf.text_fault(value)
     assert (fault is None) if said is None else (fault is not None and said in fault), fault
+
+
+def test_a_policy_parses_and_renders_held_to_its_own_columns() -> None:
+    """The methods hold the rows to THIS policy: one that refuses a ref refuses it both ways."""
+    open_policy = cf.Policy(ref_fault=lambda _r: None, cpu_fault=lambda _c: None)
+    strict = cf.Policy(ref_fault=lambda r: "not this one" if r == "x" else None,
+                       cpu_fault=lambda _c: None)
+    text = open_policy.render([cf.Row("x", "", STAMP, "said")])
+    assert [r.ref for r in open_policy.parse(text)] == ["x"]
+    with pytest.raises(cf.CommentFileError, match="not this one"):
+        strict.parse(text)
+    with pytest.raises(cf.CommentFileError, match="not this one"):
+        strict.render([cf.Row("x", "", STAMP, "said")])

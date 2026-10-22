@@ -3,6 +3,7 @@ and the arguments handed on to the server's own value checks."""
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Annotated, Any
 
 import pytest
@@ -20,7 +21,7 @@ def tool(count: int, name: str = "", flag: bool = False, rate: float = 1.0,
     ({"count": True}, "count is an integer; got True"),
     ({"count": "3"}, "count is an integer; got '3'"),
     ({"count": 1, "name": 5}, "name is a string; got 5"),
-    ({"count": 1, "flag": 1}, "flag is a boolean; got 1"),
+    ({"count": 1, "flag": 1}, "flag is true or false; got 1"),
     ({"count": 1, "rate": "x"}, "rate is a number; got 'x'"),
     ({"count": 1, "maybe": "2"}, "maybe is an integer; got '2'"),
     ({"count": 1, "sized": "4"}, "sized is an integer; got '4'"),
@@ -72,3 +73,17 @@ def test_a_servers_conversion_reaches_the_type_judge_and_the_value_checks() -> N
     assert refusal is None and args == {"count": 6}
     unconverted, _ = steps.judge(tool, {"op": "tool", "count": 6.0})
     assert unconverted is not None and "count is an integer" in unconverted["message"]
+
+
+def test_the_step_ops_are_the_registered_tools_but_the_ones_named_out() -> None:
+    """The module's own binding is read first, the registration's function otherwise."""
+    def own() -> dict[str, Any]:
+        return {}
+
+    def registered() -> dict[str, Any]:
+        return {}
+
+    tools = [SimpleNamespace(name=n, fn=registered) for n in ("read", "start", "write")]
+    server = SimpleNamespace(_tool_manager=SimpleNamespace(list_tools=lambda: tools))
+    got = steps.step_ops(server, {"read": own}, ["start"])
+    assert got == {"read": own, "write": registered}

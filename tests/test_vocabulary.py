@@ -44,3 +44,21 @@ def test_one_of_refuses_in_one_sentence_and_never_takes_a_bool_for_one() -> None
         vocabulary.one_of("mode", "x", ("into", "over"), "; why")
     with pytest.raises(Invalid, match="got True"):
         vocabulary.one_of("length", True, (1, 2))
+
+
+@pytest.mark.parametrize(("value", "zero_means"), [
+    (0, ""), (True, ""), (vocabulary.WAIT_MAX_S + 0.5, ""), (float("nan"), ""), (float("inf"), ""),
+    (-1, "no wait"), ("5", "")])
+def test_a_wait_outside_its_bound_is_refused_in_one_sentence(value: object,
+                                                            zero_means: str) -> None:
+    with pytest.raises(Invalid, match="is not a bound: a number of seconds, never a bool") as e:
+        vocabulary.check_wait(value, zero_means=zero_means)
+    assert f"at most {vocabulary.WAIT_MAX_S:g}," in str(e.value)
+
+
+def test_a_wait_inside_its_bound_and_zero_where_it_means_something_pass() -> None:
+    vocabulary.check_wait(vocabulary.WAIT_MAX_S)
+    vocabulary.check_wait(0.25)
+    vocabulary.check_wait(0, "settle_seconds", zero_means="never wait")
+    with pytest.raises(Invalid, match=r"settle_seconds=-1 .*0 \(never wait\) or more than zero"):
+        vocabulary.check_wait(-1, "settle_seconds", zero_means="never wait")

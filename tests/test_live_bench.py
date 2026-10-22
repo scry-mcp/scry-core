@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from scry_core import live_bench as bench
+from scry_core import verdict
 
 DATA = b"the pinned bytes\n"
 PIN = hashlib.sha256(DATA).hexdigest()
@@ -342,10 +343,17 @@ def test_pinned_is_every_path_the_manifest_pins_or_invalid(manifest: Path) -> No
     _write(manifest, [_entry("board/a.bin"), _entry("other/c.bin")])
     assert bench.Bench(manifest.parent).pinned == {"board/a.bin", "other/c.bin"}
     manifest.write_text("[]")
-    with pytest.raises(bench.Invalid, match="names no file"):
+    with pytest.raises(verdict.Invalid, match="names no file"):
         _ = bench.Bench(manifest.parent).pinned
 
 
+
+#: The cases a file's mode decides: a superuser reads and writes whatever the mode says, so under
+#: one they could not fail and are not run (their green would say nothing).
+MODES_BIND = pytest.mark.skipif(os.name != "nt" and os.geteuid() == 0,
+                                reason="the superuser is not held to a file's mode")
+
+@MODES_BIND
 def test_a_copy_that_cannot_be_read_is_a_reason_and_not_a_crash(
     manifest: Path, tmp_path: Path,
 ) -> None:
@@ -360,6 +368,7 @@ def test_a_copy_that_cannot_be_read_is_a_reason_and_not_a_crash(
         copy.chmod(0o644)
 
 
+@MODES_BIND
 def test_check_of_a_copy_that_cannot_be_read_is_invalid_naming_it(
     manifest: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path,
 ) -> None:
@@ -377,6 +386,7 @@ def test_check_of_a_copy_that_cannot_be_read_is_invalid_naming_it(
     assert err.startswith("INVALID: check stopped before its verdict") and err.count("\n") == 1
 
 
+@MODES_BIND
 def test_fill_into_a_bench_it_cannot_write_is_invalid(
     manifest: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path,
 ) -> None:
