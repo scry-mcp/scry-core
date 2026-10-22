@@ -164,6 +164,7 @@ class _Run:
     held: int = 0
     running: bool = False
     released_last: bool = False   # the LAST step is the one that let the machine run
+    released: bool = False        # SOME step let the machine run: the list is heading for a stop
     came_to_rest: bool = False    # the LAST step answered on a running machine and found it stopped
     waited: bool = False          # a wait for a stop was asked for and made: a verdict is earned
 
@@ -252,6 +253,7 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
         if not machine.answers_running(op, args):
             r.came_to_rest = False
             r.running = r.released_last = machine.leaves_running(op, reply)
+            r.released = r.released or r.released_last
         else:
             # A STEP THAT ANSWERS ON A RUNNING MACHINE DOES NOT RELEASE IT, and whether it
             # stopped it is the session's to say, never the op's name: a `stop`, or a breakpoint
@@ -310,6 +312,13 @@ def _tail(r: _Run, settle_seconds: float, progress: mprogress.Progress,
                          f"list with the step that releases the machine, to wait for its stop"}
     elif r.came_to_rest and (rested := m.rested(r.ran)) is not None:
         final = {"stopped": rested}
+    elif r.running and not r.released:
+        # A LIST BEGUN ON A RUNNING MACHINE THAT RELEASED NOTHING is not heading for a stop (keys
+        # sent to a running program): it hands the machine back running, where a wait would sit
+        # out its bound for a stop the list never asked for.
+        final = {"still_running": True,
+                 "note": "the list began with the machine running and no step of it released it, "
+                         "so no stop was waited for"}
     elif r.running:
         try:
             state = m.wait_for_stop(settle_seconds, progress, tail=True)

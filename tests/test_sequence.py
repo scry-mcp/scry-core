@@ -358,6 +358,19 @@ def test_a_machine_may_begin_a_list_as_stopped_whatever_its_flag_says() -> None:
     assert "verdict" not in ended.fields and "still_running" not in ended.fields
 
 
+def test_a_list_begun_running_that_released_nothing_waits_for_no_stop_at_its_tail() -> None:
+    """Keys sent to a running program, a breakpoint declared: the list was not heading for a
+    stop, so it hands the machine back running instead of sitting out its bound; one that
+    released the machine itself still waits for the stop it was heading for."""
+    m = Double(running=True, can_stop=True, waits=["stopped"])
+    ended, calls = _run(m, [{"op": "send_keys"}, {"op": "send_keys"}])
+    assert calls == ["send_keys", "send_keys"] and m.asked_waits == [], m.asked_waits
+    assert ended.fields["still_running"] is True and "verdict" not in ended.fields, ended.fields
+    released = Double(running=True, can_stop=True, waits=["stopped", "stopped"])
+    ended, _ = _run(released, [{"op": "send_keys"}, {"op": "resume"}])
+    assert released.asked_waits[-1] == (5.0, True), released.asked_waits   # the tail's
+
+
 def test_a_stop_is_only_met_by_a_step_after_the_machine_ran_and_a_later_release_forgets_it(
         ) -> None:
     # A list that never ran the machine meets no stop, whatever `running()` says after a step.
