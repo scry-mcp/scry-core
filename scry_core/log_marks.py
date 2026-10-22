@@ -1,6 +1,7 @@
 """`since_mark`, the position `log` and `log_wait` read after, and the `mark` `state_load` answers:
 the descriptions, the schema bound and the refusals both servers give in the same words; and the
-log block every stop reply carries, which hands over the mark its lines start at."""
+log block every stop reply carries, which hands over the mark its lines start at; and the bound
+on the last words `close` hands back of each channel (`TAIL_CHARS`)."""
 
 from __future__ import annotations
 

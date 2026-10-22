@@ -425,3 +425,21 @@ def test_a_refusal_carrying_the_list_s_own_fields_ends_it_all_the_same() -> None
     ending states where it failed, and the refusal's other fields ride beside it."""
     e = contract.Invalid("unexpected_answer", "cut", failed_at=7, keep_last=False, extra=1)
     assert sequence._own(e) == {"extra": 1}
+
+
+def test_a_refused_list_is_said_step_by_step_from_one() -> None:
+    said = sequence.refused_text([{"step": 0, "op": "read", "message": "has no x"},
+                                  {"step": 2, "op": None, "message": "is not a step (3)"}])
+    assert said == ("2 steps refused before anything ran: step 1 ('read') has no x; "
+                    "step 3 is not a step (3). Nothing was run")
+
+
+def test_an_act_is_told_without_the_envelope_and_stopped_by_its_own_code() -> None:
+    ran = {"status": "INVALID", "session": {}, "code": "not_stopped", "message": "running",
+           "failed_at": 1, "ran": []}
+    told = sequence.act_told(ran)
+    assert "status" not in told and "session" not in told and "failed" not in told
+    assert sequence.act_stopped(ran) == ("not_stopped", "the act stopped at step 2: running")
+    assert sequence.act_stopped({"message": "x"})[0] == "step_failed"
+    assert sequence.act_ran_out()["available"] is False
+    assert sequence.NO_EXPECT["checked"] is False

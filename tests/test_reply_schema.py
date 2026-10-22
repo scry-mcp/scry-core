@@ -101,3 +101,27 @@ def test_a_reply_paragraph_is_found_however_it_opens() -> None:
     assert reply_schema.own_fields(_Model) == ["rows"]
     per_row = "Reply, per channel in `measures` (`channel`): `peak`, `rms`. `path` too."
     assert reply_schema.reply_sentence_names(per_row) == ["measures", "path"]
+
+
+class _Tool:
+    def __init__(self, name: str, description: str, args: tuple[str, ...] = ()) -> None:
+        self.name, self.description = name, description
+        self.input_schema: dict[str, Any] = {"properties": {a: {} for a in args}}
+
+
+def test_the_sentence_faults_name_a_missing_field_a_silent_model_and_a_stale_word() -> None:
+    tools = [_Tool("one", "Reply: `rows`, `extra`."), _Tool("two", "No paragraph."),
+             _Tool("three", "Reply: `rows` and `quit`.")]
+    models = {"one": _Model, "two": _Model, "three": _Model}
+    got = reply_schema.sentence_faults(tools, models, {"three": ("quit", "gone")})
+    assert got == {"one": ["extra"], "two": "its description names no field of its reply",
+                   "three": "allowed and no longer quoted: ['gone']"}
+
+
+def test_the_stop_fields_are_held_to_every_tool_that_quotes_them() -> None:
+    stop = "the stop: `rows`, `pc`"
+    tools = [_Tool("a", f"Reply: {stop}."), _Tool("b", "Reply: `rows`.")]
+    assert reply_schema.stop_fields_lacking(tools, {"a": _Model, "b": _Model}, stop) == {
+        "a": ["pc"]}
+    with pytest.raises(ValueError, match="nothing would be examined"):
+        reply_schema.stop_fields_lacking(tools[1:], {"b": _Model}, stop)

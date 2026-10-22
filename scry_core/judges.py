@@ -1,6 +1,7 @@
 """The argument judges the media layer shares: whole numbers, rectangles, shifts, paths and the
 picture a path names. Each refuses `bad_argument` in a sentence naming the argument, so a server
-tool and a file tool reject one mistake in one voice.
+tool and a file tool reject one mistake in one voice. Beside them, the two servers' shared
+listing bounds (`HITS_MAX`, `HITS_DEFAULT`) and a value written at its width (`hex_at_width`).
 """
 
 from __future__ import annotations

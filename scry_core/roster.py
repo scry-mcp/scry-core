@@ -16,6 +16,15 @@ def listed(names: Iterable[str]) -> str:
     return ", ".join(names)
 
 
+def answers_while_running(running_ok: Iterable[str], not_steps: Iterable[str],
+                          kept_out: Iterable[str]) -> list[str]:
+    """What a refusal for a running machine names as answering: the operations a list may run
+    on it, the last stop's registers, and the tools that are no step (the two batch tools, the
+    session's end) but the ones `kept_out` (the server's start and its other lifecycle tool)."""
+    return [*sorted(running_ok), "registers(from_last_stop=True)",
+            *sorted(set(not_steps) - set(kept_out))]
+
+
 @dataclass(frozen=True)
 class Roster:
     """`families`, `(name, tools)` in the order the instructions list them, and `answering`,

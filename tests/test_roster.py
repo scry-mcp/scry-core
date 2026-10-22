@@ -28,3 +28,9 @@ def test_the_partition_names_what_breaks_it() -> None:
     broken = Roster((("A", ("x", "y")), ("B", ("y",))), ())
     assert broken.unlisted(["x", "z"]) == ["held twice: y", "in no family: z",
                                            "not registered: y"]
+
+
+def test_what_answers_while_running_is_the_running_ops_the_registers_and_the_non_steps() -> None:
+    from scry_core.roster import answers_while_running
+    assert answers_while_running({"b", "a"}, {"start", "close", "perform"}, {"start"}) == [
+        "a", "b", "registers(from_last_stop=True)", "close", "perform"]

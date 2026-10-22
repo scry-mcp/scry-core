@@ -182,3 +182,41 @@ def unmodelled(doc: str, model: type, not_fields: Iterable[str] = ()) -> list[st
     held = set(_fields(model))
     other = set(contract.CODES) | set(get_args(contract.Verdict)) | set(not_fields)
     return [n for n in reply_sentence_names(doc) if n not in held and n not in other]
+
+
+def sentence_faults(tools: Iterable[Any], models: Mapping[str, type],
+                    words: Mapping[str, Iterable[str]]) -> dict[str, Any]:
+    """What a server's battery holds its descriptions to, by tool: a field a `Reply` paragraph
+    names that the tool's model lacks, a model with fields of its own whose description names
+    none, and an allowed word (`words`, the tool's quoted values, commands and row fields) the
+    description no longer quotes. `tools` as `list_tools()` answers them. Empty when all hold."""
+    tools = list(tools)
+    names = {t.name for t in tools}
+    wrong: dict[str, Any] = {}
+    for t in tools:
+        doc, model = t.description or "", models[t.name]
+        allowed = set(words.get(t.name, ()))
+        said = reply_sentence_names(doc)
+        if not said and own_fields(model):
+            wrong[t.name] = "its description names no field of its reply"
+        elif miss := unmodelled(doc, model,
+                                names | set(t.input_schema.get("properties", {})) | allowed):
+            wrong[t.name] = miss
+        elif unused := sorted(allowed - set(said)):
+            wrong[t.name] = f"allowed and no longer quoted: {unused}"
+    return wrong
+
+
+def stop_fields_lacking(tools: Iterable[Any], models: Mapping[str, type],
+                        stop_fields: str) -> dict[str, list[str]]:
+    """The stop's fields a server's descriptions quote through one text (`stop_fields`, "the
+    stop: `a`, `b`..."), held to the model of every tool that quotes it: the names each lacks.
+    INVALID-shaped (a `ValueError`) when the text names fewer than two fields or no tool quotes
+    it, so an empty answer is never a check that examined nothing."""
+    fields = reply_sentence_names("Reply: " + stop_fields.split(":", 1)[1])
+    quoting = [t for t in tools if stop_fields in (t.description or "")]
+    if len(fields) < 2 or not quoting:
+        raise ValueError(f"the stop's text names {fields} and {len(quoting)} tool(s) quote it: "
+                         "nothing would be examined")
+    return {t.name: lacks for t in quoting
+            if (lacks := sorted(set(fields) - set(own_fields(models[t.name]))))}

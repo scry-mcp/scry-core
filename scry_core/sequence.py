@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from scry_core import progress as mprogress
-from scry_core import recording
+from scry_core import prose, recording
 from scry_core import reply_contract as contract
 
 Ops = dict[str, Callable[..., dict[str, Any]]]
@@ -44,6 +44,43 @@ def where_stopped(failed_at: object) -> str:
     """Where a `drive` act stopped, counted from 1 as every message counts steps: at a step, or
     after its last one when the tail's wait ended it (`failed_at` unavailable)."""
     return f"at step {failed_at + 1}" if isinstance(failed_at, int) else "after its last step"
+
+
+def refused_text(refused: list[dict[str, Any]]) -> str:
+    """The message of a list refused before anything ran: every refusal, each by its step
+    (counted from 1, as every message counts steps) and its op (a step that is no mapping has
+    none to name, and its own message quotes it)."""
+    def one(e: dict[str, Any]) -> str:
+        op = f" ({e['op']!r})" if isinstance(e.get("op"), str) else ""
+        return f"step {e['step'] + 1}{op} {e['message']}"
+    return (f"{prose.counted(len(refused), 'step')} refused before anything ran: "
+            + "; ".join(one(e) for e in refused) + ". Nothing was run")
+
+
+#: `drive`'s verify when no `expect` was given.
+NO_EXPECT: dict[str, Any] = {
+    "checked": False,
+    "why": "no `expect` given; the act's own steps carried whatever verification they asked for"}
+
+
+def act_told(ran: dict[str, Any]) -> dict[str, Any]:
+    """`drive`'s `act`: what the list said, minus the envelope's own fields, so an act reads as
+    `perform` does (`failed` only when a step failed; `failed_at` says so either way)."""
+    return {k: v for k, v in ran.items() if k not in ("status", "session")}
+
+
+def act_stopped(ran: dict[str, Any]) -> tuple[contract.Code, str]:
+    """The code and the message of an act that did not end `ok`: the list's own code (a step
+    that failed is `step_failed`; a list the executor ended says why), and where it stopped."""
+    code: contract.Code = ran.get("code", "step_failed")
+    return code, f"the act stopped {where_stopped(ran.get('failed_at'))}: {ran.get('message')}"
+
+
+def act_ran_out() -> dict[str, Any]:
+    """`drive`'s verify when the act's own wait ran out: nothing of the whole act to verify."""
+    return {"checked": False, **contract.unavailable(
+        "the act ran out its wait before it ended (`act.verdict` TIMEOUT), so there is no "
+        "effect of the whole act to verify")}
 
 
 class SequenceMachine(ABC):
