@@ -83,8 +83,8 @@ def text_fault(text: str) -> str | None:
         return f"holds {bad!r}, which is not printable: one comment is one line of text"
     if text != text.strip():
         return "starts or ends with whitespace"
-    # MEASURED LAST: a lone surrogate cannot be encoded at all, and the printable rule has
-    # already refused it by name.
+    # THE SIZE IS CHECKED LAST: a lone surrogate cannot be encoded at all, and the printable rule
+    # has already refused it by name.
     size = len(text.encode("utf-8"))
     if size > TEXT_MAX_BYTES:
         return f"is {size} UTF-8 bytes, past the {TEXT_MAX_BYTES} a comment file of version 1 holds"

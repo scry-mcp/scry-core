@@ -173,3 +173,7 @@ uv run pytest -q
 ```
 
 Licence: MIT.
+
+## Credits
+
+Developed by Optimiza ([Marcos Hernández](https://www.linkedin.com/in/optimiza/)), in collaboration with [MS-DOS Club](https://msdos.club) and its [podcast](https://www.ivoox.com/podcast-ms-dos-club_sq_f11160693_1.html).

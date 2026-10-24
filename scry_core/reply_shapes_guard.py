@@ -50,7 +50,7 @@ from scry_core.reply_shapes import ANCHORS_INI
 
 # THE TABLE HOLDS A WORD ONLY ONCE TWO REPLIES HAVE SPELLED IT WITH TWO SHAPES: `truncated`, a
 # count in one tool and a boolean in the rest, is a boolean everywhere. A row is added for a
-# measured case, never for a guess.
+# reply that spelled the word two ways, never for a guess.
 SHAPES: dict[str, type] = {"truncated": bool}
 
 Envelope = Callable[[dict[str, Any]], dict[str, Any]]
