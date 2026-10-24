@@ -63,25 +63,8 @@ _ANY_SIDE = 1 << 62
 
 Layer = Literal["session", "file"]
 
-#: The two file tools' descriptions, the same on both servers: they touch no machine.
-LOAD_DESCRIBED = (
-    "An application's SCREEN MAP as the FILE layer, replacing any loaded one: its screens, each "
-    "known by the `scry-sig/1` signatures of declared stable regions, and the named controls on "
-    f"each. `path`: `<application>{SUFFIX}`, absolute or `~`-led. It lives for the server; a "
-    "`start` keeps it. Any state, before a session too.\n\n"
-    "    Reply: `path`, `application`, `screens`, `controls` (counts). Refused whole, naming the "
-    f"first fault: a file that is not `{FORMAT}`, a name used twice, a rectangle off its screen, "
-    "an `application` other than the file's name says (`bad_argument`)")
-SAVE_DESCRIBED = (
-    "The file layer and the session layer written as ONE map, the session's screens winning, "
-    "and that file made the file layer (the session's screens are `promoted`). `dest` is the file "
-    "to write, named as `load`'s `path` is; one already there is refused unless `overwrite`. "
-    "Any state.\n\n"
-    "    Reply: `path` (the `dest` written), `application`, `screens`, `controls`, `promoted`. "
-    "Refused: nothing mapped (`needs_call`); a `dest` not named as a map is, or there without "
-    "`overwrite` (`bad_argument`)")
 #: What a tool's description fills from here (`scry_core.docs.filled`).
-DOC_VALUES = {"MAP_LOAD": LOAD_DESCRIBED, "MAP_SAVE": SAVE_DESCRIBED}
+DOC_VALUES = {"MAP_SUFFIX": SUFFIX}
 
 
 @dataclass(frozen=True)
@@ -417,12 +400,12 @@ def _keys(obj: dict[str, Any], allowed: set[str], at: str) -> None:
                       f"have (it has {sorted(allowed)})")
 
 
-def load_line(reply: dict[str, Any]) -> str:
+def load_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     return (f"{prose.counted(reply['screens'], 'screen')}, "
             f"{prose.counted(reply['controls'], 'control')} of {reply['application']}")
 
 
-def add_line(reply: dict[str, Any]) -> str:
+def add_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     w, h = reply["size"]
     shadow = ", shadowing the file's" if reply["shadows_file"] else ""
     return (f"{reply['screen']} ({reply['kind']} {w}x{h}), "
@@ -440,7 +423,7 @@ def find_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
             f"{reply['screens_tried']} of that kind and size)")
 
 
-def save_line(reply: dict[str, Any]) -> str:
+def save_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     return (f"{prose.counted(reply['screens'], 'screen')} to {Path(reply['path']).name}, "
             f"{len(reply['promoted'])} promoted from the session")
 

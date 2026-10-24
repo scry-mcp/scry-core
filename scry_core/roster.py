@@ -6,7 +6,7 @@ registers, which each server's suite holds it to (`unlisted`).
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 
@@ -14,6 +14,13 @@ def listed(names: Iterable[str]) -> str:
     """Names as a roster lists them: plain, since every word of the list is a tool's name and the
     client's cap is counted on every character."""
     return ", ".join(names)
+
+
+def by_method(running_ok: Iterable[str], methods: Mapping[str, Iterable[str]]) -> set[str]:
+    """The names a running machine answers: each operation whole, and a fold that answers by
+    some of its methods only, named with them (`map_write(method=load|save)`)."""
+    return ({op for op in running_ok if op not in methods}
+            | {f"{op}(method={'|'.join(ok)})" for op, ok in methods.items()})
 
 
 def answers_while_running(running_ok: Iterable[str], not_steps: Iterable[str],

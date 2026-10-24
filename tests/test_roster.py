@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from scry_core import roster
 from scry_core.roster import Roster
 
 ROSTER = Roster(families=(("Session", ("start", "close")), ("Read", ("read", "log")),
@@ -34,3 +35,9 @@ def test_what_answers_while_running_is_the_running_ops_the_registers_and_the_non
     from scry_core.roster import answers_while_running
     assert answers_while_running({"b", "a"}, {"start", "close", "perform"}, {"start"}) == [
         "a", "b", "registers(from_last_stop=True)", "close", "perform"]
+
+
+def test_a_fold_that_answers_by_some_methods_is_named_with_them() -> None:
+    assert roster.by_method({"status", "scan", "map_write"},
+                            {"scan": ("clear",), "map_write": ("load", "save")}) == {
+        "status", "scan(method=clear)", "map_write(method=load|save)"}

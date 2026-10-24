@@ -15,8 +15,8 @@ def _add(ref: str, text: str = "note") -> dict[str, Any]:
     return {"ref": ref, "text": text}
 
 
-def _clear(ref: str = "all") -> dict[str, Any]:
-    return {"cleared": ref}
+def _clear(ref: str = "all", *, progress: str = "none") -> dict[str, Any]:
+    return {"cleared": ref, "progress": progress}
 
 
 def _judge(**given: Any) -> None:
@@ -24,16 +24,21 @@ def _judge(**given: Any) -> None:
         raise Invalid("bad_argument", "ref='bad'")
 
 
-FOLD = {"add": methods.Method(_add, _judge, lambda r: f"{r['ref']}: {r['text']}"),
-        "clear": methods.Method(_clear, _judge, lambda r: f"cleared {r['cleared']}")}
+FOLD = {"add": methods.Method(_add, _judge, lambda a, r: f"{r['ref']}: {r['text']}"),
+        "clear": methods.Method(_clear, _judge, lambda a, r: f"cleared {r['cleared']}")}
 
 
 def test_the_method_named_runs_on_what_it_was_given_and_its_own_defaults() -> None:
     chosen, given = methods.chosen(FOLD, {"method": "add", "ref": "0x10", "text": ""})
     assert given == {"ref": "0x10"} and chosen.run(given) == {"ref": "0x10", "text": "note"}
     chosen, given = methods.chosen(FOLD, {"method": "clear", "ref": None})
-    assert chosen.run(given) == {"cleared": "all"}
-    assert methods.chosen(FOLD, {"method": "add"})[0].run({}) == {"ref": "", "text": "note"}
+    assert chosen.run(given) == {"cleared": "all", "progress": "none"}
+    assert methods.dispatch(FOLD, {"method": "clear"}, {"progress": "bar"})["progress"] == "bar"
+    assert methods.dispatch(FOLD, {"method": "add", "ref": "r"}, {"progress": "bar"}) == {
+        "ref": "r", "text": "note"}, "a body that takes no extra is not handed it"
+    with pytest.raises(Invalid, match="does not take `progress`; it takes `ref`$"):
+        methods.chosen(FOLD, {"method": "clear", "progress": "x"})
+    assert methods.dispatch(FOLD, {"method": "add"}) == {"ref": "", "text": "note"}
 
 
 def test_an_argument_the_method_does_not_take_and_an_unknown_method_are_refused() -> None:

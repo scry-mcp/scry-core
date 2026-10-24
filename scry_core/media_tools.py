@@ -15,7 +15,7 @@ import functools
 import inspect
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Annotated, Any, cast
 
 from scry_core import goldens, judges, methods, narrowing, prose, raster, series, wav
 from scry_core import vocabulary as vocab
@@ -188,7 +188,7 @@ def _gate(body: Callable[..., Any], judge: Callable[..., None]) -> Callable[...,
     return gate
 
 
-def _image_line(reply: dict[str, Any]) -> str:
+def _image_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     x, y, w, h = reply["crop"]
     past = f" past tolerance {reply['tolerance']}" if reply["tolerance"] else ""
     if not reply["differing_pixels"]:
@@ -196,32 +196,32 @@ def _image_line(reply: dict[str, Any]) -> str:
     return f"{reply['differing_pixels']} pixels differ{past} over {w}x{h}, bbox {reply['bbox']}"
 
 
-def _series_line(reply: dict[str, Any]) -> str:
+def _series_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     first = reply["first_differing"]
     tail = f", first at frame {first['frame']}" if "frame" in first else ""
     return (f"{reply['pairs']} pairs, {reply['identical']} identical, "
             f"{reply['differing']} differing{tail}")
 
 
-def _region_line(reply: dict[str, Any]) -> str:
+def _region_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     total = reply["transitions_total"]
     cut = f", the first {len(reply['transitions'])} listed" if reply.get("omitted") else ""
     return (f"{reply['measure']}, {prose.counted(total, 'transition')} "
             f"over {reply['frames']} frames{cut}")
 
 
-def _golden_line(reply: dict[str, Any]) -> str:
+def _golden_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     return (f"{reply['matched']} matched, {reply['differing_total']} differing, "
             f"{reply['missing_total']} missing, {reply['extra_total']} extra")
 
 
-def _measure_line(reply: dict[str, Any]) -> str:
+def _measure_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     return ", ".join(f"ch{m['channel']} " + ("silent" if m["silent"] else
                      f"peak {m['peak_dbfs']} dBFS, onset {m['onset_s']} s"
                      + (", clipped" if m["clipped"] else "")) for m in reply["measures"])
 
 
-def _diff_line(reply: dict[str, Any]) -> str:
+def _diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     snr = "equal" if isinstance(reply["snr_db"], dict) else f"SNR {reply['snr_db']} dB"
     return f"{reply['class']}, {snr}, envelope {reply['envelope_correlation']}"
 
@@ -238,11 +238,8 @@ AUDIO_METHODS: dict[str, methods.Method] = {
 }
 
 
-ImageMethod = Literal["image", "series", "region", "golden"]
-AudioMethod = Literal["measure", "diff"]
-
-
-def image_compare(method: ImageMethod, a: str = "", b: str = "", crop: list[int] | None = None,
+def image_compare(method: Annotated[str, vocab.enum(tuple(IMAGE_METHODS))], a: str = "",
+                  b: str = "", crop: list[int] | None = None,
                   shift: list[int] | None = None, tolerance: int | None = None,
                   manifest: str = "", measure: str = "", ref: str = "",
                   threshold: float | None = None, limit: int | None = None, dir: str = "",
@@ -266,11 +263,11 @@ def image_compare(method: ImageMethod, a: str = "", b: str = "", crop: list[int]
     `checksums`, `manifest` or `dir`.
 
     Refused: an argument the method does not take; `control_silent` when nothing can differ."""
-    chosen, given = methods.chosen(IMAGE_METHODS, locals())
-    return chosen.run(given)
+    return methods.dispatch(IMAGE_METHODS, locals())
 
 
-def audio_compare(method: AudioMethod, path: str = "", a: str = "", b: str = "",
+def audio_compare(method: Annotated[str, vocab.enum(tuple(AUDIO_METHODS))], path: str = "",
+                  a: str = "", b: str = "",
                   window: list[float] | None = None, channel: int | None = None,
                   align: bool | None = None) -> dict[str, Any]:
     """Measure a WAV or compare two, and answer in numbers: the sound never comes back.
@@ -288,8 +285,7 @@ def audio_compare(method: AudioMethod, path: str = "", a: str = "", b: str = "",
     `length_delta_samples`, `aligned_by_samples`, `a`, `b`.
 
     Refused: an argument the method does not take; `control_silent` when both are silent."""
-    chosen, given = methods.chosen(AUDIO_METHODS, locals())
-    return chosen.run(given)
+    return methods.dispatch(AUDIO_METHODS, locals())
 
 
 @dataclass(frozen=True)

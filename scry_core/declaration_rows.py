@@ -2,13 +2,14 @@
 which cpu it acts on, when and in which session it was declared, whether that session is this
 one, and how old it is. One builder, because a row another session left must read the same on
 either machine: the owner's shape is age and origin, never an expiry, and deleting stays with the
-`*_clear` tools.
+`declaration_clear` tool.
 
 Each server hands in its own clock, so a test can fix it.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
@@ -43,3 +44,22 @@ def row(*, ref: str, by: str, cpu: str | None, cpu_why: str, created_at: str | N
             "origin": or_unavailable(origin, NO_ORIGIN_WHY),
             "inherited": origin != own_origin,
             "age_s": or_unavailable(age_s(created_at, now), UNDATED_WHY)}
+
+
+def merged(listed: Mapping[str, dict[str, Any]]) -> dict[str, Any]:
+    """`declaration_list`'s reply from each kind's own list reply, keyed by the field its rows
+    are under: each kind's rows under it, and `foreign`, the debugger's rows no declaration
+    placed, by that same field, since each kind's debugger list numbers its rows apart. The
+    kinds' other fields are alike and kept once. The first reply that is not `ok` is the
+    answer."""
+    out: dict[str, Any] = {"status": "ok"}
+    foreign: dict[str, Any] = {}
+    rest: dict[str, Any] = {}
+    for key, reply in listed.items():
+        if reply.get("status") != "ok":
+            return reply
+        out[key] = reply[key]
+        if held := reply.get("foreign"):
+            foreign[key] = held
+        rest.update({f: v for f, v in reply.items() if f not in ("status", key, "foreign")})
+    return {**out, "foreign": foreign, **rest}

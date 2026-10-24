@@ -47,3 +47,16 @@ def test_what_a_row_lacks_is_unavailable_with_its_reason() -> None:
     assert bare["created_at"] == bare["age_s"] == {"available": False, "why": rows.UNDATED_WHY}
     assert bare["origin"] == {"available": False, "why": rows.NO_ORIGIN_WHY}
     assert bare["inherited"] is True
+
+
+def test_the_lists_of_several_kinds_merge_with_their_foreign_rows_kept_apart() -> None:
+    from scry_core.declaration_rows import merged
+
+    got = merged({"breakpoints": {"status": "ok", "breakpoints": [1], "foreign": ["a"],
+                                  "cpu": "x"},
+                  "watches": {"status": "ok", "watches": [], "foreign": [], "cpu": "x"}})
+    assert got == {"status": "ok", "breakpoints": [1], "watches": [],
+                   "foreign": {"breakpoints": ["a"]}, "cpu": "x"}
+    refused = {"status": "INVALID", "code": "no_channel", "message": "m"}
+    assert merged({"breakpoints": {"status": "ok", "breakpoints": []},
+                   "watches": refused}) is refused

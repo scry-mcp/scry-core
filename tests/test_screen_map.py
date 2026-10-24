@@ -327,7 +327,7 @@ def test_map_add_refuses_a_crop_off_the_screen_it_read() -> None:
 
 
 def test_the_summary_lines() -> None:
-    assert screen_map.load_line({"screens": 1, "controls": 2, "application": "demo"}) == \
+    assert screen_map.load_line({}, {"screens": 1, "controls": 2, "application": "demo"}) == \
         "1 screen, 2 controls of demo"
     assert screen_map.find_line({}, {"matched": True, "screen": "play", "layer": "file",
                                      "controls": [{}]}) == "map_find: play (file), 1 control"
@@ -335,10 +335,10 @@ def test_the_summary_lines() -> None:
                                      "screens_tried": 0, "screens_mapped": 3}) == (
         "map_find: no screen matched the text 80x25 screen (3 screens mapped, 0 of that kind "
         "and size)")
-    assert screen_map.add_line({"screen": "a", "kind": "pixel", "size": [8, 4],
+    assert screen_map.add_line({}, {"screen": "a", "kind": "pixel", "size": [8, 4],
                                     "match": [{}], "controls": 0, "shadows_file": True}) == (
         "a (pixel 8x4), 1 region, 0 controls, shadowing the file's")
-    assert screen_map.save_line({"screens": 2, "path": "/x/demo.scry-map.json",
+    assert screen_map.save_line({}, {"screens": 2, "path": "/x/demo.scry-map.json",
                                      "promoted": ["a"]}) == (
         "2 screens to demo.scry-map.json, 1 promoted from the session")
 
@@ -505,7 +505,7 @@ def test_a_text_screen_is_matched_by_its_cells() -> None:
 
 def test_the_save_line_with_none_or_many_promoted() -> None:
     for n in (0, 2):
-        line = screen_map.save_line({"screens": 3, "path": "/x/a.scry-map.json",
+        line = screen_map.save_line({}, {"screens": 3, "path": "/x/a.scry-map.json",
                                      "promoted": ["s"] * n})
         assert line.endswith(f", {n} promoted from the session"), line
 
@@ -564,9 +564,8 @@ def test_check_save_judges_the_path_and_the_overwrite(tmp_path: Path) -> None:
         screen_map.check_save(str(tmp_path / "demo.json"), True)
 
 
-def test_the_file_tools_descriptions_say_the_limits_the_code_enforces() -> None:
-    assert screen_map.SUFFIX in screen_map.DOC_VALUES["MAP_LOAD"]
-    assert "`overwrite`" in screen_map.DOC_VALUES["MAP_SAVE"]
+def test_the_descriptions_name_the_suffix_the_code_enforces() -> None:
+    assert screen_map.DOC_VALUES["MAP_SUFFIX"] == screen_map.SUFFIX
 
 
 def test_mapping_the_identified_screen_again_forgets_the_identification(tmp_path: Path) -> None:
@@ -587,10 +586,9 @@ def test_where_a_crop_lies_is_never_judged_before_the_read() -> None:
         Maps().add("x", [[70000, 0, 1, 1]], [], Reads(TITLE))
 
 
-def test_map_save_names_the_file_it_writes_dest_in_its_refusals_and_its_description(
+def test_a_save_names_the_file_it_writes_dest_in_its_refusals(
         tmp_path: Path) -> None:
     with pytest.raises(Invalid, match=r"^dest: .*x\.json is not named"):
         screen_map.check_save(str(tmp_path / "x.json"), False)
     with pytest.raises(Invalid, match=r"^dest: .* is not named"):
         Maps().save(str(tmp_path / "x.json"), False)
-    assert "`dest` is the file to write" in screen_map.SAVE_DESCRIBED
