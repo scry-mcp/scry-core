@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib.util
 import json
 import os
 import re
@@ -645,6 +646,20 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
     if out.code == EXIT_PASS and update_readme and capture is not None and demo.readme:
         _update_readmes(demo, demo.readme, capture, normalised, flow)
     return out.code
+
+
+def load(demo_file: Path) -> Demo:
+    """The `Demo` a demo's file declares as `DEMO`, imported without running its command line:
+    what a live freshness check hands `stale`."""
+    spec = importlib.util.spec_from_file_location(f"demo_{demo_file.parent.name}", demo_file)
+    if spec is None or spec.loader is None:
+        raise TypeError(f"{demo_file} cannot be imported")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    found = getattr(module, "DEMO", None)
+    if not isinstance(found, Demo):
+        raise TypeError(f"{demo_file}'s DEMO is {found!r}, not a Demo")
+    return found
 
 
 def _beside(transcript: Path) -> tuple[Path, Path]:

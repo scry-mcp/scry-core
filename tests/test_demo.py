@@ -578,3 +578,14 @@ def test_a_mark_begins_a_path_and_its_text_is_taken_as_written(tmp_path: Path) -
     assert norm.text("/var/tmp/bench/a") == "/var/tmp/bench/a"
     assert norm.text("/tmp/bench/a") == "C:\\d\\1/a"
     assert norm.text("/tmp/s9/b") == "$TMPDIR/b"
+
+
+def test_load_answers_the_demo_a_file_declares_without_running_it(tmp_path: Path) -> None:
+    file = tmp_path / "demos" / "y" / "demo.py"
+    file.parent.mkdir(parents=True)
+    file.write_text("from pathlib import Path\nfrom scry_core.demo import Demo\n"
+                    "DEMO = Demo(name='y', root=Path('.'), server=['true'], steps=[])\n")
+    assert d.load(file).name == "y"
+    file.write_text("DEMO = 3\n")
+    with pytest.raises(TypeError, match="not a Demo"):
+        d.load(file)
