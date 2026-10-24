@@ -244,23 +244,21 @@ def image_compare(method: Annotated[str, vocab.enum(tuple(IMAGE_METHODS))], a: s
                   manifest: str = "", measure: str = "", ref: str = "",
                   threshold: float | None = None, limit: int | None = None, dir: str = "",
                   checksums: str = "") -> dict[str, Any]:
-    """Compare PNGs, series or a region of one, in numbers. `crop` [x, y, w, h];
-    `limit` 1..1000 (default 40) cuts a list, its count beside it.
+    """Compare PNGs, series or a region of one, in numbers. `crop` [x, y, w, h]; `limit` 1..1000
+    (default 40) cuts a list, its count beside it. Replies also echo the arguments they took.
 
     `image`: PNGs `a`, `b`; two sizes need `crop`; `shift` [dx, dy] moves `b`; `tolerance`
-    0..255. Reply: `differing_pixels`, `bbox`, `max_delta`, `width`, `height`, `crop`, `shift`,
-    `tolerance`, `a`, `b`.
+    0..255. Reply: `differing_pixels`, `bbox`, `max_delta`, `width`, `height`.
 
     `series`: `scry-series/1` manifests `a`, `b`. Reply: `pairs`, `identical`, `differing`,
-    `first_differing`, `only_in_a`, `only_in_b`, `crop`, `a`, `b`.
+    `first_differing`, `only_in_a`, `only_in_b`.
 
     `region`: `crop` of `manifest` by `measure`: `signature`, `changed_pixels`, or `match`
     against `ref` at `threshold` (0.98). Reply: `start`, `transitions`, `gaps`,
-    `transitions_total`, `frames`, `measure`, `crop`, `manifest`, `path`.
+    `transitions_total`, `frames`, `path`.
 
     `golden`: `manifest` or `dir` against `checksums` (`shasum -a 256`). Reply: `matched`,
-    `differing`, `missing`, `extra`, `differing_total`, `missing_total`, `extra_total`,
-    `checksums`, `manifest` or `dir`.
+    `differing`, `missing`, `extra`, `differing_total`, `missing_total`, `extra_total`.
 
     Refused: an argument the method does not take; `control_silent` when nothing can differ."""
     return methods.dispatch(IMAGE_METHODS, locals())
@@ -270,19 +268,19 @@ def audio_compare(method: Annotated[str, vocab.enum(tuple(AUDIO_METHODS))], path
                   a: str = "", b: str = "",
                   window: list[float] | None = None, channel: int | None = None,
                   align: bool | None = None) -> dict[str, Any]:
-    """Measure a WAV or compare two, and answer in numbers: the sound never comes back.
-    8- or 16-bit PCM; `window` [from_s, to_s], seconds, default the whole file.
+    """Measure a WAV or compare two, in numbers. 8- or 16-bit PCM; `window` [from_s, to_s],
+    seconds, default the whole file.
 
     `measure`: `path`, every channel or `channel` (0 the first). Reply: `measures`, per channel
     `channel`, `peak_dbfs`, `rms_dbfs`, `silent` (RMS under 0.5% of full scale),
     `silence_spans` (under -60 dBFS for 50 ms or more), `onset_s` (over 2% of the peak),
     `clipping_run` (flat at 95% of the peak or above), `clipped` (a run past 8); then
-    `sample_rate_hz`, `channels`, `bits`, `window`, `pcm_sha256`, `path`.
+    `sample_rate_hz`, `channels`, `bits`, `pcm_sha256`.
 
     `diff`: `a` against the reference `b`, of one format; `align` (default true) meets the
     onsets. Reply: `exact`, `snr_db`, `class` (`exact`; `inaudible` 60 dB or more; `audible` 30
     to 60; `different`), `envelope_correlation` (64-window envelopes), `onset_delta_ms`,
-    `length_delta_samples`, `aligned_by_samples`, `a`, `b`.
+    `length_delta_samples`, `aligned_by_samples`.
 
     Refused: an argument the method does not take; `control_silent` when both are silent."""
     return methods.dispatch(AUDIO_METHODS, locals())
@@ -339,6 +337,6 @@ def register(wrap: Wrap, names: Sequence[str],
 
 
 for _tool in TOOLS.values():
-    _tool.body.__doc__ = ((_tool.body.__doc__ or "").rstrip() + "\n\n    "
+    _tool.body.__doc__ = (inspect.cleandoc(_tool.body.__doc__ or "") + "\n\n"
                           + (READS_ONLY if _tool.read_only else WRITES_ITS_FILE) + " " + PATHS
-                          + f"\n\n    {REFERENCE}\n")
+                          + f"\n\n{REFERENCE}\n")

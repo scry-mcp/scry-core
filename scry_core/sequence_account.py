@@ -165,11 +165,9 @@ def check_summaries(summaries: object) -> None:
 def summaries_argument(rows_shown: int) -> str:
     """`summaries`' own description on both servers' `perform` and `drive`, the argument's
     half of what `account` does with it."""
-    return (f"True keeps a long list readable (an argument of the call, never of a step): each "
-            f"step but the one the list ended on becomes a compact row (a failed one stays whole "
-            f"under `failed`); `ran` shows the first "
-            f"{rows_shown} (`truncated`, of `steps_total`), `ran_path` and `replies_path` hold "
-            f"all, and `stops` counts the stops.")
+    return (f"True (of the call, never of a step) makes each step but the last a compact row; "
+            f"`ran` shows the first {rows_shown} (`truncated`), `ran_path` and `replies_path` "
+            f"hold all.")
 
 
 def account(ran: list[dict[str, Any]], summaries: bool, keep_last: bool, since: int,

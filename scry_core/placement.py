@@ -27,8 +27,7 @@ SHARED_DISPLAY_VAR = "WINDOW_SHARED_DISPLAY"
 #: What a `start`'s `display` takes: a display, or "" for not given; and its schema description.
 DISPLAY_OPTIONS = ("", *DISPLAYS)
 DISPLAY_ARGUMENT = ("Where a watched (`shared`) window opens: `main` or `secondary`; empty, the "
-                    "display `WINDOW_SHARED_DISPLAY` names, else the secondary. The host's "
-                    "placement helper (`WINDOW_APP`) places it; a run nobody watches takes none.")
+                    "display `WINDOW_SHARED_DISPLAY` names, else the secondary.")
 #: How long the helper is given: it reads the display topology and prints flags, and one that
 #: hangs would hold `start`, and the server's one lock, for ever.
 HELPER_TIMEOUT_S = 15.0

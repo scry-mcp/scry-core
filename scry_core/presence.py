@@ -93,8 +93,7 @@ LOOK = Look()
 
 #: `start`'s `presence` argument as its schema describes it, the same on both servers.
 ARGUMENT = ("Draw an edge around the emulator's window while this session is open: dim while "
-            "idle, bright while a call runs the machine. No capture, recording or screen reader "
-            "of this server carries it; a recording of the window made from outside does.")
+            "idle, bright while a call runs the machine. No capture of this server carries it.")
 
 
 class Unavailable(Exception):

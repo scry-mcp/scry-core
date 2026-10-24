@@ -284,3 +284,9 @@ def test_golden_check_cuts_a_list_only_past_limit_and_counts_differing_whole(
     cut = media_tools.image_compare("golden", dir=str(folder), checksums=str(sums), limit=2)
     assert cut["differing"] == ["f0.png", "f1.png"] and cut["differing_total"] == 3
     assert cut["omitted"] == ["differing"]
+
+
+def test_the_appended_tail_carries_no_indentation_of_its_own() -> None:
+    for name in ("image_compare", "audio_compare"):
+        doc = media_tools.TOOLS[name].body.__doc__ or ""
+        assert not [line for line in doc.split("\n") if line.startswith(" ")], name
