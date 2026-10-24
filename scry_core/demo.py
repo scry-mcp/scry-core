@@ -164,8 +164,11 @@ class Step:
     #: INVALID rather than its FAIL: what a runner sets where only a step that failed in the
     #: server's own words is a verdict.
     broken_is_invalid: bool = False
-    #: The step is one of the calls the front door shows (`Demo.front`), its reply abridged.
-    shown: bool = False
+    #: The step is one of the calls the front door shows (`Demo.front`), its reply abridged:
+    #: whole, or only the fields named, in their order, the ones that make the step's point. A
+    #: field named that the reply lacks fails the step, so the front door never shows a stale
+    #: shape.
+    shown: bool | tuple[str, ...] = False
 
 
 @dataclass(frozen=True)
@@ -262,6 +265,11 @@ def flow_drift(front: Path, name: str, flow: Path) -> str:
 # ===================================================================== normalisation
 
 
+def _literally(text: str) -> Callable[[re.Match[str]], str]:
+    """A substitution that writes `text` as given, never read as a template (`\\1`, `\\d`)."""
+    return lambda _match: text
+
+
 @dataclass(frozen=True)
 class Normaliser:
     """The host's paths, a reply's volatile values and the arguments that are the host's own,
@@ -282,8 +290,10 @@ class Normaliser:
         prefix has to win. A prefix of `/` is left alone: it would rewrite every separator."""
         marks = sorted(self.marks.items(), key=lambda pm: -len(pm[0]))
         for prefix, mark in (*marks, (str(self.root), "."), (str(self.home), "~")):
-            if prefix != os.sep:
-                text = re.sub(re.escape(prefix) + r"(?=/|$|[^\w.-])", mark, text)
+            prefix = prefix.rstrip(os.sep)
+            if prefix:
+                text = re.sub(r"(?<![\w.-])" + re.escape(prefix) + r"(?=/|$|[^\w.-])",
+                              _literally(mark), text)
         return text
 
     def reply(self, value: Any, also: Mapping[str, str] | None = None) -> Any:
@@ -324,13 +334,16 @@ def abridged(value: Any) -> Any:
     return value
 
 
-def _shown(tool: str, args: Mapping[str, Any], reply: Reply | None) -> str:
-    """One step as the front door shows it: the call as it is typed and the reply, both
-    abridged."""
+def _shown(tool: str, args: Mapping[str, Any], reply: Reply | None,
+           fields: tuple[str, ...] | None) -> str:
+    """One step as the front door shows it: the call as it is typed and the reply (its `fields`
+    alone when named), both abridged."""
     call = f"{tool}(" + ", ".join(f"{k}={json.dumps(abridged(v), ensure_ascii=False)}"
                                   for k, v in args.items()) + ")"
-    answer = "(no reply)" if reply is None else json.dumps(
-        abridged(reply.data), indent=2, ensure_ascii=False)
+    data = None if reply is None else (
+        reply.data if fields is None else {k: reply.data[k] for k in fields})
+    answer = "(no reply)" if data is None else json.dumps(
+        abridged(data), indent=2, ensure_ascii=False)
     return f"```\n{call}\n-> {answer}\n```"
 
 
@@ -363,14 +376,16 @@ class Transcripts:
     flow: list[str] = field(default_factory=list)
 
     def add(self, n: int, tool: str, args: Mapping[str, Any], reply: Reply | None,
-            line: str, volatile: Mapping[str, str] | None = None, shown: bool = False) -> None:
+            line: str, volatile: Mapping[str, str] | None = None,
+            shown: bool | tuple[str, ...] = False) -> None:
         self.whole.append(_entry(n, tool, args, reply, line))
         normal = None if reply is None else Reply(self.norm.reply(reply.data, volatile),
                                                   reply.attachments)
         normal_args = self.norm.arguments(dict(args))
         self.normalised.append(_entry(n, tool, normal_args, normal, self.norm.text(line)))
         if shown:
-            self.flow.append(_shown(tool, normal_args, normal))
+            self.flow.append(_shown(tool, normal_args, normal,
+                                    shown if isinstance(shown, tuple) else None))
 
 
 # ========================================================================= running
@@ -449,7 +464,7 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                     ok, line, args, reply = await _step(client, step, run)
                     out.lines.append(norm.text(line))
                     out.transcripts.add(n, step.tool, args, reply, line, step.volatile,
-                                        step.shown)
+                                        step.shown if ok else False)
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
@@ -492,6 +507,9 @@ async def _step(client: Client, step: Step, run: Run
         summary = step.check(reply, run)
         if not isinstance(summary, str):
             raise StepFailed(f"the check returned {summary!r}, not a summary")
+        if isinstance(step.shown, tuple) and (lacking := [k for k in step.shown
+                                                           if k not in reply]):
+            raise StepFailed(f"the front door shows {lacking}, which the reply does not carry")
         return True, f"OK {step.name}: {_one_line(summary)}", args, reply
     except Invalid as e:  # the step found that nothing could be demonstrated
         return False, f"INVALID {step.name}: {_one_line(str(e))}", args, reply
@@ -528,6 +546,8 @@ def _declared(demo: Demo) -> None:
                              "or a frozenset of option names")
     if demo.front is not None and not any(step.shown for step in demo.steps):
         raise ValueError(f"the demo {demo.name} names a front door and shows no step")
+    if demo.front is None and any(step.shown for step in demo.steps):
+        raise ValueError(f"the demo {demo.name} shows steps and names no front door")
     named = {("offers", n) for n in demo.offers - OFFERABLE} | {
         ("reads", n) for n in demo.reads - KNOWN_OPTIONS} | {
         (f"step {s.name}", n) for s in demo.steps if isinstance(s.options, frozenset)
@@ -609,9 +629,9 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
         capture.unlink(missing_ok=True)  # only a picture THIS run wrote may reach the README
     norm = Normaliser(demo.root.resolve(), Path.home().resolve(),
                       {**VOLATILE, **demo.volatile}, demo.host_args)
+    normalised, flow = _beside(transcript)
+    flow.unlink(missing_ok=True)  # only a flow THIS run wrote may reach the front door
     out = asyncio.run(_drive(demo, run, run.dir / "server.stderr", norm))
-    normalised = transcript.with_name(transcript.stem + ".normalised.md")
-    flow = transcript.with_name(transcript.stem + ".flow.md")
     if out.transcripts.whole:
         transcript.write_text("\n\n".join(out.transcripts.whole) + "\n", encoding="utf-8")
         normalised.write_text("\n\n".join(out.transcripts.normalised) + "\n", encoding="utf-8")
@@ -622,32 +642,55 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
     if out.transcripts.whole:
         print(f"transcript: {transcript}")
         print(f"normalised: {normalised}")
-    if out.code == EXIT_PASS and update_readme and capture is not None:
-        _update_readme(demo, capture, normalised)
-        if demo.front is not None:
-            _update_front(demo, demo.front, flow)
+    if out.code == EXIT_PASS and update_readme and capture is not None and demo.readme:
+        _update_readmes(demo, demo.readme, capture, normalised, flow)
     return out.code
 
 
-def _update_front(demo: Demo, front: Path, flow: Path) -> None:
-    front.write_text(with_block(front.read_text(encoding="utf-8"),
-                                flow.read_text(encoding="utf-8"), flow_begin(demo.name),
-                                flow_end(demo.name)), encoding="utf-8")
-    print(f"README: {front} flow {demo.name} rewritten")
+def _beside(transcript: Path) -> tuple[Path, Path]:
+    """The normalised transcript and the front door's flow, written beside `transcript`."""
+    return (transcript.with_name(transcript.stem + ".normalised.md"),
+            transcript.with_name(transcript.stem + ".flow.md"))
+
+
+def stale(demo: Demo, run_dir: Path) -> list[str]:
+    """How `demo`'s committed files depart from the run that wrote `run_dir` with the default
+    transcript name: its README's block, the front door's flow and its picture, one line each, or
+    empty. What a server's live freshness check asserts."""
+    normalised, flow = _beside(run_dir / "transcript.md")
+    found = []
+    if demo.readme is not None and (drift := readme_drift(demo.readme, normalised)):
+        found.append(f"{demo.name}'s README: {drift}")
+    if demo.front is not None and (drift := flow_drift(demo.front, demo.name, flow)):
+        found.append(f"the front door's {demo.name} flow: {drift}")
+    if demo.readme is not None and demo.capture is not None:
+        shot, committed = demo.capture(Run(dir=run_dir)), demo.readme.with_name("screen.png")
+        if not (shot.is_file() and committed.is_file()
+                and shot.read_bytes() == committed.read_bytes()):
+            found.append(f"{demo.name}'s screen.png is not this run's capture")
+    return found
 
 
 def _no_readme(demo: Demo) -> Invalid:
     return Invalid(f"the demo {demo.name} has no README block to update")
 
 
-def _update_readme(demo: Demo, capture: Path, normalised: Path) -> None:
-    if demo.readme is None:
-        raise _no_readme(demo)
+def _update_readmes(demo: Demo, readme: Path, capture: Path, normalised: Path, flow: Path
+                    ) -> None:
+    """The README's block, its picture and the front door's flow, every text built before the
+    first file is written, so a README that cannot take its block leaves all of them as they
+    were."""
     if not capture.is_file():
         raise Invalid(f"the capture {capture} was not written by this run, so the README was "
                       "left as it was")
-    text = with_block(demo.readme.read_text(encoding="utf-8"),
+    text = with_block(readme.read_text(encoding="utf-8"),
                       normalised.read_text(encoding="utf-8"))
-    shutil.copyfile(capture, demo.readme.with_name("screen.png"))
-    demo.readme.write_text(text, encoding="utf-8")
-    print(f"README: {demo.readme} block and screen.png rewritten")
+    front = None if demo.front is None else with_block(
+        demo.front.read_text(encoding="utf-8"), flow.read_text(encoding="utf-8"),
+        flow_begin(demo.name), flow_end(demo.name))
+    shutil.copyfile(capture, readme.with_name("screen.png"))
+    readme.write_text(text, encoding="utf-8")
+    print(f"README: {readme} block and screen.png rewritten")
+    if demo.front is not None and front is not None:
+        demo.front.write_text(front, encoding="utf-8")
+        print(f"README: {demo.front} flow {demo.name} rewritten")

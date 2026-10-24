@@ -570,3 +570,67 @@ def test_a_page_s_title_never_shares_its_anchor_with_a_tool(tmp_path: Path) -> N
     reg = _registry(tmp_path, (("Peek", ("peek",)), ("Write memory", ("poke",))))
     _written(reg)
     assert _read(tmp_path, "peek").startswith("# The Peek tools\n")
+
+
+def test_a_fence_and_a_nested_list_keep_their_shape_and_spans_stay_spans() -> None:
+    server = MCPServer("fence")
+
+    @server.tool()
+    def fenced_tool() -> dict[str, Any]:
+        """Use:
+
+        ```
+        x  <y>
+            indented
+        ```
+        A <ref> and `y<z` and ``a`b <c>``.
+
+        - outer
+          - inner
+        Reply: `written`."""
+        return {"status": "ok"}
+
+    strict_arguments(server)
+    block = reference.tool_block(registered(server)[0], PokeReply, FixtureEnvelope, None)
+    assert "```\nx  <y>\n    indented\n```" in block, block
+    assert "A &lt;ref> and `y<z` and ``a`b <c>``." in block, block
+    assert "- outer\n  - inner" in block, block
+
+
+def test_a_page_titled_the_old_way_is_drift_and_a_rewrite_retitles_it(tmp_path: Path) -> None:
+    reg = _written(_registry(tmp_path))
+    page = tmp_path / "docs/reference/read.md"
+    page.write_text(page.read_text(encoding="utf-8").replace("# The Read tools", "# Read", 1),
+                    encoding="utf-8")
+    assert "docs/reference/read.md: titled '# Read', not '# The Read tools'" in reference.drift(reg)
+    reference.write(reg)
+    assert reference.drift(reg) == []
+
+
+@pytest.mark.parametrize("argv", [["--mark", "=x"], ["--mark", "x="],
+                                  ["--mark", "/tmp/x=$T"]])
+def test_a_mark_that_cannot_be_used_is_a_usage_error(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> None:
+    with pytest.raises(SystemExit) as exit_:
+        _main(tmp_path, monkeypatch, *argv)
+    assert exit_.value.code == 2, "a mark is refused alone, or with no examples to spell"
+
+
+def test_a_mark_whose_path_holds_an_equals_sign_splits_at_the_last_one(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    jsonl = tmp_path / "transcript.jsonl"
+    rec = _record("peek", "OK", {"status": "ok", "path": "/tmp/a=b/f"})
+    jsonl.write_text(json.dumps(rec) + "\n", encoding="utf-8")
+    _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--mark", "/tmp/a=b=$T")
+    held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
+    assert held["peek"]["reply"]["path"] == "$T/f", held
+
+
+def test_reference_md_keeps_the_title_its_server_gave_it(tmp_path: Path) -> None:
+    reg = _written(_registry(tmp_path))
+    ref = tmp_path / "REFERENCE.md"
+    ref.write_text(ref.read_text(encoding="utf-8").replace("# Reference", "# scry-x: reference",
+                                                           1), encoding="utf-8")
+    assert reference.drift(reg) == []
+    reference.write(reg)
+    assert ref.read_text(encoding="utf-8").startswith("# scry-x: reference\n")

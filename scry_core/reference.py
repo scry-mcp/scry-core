@@ -169,13 +169,16 @@ def _markdown_text(text: str) -> str:
     """A description as markdown shows it: a `<` outside a code span is text, not a tag, and a
     line the docstring indents is flush, since four spaces after a blank line would be read as a
     code block."""
-    text = "\n".join(line.lstrip() for line in text.splitlines())
-    parts = _CODE_SPAN.split(text)
-    return "".join(p if i % 2 else p.replace("<", "&lt;") for i, p in enumerate(parts))
+    parts = _CODE.split(text)
+    return "".join(p if i % 2 else _CODE_BLOCK_INDENT.sub("", p).replace("<", "&lt;")
+                   for i, p in enumerate(parts))
 
 
-#: A code span, single or double backticks: what markdown shows as typed.
-_CODE_SPAN = re.compile(r"(``.+?``|`[^`]+`)")
+#: What markdown shows as typed: a fenced block, a double-backtick span, a single one.
+_CODE = re.compile(r"(```.*?```|``.+?``|`[^`\n]+`)", re.DOTALL)
+#: Four spaces or more opening a line, which markdown would read as a code block; a list nests
+#: with fewer, and keeps them.
+_CODE_BLOCK_INDENT = re.compile(r"^ {4,}", re.MULTILINE)
 
 
 def _signature(tool: Tool) -> str:
@@ -332,6 +335,8 @@ def _rewritten(text: str, want: _Expected) -> str:
     a missing one goes in at its place in the roster, and a block of no tool of the page goes
     while its prose joins the block before it, so no hand-written line is lost."""
     head, segments = _parsed(text)
+    if want.family and head.startswith("# "):
+        head = want.title + head[len(head.split("\n", 1)[0]):]
     after: dict[str, str] = {}
     previous = ""
     for s in segments:
@@ -368,6 +373,9 @@ def drift(reg: Registry) -> list[str]:
         except Invalid as e:
             found.append(f"{rel}: {e}")
             continue
+        first = path.read_text(encoding="utf-8").split("\n", 1)[0]
+        if want.family and first.startswith("# ") and first != want.title:
+            found.append(f"{rel}: titled {first!r}, not {want.title!r}")
         held = {s.name: s.block for s in segments}
         for name, block in want.blocks.items():
             if name not in held:
@@ -471,7 +479,7 @@ def _loaded(spec: str) -> Registry:
 
 
 def _mark(value: str) -> tuple[str, str]:
-    path, sep, text = value.partition("=")
+    path, sep, text = value.rpartition("=")
     if not sep or not path or not text:
         raise argparse.ArgumentTypeError(f"{value!r} is not PATH=TEXT")
     return path, text
@@ -490,6 +498,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "scratch as $TMPDIR, its bench, its builds); repeatable")
     p.add_argument("--write", action="store_true", help="rewrite the pages")
     ns = p.parse_args(argv)
+    if ns.mark and not ns.examples:
+        p.error("--mark spells the examples' paths, so it needs --examples")
     try:
         reg = _loaded(ns.registry)
     except ValueError as e:

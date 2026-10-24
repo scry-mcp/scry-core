@@ -483,3 +483,98 @@ def test_update_readme_on_a_demo_with_no_readme_is_invalid_and_runs_nothing(
     demo = _demo(tmp_path, readme=None)
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
     assert _calls(log) == []
+
+
+def test_a_step_that_names_its_fields_shows_only_those_in_that_order(
+        tmp_path: Path, log: Path) -> None:
+    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True,
+                    shown=("value", "summary")),
+             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
+                    lambda reply, run: "a picture")]
+    demo = _demo(tmp_path, steps, front=_front(tmp_path))
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    flow = (tmp_path / "out" / "transcript.flow.md").read_text()
+    assert '-> {\n  "value": 7,\n  "summary": "started"\n}' in flow, flow
+
+
+def test_a_field_the_front_door_shows_and_the_reply_lacks_fails_the_step(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True,
+                    shown=("value", "gone"))]
+    demo = _demo(tmp_path, steps, front=_front(tmp_path))
+    assert _run(demo, tmp_path) == verdict.EXIT_FAIL
+    assert "FAIL boot: the front door shows ['gone'], which the reply does not carry" \
+        in capsys.readouterr().out
+
+
+def test_a_shown_step_s_flow_is_the_normalised_reply(tmp_path: Path, log: Path) -> None:
+    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True, shown=True),
+             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
+                    lambda reply, run: "a picture")]
+    demo = _demo(tmp_path, steps, front=_front(tmp_path))
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    flow = (tmp_path / "out" / "transcript.flow.md").read_text()
+    assert '"pid": "<volatile>"' in flow and str(tmp_path) not in flow, flow
+
+
+def test_a_step_shown_with_no_front_door_is_a_declaration_error(tmp_path: Path) -> None:
+    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True, shown=True)]
+    with pytest.raises(ValueError, match="no front door"):
+        _run(_demo(tmp_path, steps), tmp_path)
+
+
+def test_a_front_door_whose_markers_go_mid_run_leaves_both_readmes_as_they_were(
+        tmp_path: Path, log: Path) -> None:
+    front = _front(tmp_path)
+
+    def vanish(reply: d.Reply, run: d.Run) -> str:
+        front.write_text("# no markers now\n")
+        return "markers gone"
+
+    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True, shown=True),
+             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"}, vanish)]
+    demo = _demo(tmp_path, steps, front=front)
+    before = _readme(demo).read_text()
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    assert _readme(demo).read_text() == before
+    assert not (_readme(demo).parent / "screen.png").exists()
+
+
+def test_a_run_that_writes_no_flow_leaves_no_earlier_flow_behind(
+        tmp_path: Path, log: Path) -> None:
+    demo = _shown_demo(tmp_path)
+    assert _run(demo, tmp_path) == verdict.EXIT_PASS
+    failing = _demo(tmp_path, [d.Step("no", "refuse", {}, lambda reply, run: "")],
+                    front=_front(tmp_path))
+    failing = d.Demo(**{**failing.__dict__, "steps": [
+        d.Step("no", "refuse", {}, lambda reply, run: "", shown=True)]})
+    _run(failing, tmp_path)
+    assert not (tmp_path / "out" / "transcript.flow.md").exists()
+
+
+def test_stale_names_each_way_a_demo_s_committed_files_depart_from_a_run(
+        tmp_path: Path, log: Path) -> None:
+    demo = _shown_demo(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    run_dir = tmp_path / "out"
+    assert d.stale(demo, run_dir) == []
+    assert demo.front is not None and demo.readme is not None
+    demo.front.write_text(demo.front.read_text().replace('"value": 7', '"value": 8'))
+    (demo.readme.parent / "screen.png").write_bytes(b"other")
+    found = d.stale(demo, run_dir)
+    assert len(found) == 2 and found[0].startswith("the front door's x flow: line "), found
+    assert found[1] == "x's screen.png is not this run's capture", found
+    readme = demo.readme
+    readme.write_text(readme.read_text().replace("value 7", "value 9", 1))
+    assert d.stale(demo, run_dir)[0].startswith("x's README: line "), d.stale(demo, run_dir)
+    bare = d.Demo(**{**demo.__dict__, "readme": None, "front": None,
+                     "steps": [d.Step("boot", "start", {}, _said("value"))]})
+    assert d.stale(bare, run_dir) == []
+
+
+def test_a_mark_begins_a_path_and_its_text_is_taken_as_written(tmp_path: Path) -> None:
+    norm = d.Normaliser(tmp_path, Path("/home/nobody-here"), {},
+                        marks={"/tmp/bench": "C:\\d\\1", "/tmp/s9/": "$TMPDIR"})
+    assert norm.text("/var/tmp/bench/a") == "/var/tmp/bench/a"
+    assert norm.text("/tmp/bench/a") == "C:\\d\\1/a"
+    assert norm.text("/tmp/s9/b") == "$TMPDIR/b"
