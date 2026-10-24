@@ -327,20 +327,20 @@ def test_map_add_refuses_a_crop_off_the_screen_it_read() -> None:
 
 
 def test_the_summary_lines() -> None:
-    assert screen_map.load_line({}, {"screens": 1, "controls": 2, "application": "demo"}) == \
-        "map_load: 1 screen, 2 controls of demo"
+    assert screen_map.load_line({"screens": 1, "controls": 2, "application": "demo"}) == \
+        "1 screen, 2 controls of demo"
     assert screen_map.find_line({}, {"matched": True, "screen": "play", "layer": "file",
                                      "controls": [{}]}) == "map_find: play (file), 1 control"
     assert screen_map.find_line({}, {"matched": False, "kind": "text", "size": [80, 25],
                                      "screens_tried": 0, "screens_mapped": 3}) == (
         "map_find: no screen matched the text 80x25 screen (3 screens mapped, 0 of that kind "
         "and size)")
-    assert screen_map.add_line({}, {"screen": "a", "kind": "pixel", "size": [8, 4],
+    assert screen_map.add_line({"screen": "a", "kind": "pixel", "size": [8, 4],
                                     "match": [{}], "controls": 0, "shadows_file": True}) == (
-        "map_add: a (pixel 8x4), 1 region, 0 controls, shadowing the file's")
-    assert screen_map.save_line({}, {"screens": 2, "path": "/x/demo.scry-map.json",
+        "a (pixel 8x4), 1 region, 0 controls, shadowing the file's")
+    assert screen_map.save_line({"screens": 2, "path": "/x/demo.scry-map.json",
                                      "promoted": ["a"]}) == (
-        "map_save: 2 screens to demo.scry-map.json, 1 promoted from the session")
+        "2 screens to demo.scry-map.json, 1 promoted from the session")
 
 
 def test_the_odd_shapes_of_a_map_file_are_refused_by_name(tmp_path: Path) -> None:
@@ -505,8 +505,8 @@ def test_a_text_screen_is_matched_by_its_cells() -> None:
 
 def test_the_save_line_with_none_or_many_promoted() -> None:
     for n in (0, 2):
-        line = screen_map.save_line({}, {"screens": 3, "path": "/x/a.scry-map.json",
-                                         "promoted": ["s"] * n})
+        line = screen_map.save_line({"screens": 3, "path": "/x/a.scry-map.json",
+                                     "promoted": ["s"] * n})
         assert line.endswith(f", {n} promoted from the session"), line
 
 

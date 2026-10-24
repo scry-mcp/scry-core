@@ -30,19 +30,6 @@ from scry_core.verdict import EXIT_INVALID, Invalid
 STEP_CODES = frozenset({"step_failed", "diverged"})
 
 
-#: Arguments a recorded step may carry under an earlier name, read under the current one:
-#: op -> (earlier, current).
-RENAMED = {"map_save": ("path", "dest")}
-
-
-def _current(step: dict[str, Any]) -> dict[str, Any]:
-    """`step` with an earlier argument name read as the current one (`RENAMED`)."""
-    old, new = RENAMED.get(str(step.get("op")), ("", ""))
-    if not old or old not in step or new in step:
-        return step
-    return {(new if k == old else k): v for k, v in step.items()}
-
-
 def _read(path: Path) -> dict[str, Any]:
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
@@ -62,11 +49,10 @@ def _read(path: Path) -> dict[str, Any]:
     states = needs.get("states", []) if isinstance(needs, dict) else None
     declared = needs.get("declarations", {}) if isinstance(needs, dict) else None
     if not isinstance(start, dict) or not _names(states) or not isinstance(declared, dict) \
-            or not all(isinstance(v, dict) and isinstance(v.get("key"), str)
+            or not all(isinstance(v, dict) and isinstance(v.get("tool"), str)
                        and _names(v.get("refs")) for v in declared.values()):
         raise Invalid(f"{path}: `start` is an object of arguments, `needs.states` a list "
-                           "of names, and `needs.declarations` each list tool's `key` and `refs`")
-    doc["steps"] = steps = [_current(s) for s in steps]
+                           "of names, and `needs.declarations` each list key's `tool` and `refs`")
     if not any(s.get(RECORDED) for s in steps):
         raise Invalid(f"{path}: no step carries `{RECORDED}`, so a replay would hold "
                            "nothing to anything: nothing held to")
@@ -160,9 +146,10 @@ def build(doc: dict[str, Any], root: Path, name: str) -> demo.Demo:
                                        lambda r, run: str(r.get("summary", "started")),
                                        options=True, failure=_refused_start,
                                        broken_is_invalid=True)]
-    plan += [demo.Step(tool, tool, {}, _declarations(tool, listed["key"], listed["refs"]),
+    plan += [demo.Step(key, listed["tool"], {}, _declarations(listed["tool"], key,
+                                                              listed["refs"]),
                        failure=_broke, broken_is_invalid=True)
-             for tool, listed in declared.items()]
+             for key, listed in declared.items()]
     if states:
         plan.append(demo.Step("states", "state_list", {}, _needs(states), failure=_broke,
                               broken_is_invalid=True))

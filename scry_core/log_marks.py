@@ -1,4 +1,4 @@
-"""`since_mark`, the position `log` and `log_wait` read after, and the `mark` `state_load` answers:
+"""`since_mark`, the position `log` and `log_wait` read after, and the `mark` a state load answers:
 the descriptions, the schema bound and the refusals both servers give in the same words; and the
 log block every stop reply carries, which hands over the mark its lines start at; and the bound
 on the last words `close` hands back of each channel (`TAIL_CHARS`)."""
@@ -13,9 +13,9 @@ from scry_core.reply_contract import Invalid
 
 #: The argument's description, said once for both servers' tools.
 SINCE_MARK_DOC = ("`since_mark`, a byte position in the channel's log (the `mark` a "
-                  "`state_load` or a stop's log block gives for it): only what was written after "
+                  "state load or a stop's log block gives for it): only what was written after "
                   "it is read; 0, the default, reads the whole log")
-#: `state_load`'s `mark`, said once for both servers' descriptions.
+#: A state load's `mark`, said once for both servers' descriptions.
 MARK_DOC = ("`mark` (where each log channel ended as the load was sent: `log`/`log_wait`'s "
             "`since_mark` for that channel reads what came after it; a position in the file, "
             "not a moment, so a line written before the load and not yet flushed lands after)")
@@ -31,7 +31,7 @@ def check_position(since_mark: int, channel: str) -> None:
     if isinstance(since_mark, bool) or since_mark < 0:
         raise Invalid("bad_argument",
                       f"since_mark={since_mark} is a byte position in the log, 0 or more: the "
-                      f"`mark` a `state_load` or a stop's log block gives for the {channel} "
+                      f"`mark` a state load or a stop's log block gives for the {channel} "
                       f"channel")
 
 

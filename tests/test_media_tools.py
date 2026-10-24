@@ -34,6 +34,10 @@ def judged_by_its_model(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(media_tools, name, checked)
 
 
+def _line(tool: str, method: str, reply: dict[str, Any]) -> str:
+    return media_tools.TOOLS[tool].summary({"method": method}, reply)
+
+
 def _png(path: Path, lit: set[tuple[int, int]], width: int = 4, height: int = 3) -> str:
     px = bytearray(bytes(BLACK) * (width * height))
     for x, y in lit:
@@ -53,103 +57,127 @@ def _series(folder: Path, lit_by_frame: dict[int, set[tuple[int, int]]]) -> str:
 def test_image_diff_answers_numbers_and_names_both_files(tmp_path: Path) -> None:
     a = _png(tmp_path / "a.png", {(1, 1)})
     b = _png(tmp_path / "b.png", {(2, 1)})
-    got = media_tools.image_diff(a, b)
+    got = media_tools.image_compare("image", a, b)
     assert (got["differing_pixels"], got["bbox"], got["max_delta"]) == (2, [1, 1, 2, 1],
                                                                           [255, 0, 0])
     assert got["crop"] == [0, 0, 4, 3] and got["shift"] == [0, 0] and got["tolerance"] == 0
     assert (got["width"], got["height"]) == (4, 3)
     assert got["a"] == {"path": a, "sha256": hashlib.sha256(Path(a).read_bytes()).hexdigest()}
-    moved = media_tools.image_diff(a, b, shift=[1, 0])
+    moved = media_tools.image_compare("image", a, b, shift=[1, 0])
     assert moved["differing_pixels"] == 0 and moved["crop"] == [0, 0, 3, 3]
-    assert media_tools._image_diff_line({}, moved) == (
-        "image_diff: no pixel differs over 3x3 at [0, 0]")
-    assert media_tools._image_diff_line({}, got) == (
-        "image_diff: 2 pixels differ over 4x3, bbox [1, 1, 2, 1]")
-    near = media_tools.image_diff(a, b, tolerance=255)
-    assert media_tools._image_diff_line({}, near) == (
-        "image_diff: no pixel differs past tolerance 255 over 4x3 at [0, 0]")
+    assert _line("image_compare", "image", moved) == (
+        "image_compare image: no pixel differs over 3x3 at [0, 0]")
+    assert _line("image_compare", "image", got) == (
+        "image_compare image: 2 pixels differ over 4x3, bbox [1, 1, 2, 1]")
+    near = media_tools.image_compare("image", a, b, tolerance=255)
+    assert _line("image_compare", "image", near) == (
+        "image_compare image: no pixel differs past tolerance 255 over 4x3 at [0, 0]")
 
 
 def test_series_diff_region_track_and_golden_check_on_one_series(tmp_path: Path) -> None:
     lit = {n: ({(0, 0)} if n in (2, 3) else set()) | {(3, 2)} for n in range(5)}
     one = _series(tmp_path / "one", lit)
     two = _series(tmp_path / "two", {**lit, 4: {(0, 0), (3, 2)}})
-    diff = media_tools.series_diff(one, two)
+    diff = media_tools.image_compare("series", one, two)
     assert (diff["pairs"], diff["identical"], diff["differing"]) == (5, 4, 1)
     assert diff["first_differing"]["frame"] == 4 and diff["a"] == one
     assert diff["crop"] == [0, 0, 4, 3], "the region compared, said whole"
-    assert media_tools._series_diff_line({}, diff) == (
-        "series_diff: 5 pairs, 4 identical, 1 differing, first at frame 4")
-    track = media_tools.region_track(one, crop=[0, 0, 1, 1], measure="changed_pixels")
+    assert _line("image_compare", "series", diff) == (
+        "image_compare series: 5 pairs, 4 identical, 1 differing, first at frame 4")
+    track = media_tools.image_compare("region", manifest=one, crop=[0, 0, 1, 1],
+                                      measure="changed_pixels")
     assert track["transitions"] == [[2, 1], [4, 1]] and track["manifest"] == one
     assert track["start"]["available"] is False, track
-    assert media_tools._region_track_line({}, track) == (
-        "region_track changed_pixels: 2 transitions over 5 frames")
-    cut = media_tools.region_track(one, crop=[0, 0, 1, 1], measure="changed_pixels", limit=1)
-    assert media_tools._region_track_line({}, cut) == (
-        "region_track changed_pixels: 2 transitions over 5 frames, the first 1 listed")
-    assert media_tools._region_track_line({}, {**track, "transitions_total": 1}).endswith(
-        ": 1 transition over 5 frames")
+    assert _line("image_compare", "region", track) == (
+        "image_compare region: changed_pixels, 2 transitions over 5 frames")
+    cut = media_tools.image_compare("region", manifest=one, crop=[0, 0, 1, 1],
+                                    measure="changed_pixels", limit=1)
+    assert _line("image_compare", "region", cut) == (
+        "image_compare region: changed_pixels, 2 transitions over 5 frames, the first 1 listed")
+    assert _line("image_compare", "region", {**track, "transitions_total": 1}).endswith(
+        ", 1 transition over 5 frames")
     ref = _png(tmp_path / "ref.png", {(0, 0)}, 1, 1)
-    matched = media_tools.region_track(one, crop=[0, 0, 1, 1], measure="match", ref=ref,
-                                       threshold=1)
+    matched = media_tools.image_compare("region", manifest=one, crop=[0, 0, 1, 1],
+                                        measure="match", ref=ref, threshold=1)
     assert matched["start"] == [0, False] and matched["transitions"] == [[2, True], [4, False]]
     folder = Path(one).parent
     sums = tmp_path / "g.sha256"
     sums.write_text("".join(
         f"{hashlib.sha256((folder / series.frame_name(n)).read_bytes()).hexdigest()}  "
         f"{series.frame_name(n)}\n" for n in range(4)))
-    gold = media_tools.golden_check(manifest=one, checksums=str(sums))
+    gold = media_tools.image_compare("golden", manifest=one, checksums=str(sums))
     assert gold == {"matched": 4, "differing": [], "missing": [], "extra": ["f000004.png"],
                     "differing_total": 0, "missing_total": 0, "extra_total": 1,
                     "checksums": str(sums), "manifest": one}
-    by_dir = media_tools.golden_check(dir=str(folder), checksums=str(sums))
+    by_dir = media_tools.image_compare("golden", dir=str(folder), checksums=str(sums))
     assert by_dir["matched"] == 4 and by_dir["dir"] == str(folder)
-    assert media_tools._golden_check_line({}, gold) == (
-        "golden_check: 4 matched, 0 differing, 0 missing, 1 extra")
+    assert _line("image_compare", "golden", gold) == (
+        "image_compare golden: 4 matched, 0 differing, 0 missing, 1 extra")
     with pytest.raises(Invalid, match="is not a directory"):
-        media_tools.golden_check(dir=str(sums), checksums=str(sums))
+        media_tools.image_compare("golden", dir=str(sums), checksums=str(sums))
     (folder / series.frame_name(1)).unlink()
     with pytest.raises(Invalid, match="cannot be read"):
-        media_tools.golden_check(manifest=one, checksums=str(sums))
+        media_tools.image_compare("golden", manifest=one, checksums=str(sums))
 
 
-@pytest.mark.parametrize("tool, kw, said", [
-    ("image_diff", {"a": "a.png", "b": "/b.png"}, "a='a.png' must be an absolute path"),
-    ("image_diff", {"a": "/a", "b": "/b", "crop": [0, 0, 0, 1]}, "crop="),
-    ("image_diff", {"a": "/a", "b": "/b", "shift": [1]}, "shift="),
-    ("image_diff", {"a": "/a", "b": "/b", "tolerance": 256}, "tolerance=256"),
-    ("image_diff", {"a": "/a", "b": "/b", "tolerance": True}, "tolerance=True"),
-    ("series_diff", {"a": "/a", "b": ""}, "b is empty"),
-    ("series_diff", {"a": "/a", "b": "/b", "crop": [1]}, "crop="),
-    ("region_track", {"manifest": "/m", "measure": "area"}, "measure='area' is one of"),
-    ("region_track", {"manifest": "/m", "measure": "match"}, "`ref` goes with measure"),
-    ("region_track", {"manifest": "/m", "ref": "/r.png"}, "`ref` goes with measure"),
-    ("region_track", {"manifest": "/m", "measure": "match", "ref": "r.png"}, "ref='r.png'"),
-    ("region_track", {"manifest": "/m", "threshold": 0}, "threshold=0"),
-    ("region_track", {"manifest": "/m", "threshold": 1.5}, "threshold=1.5"),
-    ("region_track", {"manifest": "/m", "limit": 0}, "limit=0"),
-    ("region_track", {"manifest": "/m", "limit": series.LIMIT_MAX + 1}, "limit="),
-    ("region_track", {"manifest": "/m", "crop": "x"}, "crop="),
-    ("golden_check", {"checksums": "/g"}, "one of the two"),
-    ("golden_check", {"checksums": "/g", "manifest": "/m", "dir": "/d"}, "one of the two"),
-    ("golden_check", {"checksums": "g", "dir": "/d"}, "checksums='g'"),
-    ("golden_check", {"checksums": "/g", "dir": "d"}, "dir='d'"),
-    ("golden_check", {"checksums": "/g", "manifest": "m"}, "manifest='m'"),
+@pytest.mark.parametrize("method, kw, said", [
+    ("image", {"a": "a.png", "b": "/b.png"}, "a='a.png' must be an absolute path"),
+    ("image", {"a": "/a", "b": "/b", "crop": [0, 0, 0, 1]}, "crop="),
+    ("image", {"a": "/a", "b": "/b", "shift": [1]}, "shift="),
+    ("image", {"a": "/a", "b": "/b", "tolerance": 256}, "tolerance=256"),
+    ("image", {"a": "/a", "b": "/b", "tolerance": True}, "tolerance=True"),
+    ("series", {"a": "/a", "b": ""}, "b is empty"),
+    ("series", {"a": "/a", "b": "/b", "crop": [1]}, "crop="),
+    ("region", {"manifest": "/m", "measure": "area"}, "measure='area' is one of"),
+    ("region", {"manifest": "/m", "measure": "match"}, "`ref` goes with measure"),
+    ("region", {"manifest": "/m", "ref": "/r.png"}, "`ref` goes with measure"),
+    ("region", {"manifest": "/m", "measure": "match", "ref": "r.png"}, "ref='r.png'"),
+    ("region", {"manifest": "/m", "threshold": 0}, "threshold=0"),
+    ("region", {"manifest": "/m", "threshold": 1.5}, "threshold=1.5"),
+    ("region", {"manifest": "/m", "limit": 0}, "limit=0"),
+    ("region", {"manifest": "/m", "limit": series.LIMIT_MAX + 1}, "limit="),
+    ("region", {"manifest": "/m", "crop": "x"}, "crop="),
+    ("golden", {"checksums": "/g"}, "one of the two"),
+    ("golden", {"checksums": "/g", "manifest": "/m", "dir": "/d"}, "one of the two"),
+    ("golden", {"checksums": "g", "dir": "/d"}, "checksums='g'"),
+    ("golden", {"checksums": "/g", "dir": "d"}, "dir='d'"),
+    ("golden", {"checksums": "/g", "manifest": "m"}, "manifest='m'"),
 ])
-def test_a_wrong_shape_is_refused_by_the_judge_and_by_the_body(tool: str, kw: dict[str, Any],
+def test_a_wrong_shape_is_refused_by_the_judge_and_by_the_body(method: str, kw: dict[str, Any],
                                                                said: str) -> None:
+    spec = media_tools.TOOLS["image_compare"]
     with pytest.raises(Invalid, match=said) as e:
-        media_tools.TOOLS[tool].check(**kw)
+        spec.check(method=method, **kw)
     assert e.value.code == "bad_argument"
     with pytest.raises(Invalid, match=said):
-        media_tools.TOOLS[tool].body(**kw)
+        spec.body(method, **kw)
+
+
+@pytest.mark.parametrize("tool, method, kw, stray", [
+    ("image_compare", "series", {"a": "/a", "b": "/b", "tolerance": 0}, "`tolerance`"),
+    ("image_compare", "image", {"a": "/a", "b": "/b", "limit": 3}, "`limit`"),
+    ("image_compare", "golden", {"checksums": "/g", "dir": "/d", "crop": [0, 0, 1, 1]},
+     "`crop`"),
+    ("image_compare", "region", {"manifest": "/m", "a": "/a"}, "`a`"),
+    ("audio_compare", "measure", {"path": "/p", "align": False}, "`align`"),
+    ("audio_compare", "diff", {"a": "/a", "b": "/b", "channel": 0}, "`channel`"),
+])
+def test_an_argument_the_method_does_not_take_is_refused_naming_the_method(
+        tool: str, method: str, kw: dict[str, Any], stray: str) -> None:
+    spec = media_tools.TOOLS[tool]
+    for call in (lambda: spec.check(method=method, **kw), lambda: spec.body(method, **kw)):
+        with pytest.raises(Invalid, match=f"method `{method}` does not take {stray}") as e:
+            call()
+        assert e.value.code == "bad_argument"
+    with pytest.raises(Invalid, match="method is one of"):
+        spec.check(method="nope")
 
 
 def test_the_limits_themselves_are_accepted() -> None:
-    media_tools.check_image_diff(a="/a", b="/b", tolerance=255)
-    media_tools.check_region_track(manifest="/m", threshold=1, limit=series.LIMIT_MAX)
-    media_tools.check_region_track(manifest="/m", limit=1)
+    check = media_tools.TOOLS["image_compare"].check
+    check(method="image", a="/a", b="/b", tolerance=255)
+    check(method="region", manifest="/m", threshold=1, limit=series.LIMIT_MAX)
+    check(method="region", manifest="/m", limit=1)
 
 
 def test_every_description_fits_a_client_and_says_what_it_touches() -> None:
@@ -162,7 +190,7 @@ def test_every_description_fits_a_client_and_says_what_it_touches() -> None:
         said = media_tools.READS_ONLY if spec.read_only else media_tools.WRITES_ITS_FILE
         assert said in doc and doc.count("needs no machine") == 1, name
         assert spec.body.__name__ == name
-    assert not media_tools.TOOLS["region_track"].read_only
+    assert not media_tools.TOOLS["image_compare"].read_only, "its region method writes a file"
 
 
 def test_register_hands_each_tool_to_the_servers_own_decorator() -> None:
@@ -173,14 +201,16 @@ def test_register_hands_each_tool_to_the_servers_own_decorator() -> None:
             seen.append((title, summary, read_only, fn.__name__, replay))
             return ("registered", fn.__name__)
         return register
-    got = media_tools.register(wrap, media_tools.IMAGE_TOOLS, lambda body: body)
-    assert got == {n: ("registered", n) for n in media_tools.IMAGE_TOOLS}
-    assert [s[3] for s in seen] == list(media_tools.IMAGE_TOOLS)
-    assert [s[2] for s in seen] == [True, True, False, True], "region_track writes its file"
-    # None reads the machine, so an export drops them all but the check of what files hold.
-    assert [s[4] for s in seen] == ["drop", "drop", "drop",
-                                    ("matched", "differing_total", "missing_total",
-                                     "extra_total", "differing", "missing", "extra")]
+    names = media_tools.IMAGE_TOOLS + media_tools.AUDIO_TOOLS
+    got = media_tools.register(wrap, names, lambda body: body)
+    assert got == {n: ("registered", n) for n in names}
+    assert [s[3] for s in seen] == ["image_compare", "audio_compare"]
+    assert [s[2] for s in seen] == [False, True]
+    # None reads the machine, so an export drops them but for the check of what files hold.
+    assert [s[4] for s in seen] == [
+        {"image": "drop", "series": "drop", "region": "drop",
+         "golden": ("matched", "differing_total", "missing_total", "extra_total", "differing",
+                    "missing", "extra")}, "drop"]
     with pytest.raises(ValueError, match="no media tools named"):
         media_tools.register(wrap, ["screen_view"], lambda body: body)
 
@@ -190,17 +220,17 @@ def test_register_makes_each_body_s_fields_the_servers_reply(tmp_path: Path) -> 
     keeps the body's name and description, which the client is shown."""
     def wrap(title: str, **_: Any) -> Any:
         return lambda fn: fn
-    got = media_tools.register(wrap, ["golden_check"], lambda body: {"status": "ok", **body})
-    assert got["golden_check"].__name__ == "golden_check"
-    assert got["golden_check"].__doc__ == media_tools.golden_check.__doc__
+    got = media_tools.register(wrap, ["image_compare"], lambda body: {"status": "ok", **body})
+    assert got["image_compare"].__name__ == "image_compare"
+    assert got["image_compare"].__doc__ == media_tools.image_compare.__doc__
     with pytest.raises(Invalid, match="one of the two"):
-        got["golden_check"](checksums="/g")
+        got["image_compare"]("golden", checksums="/g")
     folder = tmp_path / "d"
     folder.mkdir()
     (folder / "a.png").write_bytes(b"a")
     sums = tmp_path / "sums"
     sums.write_text(f"{hashlib.sha256(b'a').hexdigest()}  a.png\n")
-    answered = got["golden_check"](dir=str(folder), checksums=str(sums))
+    answered = got["image_compare"]("golden", dir=str(folder), checksums=str(sums))
     assert answered["status"] == "ok" and answered["matched"] == 1, answered
 
 
@@ -208,8 +238,8 @@ def test_a_judge_takes_the_defaults_its_body_declares(monkeypatch: pytest.Monkey
     """Each default is written once, on the body: the pre-gate judges a call that left an
     argument out with the value the body would run with."""
     seen: list[dict[str, Any]] = []
-    monkeypatch.setattr(media_tools, "_judge_region_track", lambda **kw: seen.append(kw))
-    gate = media_tools._gate(media_tools.region_track, media_tools._judge_region_track)
+    monkeypatch.setattr(media_tools, "_judge_region", lambda **kw: seen.append(kw))
+    gate = media_tools._gate(media_tools._region, media_tools._judge_region)
     gate(manifest="/m")
     assert seen == [{"manifest": "/m", "crop": None, "measure": "signature", "ref": "",
                      "threshold": series.THRESHOLD_DEFAULT, "limit": series.LIMIT_DEFAULT}]
@@ -227,17 +257,18 @@ def test_golden_check_cuts_each_list_at_limit_and_keeps_the_counts_whole(tmp_pat
     sums = tmp_path / "sums"
     sums.write_text(f"{hashlib.sha256(b'x0').hexdigest()}  f0.png\n"
                     + "".join(f"{'0' * 64}  g{n}.png\n" for n in range(5)))
-    got = media_tools.golden_check(dir=str(folder), checksums=str(sums), limit=2)
+    got = media_tools.image_compare("golden", dir=str(folder), checksums=str(sums), limit=2)
     assert (got["matched"], got["extra"], got["extra_total"], got["missing"],
             got["missing_total"]) == (1, ["f1.png", "f2.png"], 5, ["g0.png", "g1.png"], 5)
     assert got["omitted"] == ["missing", "extra"] and "raise `limit`" in got["how"]
-    assert media_tools._golden_check_line({}, got) == (
-        "golden_check: 1 matched, 0 differing, 5 missing, 5 extra")
-    whole = media_tools.golden_check(dir=str(folder), checksums=str(sums))
+    assert _line("image_compare", "golden", got) == (
+        "image_compare golden: 1 matched, 0 differing, 5 missing, 5 extra")
+    whole = media_tools.image_compare("golden", dir=str(folder), checksums=str(sums))
     assert len(whole["extra"]) == 5 and "omitted" not in whole
     for bad in (0, series.LIMIT_MAX + 1, True):
         with pytest.raises(Invalid, match="limit="):
-            media_tools.check_golden_check(dir=str(folder), checksums=str(sums), limit=bad)
+            media_tools.TOOLS["image_compare"].check(method="golden", dir=str(folder),
+                                                      checksums=str(sums), limit=bad)
 
 
 def test_golden_check_cuts_a_list_only_past_limit_and_counts_differing_whole(
@@ -248,8 +279,8 @@ def test_golden_check_cuts_a_list_only_past_limit_and_counts_differing_whole(
         (folder / f"f{n}.png").write_bytes(b"x%d" % n)
     sums = tmp_path / "sums"
     sums.write_text("".join(f"{'0' * 64}  f{n}.png\n" for n in range(3)))
-    at = media_tools.golden_check(dir=str(folder), checksums=str(sums), limit=3)
+    at = media_tools.image_compare("golden", dir=str(folder), checksums=str(sums), limit=3)
     assert at["differing"] == ["f0.png", "f1.png", "f2.png"] and "omitted" not in at
-    cut = media_tools.golden_check(dir=str(folder), checksums=str(sums), limit=2)
+    cut = media_tools.image_compare("golden", dir=str(folder), checksums=str(sums), limit=2)
     assert cut["differing"] == ["f0.png", "f1.png"] and cut["differing_total"] == 3
     assert cut["omitted"] == ["differing"]

@@ -19,14 +19,15 @@ from scry_core.reply_contract import Invalid
 
 
 def _held(refs: list[str]) -> dict[str, Any]:
-    return {"breakpoint_list": {"key": "breakpoints", "refs": refs}}
+    return {"breakpoints": {"tool": "declaration_list", "refs": refs}}
 
 
 #: The double's tool names, which a real server declares as its own.
 VOCABULARY: dict[str, Any] = {"outside": frozenset({"close"}),
                               "sequences": frozenset({"perform", "drive"}),
-                              "start_tool": "start", "states": ("state_save", "state_load", "name"),
-                              "kinds": {"breakpoint": ("breakpoint_list", "breakpoints")}}
+                              "start_tool": "start",
+                              "states": recording.States("state_write", "save", "load", "name"),
+                              "kinds": {"breakpoint": ("declaration_list", "breakpoints")}}
 
 
 class _Machine:
@@ -152,7 +153,7 @@ class _Server:
             return {"status": "ok"}
 
         @b.tool("look")
-        def look() -> dict[str, Any]:
+        def look(method: str = "") -> dict[str, Any]:
             return stopped()       # where the machine stands, which this step did not move
 
         @b.tool("wait_out")
@@ -188,8 +189,8 @@ class _Server:
         def snapshot(dest: str = "") -> dict[str, Any]:
             return {"status": "ok", "path": dest or "/tmp/x.png"}
 
-        @b.tool("golden_check", read_only=True, replay=("matched",))
-        def golden_check(dir: str = "", manifest: str = "") -> dict[str, Any]:
+        @b.tool("image_compare", read_only=True, replay=("matched",))
+        def image_compare(dir: str = "", manifest: str = "") -> dict[str, Any]:
             return {"status": "ok", "matched": ["a.png"]}
 
         @b.tool("series_capture", replay="drop")
@@ -201,12 +202,10 @@ class _Server:
             m.running = True       # let go, then refused what it was asked after
             return {"status": "INVALID", "code": "bad_argument", "message": "after the release"}
 
-        @b.tool("state_save")
-        def state_save(name: str) -> dict[str, Any]:
-            return {"status": "ok"}
-
-        @b.tool("state_load")
-        def state_load(name: str) -> dict[str, Any]:
+        @b.tool("state_write")
+        def state_write(method: str, name: str) -> dict[str, Any]:
+            if method == "save":
+                return {"status": "ok"}
             m.stop_at(m.frame)
             return stopped()
 
@@ -223,9 +222,9 @@ class _Server:
         ops = {"run_for": run_for, "write": write, "read_memory": read_memory, "resume": resume,
                "declare": declare}
         self.tools = {f.__name__: f for f in (start, run_for, resume, stop, write, peek,
-                                              look, golden_check, series_capture, go_refused,
+                                              look, image_compare, series_capture, go_refused,
                                               wait_out, crashes, close, read_memory, log,
-                                              poke_and_look, snapshot, state_save, state_load,
+                                              poke_and_look, snapshot, state_write,
                                               perform, perform_export, record, declare)}
 
     def __getattr__(self, name: str) -> Any:
@@ -342,7 +341,7 @@ def test_a_run_and_a_check_are_kept_and_each_step_holds_to_where_it_stopped() ->
         {"op": "look"},                                # it moved nothing, so it holds to nothing
         {"op": "read_memory", "ref": "score", "recorded": {"hex": "beef"}}]
     assert out.checks == 1 and "call" not in out.cut and out.dropped == []
-    assert doc["version"] == 2 and doc["server"] == "double"
+    assert doc["version"] == 3 and doc["server"] == "double"
     assert doc["needs"] == {"states": [], "declarations": _held([])}
 
 
@@ -371,9 +370,9 @@ def test_a_release_no_call_saw_end_cuts_the_document_at_the_release() -> None:
 def test_a_state_loaded_and_not_saved_in_the_recording_is_what_the_document_needs() -> None:
     s = _Server()
     s.start(system="board")
-    s.state_save(name="mine")
-    s.state_load(name="mine")
-    s.state_load(name="theirs")
+    s.state_write(method="save", name="mine")
+    s.state_write(method="load", name="mine")
+    s.state_write(method="load", name="theirs")
     doc, _out = s.document()
     assert doc["needs"] == {"states": ["theirs"], "declarations": _held([])}
 
@@ -626,7 +625,7 @@ def test_a_check_of_files_a_dropped_call_wrote_is_dropped_never_a_green_by_const
     s = _Server()
     s.start(system="board")
     s.snapshot(dest="/tmp/goldens/a.png")
-    s.golden_check(dir="/tmp/goldens")
+    s.image_compare(dir="/tmp/goldens")
     doc, out = s.document()
     assert doc["steps"] == [] and out.checks == 0
     assert "files a dropped call wrote" in out.dropped[-1]["why"], out.dropped
@@ -689,10 +688,10 @@ def test_a_check_of_a_dropped_series_by_its_manifest_is_dropped(names: str) -> N
     s.start(system="board")
     if names == "the manifest its reply named, with no dest":
         s.series_capture()
-        s.golden_check(manifest="/tmp/s/manifest.json")
+        s.image_compare(manifest="/tmp/s/manifest.json")
     else:
         s.series_capture(dest="/tmp/series")
-        s.golden_check(**({"manifest": "/tmp/series/manifest.json"} if names == "the manifest"
+        s.image_compare(**({"manifest": "/tmp/series/manifest.json"} if names == "the manifest"
                           else {"manifest": "/tmp/series/frames/0001.png"}))
     doc, out = s.document()
     assert doc["steps"] == [] and out.checks == 0
@@ -783,11 +782,11 @@ def test_a_server_that_cannot_list_its_declarations_records_none() -> None:
 
 def test_the_state_tools_are_the_servers_own_words() -> None:
     s = _Server()
-    s.recorder.states = ("save_it", "load_it", "slot")
+    s.recorder.states = recording.States("slot_write", "store", "restore", "slot")
     s.start(system="board")
-    s.state_load(name="theirs")
+    s.state_write(method="load", name="theirs")
     doc, _ = s.document()
-    assert doc["needs"]["states"] == [], "`state_load` is not this server's load"
+    assert doc["needs"]["states"] == [], "`state_write` is not this server's state tool"
 
 
 def test_unrecorded_takes_nothing() -> None:
@@ -824,3 +823,17 @@ def test_perform_export_names_the_file_it_writes_dest(tmp_path: Path) -> None:
     assert recording.EXPORTS.startswith("Write what this session did since its `start` to "
                                         "`dest`")
     assert recording.EXPORT_REPLY.startswith("`dest` absolute")
+
+
+def test_a_tool_declares_its_export_per_method() -> None:
+    s = _Server()
+    s.recorder.declare("look", {"keep": ("hex",), "skip": "drop"}, True)
+    s.start(system="board")
+    s.look(method="skip")
+    s.look(method="keep")
+    s.look(method="other")
+    doc, out = s.document()
+    assert [st.get("method") for st in doc["steps"]] == ["keep", "other"]
+    assert out.dropped[-1]["op"] == "look" and out.checks == 0
+    with pytest.raises(TypeError, match="replay="):
+        s.recorder.declare("x", {"a": "drpo"}, False)  # type: ignore[dict-item]

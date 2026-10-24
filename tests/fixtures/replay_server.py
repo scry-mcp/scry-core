@@ -1,5 +1,5 @@
-"""A double Scry server for the replay runner: `start`, `breakpoint_list`, `watch_list`,
-`state_list`, `perform` and `close` over stdio. Its `perform` answers each step as an advance
+"""A double Scry server for the replay runner: `start`, `declaration_list`, `state_list`,
+`perform` and `close` over stdio. Its `perform` answers each step as an advance
 landing at `pc` 0x10 and the frame it was asked to run, holds each step's `recorded` to that answer
 as a real server does, and says how many held. The environment makes it break as a server can:
 an error result, a list refused whole, a death mid-call, a count of held steps that lies."""
@@ -30,18 +30,12 @@ def start(system: str = "", binary: str = "", rompath: str = "") -> dict[str, An
 
 
 @mcp.tool()
-def breakpoint_list() -> dict[str, Any]:
+def declaration_list() -> dict[str, Any]:
     if os.environ.get("REPLAY_DOUBLE_LISTS_FAIL"):
-        return {"summary": "breakpoint_list: INVALID", "status": "INVALID", "code": "no_session",
-                "message": "no session", "session": {}}
-    return {"summary": "breakpoints", "status": "ok",
+        return {"summary": "declaration_list: INVALID", "status": "INVALID",
+                "code": "no_session", "message": "no session", "session": {}}
+    return {"summary": "declarations", "status": "ok",
             "breakpoints": [{"ref": r} for r in DECLARED if not r.startswith("w:")],
-            "session": {}}
-
-
-@mcp.tool()
-def watch_list() -> dict[str, Any]:
-    return {"summary": "watches", "status": "ok",
             "watches": [{"ref": r} for r in DECLARED if r.startswith("w:")], "session": {}}
 
 

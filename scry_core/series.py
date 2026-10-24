@@ -38,7 +38,7 @@ SERIES_MAX = 1000
 DOC_VALUES = {"SERIES_MAX": str(SERIES_MAX)}
 MEASURES = ("signature", "changed_pixels", "match")
 Measure = Literal["signature", "changed_pixels", "match"]
-#: `region_track`'s default list length and its ceiling.
+#: the region method's default list length and its ceiling.
 LIMIT_DEFAULT, LIMIT_MAX = 40, 1000
 THRESHOLD_DEFAULT = 0.98
 #: The decimals a `match` fraction is shown with in the track's file.
@@ -213,7 +213,7 @@ def resolved(series: Manifest, crop: Sequence[int] | None) -> list[int]:
     return list(raster.inside(crop, *series.size(), f"the pictures of {series.path}"))
 
 
-def series_diff(a: Manifest, b: Manifest, crop: Sequence[int] | None) -> dict[str, Any]:
+def compare(a: Manifest, b: Manifest, crop: Sequence[int] | None) -> dict[str, Any]:
     """Two series paired by frame number, after each one's control: at least two of its frames
     differ over `crop`, or the series says nothing about the other; and at least one frame in
     common, or nothing was compared."""
@@ -266,7 +266,7 @@ def runs(frames: list[int]) -> list[list[int]]:
     return out
 
 
-def region_track(series: Manifest, crop: Sequence[int] | None, measure: Measure,
+def track(series: Manifest, crop: Sequence[int] | None, measure: Measure,
                  ref: png.Raster | None, threshold: float, limit: int) -> dict[str, Any]:
     """Where `measure` over `crop` changes: `start` (the first frame and its value; none for
     `changed_pixels`, which has no frame before the first), then each transition, a change, as
@@ -274,7 +274,7 @@ def region_track(series: Manifest, crop: Sequence[int] | None, measure: Measure,
     `limit` in the reply and every one, with each frame's value, in a JSON file beside the
     manifest."""
     if measure not in MEASURES or limit < 1 or (measure == "match") != (ref is not None):
-        raise ValueError(f"region_track({measure!r}, ref={ref is not None}, limit={limit})")
+        raise ValueError(f"track({measure!r}, ref={ref is not None}, limit={limit})")
     start: list[Any] | dict[str, Any] = unavailable(
         "`changed_pixels` counts a change from the frame before, and the first frame has none")
     values: list[list[Any]]

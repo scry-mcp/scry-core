@@ -75,7 +75,7 @@ LOAD_DESCRIBED = (
 SAVE_DESCRIBED = (
     "The file layer and the session layer written as ONE map, the session's screens winning, "
     "and that file made the file layer (the session's screens are `promoted`). `dest` is the file "
-    "to write, named as `map_load`'s `path` is; one already there is refused unless `overwrite`. "
+    "to write, named as `load`'s `path` is; one already there is refused unless `overwrite`. "
     "Any state.\n\n"
     "    Reply: `path` (the `dest` written), `application`, `screens`, `controls`, `promoted`. "
     "Refused: nothing mapped (`needs_call`); a `dest` not named as a map is, or there without "
@@ -176,7 +176,7 @@ class Maps:
         if len(screens.keys() | self.session.keys()) > SCREENS_MAX:
             raise Invalid("bad_argument", f"path: {path} holds {len(screens)} screens and the "
                           f"session layer {len(self.session)} more, past the {SCREENS_MAX} a map "
-                          "holds: `map_save` the session's first, or `start` again")
+                          "holds: save the session's first (`map_write`, `save`), or `start` again")
         self.file, self.application, self.path = screens, application, path
         self.found = None
         return {"path": str(path), "application": application, "screens": len(screens),
@@ -218,8 +218,8 @@ class Maps:
             *(("session", s) for s in self.session.values()),
             *(("file", s) for name, s in self.file.items() if name not in self.session)]
         if not candidates:
-            raise Invalid("needs_call", "no screen is mapped: `map_load` a map, or `map_add` the "
-                          "screen in front of you")
+            raise Invalid("needs_call", "no screen is mapped: `map_write` a map (`load`), or the "
+                          "screen in front of you (`add`)")
         # FORGOTTEN BEFORE THE READ: a read that fails is no identification, and acting on the
         # screen the last one found would act on a screen nobody has seen since.
         self.found = None
@@ -247,8 +247,8 @@ class Maps:
         path = _map_path("dest", dest)
         merged = {**self.file, **self.session}
         if not merged:
-            raise Invalid("needs_call", "no screen is mapped: `map_add` the screen in front of "
-                          "you, or `map_load` a map, before saving one")
+            raise Invalid("needs_call", "no screen is mapped: `map_write` the screen in front of "
+                          "you (`add`), or a map (`load`), before saving one")
         application = _application(path)
         doc = {"format": FORMAT, "application": application,
                "screens": [s.doc() for s in merged.values()]}
@@ -417,15 +417,15 @@ def _keys(obj: dict[str, Any], allowed: set[str], at: str) -> None:
                       f"have (it has {sorted(allowed)})")
 
 
-def load_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    return (f"map_load: {prose.counted(reply['screens'], 'screen')}, "
+def load_line(reply: dict[str, Any]) -> str:
+    return (f"{prose.counted(reply['screens'], 'screen')}, "
             f"{prose.counted(reply['controls'], 'control')} of {reply['application']}")
 
 
-def add_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
+def add_line(reply: dict[str, Any]) -> str:
     w, h = reply["size"]
     shadow = ", shadowing the file's" if reply["shadows_file"] else ""
-    return (f"map_add: {reply['screen']} ({reply['kind']} {w}x{h}), "
+    return (f"{reply['screen']} ({reply['kind']} {w}x{h}), "
             f"{prose.counted(len(reply['match']), 'region')}, "
             f"{prose.counted(reply['controls'], 'control')}{shadow}")
 
@@ -440,8 +440,8 @@ def find_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
             f"{reply['screens_tried']} of that kind and size)")
 
 
-def save_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    return (f"map_save: {prose.counted(reply['screens'], 'screen')} to {Path(reply['path']).name}, "
+def save_line(reply: dict[str, Any]) -> str:
+    return (f"{prose.counted(reply['screens'], 'screen')} to {Path(reply['path']).name}, "
             f"{len(reply['promoted'])} promoted from the session")
 
 
@@ -451,7 +451,7 @@ def check_path(name: str, value: object) -> None:
 
 
 def check_add(screen: object, match: object, controls: object = None) -> None:
-    """`map_add`'s machine-independent half, everything but whether its rectangles lie on the
+    """The `add` method's machine-independent half, everything but whether its rectangles lie on the
     screen, which only a read can say: the name, the crops' shapes, the controls' shapes, keys
     and names. A fault found here costs no read."""
     if not _name(screen):
@@ -472,7 +472,7 @@ def check_add(screen: object, match: object, controls: object = None) -> None:
 
 
 def check_save(dest: object, overwrite: object) -> None:
-    """`map_save`'s machine-independent half: `dest`, and `overwrite` a yes or a no."""
+    """The `save` method's machine-independent half: `dest`, and `overwrite` a yes or a no."""
     _map_path("dest", dest)
     vocab.check_bool("overwrite", overwrite)
 

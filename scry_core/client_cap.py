@@ -15,7 +15,10 @@ from typing import Any
 
 from scry_core.verdict import Invalid
 
-CLIENT_TEXT_CAP = 2048
+#: Claude Code's MCP docs, *Tool search for MCP server authors*: 4,096 characters for
+#: `instructions` and a tool loaded upfront, 16,384 through search, which matches only the first
+#: 4,096. The strictest of those is the cap.
+CLIENT_TEXT_CAP = 4096
 PAST_THE_CUT_SHOWN = 60
 
 

@@ -196,23 +196,26 @@ def test_two_formats_are_refused(tmp_path: Path) -> None:
 
 def test_the_two_tools_answer_and_judge_their_arguments(tmp_path: Path) -> None:
     path = _write(tmp_path / "s.wav", [_sine(RATE, start=800)])
-    got = media_tools.audio_measure(path)
+    got = media_tools.audio_compare("measure", path)
     assert got["path"] == path and got["measures"][0]["onset_s"] > 0.09
-    assert media_tools._audio_measure_line({}, got).startswith("audio_measure: ch0 peak -6.23")
-    same = media_tools.audio_diff(path, path)
+    assert media_tools.TOOLS["audio_compare"].summary({"method": "measure"}, got).startswith(
+        "audio_compare measure: ch0 peak -6.23")
+    same = media_tools.audio_compare("diff", a=path, b=path)
     assert same["exact"] is True and same["class"] == "exact"
     assert same["snr_db"]["available"] is False, same
-    assert media_tools._audio_diff_line({}, same) == (
-        "audio_diff: exact, equal, envelope 1.0")
-    quiet = media_tools.audio_measure(_write(tmp_path / "q.wav", [[0] * 800]))
-    assert media_tools._audio_measure_line({}, quiet) == "audio_measure: ch0 silent"
-    for check, kw, said in (
-            (media_tools.check_audio_measure, {"path": "s.wav"}, "must be an absolute path"),
-            (media_tools.check_audio_measure, {"path": "/s", "window": [1, 0]}, "window="),
-            (media_tools.check_audio_measure, {"path": "/s", "window": [-1, 2]}, "window="),
-            (media_tools.check_audio_measure, {"path": "/s", "channel": True}, "channel="),
-            (media_tools.check_audio_diff, {"a": "/a", "b": "/b", "align": 1}, "align is true"),
-            (media_tools.check_audio_diff, {"a": "/a", "b": "b"}, "b='b'")):
+    assert media_tools.TOOLS["audio_compare"].summary({"method": "diff"}, same) == (
+        "audio_compare diff: exact, equal, envelope 1.0")
+    quiet = media_tools.audio_compare("measure", _write(tmp_path / "q.wav", [[0] * 800]))
+    assert media_tools.TOOLS["audio_compare"].summary({"method": "measure"}, quiet) == (
+        "audio_compare measure: ch0 silent")
+    check = media_tools.TOOLS["audio_compare"].check
+    for kw, said in (
+            ({"method": "measure", "path": "s.wav"}, "must be an absolute path"),
+            ({"method": "measure", "path": "/s", "window": [1, 0]}, "window="),
+            ({"method": "measure", "path": "/s", "window": [-1, 2]}, "window="),
+            ({"method": "measure", "path": "/s", "channel": True}, "channel="),
+            ({"method": "diff", "a": "/a", "b": "/b", "align": 1}, "align is true"),
+            ({"method": "diff", "a": "/a", "b": "b"}, "b='b'")):
         with pytest.raises(Invalid, match=said):
             check(**kw)
 
@@ -327,14 +330,13 @@ def test_an_8_bit_clipped_top_is_a_plateau(tmp_path: Path) -> None:
 
 
 def test_the_descriptions_state_the_constants_the_code_uses() -> None:
-    measure, diff = media_tools.audio_measure.__doc__ or "", media_tools.audio_diff.__doc__ or ""
+    doc = " ".join((media_tools.audio_compare.__doc__ or "").split())
     for said in (f"{wav.SILENT_RMS * 100:g}% of full scale", f"{wav.SILENCE_DBFS:g} dBFS",
                  f"{wav.SILENCE_MIN_S * 1000:g} ms", f"{wav.ONSET_FRACTION * 100:g}% of the peak",
-                 f"{wav.PEAK_FRACTION * 100:g}% of the peak", f"a run past {wav.CLIP_RUN_MAX}"):
-        assert said in " ".join(measure.split()), said
-    for said in (f"{wav.SNR_INAUDIBLE_DB:g} dB or more", f"{wav.SNR_AUDIBLE_DB:g} to "
+                 f"{wav.PEAK_FRACTION * 100:g}% of the peak", f"a run past {wav.CLIP_RUN_MAX}",
+                 f"{wav.SNR_INAUDIBLE_DB:g} dB or more", f"{wav.SNR_AUDIBLE_DB:g} to "
                  f"{wav.SNR_INAUDIBLE_DB:g}", f"{wav.ENVELOPE_WINDOWS}-window"):
-        assert said in " ".join(diff.split()), said
+        assert said in doc, said
 
 
 def test_every_media_tool_is_an_image_tool_or_an_audio_tool() -> None:

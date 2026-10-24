@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping
-from typing import Any, Literal, Required, get_args, get_type_hints
+from typing import Any, Literal, NotRequired, Required, get_args, get_origin, get_type_hints
 
 from mcp.server.mcpserver import MCPServer
 from pydantic import ConfigDict, TypeAdapter
@@ -68,6 +68,33 @@ def judged(model: type) -> TypeAdapter[Any]:
 
 #: Each declared tool's model, as the battery judges a reply against it.
 _JUDGES: dict[str, TypeAdapter[Any]] = {}
+#: Each declared tool's fields marked `OmitEmpty`.
+_OMIT_EMPTY: dict[str, frozenset[str]] = {}
+
+
+def omitted_when_empty(model: type) -> frozenset[str]:
+    """The fields of `model` marked `OmitEmpty`. A marked field the model requires is the
+    server's bug, a `ValueError`: a reply would leave out what its schema promises."""
+    marked: set[str] = set()
+    required = set(getattr(model, "__required_keys__", ()))
+    for name, hint in get_type_hints(model, include_extras=True).items():
+        while get_origin(hint) in (Required, NotRequired):
+            if get_origin(hint) is Required:
+                required.add(name)
+            hint = get_args(hint)[0]
+        if any(m is contract.OmitEmpty for m in getattr(hint, "__metadata__", ())):
+            marked.add(name)
+    if both := sorted(marked & required):
+        raise ValueError(f"{model.__name__} requires {both}, which it marks OmitEmpty")
+    return frozenset(marked)
+
+
+def omit_empty(name: str, reply: dict[str, Any]) -> dict[str, Any]:
+    """`reply` without the fields `name`'s model marks `OmitEmpty` whose value is empty."""
+    marked = _OMIT_EMPTY.get(name)
+    if not marked:
+        return reply
+    return {k: v for k, v in reply.items() if k not in marked or not contract.is_empty(v)}
 
 
 def published(model: type) -> dict[str, Any]:
@@ -100,6 +127,7 @@ def declare(server: MCPServer, models: Mapping[str, type]) -> None:
     if gap := model_gap(tools, models):
         raise ValueError(gap)
     for name, tool in tools.items():
+        _OMIT_EMPTY[name] = omitted_when_empty(models[name])
         tool.fn_metadata = tool.fn_metadata.model_copy(
             update={"output_schema": published(models[name])})
         _JUDGES[name] = judged(models[name])

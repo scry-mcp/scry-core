@@ -49,7 +49,7 @@ def not_a_state(path: Path) -> str | None:
 
 
 def refused_load(name: str, path: Path, why: str) -> Invalid:
-    """`state_load`'s refusal of a name `not_a_state` judged, said the same on both servers."""
+    """A state load's refusal of a name `not_a_state` judged, said the same on both servers."""
     return Invalid("unknown_ref",
-                   f"no state named {name!r} to load: at {path} {why}, and `state_save` refuses "
+                   f"no state named {name!r} to load: at {path} {why}, and a save refuses "
                    "the name while it is there")

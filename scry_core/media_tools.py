@@ -15,11 +15,11 @@ import functools
 import inspect
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Literal, cast
 
-from scry_core import goldens, judges, narrowing, prose, raster, series, wav
+from scry_core import goldens, judges, methods, narrowing, prose, raster, series, wav
 from scry_core import vocabulary as vocab
-from scry_core.recording import ExportAs
+from scry_core.recording import Replay
 from scry_core.reply_contract import Invalid
 
 Summary = Callable[[dict[str, Any], dict[str, Any]], str]
@@ -29,7 +29,7 @@ TOLERANCE_MAX = 255
 REFERENCE = "Reference: REFERENCE.md, Media files."
 PATHS = "Every path is absolute or starts with `~`."
 READS_ONLY = "Reads files only: it needs no machine and alters nothing."
-WRITES_ITS_FILE = "Reads files and writes one, `path`: it needs no machine."
+WRITES_ITS_FILE = "Reads files, and `region` writes one, `path`: it needs no machine."
 
 
 def _optional_rect(name: str, value: object) -> None:
@@ -37,7 +37,7 @@ def _optional_rect(name: str, value: object) -> None:
         judges.rect(name, value)
 
 
-def _judge_image_diff(a: object, b: object, crop: object, shift: object,
+def _judge_image(a: object, b: object, crop: object, shift: object,
                       tolerance: object) -> None:
     judges.absolute("a", a)
     judges.absolute("b", b)
@@ -49,24 +49,9 @@ def _judge_image_diff(a: object, b: object, crop: object, shift: object,
                       f"still counted equal, 0..{TOLERANCE_MAX}")
 
 
-def image_diff(a: str, b: str, crop: list[int] | None = None, shift: list[int] | None = None,
+def _image(a: str, b: str, crop: list[int] | None = None, shift: list[int] | None = None,
                tolerance: int = 0) -> dict[str, Any]:
-    """Compare two PNG files pixel by pixel, in the colours they show, and answer where they
-    differ without sending either picture.
-
-    `a`, `b`: paths of PNGs (8-bit, indexed or RGB). `crop` [x, y, width, height] is
-    the rectangle compared on both; it must lie inside both (it is never padded), and pictures
-    of two sizes need one. `shift` [dx, dy] compares pixel (x, y) of `a` with (x + dx, y + dy) of
-    `b`, over the part of the crop both stay in: a sprite that moved compares equal at its
-    move. `tolerance` (0..255) is the per-channel difference still counted equal.
-
-    Reply: `differing_pixels`, `bbox` ([x, y, w, h] in `a`'s pixels, unavailable when none
-    differ),
-    `max_delta` ([r, g, b], the largest channel difference seen), `width` and `height` (`a`'s),
-    `crop` (the rectangle of `a` compared), `shift`, `tolerance`, and `a` and `b` (`path`,
-    `sha256`).
-    """
-    _judge_image_diff(a, b, crop, shift, tolerance)
+    _judge_image(a, b, crop, shift, tolerance)
     read = {name: (path, *judges.picture_file(name, path))
             for name, path in (("a", judges.existing_file("a", a)),
                                ("b", judges.existing_file("b", b)))}
@@ -81,32 +66,19 @@ def image_diff(a: str, b: str, crop: list[int] | None = None, shift: list[int] |
                for name, (path, _, digest) in read.items()}}
 
 
-def _judge_series_diff(a: object, b: object, crop: object) -> None:
+def _judge_series(a: object, b: object, crop: object) -> None:
     judges.absolute("a", a)
     judges.absolute("b", b)
     _optional_rect("crop", crop)
 
 
-def series_diff(a: str, b: str, crop: list[int] | None = None) -> dict[str, Any]:
-    """Compare two series frame by frame, paired by frame number, after checking that each one
-    can tell frames apart at all.
-
-    `a`, `b`: paths of `scry-series/1` manifests (what `series_capture` writes); every
-    file a manifest lists is checked against its sha256 first. `crop` [x, y, width, height] is
-    compared on every frame of both, inside the PNGs. THE CONTROLS: a series whose every frame
-    has one signature over the crop is `control_silent` naming it, since it says nothing about
-    the other one; two series with no frame number in common are `control_silent` too.
-
-    Reply: `pairs`, `identical`, `differing`, `first_differing` (`frame`, `differing_pixels`,
-    `bbox`, or unavailable), `only_in_a` and `only_in_b` (frames with no partner, as [first, last]
-    runs), `crop` (the rectangle compared), and `a`, `b`.
-    """
-    _judge_series_diff(a, b, crop)
+def _series(a: str, b: str, crop: list[int] | None = None) -> dict[str, Any]:
+    _judge_series(a, b, crop)
     one, two = series.read_manifest("a", a), series.read_manifest("b", b)
-    return {**series.series_diff(one, two, crop), "a": str(one.path), "b": str(two.path)}
+    return {**series.compare(one, two, crop), "a": str(one.path), "b": str(two.path)}
 
 
-def _judge_region_track(manifest: object, crop: object, measure: object, ref: object,
+def _judge_region(manifest: object, crop: object, measure: object, ref: object,
                         threshold: object, limit: object) -> None:
     judges.absolute("manifest", manifest)
     _optional_rect("crop", crop)
@@ -127,37 +99,18 @@ def _judge_region_track(manifest: object, crop: object, measure: object, ref: ob
                       f"1..{series.LIMIT_MAX}")
 
 
-def region_track(manifest: str, crop: list[int] | None = None, measure: str = "signature",
+def _region(manifest: str, crop: list[int] | None = None, measure: str = "signature",
                  ref: str = "", threshold: float = series.THRESHOLD_DEFAULT,
                  limit: int = series.LIMIT_DEFAULT) -> dict[str, Any]:
-    """Follow one region through a series and answer the frames where it changes, as numbers,
-    never as pictures.
-
-    `manifest`: the path of a `scry-series/1` manifest. `crop` [x, y, width, height],
-    inside its PNGs (default the whole picture). `measure`: `signature` (the region's
-    signature; a transition is a new one), `changed_pixels` (pixels changed since the previous
-    frame; a transition is a frame where any did), `match` (the fraction of the region equal to
-    `ref`, the path of a PNG of the crop's size; on at `threshold` or more, default
-    0.98, and a transition is a flip). `limit` (1..1000, default 40): transitions listed. THE
-    CONTROL: a measure that never changes over the series is `control_silent`, the crop having
-    missed.
-
-    Reply: `start` ([frame, value] at the first frame; unavailable for `changed_pixels`),
-    `transitions` ([frame, value]: the new signature, the count, or true/false), `gaps` (frame
-    numbers between consecutive transitions), `transitions_total`, `frames`, `measure`, `crop`
-    (the rectangle measured), `manifest`, and `path`, a JSON file beside the manifest holding
-    every transition and each frame's value; a list cut at `limit` says so in `omitted` and
-    `how`.
-    """
-    _judge_region_track(manifest, crop, measure, ref, threshold, limit)
+    _judge_region(manifest, crop, measure, ref, threshold, limit)
     track = series.read_manifest("manifest", manifest)
     reference = judges.picture_file("ref", judges.existing_file("ref", ref))[0] if ref else None
-    return {**series.region_track(track, crop, cast(series.Measure, measure), reference,
+    return {**series.track(track, crop, cast(series.Measure, measure), reference,
                                   float(threshold), limit),
             "manifest": str(track.path)}
 
 
-def _judge_golden_check(manifest: object, dir: object, checksums: object, limit: object) -> None:
+def _judge_golden(manifest: object, dir: object, checksums: object, limit: object) -> None:
     if bool(manifest) == bool(dir):
         raise Invalid("bad_argument", "name the files to check either as `manifest` (a series) "
                       "or as `dir` (a directory of PNGs), one of the two")
@@ -171,23 +124,9 @@ def _judge_golden_check(manifest: object, dir: object, checksums: object, limit:
                       f"1..{series.LIMIT_MAX}")
 
 
-def golden_check(manifest: str = "", dir: str = "", checksums: str = "",
+def _golden(manifest: str = "", dir: str = "", checksums: str = "",
                  limit: int = series.LIMIT_DEFAULT) -> dict[str, Any]:
-    """Check a series, or a directory of PNGs, against goldens written by `shasum -a 256`:
-    exact bytes, by file name.
-
-    ONE of `manifest`, the path of a `scry-series/1` manifest (its frames), or `dir`, a
-    directory (its `*.png`); and `checksums`, the path of a file of
-    `<sha256>  <name>` lines (the name's last part is matched, so a line may carry a directory).
-    A file and a golden that meet nowhere compare nothing, so no name in common is
-    `control_silent`; a line that does not parse is refused naming it.
-
-    Reply: `matched` (a count), `differing`, `missing` (goldens with no file) and `extra` (files
-    with no golden), each a sorted list of names cut at `limit` (1..1000, default 40) with its
-    whole count beside it (`differing_total`, `missing_total`, `extra_total`; a cut list says so
-    in `omitted` and `how`), and `checksums`, and `manifest` or `dir`.
-    """
-    _judge_golden_check(manifest, dir, checksums, limit)
+    _judge_golden(manifest, dir, checksums, limit)
     sums = goldens.read_checksums("checksums", judges.existing_file("checksums", checksums))
     if manifest:
         track = series.read_manifest("manifest", manifest)
@@ -208,66 +147,30 @@ def golden_check(manifest: str = "", dir: str = "", checksums: str = "",
                                  "count is beside it: raise `limit` for more")}
 
 
-def _judge_audio_measure(path: object, window: object, channel: object) -> None:
+def _judge_measure(path: object, window: object, channel: object) -> None:
     judges.absolute("path", path)
     judges.window("window", window)
     if channel is not None and not judges.whole(channel):
         raise Invalid("bad_argument", f"channel={channel!r} is a channel number, from 0")
 
 
-def audio_measure(path: str, window: list[float] | None = None,
+def _measure(path: str, window: list[float] | None = None,
                   channel: int | None = None) -> dict[str, Any]:
-    """Measure a WAV (what `audio_record` writes) and answer whether it sounded, how loud, when
-    and whether it clipped, as numbers: the sound itself never comes back.
-
-    `path`: the path of an 8- or 16-bit PCM WAV. `window` [from_s, to_s], seconds
-    (default the whole file). `channel` (default every channel).
-
-    A chip resting at a steady level is silent: the RMS and the plateau read the window less its
-    mean, the silences read it through a DC blocker, the onset against its first sample, the
-    peak as written (a square wave's flat top reads as a plateau too).
-    Reply, per channel in `measures` (`channel`, 0 the first, the left of a stereo file):
-    `peak_dbfs` and `rms_dbfs` (unavailable for zero), `silent` (an RMS under 0.5% of full scale),
-    `silence_spans` (`count`, and the `first` [from_s, to_s] quieter than -60 dBFS for 50 ms or
-    more, unavailable with none), `onset_s` (the first sample over 2% of the peak, from the
-    file's start; unavailable when silent), `clipping_run` (the longest run of flat samples at
-    95% of the peak or above) and `clipped` (a run past 8); then `sample_rate_hz`, `channels`,
-    `bits`, `window` and `pcm_sha256` (the window's frames, every channel's, for an exact
-    comparison), and `path`.
-    """
-    _judge_audio_measure(path, window, channel)
+    _judge_measure(path, window, channel)
     recording = wav.read("path", path)
     return {**wav.measure(recording, window, channel), "path": str(recording.path)}
 
 
-def _judge_audio_diff(a: object, b: object, window: object, align: object) -> None:
+def _judge_diff(a: object, b: object, window: object, align: object) -> None:
     judges.absolute("a", a)
     judges.absolute("b", b)
     judges.window("window", window)
     vocab.check_bool("align", align)
 
 
-def audio_diff(a: str, b: str, window: list[float] | None = None,
+def _diff(a: str, b: str, window: list[float] | None = None,
                align: bool = True) -> dict[str, Any]:
-    """Compare two WAVs of one format, `b` the reference, and answer how close they are as
-    numbers.
-
-    `a`, `b`: paths of 8- or 16-bit PCM WAVs of one rate, channel count and width.
-    `window` [from_s, to_s], seconds, on each. `align` (default true) drops the head of the
-    later one so the two onsets meet, so a recording that starts later is not called different
-    for it. Each channel is compared with its twin and the worst grades. THE CONTROL: two
-    recordings both `silent` (as `audio_measure` says) over the window compare nothing, so that
-    is `control_silent`.
-
-    Reply: `exact` (the windows' bytes equal), `snr_db` (signal to error, the reference's
-    energy over the difference's, the worst channel's; unavailable when equal after alignment),
-    `class` (`exact`, `inaudible` at 60 dB or more, `audible` 30 to 60, `different` under 30 or
-    lengths a tenth of a second apart), `envelope_correlation` (of the 64-window energy
-    envelopes, the worst channel's), `onset_delta_ms` (a's onset minus b's),
-    `length_delta_samples` (a's minus b's), `aligned_by_samples` (positive: a's head dropped;
-    negative: b's), and `a`, `b`.
-    """
-    _judge_audio_diff(a, b, window, align)
+    _judge_diff(a, b, window, align)
     one, two = wav.read("a", a), wav.read("b", b)
     return {**wav.compare(one, two, window, align), "a": str(one.path), "b": str(two.path)}
 
@@ -281,57 +184,112 @@ def _gate(body: Callable[..., Any], judge: Callable[..., None]) -> Callable[...,
     def gate(**given: Any) -> None:
         judge(**{name: given.get(name, "" if p.default is p.empty else p.default)
                  for name, p in params.items()})
-    # Named as the judge it runs, which is the name the body calls it by.
     gate.__name__ = gate.__qualname__ = judge.__name__
     return gate
 
 
-check_image_diff = _gate(image_diff, _judge_image_diff)
-check_series_diff = _gate(series_diff, _judge_series_diff)
-check_region_track = _gate(region_track, _judge_region_track)
-check_golden_check = _gate(golden_check, _judge_golden_check)
-check_audio_measure = _gate(audio_measure, _judge_audio_measure)
-check_audio_diff = _gate(audio_diff, _judge_audio_diff)
-
-
-def _audio_measure_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    said = ", ".join(f"ch{m['channel']} " + ("silent" if m["silent"] else
-                     f"peak {m['peak_dbfs']} dBFS, onset {m['onset_s']} s"
-                     + (", clipped" if m["clipped"] else "")) for m in reply["measures"])
-    return f"audio_measure: {said}"
-
-
-def _audio_diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    snr = "equal" if isinstance(reply["snr_db"], dict) else f"SNR {reply['snr_db']} dB"
-    return f"audio_diff: {reply['class']}, {snr}, envelope {reply['envelope_correlation']}"
-
-
-def _image_diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
+def _image_line(reply: dict[str, Any]) -> str:
     x, y, w, h = reply["crop"]
     past = f" past tolerance {reply['tolerance']}" if reply["tolerance"] else ""
     if not reply["differing_pixels"]:
-        return f"image_diff: no pixel differs{past} over {w}x{h} at [{x}, {y}]"
-    return (f"image_diff: {reply['differing_pixels']} pixels differ{past} over {w}x{h}, "
-            f"bbox {reply['bbox']}")
+        return f"no pixel differs{past} over {w}x{h} at [{x}, {y}]"
+    return f"{reply['differing_pixels']} pixels differ{past} over {w}x{h}, bbox {reply['bbox']}"
 
 
-def _series_diff_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
+def _series_line(reply: dict[str, Any]) -> str:
     first = reply["first_differing"]
     tail = f", first at frame {first['frame']}" if "frame" in first else ""
-    return (f"series_diff: {reply['pairs']} pairs, {reply['identical']} identical, "
+    return (f"{reply['pairs']} pairs, {reply['identical']} identical, "
             f"{reply['differing']} differing{tail}")
 
 
-def _region_track_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
+def _region_line(reply: dict[str, Any]) -> str:
     total = reply["transitions_total"]
     cut = f", the first {len(reply['transitions'])} listed" if reply.get("omitted") else ""
-    return (f"region_track {reply['measure']}: {prose.counted(total, 'transition')} "
+    return (f"{reply['measure']}, {prose.counted(total, 'transition')} "
             f"over {reply['frames']} frames{cut}")
 
 
-def _golden_check_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    return (f"golden_check: {reply['matched']} matched, {reply['differing_total']} differing, "
+def _golden_line(reply: dict[str, Any]) -> str:
+    return (f"{reply['matched']} matched, {reply['differing_total']} differing, "
             f"{reply['missing_total']} missing, {reply['extra_total']} extra")
+
+
+def _measure_line(reply: dict[str, Any]) -> str:
+    return ", ".join(f"ch{m['channel']} " + ("silent" if m["silent"] else
+                     f"peak {m['peak_dbfs']} dBFS, onset {m['onset_s']} s"
+                     + (", clipped" if m["clipped"] else "")) for m in reply["measures"])
+
+
+def _diff_line(reply: dict[str, Any]) -> str:
+    snr = "equal" if isinstance(reply["snr_db"], dict) else f"SNR {reply['snr_db']} dB"
+    return f"{reply['class']}, {snr}, envelope {reply['envelope_correlation']}"
+
+
+IMAGE_METHODS: dict[str, methods.Method] = {
+    "image": methods.Method(_image, _gate(_image, _judge_image), _image_line),
+    "series": methods.Method(_series, _gate(_series, _judge_series), _series_line),
+    "region": methods.Method(_region, _gate(_region, _judge_region), _region_line),
+    "golden": methods.Method(_golden, _gate(_golden, _judge_golden), _golden_line),
+}
+AUDIO_METHODS: dict[str, methods.Method] = {
+    "measure": methods.Method(_measure, _gate(_measure, _judge_measure), _measure_line),
+    "diff": methods.Method(_diff, _gate(_diff, _judge_diff), _diff_line),
+}
+
+
+ImageMethod = Literal["image", "series", "region", "golden"]
+AudioMethod = Literal["measure", "diff"]
+
+
+def image_compare(method: ImageMethod, a: str = "", b: str = "", crop: list[int] | None = None,
+                  shift: list[int] | None = None, tolerance: int | None = None,
+                  manifest: str = "", measure: str = "", ref: str = "",
+                  threshold: float | None = None, limit: int | None = None, dir: str = "",
+                  checksums: str = "") -> dict[str, Any]:
+    """Compare PNGs, series or a region of one, in numbers. `crop` [x, y, w, h];
+    `limit` 1..1000 (default 40) cuts a list, its count beside it.
+
+    `image`: PNGs `a`, `b`; two sizes need `crop`; `shift` [dx, dy] moves `b`; `tolerance`
+    0..255. Reply: `differing_pixels`, `bbox`, `max_delta`, `width`, `height`, `crop`, `shift`,
+    `tolerance`, `a`, `b`.
+
+    `series`: `scry-series/1` manifests `a`, `b`. Reply: `pairs`, `identical`, `differing`,
+    `first_differing`, `only_in_a`, `only_in_b`, `crop`, `a`, `b`.
+
+    `region`: `crop` of `manifest` by `measure`: `signature`, `changed_pixels`, or `match`
+    against `ref` at `threshold` (0.98). Reply: `start`, `transitions`, `gaps`,
+    `transitions_total`, `frames`, `measure`, `crop`, `manifest`, `path`.
+
+    `golden`: `manifest` or `dir` against `checksums` (`shasum -a 256`). Reply: `matched`,
+    `differing`, `missing`, `extra`, `differing_total`, `missing_total`, `extra_total`,
+    `checksums`, `manifest` or `dir`.
+
+    Refused: an argument the method does not take; `control_silent` when nothing can differ."""
+    chosen, given = methods.chosen(IMAGE_METHODS, locals())
+    return chosen.run(given)
+
+
+def audio_compare(method: AudioMethod, path: str = "", a: str = "", b: str = "",
+                  window: list[float] | None = None, channel: int | None = None,
+                  align: bool | None = None) -> dict[str, Any]:
+    """Measure a WAV or compare two, and answer in numbers: the sound never comes back.
+    8- or 16-bit PCM; `window` [from_s, to_s], seconds, default the whole file.
+
+    `measure`: `path`, every channel or `channel` (0 the first). Reply: `measures`, per channel
+    `channel`, `peak_dbfs`, `rms_dbfs`, `silent` (RMS under 0.5% of full scale),
+    `silence_spans` (under -60 dBFS for 50 ms or more), `onset_s` (over 2% of the peak),
+    `clipping_run` (flat at 95% of the peak or above), `clipped` (a run past 8); then
+    `sample_rate_hz`, `channels`, `bits`, `window`, `pcm_sha256`, `path`.
+
+    `diff`: `a` against the reference `b`, of one format; `align` (default true) meets the
+    onsets. Reply: `exact`, `snr_db`, `class` (`exact`; `inaudible` 60 dB or more; `audible` 30
+    to 60; `different`), `envelope_correlation` (64-window envelopes), `onset_delta_ms`,
+    `length_delta_samples`, `aligned_by_samples`, `a`, `b`.
+
+    Refused: an argument the method does not take; `control_silent` when both are silent."""
+    chosen, given = methods.chosen(AUDIO_METHODS, locals())
+    return chosen.run(given)
 
 
 @dataclass(frozen=True)
@@ -339,36 +297,31 @@ class FileTool:
     """One media tool: what the client shows, its body, its judge, its summary line, whether it
     is read-only (a tool that writes a file is not, whatever it reads), and what its calls become
     in an exported session (`scry_core.recording`): dropped, since none reads the machine, but
-    for a check of what a file holds."""
+    for a check of what files hold."""
 
     title: str
     body: Callable[..., dict[str, Any]]
     check: Callable[..., None]
     summary: Summary
     read_only: bool
-    replay: ExportAs = "drop"
+    replay: Replay = "drop"
 
 
 TOOLS: dict[str, FileTool] = {
-    "image_diff": FileTool("Compare two pictures", image_diff, check_image_diff,
-                           _image_diff_line, True),
-    "series_diff": FileTool("Compare two series", series_diff, check_series_diff,
-                            _series_diff_line, True),
-    "region_track": FileTool("Track a region through a series", region_track,
-                             check_region_track, _region_track_line, False),
-    "golden_check": FileTool("Check files against goldens", golden_check, check_golden_check,
-                             _golden_check_line, True,
-                             ("matched", "differing_total", "missing_total", "extra_total",
-                              "differing", "missing", "extra")),
-    "audio_measure": FileTool("Measure a WAV recording", audio_measure, check_audio_measure,
-                              _audio_measure_line, True),
-    "audio_diff": FileTool("Compare two WAV recordings", audio_diff, check_audio_diff,
-                           _audio_diff_line, True),
+    "image_compare": FileTool("Compare pictures", image_compare,
+                              methods.fold_check(IMAGE_METHODS),
+                              methods.fold_line("image_compare", IMAGE_METHODS), False,
+                              {"image": "drop", "series": "drop", "region": "drop",
+                               "golden": ("matched", "differing_total", "missing_total",
+                                          "extra_total", "differing", "missing", "extra")}),
+    "audio_compare": FileTool("Measure or compare WAV recordings", audio_compare,
+                              methods.fold_check(AUDIO_METHODS),
+                              methods.fold_line("audio_compare", AUDIO_METHODS), True),
 }
 #: The tools of the image layer, which both servers register.
-IMAGE_TOOLS = ("image_diff", "series_diff", "region_track", "golden_check")
+IMAGE_TOOLS = ("image_compare",)
 #: The tools of the sound layer, which a server registers once it records a WAV.
-AUDIO_TOOLS = ("audio_measure", "audio_diff")
+AUDIO_TOOLS = ("audio_compare",)
 
 
 def register(wrap: Wrap, names: Sequence[str],
@@ -390,7 +343,6 @@ def register(wrap: Wrap, names: Sequence[str],
 
 
 for _tool in TOOLS.values():
-    # The two sentences every description ends on, said once here for all of them.
     _tool.body.__doc__ = ((_tool.body.__doc__ or "").rstrip() + "\n\n    "
                           + (READS_ONLY if _tool.read_only else WRITES_ITS_FILE) + " " + PATHS
                           + f"\n\n    {REFERENCE}\n")

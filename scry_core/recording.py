@@ -60,7 +60,7 @@ STORED_PER_KEPT = 10
 #: The most dropped calls an export's reply lists, the newest; `dropped_total` counts them all.
 DROPPED_SHOWN = 40
 #: The document's own version, which a runner of another shape refuses.
-DOCUMENT_VERSION = 2
+DOCUMENT_VERSION = 3
 #: The tool that exports, which is never recorded.
 EXPORT_TOOL = "perform_export"
 #: The key a step's recorded fields sit under: no Scry tool declares an argument by that name.
@@ -83,7 +83,20 @@ WRITTEN = ("path", "manifest", "dir")
 #: ends; `drop`ped; or, a tuple of field names, kept as a check of those fields.
 Word = Literal["step", "wall", "drop"]
 ExportAs = Word | tuple[str, ...]
+#: A tool's declaration: one for every call, or one per value of its `method` argument.
+Replay = ExportAs | Mapping[str, ExportAs]
 WORDS: tuple[str, ...] = get_args(Word)
+
+
+@dataclass(frozen=True)
+class States:
+    """The tool that saves and loads a state, its two `method` values and the argument that
+    names the state."""
+
+    tool: str
+    save: str
+    load: str
+    argument: str
 
 
 @dataclass(frozen=True)
@@ -133,7 +146,7 @@ class Recording:
     full: bool = False
     #: Whether it stopped at the storage ceiling (calls an export drops), not at `record_max`.
     stored_out: bool = False
-    #: By list tool, the references it listed as the start began (`Recorder.lists`).
+    #: By list's reply key, the references it listed as the start began (`Recorder.lists`).
     declarations: dict[str, list[str]] = field(default_factory=dict)
 
 
@@ -162,14 +175,14 @@ class Recorder:
     whether a session is up, as the start refuses over one; `declarations` the declarations the
     store holds as a start succeeds (what it re-arms), each with its `kind` and `ref`, and
     `kinds` each kind's list tool and the reply field its rows are under (two kinds may share
-    one list); `stop_fields` names the
+    one field, and several fields one tool); `stop_fields` names the
     fields of a reply that say where a stop is; `sequences` the tools whose steps are recorded
     in their place; `start_tool` the tool that begins a recording and `plan` its argument whose
     steps are recorded after it, `plan_with` the arguments that only bound the plan and leave the
     start with it (a replayed start runs no plan, and the server refuses its bound alone);
     `outside` the tools that are no step a replay could take
-    (`close`, the exporter's own); `states` the tools that save and load a state and the
-    argument that names it. Each is the server's own vocabulary, declared by the server: nothing
+    (`close`, the exporter's own); `states` the tool and methods that save and load a state.
+    Each is the server's own vocabulary, declared by the server: nothing
     here names a tool."""
 
     def __init__(self, server: str, entry: str, record_max: int, machine: Callable[[], Machine],
@@ -177,7 +190,7 @@ class Recorder:
                  declarations: Callable[[], Iterable[Declaration]],
                  kinds: Mapping[str, tuple[str, str]],
                  stop_fields: tuple[str, ...], outside: frozenset[str], sequences: frozenset[str],
-                 start_tool: str, states: tuple[str, str, str], plan: str | None = None,
+                 start_tool: str, states: States, plan: str | None = None,
                  plan_with: tuple[str, ...] = ()) -> None:
         self.server = server
         self.entry = entry
@@ -186,7 +199,7 @@ class Recorder:
         self._live = live
         self._declarations = declarations
         self.kinds = dict(kinds)
-        self.lists = dict(kinds.values())
+        self.lists = {key: tool for tool, key in kinds.values()}
         self._found_live = False
         self.stop_fields = stop_fields
         self.outside = outside | {EXPORT_TOOL}
@@ -195,27 +208,29 @@ class Recorder:
         self.plan = plan
         self.plan_with = plan_with
         self.states = states
-        self.declared: dict[str, Declared] = {}
+        self.declared: dict[str, Declared | dict[str, Declared]] = {}
         self.recording: Recording | None = None
         self._starting: Recording | None = None
         # What the store held as the start's plan began (or as it ended, with no plan): what a
         # replayed `start` re-arms, before the plan's own steps declare anything.
         self._found_declared: dict[str, list[str]] | None = None
 
-    def declare(self, tool: str, export_as: ExportAs | None, read_only: bool) -> None:
+    def declare(self, tool: str, export_as: Replay | None, read_only: bool) -> None:
         """A tool registered: how its calls are exported, by default `drop` for a reader and
-        `step` for the rest. Anything else is refused at import, as a typo would be a step."""
-        if export_as is not None and not (
-                export_as in WORDS or (isinstance(export_as, tuple) and export_as
-                                       and all(isinstance(f, str) for f in export_as))):
-            raise TypeError(f"{tool}: replay={export_as!r} is one of {list(WORDS)} or a tuple of "
-                            "the reply fields a check holds to")
-        self.declared[tool] = Declared(
-            export_as if export_as is not None else "drop" if read_only else "step", read_only)
+        `step` for the rest, or a mapping of that per `method`. Anything else is refused at
+        import, as a typo would be a step."""
+        if isinstance(export_as, Mapping):
+            self.declared[tool] = {m: _declared(tool, e, read_only) for m, e in export_as.items()}
+        else:
+            self.declared[tool] = _declared(tool, export_as, read_only)
 
-    def kind(self, tool: str) -> Declared:
-        """A tool's declaration; one registered nowhere here is a step that reads."""
-        return self.declared.get(tool, Declared("step", False))
+    def kind(self, tool: str, args: Mapping[str, Any]) -> Declared:
+        """A call's declaration; a tool registered nowhere here, or a `method` its mapping does
+        not name, is a step that reads."""
+        declared = self.declared.get(tool, Declared("step", False))
+        if isinstance(declared, dict):
+            return declared.get(str(args.get("method")), Declared("step", False))
+        return declared
 
     def begin(self, tool: str, parent: str | None, given: Mapping[str, Any]) -> Machine | None:
         """The machine before a call this recording takes, or None for one it does not: a
@@ -261,7 +276,7 @@ class Recorder:
             self._starting = None
             return
         if began is not None:
-            declared = self.kind(tool)
+            declared = self.kind(tool, given)
             fields = declared.export_as
             fields = fields if isinstance(fields, tuple) else self.stop_fields
             after = self._read()
@@ -304,14 +319,14 @@ class Recorder:
         into.kept += call.keepable
 
     def _stored(self) -> dict[str, list[str]]:
-        """The declarations the store holds as a start succeeds, sorted, by list tool; none when
-        the server cannot say, which a replay then has nothing to compare against."""
+        """The declarations the store holds as a start succeeds, sorted, by list's reply key; none
+        when the server cannot say, which a replay then has nothing to compare against."""
         try:
-            held: dict[str, list[str]] = {tool: [] for tool in self.lists}
+            held: dict[str, list[str]] = {key: [] for key in self.lists}
             for d in self._declarations():
                 if d.kind in self.kinds:
-                    held[self.kinds[d.kind][0]].append(d.ref)
-            return {tool: sorted(refs) for tool, refs in held.items()}
+                    held[self.kinds[d.kind][1]].append(d.ref)
+            return {key: sorted(refs) for key, refs in held.items()}
         except Exception:  # noqa: BLE001 -- as `_read`: a recorder never fails a call
             return {}
 
@@ -363,7 +378,7 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
     unwritten: set[str] = set()          # files that dropped calls wrote, which no replay writes
     previous: Machine | None = None
     for n, call in enumerate(recording.calls, start=1):
-        declared = recorder.kind(call.op)
+        declared = recorder.kind(call.op, call.args)
         if not (call.before.known and call.after.known):
             out.cut_at(n, call.op, "the server could not read the machine around it")
             break
@@ -416,8 +431,8 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
     doc = {"version": DOCUMENT_VERSION, "server": recorder.server, "entry": recorder.entry,
            "start": dict(recording.start), "steps": out.steps,
            "needs": {"states": out.loaded,
-                     "declarations": {tool: {"key": recorder.lists[tool], "refs": refs}
-                                      for tool, refs in recording.declarations.items()}}}
+                     "declarations": {key: {"tool": recorder.lists[key], "refs": refs}
+                                      for key, refs in recording.declarations.items()}}}
     return doc, out
 
 
@@ -450,14 +465,25 @@ def _step(call: Call, recorded: Mapping[str, Any]) -> dict[str, Any]:
     return step
 
 
-def _states(out: Account, call: Call, states: tuple[str, str, str]) -> None:
-    save, load, argument = states
-    name = call.args.get(argument)
-    if call.op == save and isinstance(name, str):
+def _states(out: Account, call: Call, states: States) -> None:
+    name = call.args.get(states.argument)
+    if call.op != states.tool or not isinstance(name, str):
+        return
+    if call.args.get("method") == states.save:
         out.saved.add(name)
-    elif call.op == load and isinstance(name, str) and name not in out.saved \
+    elif call.args.get("method") == states.load and name not in out.saved \
             and name not in out.loaded:
         out.loaded.append(name)
+
+
+def _declared(tool: str, export_as: ExportAs | None, read_only: bool) -> Declared:
+    if export_as is not None and not (
+            export_as in WORDS or (isinstance(export_as, tuple) and export_as
+                                   and all(isinstance(f, str) for f in export_as))):
+        raise TypeError(f"{tool}: replay={export_as!r} is one of {list(WORDS)} or a tuple of "
+                        "the reply fields a check holds to")
+    return Declared(export_as if export_as is not None else "drop" if read_only else "step",
+                    read_only)
 
 
 def _dropped_why(declared: Declared) -> str:
@@ -543,7 +569,7 @@ class Unrecorded:
 
     recording: Recording | None = None
 
-    def declare(self, tool: str, export_as: ExportAs | None, read_only: bool) -> None:
+    def declare(self, tool: str, export_as: Replay | None, read_only: bool) -> None:
         """Nothing is exported, so nothing is declared."""
 
     def begin(self, tool: str, parent: str | None, given: Mapping[str, Any]) -> Machine | None:

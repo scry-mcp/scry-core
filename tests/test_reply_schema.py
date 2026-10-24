@@ -3,13 +3,14 @@ field it does not name, and every reply the battery builds held to it strictly."
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any, Required
 
 import pytest
 from mcp.server.mcpserver import MCPServer
 
 from scry_core import reply_schema
 from scry_core import reply_shapes_guard as shapes
+from scry_core.reply_contract import OmitEmpty
 from scry_core.strict_arguments import registered
 
 
@@ -125,3 +126,34 @@ def test_the_stop_fields_are_held_to_every_tool_that_quotes_them() -> None:
         "a": ["pc"]}
     with pytest.raises(ValueError, match="nothing would be examined"):
         reply_schema.stop_fields_lacking(tools[1:], {"b": _Model}, stop)
+
+
+class CountedReply(reply_schema.ReplyEnvelope, total=False):
+    hits: int
+    retries: Annotated[int, OmitEmpty]
+    notes: Annotated[list[str], OmitEmpty]
+    warned: Annotated[bool | dict[str, Any], OmitEmpty]
+
+
+def test_a_marked_field_left_empty_is_dropped_and_an_answer_at_zero_is_kept() -> None:
+    reply_schema.declare(_server(), {"status": CountedReply})
+    empty = {"status": "ok", "hits": 0, "retries": 0, "notes": [], "warned": False}
+    assert reply_schema.omit_empty("status", empty) == {"status": "ok", "hits": 0}
+    full = {"status": "ok", "hits": 0, "retries": 2, "notes": ["n"], "warned": True}
+    assert reply_schema.omit_empty("status", full) == full
+    assert reply_schema.omit_empty("nobody", {"status": "ok", "retries": 0}) == {
+        "status": "ok", "retries": 0}
+    reply_schema.check("status", {"status": "ok", "retries": 1})
+
+
+def test_a_marked_field_is_never_required() -> None:
+    server = _server()
+    reply_schema.declare(server, {"status": CountedReply})
+    schema = registered(server)[0].output_schema
+    assert schema is not None and not {"retries", "notes", "warned"} & set(schema["required"])
+
+    class Marked(reply_schema.ReplyEnvelope, total=False):
+        always: Required[Annotated[int, OmitEmpty]]
+
+    with pytest.raises(ValueError, match="always"):
+        reply_schema.declare(_server(), {"status": Marked})

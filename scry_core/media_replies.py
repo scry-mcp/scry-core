@@ -9,83 +9,61 @@ from typing import Any
 from scry_core.reply_schema import ReplyEnvelope
 
 
-class ImageDiffReply(ReplyEnvelope, total=False):
-    a: dict[str, Any]
-    b: dict[str, Any]
+class ImageCompareReply(ReplyEnvelope, total=False):
+    a: dict[str, Any] | str
+    b: dict[str, Any] | str
     bbox: list[Any] | dict[str, Any]
-    crop: list[Any]
-    differing_pixels: int
-    height: int
-    max_delta: list[Any]
-    shift: list[Any]
-    tolerance: int
-    width: int
-
-
-class SeriesDiffReply(ReplyEnvelope, total=False):
-    a: str
-    b: str
-    crop: list[Any]
-    differing: int
-    first_differing: dict[str, Any]
-    identical: int
-    only_in_a: list[Any]
-    only_in_b: list[Any]
-    pairs: int
-
-
-class RegionTrackReply(ReplyEnvelope, total=False):
-    crop: list[Any]
-    frames: int
-    gaps: list[Any]
-    manifest: str
-    measure: str
-    path: str
-    start: list[Any] | dict[str, Any]
-    transitions: list[Any]
-    transitions_total: int
-
-
-class GoldenCheckReply(ReplyEnvelope, total=False):
     checksums: str
-    differing: list[Any]
+    crop: list[Any]
+    differing: int | list[Any]
+    differing_pixels: int
     differing_total: int
     dir: str
     extra: list[Any]
     extra_total: int
+    first_differing: dict[str, Any]
+    frames: int
+    gaps: list[Any]
+    height: int
+    identical: int
     manifest: str
     matched: int
+    max_delta: list[Any]
+    measure: str
     missing: list[Any]
     missing_total: int
-
-
-class AudioMeasureReply(ReplyEnvelope, total=False):
-    bits: int
-    channels: int
-    measures: list[Any]
+    only_in_a: list[Any]
+    only_in_b: list[Any]
+    pairs: int
     path: str
-    pcm_sha256: str
-    sample_rate_hz: int
-    window: list[Any]
+    shift: list[Any]
+    start: list[Any] | dict[str, Any]
+    tolerance: int
+    transitions: list[Any]
+    transitions_total: int
+    width: int
 
 
-class AudioDiffReply(ReplyEnvelope, total=False):
+class AudioCompareReply(ReplyEnvelope, total=False):
     a: str
     b: str
     aligned_by_samples: int
+    bits: int
+    channels: int
     envelope_correlation: float
     exact: bool
     length_delta_samples: int
+    measures: list[Any]
     onset_delta_ms: float
+    path: str
+    pcm_sha256: str
+    sample_rate_hz: int
     snr_db: float | dict[str, Any]
+    window: list[Any]
 
 
 # `class` is a word Python keeps for itself, so the field is declared by its JSON name here.
-AudioDiffReply.__annotations__["class"] = str
+AudioCompareReply.__annotations__["class"] = str
 
 #: Each shared file tool's reply model, by the tool's name.
-MODELS: dict[str, type] = {
-    "image_diff": ImageDiffReply, "series_diff": SeriesDiffReply,
-    "region_track": RegionTrackReply, "golden_check": GoldenCheckReply,
-    "audio_measure": AudioMeasureReply, "audio_diff": AudioDiffReply,
-}
+MODELS: dict[str, type] = {"image_compare": ImageCompareReply, "audio_compare": AudioCompareReply}

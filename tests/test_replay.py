@@ -23,17 +23,18 @@ HELD2 = {"op": "run_for", "frames": 2, "recorded": {"pc": "0x10", "frame": 2}}
 
 
 def _lists(refs: list[str]) -> dict[str, Any]:
-    """The double's two list tools, as a server declares them (`Recorder.lists`)."""
-    return {"breakpoint_list": {"key": "breakpoints",
-                                "refs": [r for r in refs if not r.startswith("w:")]},
-            "watch_list": {"key": "watches", "refs": [r for r in refs if r.startswith("w:")]}}
+    """The double's two lists, as a server declares them (`Recorder.lists`)."""
+    return {"breakpoints": {"tool": "declaration_list",
+                            "refs": [r for r in refs if not r.startswith("w:")]},
+            "watches": {"tool": "declaration_list",
+                        "refs": [r for r in refs if r.startswith("w:")]}}
 
 
 def _repo(tmp_path: Path, steps: list[dict[str, Any]], states: list[str] | None = None,
           server: str = "mame", declarations: list[str] | None = None) -> Path:
     shutil.copyfile(FIXTURE, tmp_path / "server.py")
     doc = tmp_path / "session.json"
-    doc.write_text(json.dumps({"version": 2, "server": server, "entry": "server.py",
+    doc.write_text(json.dumps({"version": 3, "server": server, "entry": "server.py",
                                "start": {"system": "board"}, "steps": steps,
                                "needs": {"states": states or [],
                                          "declarations": _lists(declarations or [])}}))
@@ -114,18 +115,18 @@ def test_a_server_that_does_not_start_is_exit_3(
 
 @pytest.mark.parametrize("text, says", [
     ("not json", "not a readable document"),
-    ('{"version": 1}', "not a version 2 replay document"),
-    ('{"version": 2, "steps": [{}]}', "names no server entry file"),
-    ('{"version": 2, "entry": "../x.py", "steps": [{}]}', "names no server entry file"),
-    ('{"version": 2, "entry": "x.py", "steps": []}', "holds no steps"),
-    ('{"version": 2, "entry": "x.py", "steps": [1]}', "one that is not an object"),
-    ('{"version": 2, "entry": "x.py", "steps": [{}], "start": []}', "`start` is an object"),
-    ('{"version": 2, "entry": "x.py", "steps": [{}], "needs": {"states": "boot"}}',
+    ('{"version": 2}', "not a version 3 replay document"),
+    ('{"version": 3, "steps": [{}]}', "names no server entry file"),
+    ('{"version": 3, "entry": "../x.py", "steps": [{}]}', "names no server entry file"),
+    ('{"version": 3, "entry": "x.py", "steps": []}', "holds no steps"),
+    ('{"version": 3, "entry": "x.py", "steps": [1]}', "one that is not an object"),
+    ('{"version": 3, "entry": "x.py", "steps": [{}], "start": []}', "`start` is an object"),
+    ('{"version": 3, "entry": "x.py", "steps": [{}], "needs": {"states": "boot"}}',
      "a list of names"),
-    ('{"version": 2, "entry": "x.py", "steps": [{}], '
-     '"needs": {"declarations": {"breakpoint_list": {"key": "b", "refs": "0x10"}}}}',
-     "each list tool's `key` and `refs`"),
-    ('{"version": 2, "entry": "x.py", "steps": [{"op": "run_for"}]}', "nothing held to"),
+    ('{"version": 3, "entry": "x.py", "steps": [{}], '
+     '"needs": {"declarations": {"breakpoints": {"tool": "b", "refs": "0x10"}}}}',
+     "each list key's `tool` and `refs`"),
+    ('{"version": 3, "entry": "x.py", "steps": [{"op": "run_for"}]}', "nothing held to"),
 ])
 def test_a_document_that_is_not_one_is_exit_3(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str],
@@ -213,14 +214,14 @@ def test_a_store_that_declares_otherwise_than_the_recorded_start_found_is_exit_3
     doc = _repo(tmp_path, [HELD1], declarations=["0x10", "w:0x20"])
     monkeypatch.setenv("REPLAY_DOUBLE_DECLARED", "0x10")
     assert _run(monkeypatch, tmp_path, doc) == 3
-    assert "`watch_list` lists [] where the recorded session's start found ['w:0x20']" \
+    assert "`declaration_list` lists [] where the recorded session's start found ['w:0x20']" \
         in capsys.readouterr().out
     monkeypatch.setenv("REPLAY_DOUBLE_DECLARED", "0x10,w:0x20")
     assert _run(monkeypatch, tmp_path, doc) == 0
 
 
 @pytest.mark.parametrize("env, says", [
-    ("REPLAY_DOUBLE_LISTS_FAIL", "INVALID breakpoint_list: the server did not answer"),
+    ("REPLAY_DOUBLE_LISTS_FAIL", "INVALID breakpoints: the server did not answer"),
     ("REPLAY_DOUBLE_START_DIES", "INVALID start"),
     ("REPLAY_DOUBLE_STATES_NOT_A_LIST", "answered no list"),
 ])
@@ -240,19 +241,9 @@ def test_the_lists_a_replay_reads_are_the_ones_the_document_names(
     a third list the recorded server had is read too, and one the server lacks is no verdict."""
     doc = _repo(tmp_path, [HELD1])
     data = json.loads(doc.read_text())
-    data["needs"]["declarations"]["regpoint_list"] = {"key": "regpoints", "refs": []}
+    data["needs"]["declarations"]["regpoints"] = {"tool": "declaration_list", "refs": []}
     doc.write_text(json.dumps(data))
     assert _run(monkeypatch, tmp_path, doc) == 3
-    assert "regpoint_list" in capsys.readouterr().out
+    assert "answered no `regpoints` list" in capsys.readouterr().out
 
 
-def test_a_document_written_when_map_save_took_path_reads_it_as_dest(tmp_path: Path) -> None:
-    doc = _repo(tmp_path, [HELD1, {"op": "map_save", "path": "/x/a.scry-map.json"},
-                           {"op": "map_save", "dest": "/x/b.scry-map.json"},
-                           {"op": "map_load", "path": "/x/a.scry-map.json"},
-                           {"op": "map_save", "path": "/x/c", "dest": "/x/d.scry-map.json"}])
-    steps = replay._read(doc)["steps"]
-    assert steps[1:] == [{"op": "map_save", "dest": "/x/a.scry-map.json"},
-                         {"op": "map_save", "dest": "/x/b.scry-map.json"},
-                         {"op": "map_load", "path": "/x/a.scry-map.json"},
-                         {"op": "map_save", "path": "/x/c", "dest": "/x/d.scry-map.json"}]

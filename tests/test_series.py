@@ -82,7 +82,7 @@ def test_a_region_track_finds_the_transitions_built_in(tmp_path: Path, measure: 
                                                        transitions: list[list[object]] | None,
                                                        gaps: list[int]) -> None:
     track = _read(_series(tmp_path / "s", TRACKED))
-    got = series.region_track(track, [0, 0, 1, 1], measure, None, 0.98, 40)
+    got = series.track(track, [0, 0, 1, 1], measure, None, 0.98, 40)
     off = raster.picture_signature(TRACKED[10], [0, 0, 1, 1])
     on = raster.picture_signature(TRACKED[12], [0, 0, 1, 1])
     if transitions is None:
@@ -100,11 +100,11 @@ def test_a_region_track_finds_the_transitions_built_in(tmp_path: Path, measure: 
 def test_a_match_track_flips_on_and_off_at_the_threshold(tmp_path: Path) -> None:
     track = _read(_series(tmp_path / "s", TRACKED))
     lit = png.Raster(2, 1, bytes(WHITE) + bytes(BLACK))
-    got = series.region_track(track, [0, 0, 2, 1], "match", lit, 1.0, 40)
+    got = series.track(track, [0, 0, 2, 1], "match", lit, 1.0, 40)
     assert got["start"] == [10, False] and got["transitions"] == [[12, True], [15, False]]
     # At half the region, the black half alone matches: on from the start, never off.
     with pytest.raises(Invalid) as e:
-        series.region_track(track, [0, 0, 2, 1], "match", lit, 0.5, 40)
+        series.track(track, [0, 0, 2, 1], "match", lit, 0.5, 40)
     assert e.value.code == "control_silent"
 
 
@@ -113,19 +113,19 @@ def test_a_crop_that_missed_is_control_silent_for_every_measure(tmp_path: Path) 
     measures: tuple[series.Measure, ...] = ("signature", "changed_pixels")
     for measure in measures:
         with pytest.raises(Invalid, match="the crop missed") as e:
-            series.region_track(track, [3, 2, 1, 1], measure, None, 0.98, 40)
+            series.track(track, [3, 2, 1, 1], measure, None, 0.98, 40)
         assert e.value.code == "control_silent" and e.value.fields == {"frames": 6}
 
 
 def test_a_long_list_is_cut_at_the_limit_and_says_so(tmp_path: Path) -> None:
     blink = {n: _frame({(0, 0)} if n % 2 else set()) for n in range(9)}
     track = _read(_series(tmp_path / "s", blink))
-    got = series.region_track(track, None, "signature", None, 0.98, 3)
+    got = series.track(track, None, "signature", None, 0.98, 3)
     assert got["transitions_total"] == 8 and len(got["transitions"]) == 3
     assert got["gaps"] == [1, 1] and got["omitted"] == ["transitions", "gaps"]
     assert "every one" in got["how"]
     assert len(json.loads(Path(got["path"]).read_text())["transitions"]) == 8
-    again = series.region_track(track, None, "signature", None, 0.98, 3)
+    again = series.track(track, None, "signature", None, 0.98, 3)
     assert again["path"] != got["path"], "a second track never overwrites the first"
 
 
@@ -134,7 +134,7 @@ def test_a_misused_track_is_the_callers_bug(tmp_path: Path) -> None:
     for measure, ref, limit in (("area", None, 40), ("match", None, 40),
                                 ("signature", None, 0)):
         with pytest.raises(ValueError):
-            series.region_track(track, None, measure, ref, 0.98, limit)  # type: ignore[arg-type]
+            series.track(track, None, measure, ref, 0.98, limit)  # type: ignore[arg-type]
 
 
 def test_a_uniform_series_is_refused_by_the_control(tmp_path: Path) -> None:
@@ -142,18 +142,18 @@ def test_a_uniform_series_is_refused_by_the_control(tmp_path: Path) -> None:
     moving = _read(_series(tmp_path / "b", TRACKED))
     for one, two, name in ((still, moving, "a"), (moving, still, "b")):
         with pytest.raises(Invalid, match=f"series `{name}`") as e:
-            series.series_diff(one, two, None)
+            series.compare(one, two, None)
         assert e.value.code == "control_silent" and e.value.fields == {"series": name}
     # A crop where the moving series never changes silences it too.
     with pytest.raises(Invalid, match="over the crop"):
-        series.series_diff(moving, moving, [3, 2, 1, 1])
+        series.compare(moving, moving, [3, 2, 1, 1])
 
 
 def test_two_series_with_no_frame_in_common_compare_nothing(tmp_path: Path) -> None:
     a = _read(_series(tmp_path / "a", TRACKED))
     later = _read(_series(tmp_path / "b", {n + 100: p for n, p in TRACKED.items()}))
     with pytest.raises(Invalid, match="share no frame number") as e:
-        series.series_diff(a, later, None)
+        series.compare(a, later, None)
     assert e.value.code == "control_silent"
 
 
@@ -162,17 +162,17 @@ def test_two_series_are_paired_by_frame_and_offsets_are_runs(tmp_path: Path) -> 
     shifted = {n + 3: p for n, p in TRACKED.items()}           # frames 13..18
     shifted[14] = _frame({(1, 1), (2, 2), (3, 2), (0, 0)})       # one more change on frame 14
     b = _read(_series(tmp_path / "b", shifted))
-    got = series.series_diff(a, b, None)
+    got = series.compare(a, b, None)
     # Paired frames 13, 14, 15: a's 13 is lit at (0, 0), b's 13 is a's 10 (not lit), so 13
     # differs at one pixel; 14 differs at three; 15: a is off, b (a's 12) is on.
     assert got["pairs"] == 3 and got["identical"] == 0 and got["differing"] == 3
     assert got["first_differing"] == {"frame": 13, "differing_pixels": 1, "bbox": [0, 0, 1, 1]}
     assert got["only_in_a"] == [[10, 12]] and got["only_in_b"] == [[16, 18]]
     assert got["crop"] == [0, 0, 4, 3]
-    same = series.series_diff(a, a, None)
+    same = series.compare(a, a, None)
     assert same["identical"] == 6 and same["first_differing"] == {
         "available": False, "why": "every paired frame is identical"}
-    assert series.series_diff(a, a, [0, 0, 1, 1])["identical"] == 6
+    assert series.compare(a, a, [0, 0, 1, 1])["identical"] == 6
 
 
 def test_runs_are_inclusive_and_split_at_a_gap() -> None:

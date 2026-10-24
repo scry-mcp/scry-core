@@ -85,3 +85,11 @@ def test_the_margins_name_the_texts_nearest_the_cap_first_on_every_run() -> None
 def test_lost_text_behind_a_run_of_blanks_is_shown_and_never_called_whitespace() -> None:
     over = over_the_cap("s", _server("i", "x" * CLIENT_TEXT_CAP + " " * 70 + "REAL TEXT"))
     assert over and over[0].endswith('the client drops: "REAL TEXT"'), over
+
+
+def test_a_text_the_documented_client_carries_is_delivered_whole() -> None:
+    from scry_core.client_cap import delivered
+
+    text = "x" * 3000
+    assert delivered(text) == text
+    assert over_the_cap("s", _server("i", text)) == []

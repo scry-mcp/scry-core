@@ -88,6 +88,24 @@ ELAPSED: Verdict = "ELAPSED"
 _T = TypeVar("_T")
 
 
+class _OmitEmpty:
+    """`Annotated[T, OmitEmpty]` on a reply-model field: the envelope leaves the field out when
+    its value is empty (`is_empty`), as GitHub's MCP server marks its minimal types `omitempty`.
+    For diagnostics and accounting only: an answer whose zero is the finding is never marked."""
+
+    def __repr__(self) -> str:
+        return "OmitEmpty"
+
+
+OmitEmpty = _OmitEmpty()
+
+
+def is_empty(value: Any) -> bool:
+    """`None`, `""`, `0`, `0.0`, `False`, `[]`, `()` or `{}`."""
+    return value is None or (isinstance(value, bool | int | float | str | list | tuple | dict)
+                             and not value)
+
+
 def unavailable(why: str) -> dict[str, Any]:
     """A datum that could not be read, or does not apply, in place of its value: never a null
     beside a sibling key, so a reader finds the reason where it looked for the value."""

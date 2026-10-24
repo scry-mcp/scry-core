@@ -8,13 +8,14 @@ from __future__ import annotations
 import asyncio
 import inspect
 from collections.abc import Callable
-from typing import Any
+from typing import Annotated, Any
 
 import pytest
 from mcp.server.mcpserver import Context
 
-from scry_core import boundary, cancel
+from scry_core import boundary, cancel, reply_schema
 from scry_core.envelope import Envelope
+from scry_core.reply_contract import OmitEmpty
 
 
 class _Server:
@@ -684,3 +685,22 @@ def test_the_block_is_asked_whole_for_start_and_status_and_short_for_every_other
     assert s.wholes == [True, True, False]
     s.b.finished("close", {}, {"status": "ok", "session": {"kept": 1}}, session_before=True)
     assert s.wholes == [True, True, False]       # close keeps the block of the state before
+
+
+def test_the_closed_reply_leaves_out_a_marked_field_that_is_empty() -> None:
+    class Reply(reply_schema.ReplyEnvelope, total=False):
+        hits: int
+        resent: Annotated[int, OmitEmpty]
+
+    s = _Server()
+
+    @s.tool("Count")
+    def count() -> dict[str, Any]:
+        return {"status": "ok", "hits": 0, "resent": 0}
+
+    reply_schema.declare(s.mcp, {"count": Reply})
+    try:
+        assert list(count()) == ["summary", "status", "hits", "session"]
+    finally:
+        reply_schema._JUDGES.pop("count", None)
+        reply_schema._OMIT_EMPTY.pop("count", None)

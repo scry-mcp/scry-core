@@ -16,6 +16,7 @@ the SDK moves them.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any
 
 from mcp.server import MCPServer
@@ -89,3 +90,14 @@ def schema_refusal(cause: ValidationError) -> str:
         msg = err["msg"]
         parts.append(f"{name} {msg[0].lower() + msg[1:]}; got {err.get('input')!r}")
     return "refused by the schema before the tool ran: " + "; ".join(parts)
+
+
+def method_refusal(method: str, given: Iterable[str], takes: Iterable[str]) -> str | None:
+    """Why `method` refuses the arguments `given` it does not take, in one line, or None: the
+    schema of a tool with a `method` is the union of its methods' arguments, so an argument
+    another method takes passes the schema and would otherwise run ignored."""
+    stray = sorted(set(given) - set(takes))
+    if not stray:
+        return None
+    return (f"method `{method}` does not take {', '.join(f'`{a}`' for a in stray)}; it takes "
+            + ", ".join(f"`{a}`" for a in takes))

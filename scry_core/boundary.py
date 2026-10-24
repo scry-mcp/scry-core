@@ -43,10 +43,11 @@ from typing import Any, Protocol
 from mcp.types import ToolAnnotations
 
 from scry_core import cancel, picture
+from scry_core import reply_schema as schema
 from scry_core import session_block as blocks
 from scry_core import strict_arguments as strict
 from scry_core.envelope import Envelope
-from scry_core.recording import ExportAs, Machine, Unrecorded
+from scry_core.recording import Machine, Replay, Unrecorded
 
 Reply = dict[str, Any]
 #: How the server calls a tool's body (the body, and the call's arguments bound ONCE, here, to
@@ -83,7 +84,7 @@ class Recorded(Protocol):
     """What the boundary feeds a session's recording (`scry_core.recording.Recorder`, or
     `Unrecorded` for a server that records nothing)."""
 
-    def declare(self, tool: str, export_as: ExportAs | None, read_only: bool) -> None: ...
+    def declare(self, tool: str, export_as: Replay | None, read_only: bool) -> None: ...
 
     def begin(self, tool: str, parent: str | None, given: Mapping[str, Any]
               ) -> Machine | None: ...
@@ -187,7 +188,7 @@ class Boundary:
         block describing the machine before it did. The block is whole on the tools that answer
         what the session is, short on the rest (`scry_core.session_block`). `session_before`
         keeps the block the body built: `close`'s, the state BEFORE the close."""
-        body = {k: v for k, v in reply.items() if k != "session"}
+        body = {k: v for k, v in schema.omit_empty(name, reply).items() if k != "session"}
         kept = reply.get("session") if session_before else None
         session = (kept if kept is not None
                    else self._session_block(blocks.whole_for(name)))
@@ -210,7 +211,7 @@ class Boundary:
 
     def tool(self, title: str, *, summary: Summary, read_only: bool = False,
              idempotent: bool = False, session_before: bool = False,
-             on_cancel: cancel.OnCancel | None = None, replay: ExportAs | None = None,
+             on_cancel: cancel.OnCancel | None = None, replay: Replay | None = None,
              ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register `fn` as an MCP tool serialised over the one machine, its reply led by the
         line `summary` writes (REQUIRED, so a tool registered without one fails at import).
