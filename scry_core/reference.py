@@ -18,11 +18,12 @@ believed in. `examples_from` picks, per tool, a call a live run made and judged,
 `docs/reference/examples.json` holds the pick, rewritten only from a run.
 
     uv run python -m scry_core.reference <module>:<attribute> \
-        [--examples JSONL ... [--scratch DIR]] [--write]
+        [--examples JSONL ... [--mark PATH=TEXT ...]] [--write]
 
 Run from the server's repository, where `<module>` imports. The attribute is the server's
-`Registry`. `--examples` rewrites `examples.json` from those transcripts first (`--scratch` names
-the run's temporary directory, written `$TMPDIR` there); then `--write`
+`Registry`. `--examples` rewrites `examples.json` from those transcripts first (each `--mark`
+spells a directory of the run's host, its scratch or its bench, as the text it names); then
+`--write`
 rewrites the pages, or, without it, the pages are compared. Exit codes: 0 the pages agree with
 the registry (or were rewritten); 1 drift, one finding a line; 2 a usage error (a spec naming no
 registry included); 3 INVALID, nothing was compared (a registry with no tool or a roster naming
@@ -115,6 +116,11 @@ def _one_of(values: Iterable[Any]) -> str:
     return "one of " + ", ".join(f"`{json.dumps(v)}`" for v in values)
 
 
+def _either(phrases: Iterable[str]) -> str:
+    """Alternatives joined, each named once: `dict[str, str] | dict[str, int]` is one object."""
+    return " or ".join(dict.fromkeys(phrases))
+
+
 def _array_of(item: str | None) -> str:
     return f"array of {item}" if item else "array"
 
@@ -127,7 +133,7 @@ def _reply_type(hint: Any) -> str:
     if origin is Literal:
         return _one_of(args)
     if origin in (Union, types.UnionType):
-        return " or ".join(_reply_type(a) for a in args)
+        return _either(_reply_type(a) for a in args)
     if origin in (list, tuple):
         return _array_of(None if not args or args[0] is Any else _reply_type(args[0]))
     if origin is dict or hint is dict or is_typeddict(hint):
@@ -138,7 +144,7 @@ def _reply_type(hint: Any) -> str:
 def _argument_type(spec: Mapping[str, Any]) -> str:
     """An argument's JSON schema as a phrase: its type, its words, its bounds."""
     if "anyOf" in spec:
-        text = " or ".join(_argument_type(s) for s in spec["anyOf"])
+        text = _either(_argument_type(s) for s in spec["anyOf"])
     elif "enum" in spec:
         text = _one_of(spec["enum"])
     elif "const" in spec:
@@ -160,9 +166,16 @@ def _in_cell(text: str) -> str:
 
 
 def _markdown_text(text: str) -> str:
-    """A description as markdown shows it: a `<` outside a code span is text, not a tag."""
-    parts = text.split("`")
-    return "`".join(p if i % 2 else p.replace("<", "&lt;") for i, p in enumerate(parts))
+    """A description as markdown shows it: a `<` outside a code span is text, not a tag, and a
+    line the docstring indents is flush, since four spaces after a blank line would be read as a
+    code block."""
+    text = "\n".join(line.lstrip() for line in text.splitlines())
+    parts = _CODE_SPAN.split(text)
+    return "".join(p if i % 2 else p.replace("<", "&lt;") for i, p in enumerate(parts))
+
+
+#: A code span, single or double backticks: what markdown shows as typed.
+_CODE_SPAN = re.compile(r"(``.+?``|`[^`]+`)")
 
 
 def _signature(tool: Tool) -> str:
@@ -201,7 +214,7 @@ def _reply_fields(model: type, envelope: type) -> list[str]:
 def _example(example: Mapping[str, Any] | None) -> list[str]:
     if example is None:
         return ["No example yet: a live run's transcript gives it."]
-    return [f"Example, from *{example['from']}*:", "", demo.fenced(example["call"]), "",
+    return ["Example, from a live run:", "", demo.fenced(example["call"]), "",
             demo.fenced(example["reply"])]
 
 
@@ -209,7 +222,7 @@ def tool_block(tool: Tool, model: type, envelope: type,
                example: Mapping[str, Any] | None) -> str:
     """One tool's generated block: heading, title, call, description, arguments, reply fields,
     example."""
-    lines = [f"### `{tool.name}`", ""]
+    lines = [f"## `{tool.name}`", ""]
     if tool.title:
         lines += [f"*{tool.title}*", ""]
     lines += ["```text", _signature(tool), "```", "",
@@ -268,7 +281,9 @@ def _generated(reg: Registry, examples: Mapping[str, Any]) -> dict[str, _Expecte
     pages = {REFERENCE_PAGE: _Expected("# Reference", {INDEX_BLOCK: _index(reg),
                                                       ENVELOPE_BLOCK: _envelope(reg)})}
     for family, names in reg.roster.families:
-        pages[_page(family)] = _Expected(f"# {family}", {
+        # "The ... tools", never the bare family name: a page titled `# Lua` would take the
+        # anchor `#lua` its own tool `lua` needs.
+        pages[_page(family)] = _Expected(f"# The {family} tools", {
             n: tool_block(tools[n], reg.models[n], reg.envelope, examples.get(n))
             for n in names}, family)
     return pages
@@ -455,6 +470,13 @@ def _loaded(spec: str) -> Registry:
     return found
 
 
+def _mark(value: str) -> tuple[str, str]:
+    path, sep, text = value.partition("=")
+    if not sep or not path or not text:
+        raise argparse.ArgumentTypeError(f"{value!r} is not PATH=TEXT")
+    return path, text
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="python -m scry_core.reference", allow_abbrev=False,
                                 description="Generate or check a server's reference pages.",
@@ -463,8 +485,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("registry", help="<module>:<attribute> naming the server's Registry")
     p.add_argument("--examples", nargs="+", type=Path, metavar="JSONL",
                    help=f"rewrite {EXAMPLES_PATH} from these live transcripts first")
-    p.add_argument("--scratch", type=Path, metavar="DIR",
-                   help="the live run's temporary directory, spelled $TMPDIR in the examples")
+    p.add_argument("--mark", action="append", default=[], metavar="PATH=TEXT", type=_mark,
+                   help="spell a directory of the live run's host as TEXT in the examples (its "
+                        "scratch as $TMPDIR, its bench, its builds); repeatable")
     p.add_argument("--write", action="store_true", help="rewrite the pages")
     ns = p.parse_args(argv)
     try:
@@ -474,9 +497,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if ns.examples:
             tools = {t.name for t in registered(reg.server)}
-            scratch = [] if ns.scratch is None else [str(ns.scratch), os.path.realpath(ns.scratch)]
-            norm = demo.Normaliser(reg.root.resolve(), Path.home().resolve(), {},
-                                   marks=dict.fromkeys(scratch, "$TMPDIR"))
+            root = reg.root.resolve()
+            marks = {spelled: text for path, text in ns.mark
+                     for spelled in (path, os.path.realpath(path))}
+            # The repository as an absolute placeholder, never `.`: every path a tool takes is
+            # absolute, so an example a reader copies has to be one too.
+            norm = demo.Normaliser(root, Path.home().resolve(), {},
+                                   marks={**marks, str(root): f"/path/to/{root.name}"})
             picked = examples_from(_records(ns.examples), tools, norm)
             if not picked:
                 raise Invalid("the transcripts hold no OK cell of a tool of this server")

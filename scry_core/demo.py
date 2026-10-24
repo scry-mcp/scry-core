@@ -272,7 +272,7 @@ class Normaliser:
     volatile: Mapping[str, str]
     host: Mapping[str, str] = field(default_factory=dict)
     #: Further prefixes the run chose, each with its mark (a live run's scratch as `$TMPDIR`):
-    #: spelled first, since a scratch may lie inside the root or the home.
+    #: spelled first, longest first, since one may lie inside another, the root or the home.
     marks: Mapping[str, str] = field(default_factory=dict)
 
     def text(self, text: str) -> str:
@@ -280,7 +280,8 @@ class Normaliser:
         by a separator or the end, never inside a longer name (`/Users/mx` is not under
         `/Users/m`). The root goes first, since it usually lies inside the home and the longer
         prefix has to win. A prefix of `/` is left alone: it would rewrite every separator."""
-        for prefix, mark in (*self.marks.items(), (str(self.root), "."), (str(self.home), "~")):
+        marks = sorted(self.marks.items(), key=lambda pm: -len(pm[0]))
+        for prefix, mark in (*marks, (str(self.root), "."), (str(self.home), "~")):
             if prefix != os.sep:
                 text = re.sub(re.escape(prefix) + r"(?=/|$|[^\w.-])", mark, text)
         return text

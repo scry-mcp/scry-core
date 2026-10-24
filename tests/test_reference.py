@@ -98,7 +98,7 @@ def test_a_tool_block_names_every_argument_its_type_its_default_and_whether_it_i
         tmp_path: Path) -> None:
     reg = _written(_registry(tmp_path))
     text = _read(tmp_path)
-    assert "### `peek`" in text and "*Peek at memory*" in text, text
+    assert "## `peek`" in text and "*Peek at memory*" in text, text
     assert 'peek(addr, length=1, mode="byte")' in text, text
     assert "| `addr` | string | required |" in text, text
     assert "| `length` | integer | `1` |" in text, text
@@ -112,7 +112,7 @@ def test_the_reply_fields_are_the_model_s_own_beyond_the_server_s_envelope(
     text = _read(tmp_path)
     assert "| `value` | integer |" in text and "| `bytes_read` | array of integer |" in text, text
     assert '| `kind` | one of `"byte"`, `"word"` |' in text, text
-    assert "`last_stop`" not in text.split("### `peek`")[1], "the envelope is REFERENCE.md's"
+    assert "`last_stop`" not in text.split("## `peek`")[1], "the envelope is REFERENCE.md's"
     assert "| `written` | boolean or object |" in _read(tmp_path, "write-memory")
 
 
@@ -167,7 +167,7 @@ def test_an_argument_s_bounds_its_alternatives_its_items_and_a_constant_are_name
 def test_the_example_is_the_transcript_s_call_and_reply_with_its_source(tmp_path: Path) -> None:
     _written(_registry(tmp_path))
     text = _read(tmp_path)
-    assert "Example, from *[A] fixture: a cell*" in text, text
+    assert "Example, from a live run:" in text, text
     assert '"addr": "0x10"' in text and '"status": "ok"' in text, text
 
 
@@ -190,7 +190,8 @@ def test_a_missing_page_a_missing_block_a_stray_one_and_a_stray_file_are_each_dr
     read = tmp_path / "docs/reference/read.md"
     poke = begin_marker("poke") + "\nold\n" + end_marker("poke")
     read.write_text(read.read_text(encoding="utf-8") + "\n" + poke + "\n", encoding="utf-8")
-    (tmp_path / "docs/reference/write-memory.md").write_text("# Write memory\n", encoding="utf-8")
+    (tmp_path / "docs/reference/write-memory.md").write_text("# The Write memory tools\n",
+                                                             encoding="utf-8")
     (tmp_path / "docs/reference/gone.md").write_text("# Gone\n", encoding="utf-8")
     ref = tmp_path / "REFERENCE.md"
     ref.write_text(ref.read_text(encoding="utf-8") + "\n" + begin_marker("x") + "\n"
@@ -284,7 +285,7 @@ def test_the_hand_prose_between_blocks_and_the_page_s_head_survive_a_rewrite(
     reg = _written(_one_page(tmp_path))
     page = tmp_path / "docs/reference/read.md"
     text = page.read_text(encoding="utf-8")
-    text = text.replace("# Read\n", "# Read\n\nWhat the family does.\n", 1)
+    text = text.replace("# The Read tools\n", "# The Read tools\n\nWhat the family does.\n", 1)
     text = text.replace(begin_marker("poke"), "Why peek.\n\n" + begin_marker("poke"))
     page.write_text(text.replace("integer", "int") + "\nWhy poke.\n", encoding="utf-8")
     assert reference.write(reg) == ["docs/reference/read.md"]
@@ -300,7 +301,8 @@ def test_a_rewrite_puts_blocks_back_in_the_roster_s_order_with_their_prose(
     page = tmp_path / "docs/reference/read.md"
     text = page.read_text(encoding="utf-8")
     peek, poke = _block(text, "peek"), _block(text, "poke")
-    page.write_text(f"# Read\n\n{poke}\n\nWhy poke.\n\n{peek}\n\nWhy peek.\n", encoding="utf-8")
+    page.write_text(f"# The Read tools\n\n{poke}\n\nWhy poke.\n\n{peek}\n\nWhy peek.\n",
+                    encoding="utf-8")
     assert reference.drift(reg), "the setup must be out of order"
     reference.write(reg)
     final = page.read_text(encoding="utf-8")
@@ -326,8 +328,8 @@ def test_a_stray_block_goes_and_its_prose_joins_the_block_before_it(tmp_path: Pa
     page = tmp_path / "docs/reference/read.md"
     stray = begin_marker("gone") + "\nold\n" + end_marker("gone")
     page.write_text(page.read_text(encoding="utf-8").replace(
-        "# Read\n", f"# Read\n\n{stray}\n\nWhy gone, first.\n", 1) + f"\n{stray}\n\nWhy gone.\n",
-        encoding="utf-8")
+        "# The Read tools\n", f"# The Read tools\n\n{stray}\n\nWhy gone, first.\n", 1)
+        + f"\n{stray}\n\nWhy gone.\n", encoding="utf-8")
     reference.write(reg)
     final = page.read_text(encoding="utf-8")
     assert "gone -->" not in final and reference.drift(reg) == [], final
@@ -487,13 +489,84 @@ def test_an_example_leaves_out_the_session_block_reference_md_documents_once(
     assert shown["reply"] == {"status": "ok", "value": 1}, shown
 
 
-def test_the_run_s_scratch_directory_is_spelled_for_any_run(
+def test_each_mark_spells_a_host_directory_as_the_caller_names_it(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    scratch = tmp_path / "s9.ABCDEF"
+    scratch, bench = tmp_path / "s9.ABCDEF", tmp_path / "bench"
     jsonl = tmp_path / "transcript.jsonl"
-    rec = _record("peek", "OK", {"status": "ok", "path": f"{scratch}/job/f7.wav"})
+    rec = _record("peek", "OK", {"status": "ok", "path": f"{scratch}/job/f7.wav",
+                                 "gfx": f"{bench}/m68k/gfx.yaml"})
     jsonl.write_text(json.dumps(rec) + "\n", encoding="utf-8")
-    assert _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--scratch",
-                 str(scratch)) in (0, 1)
+    assert _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--mark",
+                 f"{scratch}=$TMPDIR", "--mark", f"{bench}=$SCRY_BENCH") in (0, 1)
     held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
     assert held["peek"]["reply"]["path"] == "$TMPDIR/job/f7.wav", held
+    assert held["peek"]["reply"]["gfx"] == "$SCRY_BENCH/m68k/gfx.yaml", held
+
+
+def test_a_mark_without_its_spelling_is_a_usage_error(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    with pytest.raises(SystemExit) as exit_:
+        _main(tmp_path, monkeypatch, "--mark", "/tmp/x")
+    assert exit_.value.code == 2
+
+
+def test_a_scratch_spelled_two_ways_is_one_mark_whichever_comes_first(tmp_path: Path) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {},
+                      marks={"/tmp/s9.X": "$TMPDIR", "/private/tmp/s9.X": "$TMPDIR"})
+    assert norm.text("/private/tmp/s9.X/job/a.conf and /tmp/s9.X/b") \
+        == "$TMPDIR/job/a.conf and $TMPDIR/b"
+
+
+def test_an_example_spells_the_repository_as_an_absolute_placeholder(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    jsonl = tmp_path / "transcript.jsonl"
+    rec = _record("peek", "OK", {"status": "ok", "conf": f"{tmp_path}/tests/guest/a.conf"})
+    jsonl.write_text(json.dumps(rec) + "\n", encoding="utf-8")
+    _main(tmp_path, monkeypatch, "--examples", str(jsonl))
+    held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
+    assert held["peek"]["reply"]["conf"] == f"/path/to/{tmp_path.name}/tests/guest/a.conf", held
+
+
+def test_a_description_s_indented_line_is_text_and_never_a_code_block(tmp_path: Path) -> None:
+    server = MCPServer("indent")
+
+    @server.tool()
+    def tidy() -> dict[str, Any]:
+        """Tidy.
+
+            Reads files only: it needs no machine.
+        Reply: `written`."""
+        return {"status": "ok"}
+
+    strict_arguments(server)
+    block = reference.tool_block(registered(server)[0], PokeReply, FixtureEnvelope, None)
+    assert "\nReads files only: it needs no machine." in block, block
+
+
+def test_a_tool_s_heading_is_one_level_under_its_page_s_and_its_caption_is_plain(
+        tmp_path: Path) -> None:
+    _written(_registry(tmp_path))
+    text = _read(tmp_path)
+    assert "\n## `peek`\n" in text and "### `peek`" not in text, text
+    assert "Example, from a live run:" in text and "[A] fixture" not in text, text
+
+
+def test_a_union_names_each_type_once_and_a_double_backtick_span_is_left_alone(
+        tmp_path: Path) -> None:
+    server = MCPServer("dedupe")
+
+    @server.tool()
+    def mix(bases: dict[str, str] | dict[str, int] | None = None) -> dict[str, Any]:
+        """Mix: the cause is ``registerpoint '<ref>'`` as typed. Reply: `written`."""
+        return {"status": "ok"}
+
+    strict_arguments(server)
+    block = reference.tool_block(registered(server)[0], PokeReply, FixtureEnvelope, None)
+    assert "| `bases` | object or null | `null` |" in block, block
+    assert "``registerpoint '<ref>'``" in block, block
+
+
+def test_a_page_s_title_never_shares_its_anchor_with_a_tool(tmp_path: Path) -> None:
+    reg = _registry(tmp_path, (("Peek", ("peek",)), ("Write memory", ("poke",))))
+    _written(reg)
+    assert _read(tmp_path, "peek").startswith("# The Peek tools\n")

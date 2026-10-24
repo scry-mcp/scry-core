@@ -85,7 +85,7 @@ python -m scry_core.live_bench check --bench <bench>
 python -m scry_core.traffic <server> --servers mcp_probe/servers.py --transcript <jsonl>
 python -m scry_core.hook
 python -m scry_core.replay <document> [--binary PATH] [--rompath DIR] [--transcript PATH]
-python -m scry_core.reference <module>:<attribute> [--examples JSONL ... [--scratch DIR]] [--write]
+python -m scry_core.reference <module>:<attribute> [--examples JSONL ... [--mark PATH=TEXT ...]] [--write]
 ```
 
 `--help` on each is its contract. A real probe run asks the `claude` CLI and needs the network;

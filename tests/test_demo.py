@@ -476,3 +476,10 @@ def test_a_front_door_with_no_step_shown_is_a_declaration_error_and_runs_nothing
     with pytest.raises(ValueError, match="shows no step"):
         _run(demo, tmp_path, "--update-readme")
     assert _calls(log) == [], "the server ran for a front door it could not fill"
+
+
+def test_update_readme_on_a_demo_with_no_readme_is_invalid_and_runs_nothing(
+        tmp_path: Path, log: Path) -> None:
+    demo = _demo(tmp_path, readme=None)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    assert _calls(log) == []
