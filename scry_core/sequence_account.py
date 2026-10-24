@@ -167,7 +167,7 @@ def summaries_argument(rows_shown: int) -> str:
     half of what `account` does with it."""
     return (f"True (of the call, never of a step) makes each step but the last a compact row; "
             f"`ran` shows the first {rows_shown} (`truncated`), `ran_path` and `replies_path` "
-            f"hold all.")
+            f"hold all; `stops` counts the stops.")
 
 
 def account(ran: list[dict[str, Any]], summaries: bool, keep_last: bool, since: int,
