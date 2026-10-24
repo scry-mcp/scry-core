@@ -321,6 +321,12 @@ class Normaliser:
 # ======================================================================== the transcript
 
 
+def placeholder(root: Path) -> str:
+    """The repository as an example a reader copies spells it: absolute, as every path a tool
+    takes is, never `.`."""
+    return f"/path/to/{root.name}"
+
+
 def abridged(value: Any) -> Any:
     """`value` cut to its shape: a long list's first items then the string `... N more` in its
     place (so a list of numbers ends in a string), a long string's first characters."""
@@ -337,9 +343,9 @@ def abridged(value: Any) -> Any:
 
 def _shown(tool: str, args: Mapping[str, Any], reply: Reply | None,
            fields: tuple[str, ...] | None) -> str:
-    """One step as the front door shows it: the call as it is typed and the reply (its `fields`
-    alone when named), both abridged."""
-    call = f"{tool}(" + ", ".join(f"{k}={json.dumps(abridged(v), ensure_ascii=False)}"
+    """One step as the front door shows it: the call whole, as a reader would type it, and the
+    reply (its `fields` alone when named) abridged to its shape."""
+    call = f"{tool}(" + ", ".join(f"{k}={json.dumps(v, ensure_ascii=False)}"
                                   for k, v in args.items()) + ")"
     data = None if reply is None else (
         reply.data if fields is None else {k: reply.data[k] for k in fields})
@@ -372,6 +378,8 @@ class Transcripts:
     one through the run's `Normaliser`."""
 
     norm: Normaliser
+    #: How the front door's flow spells the host: the repository as `placeholder`, not `.`.
+    flow_norm: Normaliser | None = None
     whole: list[str] = field(default_factory=list)
     normalised: list[str] = field(default_factory=list)
     flow: list[str] = field(default_factory=list)
@@ -385,7 +393,10 @@ class Transcripts:
         normal_args = self.norm.arguments(dict(args))
         self.normalised.append(_entry(n, tool, normal_args, normal, self.norm.text(line)))
         if shown:
-            self.flow.append(_shown(tool, normal_args, normal,
+            spell = self.flow_norm or self.norm
+            flow_reply = None if reply is None else Reply(spell.reply(reply.data, volatile),
+                                                          reply.attachments)
+            self.flow.append(_shown(tool, spell.arguments(dict(args)), flow_reply,
                                     shown if isinstance(shown, tuple) else None))
 
 
@@ -449,7 +460,10 @@ class Outcome:
 
 
 async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> Outcome:
-    out = Outcome([], Transcripts(norm))
+    root = norm.root
+    out = Outcome([], Transcripts(norm, Normaliser(
+        root, norm.home, norm.volatile, norm.host,
+        marks={**norm.marks, str(root): placeholder(root)})))
     # The WHOLE environment, not the library's short default list: the server's own ladder
     # (`MAME_BINARY`, its state directories) reads variables the caller set.
     params = StdioServerParameters(command=demo.server[0], args=list(demo.server[1:]),

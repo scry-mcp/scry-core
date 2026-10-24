@@ -71,7 +71,9 @@ def _examples(root: Path, tools: tuple[str, ...] = ("peek", "poke"),
               call: dict[str, Any] | None = None) -> None:
     path = root / EXAMPLES
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({t: {"from": "[A] fixture: a cell", "call": call or {"addr": "0x10"},
+    calls = {"peek": {"addr": "0x10"}, "poke": {"addr": "0x10", "value": 1}}
+    path.write_text(json.dumps({t: {"from": "[A] fixture: a cell",
+                                    "call": call or calls.get(t, {"addr": "0x10"}),
                                     "reply": {"status": "ok"}} for t in tools}),
                     encoding="utf-8")
 
@@ -248,7 +250,8 @@ def test_a_tool_with_no_example_an_example_of_no_tool_and_a_stale_call_are_drift
     found = reference.drift(reg)
     assert f"`poke` has no example in {EXAMPLES}" in found, found
     assert f"{EXAMPLES}: `gone` is no tool" in found, found
-    assert f"{EXAMPLES}: `peek`'s example passes `width`, which it does not take" in found, found
+    assert any(f.startswith(f"{EXAMPLES}: `peek`'s example call is one the tool refuses (width")
+               for f in found), found
 
 
 def test_a_registry_with_no_tool_compares_nothing_and_is_invalid(tmp_path: Path) -> None:
@@ -634,3 +637,58 @@ def test_reference_md_keeps_the_title_its_server_gave_it(tmp_path: Path) -> None
     assert reference.drift(reg) == []
     reference.write(reg)
     assert ref.read_text(encoding="utf-8").startswith("# scry-x: reference\n")
+
+
+@pytest.mark.parametrize(("example", "named"), [
+    ({"call": {"addr": "0x10"}, "reply": {"status": "ok", "gone": 1}},
+     "`peek`'s example replies `gone`, which its model does not name"),
+    ({"call": {"addr": "0x10", "mode": "nibble"}, "reply": {"status": "ok"}},
+     "`peek`'s example call is one the tool refuses"),
+])
+def test_an_example_the_code_no_longer_answers_is_drift(
+        tmp_path: Path, example: dict[str, Any], named: str) -> None:
+    reg = _written(_registry(tmp_path))
+    held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
+    held["peek"] = {"from": "[A] fixture: a cell", **example}
+    (tmp_path / EXAMPLES).write_text(json.dumps(held), encoding="utf-8")
+    assert any(f.startswith(f"{EXAMPLES}: {named}") for f in reference.drift(reg)), \
+        reference.drift(reg)
+
+
+def test_an_example_call_is_kept_whole_as_a_reader_would_type_it(tmp_path: Path) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    rec = {**_record("peek", "OK", {"status": "ok", "rows": list(range(9))}),
+           "args": {"keys": list(range(9))}}
+    shown = reference.examples_from([rec], {"peek"}, norm)["peek"]
+    assert shown["call"] == {"keys": list(range(9))}, shown
+    assert shown["reply"]["rows"][-1] == f"... {9 - demo.ABRIDGED_ITEMS} more", shown
+
+
+def test_an_examples_entry_that_is_not_an_object_is_invalid(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "docs/reference").mkdir(parents=True)
+    (tmp_path / EXAMPLES).write_text('{"peek": 3}', encoding="utf-8")
+    assert _main(tmp_path, monkeypatch) == 3
+
+
+def test_a_registry_module_that_fails_to_import_is_invalid_not_drift(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    class Boom:
+        def __getattr__(self, name: str) -> Any:
+            raise RuntimeError("the server could not be built")
+
+    monkeypatch.setitem(sys.modules, "boom_registry", Boom())
+    assert reference.main(["boom_registry:REGISTRY"]) == 3
+    assert "INVALID" in capsys.readouterr().out
+
+
+def test_a_failure_while_comparing_is_invalid_not_drift(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    def broken(reg: reference.Registry) -> list[str]:
+        raise UnicodeDecodeError("utf-8", b"\xff", 0, 1, "a page that is not UTF-8")
+
+    monkeypatch.setattr(reference, "drift", broken)
+    assert _main(tmp_path, monkeypatch) == 3
+    assert "INVALID: UnicodeDecodeError" in capsys.readouterr().out

@@ -61,7 +61,7 @@ from mcp.server.mcpserver.tools import Tool
 from scry_core import demo
 from scry_core.reply_schema import model_gap, own_fields
 from scry_core.roster import Roster
-from scry_core.strict_arguments import registered
+from scry_core.strict_arguments import refused, registered
 from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 REFERENCE_PAGE = "REFERENCE.md"
@@ -255,6 +255,10 @@ def _examples(reg: Registry) -> dict[str, Any]:
         raise Invalid(f"{EXAMPLES_PATH} cannot be read: {e}") from e
     if not isinstance(held, dict):
         raise Invalid(f"{EXAMPLES_PATH} holds a {type(held).__name__}, not an object by tool")
+    if odd := sorted(n for n, e in held.items()
+                     if not (isinstance(e, dict) and isinstance(e.get("call"), dict)
+                             and isinstance(e.get("reply"), dict))):
+        raise Invalid(f"{EXAMPLES_PATH}: no call and reply objects for {', '.join(odd)}")
     return held
 
 
@@ -399,10 +403,14 @@ def drift(reg: Registry) -> list[str]:
     for name, example in sorted(examples.items()):
         if name not in tools:
             found.append(f"{EXAMPLES_PATH}: `{name}` is no tool")
-        elif stale := sorted(set(example.get("call", {}))
-                             - set(tools[name].parameters.get("properties", {}))):
-            found.append(f"{EXAMPLES_PATH}: `{name}`'s example passes "
-                         + ", ".join(f"`{a}`" for a in stale) + ", which it does not take")
+        else:
+            if why := refused(tools[name], example["call"]):
+                found.append(f"{EXAMPLES_PATH}: `{name}`'s example call is one the tool refuses "
+                             f"({why})")
+            known = set(get_type_hints(reg.models[name], include_extras=True))
+            for field_name in sorted(set(example["reply"]) - known):
+                found.append(f"{EXAMPLES_PATH}: `{name}`'s example replies `{field_name}`, "
+                             "which its model does not name")
     return found
 
 
@@ -446,7 +454,7 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
                 and "status" in reply):
             (ok if reply["status"] == "ok" else refused).setdefault(str(name), rec)
     return {name: {"from": f"{rec.get('section', '')}: {rec.get('label', rec.get('cell', ''))}",
-                   "call": demo.abridged(norm.reply(dict(rec.get("args") or {}))),
+                   "call": norm.reply(dict(rec.get("args") or {})),
                    "reply": demo.abridged(norm.reply(
                        {k: v for k, v in rec["reply"].items() if k not in LEFT_OUT}))}
             for name, rec in sorted({**refused, **ok}.items())}
@@ -504,16 +512,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         reg = _loaded(ns.registry)
     except ValueError as e:
         p.error(str(e))
+    except Exception as e:  # a module that cannot be built compared nothing: INVALID, not drift
+        print(f"INVALID: {ns.registry} could not be loaded: {type(e).__name__}: {e}")
+        return EXIT_INVALID
     try:
         if ns.examples:
             tools = {t.name for t in registered(reg.server)}
             root = reg.root.resolve()
             marks = {spelled: text for path, text in ns.mark
                      for spelled in (path, os.path.realpath(path))}
-            # The repository as an absolute placeholder, never `.`: every path a tool takes is
-            # absolute, so an example a reader copies has to be one too.
             norm = demo.Normaliser(root, Path.home().resolve(), {},
-                                   marks={**marks, str(root): f"/path/to/{root.name}"})
+                                   marks={**marks, str(root): demo.placeholder(root)})
             picked = examples_from(_records(ns.examples), tools, norm)
             if not picked:
                 raise Invalid("the transcripts hold no OK cell of a tool of this server")
@@ -528,6 +537,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         found = drift(reg)
     except Invalid as e:
         print(f"INVALID: {e}")
+        return EXIT_INVALID
+    except Exception as e:  # anything else before a verdict: INVALID, never read as drift
+        print(f"INVALID: {type(e).__name__}: {e}")
         return EXIT_INVALID
     for line in found:
         print(line)

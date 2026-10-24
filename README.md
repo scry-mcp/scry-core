@@ -21,7 +21,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.progress` | the progress line of a bounded wait: one a second, one short line, never backwards, none once the call is cancelled, bridged from the tool's worker thread to the request |
 | `scry_core.cancel` | a cancelled call: the poll every bounded wait makes, the shield its end runs under, how each tool declares it ends, and the record the next reply carries |
 | `scry_core.strict_arguments` | the schema as part of a tool's contract: what it does not declare is refused |
-| `scry_core.prose` | how a count is said in a summary, a note or a refusal: the one plural rule, and the verb that agrees with it |
+| `scry_core.prose` | how a count is said in a summary, a note or a refusal: the one plural rule, and the verb that agrees with it; and the one summary line every tool answers for a refusal |
 | `scry_core.declaration_rows` | the identity every listed declaration carries on both servers: ref, how declared, cpu, when and in which session, whether that session is this one, and its age |
 | `scry_core.log_marks` | the argument `log` and `log_wait` take to read what came after a mark: its description and `state_load`'s `mark`'s, its schema bound, and the refusals of a position that names none |
 | `scry_core.state_files` | what sits under a saved state's name and holds no state (a dangling link, a directory, a FIFO), said instead of opened, and the load's refusal of it |
@@ -59,7 +59,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.goldens` | files against goldens written by `shasum -a 256`, by name |
 | `scry_core.media_tools` | the tools that read media files and no emulator, one body, description, summary and judge each, registered by each server through its own decorator |
 | `scry_core.judges` | the argument judges both servers share: a number as an integer or its `0x` spelling, whole numbers, a written file's path, size and hash, rectangles, shifts, the one path rule (absolute or `~`-led, `~` expanded), a file to write, the picture a path names |
-| `scry_core.fresh` | files and directories created new, never over another, never left half written, and a directory taken back when the work that fills it fails |
+| `scry_core.fresh` | files and directories created new, never over another, never left half written; a file the caller asked to replace, renamed over the old one whole or not at all; and a directory taken back when the work that fills it fails |
 | `scry_core.avi` | an AVI's main header: its frame size, and its frames, by the header once the file is finished and by its chunks while it is written |
 | `scry_core.wav` | what a recording says, measured from the WAV: whether it sounded, how loud, when, whether it clipped, and how close two recordings are |
 | `scry_core.docs` | a tool description's `{NAME}` placeholders, filled from the constants that enforce them |
@@ -80,16 +80,16 @@ own; the bench is the directory a server's live tier resolved, and its manifest 
 `mcp_probe/tasks/`. The reference runs from a server repository too, where `<module>` imports:
 
 ```sh
-python -m scry_core.probe all --check --servers mcp_probe/servers.py --tasks mcp_probe/tasks
-python -m scry_core.live_bench check --bench <bench>
-python -m scry_core.traffic <server> --servers mcp_probe/servers.py --transcript <jsonl>
-python -m scry_core.hook
-python -m scry_core.replay <document> [--binary PATH] [--rompath DIR] [--transcript PATH]
-python -m scry_core.reference <module>:<attribute> [--examples JSONL ... [--mark PATH=TEXT ...]] [--write]
+uv run python -m scry_core.probe all --check --servers mcp_probe/servers.py --tasks mcp_probe/tasks
+uv run python -m scry_core.live_bench check --bench <bench>
+uv run python -m scry_core.traffic <server> --servers mcp_probe/servers.py --transcript <jsonl>
+uv run python -m scry_core.hook
+uv run python -m scry_core.replay <document> [--binary PATH] [--rompath DIR] [--transcript PATH]
+uv run python -m scry_core.reference <module>:<attribute> [--examples JSONL ... [--mark PATH=TEXT ...]] [--write]
 ```
 
 `--help` on each is its contract. A real probe run asks the `claude` CLI and needs the network;
-`--check` and the replay seam need neither. `fill` runs the `capture` commands its manifest names,
+`--check` and the probe's answers seam (`MCP_PROBE_ANSWERS`) need neither. `fill` runs the `capture` commands its manifest names,
 so it fills only from checkouts you trust. Each repository's `.githooks/pre-commit.sh` is the one
 line that calls the hook through its own `uv run`.
 

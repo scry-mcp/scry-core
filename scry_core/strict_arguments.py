@@ -42,6 +42,17 @@ def registered(server: MCPServer) -> list[Tool]:
     return server._tool_manager.list_tools()
 
 
+def refused(tool: Tool, args: dict[str, Any]) -> str | None:
+    """Why `tool`'s strict schema refuses `args`, in one line, or None when it takes them: the
+    judgement a call meets before the tool's body runs."""
+    try:
+        tool.fn_metadata.arg_model.model_validate(args)
+    except ValidationError as e:
+        return "; ".join(f"{'.'.join(map(str, err['loc'])) or 'arguments'}: {err['msg']}"
+                         for err in e.errors())
+    return None
+
+
 def strict_arguments(server: MCPServer) -> None:
     """Make every tool registered on `server` so far refuse what its lax model would rescue."""
     strict = ConfigDict(strict=True, extra="forbid", arbitrary_types_allowed=True)

@@ -459,15 +459,21 @@ def test_a_long_value_in_a_flow_is_abridged_to_its_shape() -> None:
     assert shown["text"].endswith(" ... (1000 characters)") and shown["n"] == 3
 
 
-def test_a_long_reply_is_shown_in_the_flow_abridged(tmp_path: Path, log: Path) -> None:
-    steps = [d.Step("boot", "start", {"value": 7, "binary": "x" * 1000}, _said("value"),
-                    shown=True),
+def _flow_of(tmp_path: Path, start: dict[str, Any]) -> str:
+    """The flow a run writes when its `start` step, with `start` as its arguments, is shown."""
+    steps = [d.Step("boot", "start", start, _said("value"), options=True, shown=True),
              d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
                     lambda reply, run: "a picture")]
     demo = _demo(tmp_path, steps, front=_front(tmp_path))
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    flow = (tmp_path / "out" / "transcript.flow.md").read_text()
-    assert " ... (1000 characters)" in flow and "x" * 1000 not in flow, flow
+    return (tmp_path / "out" / "transcript.flow.md").read_text()
+
+
+def test_a_long_reply_is_shown_in_the_flow_abridged(tmp_path: Path, log: Path) -> None:
+    flow = _flow_of(tmp_path, {"value": 7, "binary": "x" * 1000})
+    reply = flow.split("\n-> ", 1)[1]
+    assert " ... (1000 characters)" in reply and "x" * 1000 not in reply, flow
+    assert f'binary="{"x" * 1000}"' in flow, "the call is what a reader types: kept whole"
 
 
 def test_a_front_door_with_no_step_shown_is_a_declaration_error_and_runs_nothing(
@@ -508,12 +514,7 @@ def test_a_field_the_front_door_shows_and_the_reply_lacks_fails_the_step(
 
 
 def test_a_shown_step_s_flow_is_the_normalised_reply(tmp_path: Path, log: Path) -> None:
-    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True, shown=True),
-             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
-                    lambda reply, run: "a picture")]
-    demo = _demo(tmp_path, steps, front=_front(tmp_path))
-    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    flow = (tmp_path / "out" / "transcript.flow.md").read_text()
+    flow = _flow_of(tmp_path, {"value": 7})
     assert '"pid": "<volatile>"' in flow and str(tmp_path) not in flow, flow
 
 
@@ -589,3 +590,11 @@ def test_load_answers_the_demo_a_file_declares_without_running_it(tmp_path: Path
     file.write_text("DEMO = 3\n")
     with pytest.raises(TypeError, match="not a Demo"):
         d.load(file)
+    with pytest.raises(TypeError, match="cannot be imported"):
+        d.load(tmp_path / "demo.txt")
+
+
+def test_a_flow_spells_the_repository_as_an_absolute_placeholder(
+        tmp_path: Path, log: Path) -> None:
+    flow = _flow_of(tmp_path, {"value": 7, "binary": str(tmp_path / "bin" / "x")})
+    assert f'"/path/to/{tmp_path.name}/bin/x"' in flow and '"./bin/x"' not in flow, flow

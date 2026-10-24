@@ -1,6 +1,7 @@
-"""Files the media layer creates: each one made new, never written over, and never left half
-written. One rule for every writer, because a half file read back later is a wrong answer that
-looks like a file, and a file written over is somebody else's evidence gone.
+"""Files the media layer creates: each one made new, never written over unless the caller asked
+to replace it (`replace`, whole or not at all), and never left half written. One rule for every
+writer, because a half file read back later is a wrong answer that looks like a file, and a file
+written over unasked is somebody else's evidence gone.
 """
 
 from __future__ import annotations
