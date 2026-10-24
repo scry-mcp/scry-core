@@ -256,18 +256,15 @@ def test_the_real_probe_check_passes_a_repository_whose_tasks_cover_its_server(
 
 
 def test_a_jscpd_absent_from_path_is_invalid_saying_where_it_was_looked_for(
-        repo: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str],
-        monkeypatch: pytest.MonkeyPatch) -> None:
+        repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("PRECOMMIT_JSCPD", raising=False)
     git = shutil.which("git")
     assert git is not None
-    # A DIRECTORY HOLDING GIT ALONE, so a host whose git and jscpd share one bin is no exception;
-    # the link keeps git's own file name, which Windows needs to find it (`git.exe`).
-    only_git = tmp_path / "only-git"
-    only_git.mkdir()
-    (only_git / Path(git).name).symlink_to(git)
-    monkeypatch.setenv("PATH", str(only_git))
-    assert shutil.which("jscpd") is None
+    # GIT'S OWN DIRECTORY, never a link to git elsewhere: on Windows git.exe loads DLLs from the
+    # directory it sits in. A host whose git and jscpd share that directory cannot run this case.
+    monkeypatch.setenv("PATH", str(Path(git).parent))
+    if shutil.which("jscpd") is not None:
+        pytest.skip("jscpd sits in git's own directory on this host, so no PATH holds one alone")
     rc, said = _hook(capsys)
     assert rc == verdict.EXIT_INVALID, said
     assert "it is looked for on PATH (or named by PRECOMMIT_JSCPD)" in said, said
