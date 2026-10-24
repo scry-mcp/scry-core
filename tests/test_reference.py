@@ -4,6 +4,7 @@ and its examples picked from a live run's transcript."""
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import types
 from pathlib import Path
@@ -442,3 +443,37 @@ def test_a_spec_that_names_no_registry_is_a_usage_error(
     with pytest.raises(SystemExit) as exit_:
         reference.main([spec])
     assert exit_.value.code == 2
+
+
+_COMMAND_FIXTURE = '''
+from pathlib import Path
+from typing import Any
+from mcp.server.mcpserver import MCPServer
+from scry_core import reference, reply_schema, roster
+from scry_core.strict_arguments import strict_arguments
+
+server = MCPServer("cli")
+
+
+@server.tool()
+def ping() -> dict[str, Any]:
+    """Ping. Reply: nothing of its own."""
+    return {"status": "ok"}
+
+
+strict_arguments(server)
+REGISTRY = reference.Registry(server=server, models={"ping": reply_schema.ReplyEnvelope},
+                              roster=roster.Roster(families=(("Net", ("ping",)),), answering=()),
+                              envelope=reply_schema.ReplyEnvelope, root=Path(__file__).parent)
+'''
+
+
+def test_the_command_run_as_a_module_takes_the_registry_a_server_built(tmp_path: Path) -> None:
+    """`python -m` runs this module as `__main__`, a second copy whose `Registry` is not the one a
+    server imports: the command must judge the spec with the copy the server used."""
+    (tmp_path / "cli_registry.py").write_text(_COMMAND_FIXTURE, encoding="utf-8")
+    done = subprocess.run([sys.executable, "-m", "scry_core.reference", "cli_registry:REGISTRY",
+                           "--write"], cwd=tmp_path, capture_output=True, text=True,
+                          check=False, timeout=60)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert (tmp_path / "docs/reference/net.md").is_file()

@@ -503,5 +503,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     return EXIT_FAIL if found else EXIT_PASS
 
 
-if __name__ == "__main__":  # pragma: no cover -- the entry point; `main` is what is tested
-    raise SystemExit(main())
+if __name__ == "__main__":  # pragma: no cover -- run in a child by the tests
+    # `-m` runs this file as `__main__`, a second copy of the module whose `Registry` is not the
+    # class a server built its registry from, so the command runs the imported copy's `main`.
+    from scry_core.reference import main as imported_main
+
+    raise SystemExit(imported_main())
