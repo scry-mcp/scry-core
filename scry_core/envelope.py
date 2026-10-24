@@ -43,7 +43,8 @@ class Envelope(MCPServer):
     async def call_tool(self, name: str, arguments: dict[str, Any],
                         context: Context[Any, Any] | None = None) -> Any:
         try:
-            return picture.attached(await super().call_tool(name, arguments, context))
+            result = await super().call_tool(name, arguments, context)
+            return _strict(name, picture.attached(result))
         except ToolError as e:
             cause = strict.refused_by_schema(e)
             if cause is None:
@@ -55,5 +56,21 @@ class Envelope(MCPServer):
             # never runs that callback, so the worker never finishes and never lets go, and the
             # loop never gets the lock: both sides would wait for ever.
             body = await anyio.to_thread.run_sync(self._refusal, name, arguments, cause)
-        text = TextContent(type="text", text=json.dumps(body, indent=2))
+        text = TextContent(type="text", text=json.dumps(body, indent=2, allow_nan=False))
         return CallToolResult(content=[text], structured_content=body)
+
+
+def _strict(name: str, result: Any) -> Any:
+    """`result` once its text is known to be JSON: the SDK writes a NaN or an infinity into the
+    text as `NaN` or `Infinity`, which no JSON parser takes (and into the structured half as
+    `null`, silently), so a reply carrying one fails here, a `ValueError` that is the tool's
+    defect, instead of reaching a client. The values a session reads are rendered as text before
+    they get here (`value_format`)."""
+    def not_json(constant: str) -> Any:
+        raise ValueError(f"{name}'s reply holds {constant}, which is not JSON compliant: a value "
+                         "the tool computed is no number JSON can carry")
+    if isinstance(result, CallToolResult) and isinstance(result.structured_content, dict):
+        for part in result.content:
+            if isinstance(part, TextContent):
+                json.loads(part.text, parse_constant=not_json)
+    return result

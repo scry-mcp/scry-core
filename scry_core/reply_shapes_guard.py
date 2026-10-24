@@ -166,7 +166,8 @@ def declared(config: pytest.Config) -> list[str]:
         raise pytest.UsageError(
             f"the shape guard (scry_core.reply_shapes) has no `{ANCHORS_INI}` to wrap: declare "
             "the modules whose replies it judges in [tool.pytest.ini_options], or this run "
-            "would report green having judged nothing")
+            "would report green having judged nothing. For example:\n"
+            f'    {ANCHORS_INI} = ["scry_core.reply_contract", "server"]')
     if lost := [name for name in names if not _findable(name)]:
         raise pytest.UsageError(
             f"`{ANCHORS_INI}` names {', '.join(lost)}, which no import can find: a misspelt "
@@ -256,7 +257,9 @@ def one_word_one_shape(config: pytest.Config) -> Iterator[None]:
     _restore(originals)
     if late:
         raise RuntimeError(f"a declared anchor was imported after the shape guard was installed "
-                           f"and escaped it: {late}. Every reply built through it went unjudged")
+                           f"and escaped it: {late}. Every reply built through it went unjudged; "
+                           "import it in the suite's conftest.py, so it exists when the guard "
+                           "is installed")
 
 
 def _restore(originals: dict[tuple[str, str], tuple[Any, Any]]) -> None:

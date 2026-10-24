@@ -45,23 +45,26 @@ PROBE_CHECK = ["-m", "scry_core.probe", "all", "--check", "--servers", str(SERVE
                "--tasks", str(TASKS_DIR)]
 
 
-class Blocked(Exception):
+class Refused(Exception):
     """A verdict against the commit, with what to do about it."""
 
 
-def _run(argv: list[str], what: str, root: Path) -> tuple[int, str]:
+def _run(argv: list[str], what: str, root: Path, seam: str) -> tuple[int, str]:
     """`argv`'s exit code and its stdout and stderr together, run at the repository's `root`, or
-    `Invalid` naming `what` when it cannot be started."""
+    `Invalid` naming `what`, and where the program was looked for, when it cannot be started:
+    the value of the variable `seam` when it is set, else the program on PATH."""
     try:
         done = subprocess.run(argv, capture_output=True, text=True, errors="replace", check=False,
                               cwd=root)
     except OSError as e:
-        raise Invalid(f"{what} could not be run ({argv[0]}): {e}") from None
+        found = (f"it is {seam}'s value" if os.environ.get(seam)
+                 else f"it is looked for on PATH (or named by {seam})")
+        raise Invalid(f"{what} could not be run ({argv[0]}): {e}; {found}") from None
     return done.returncode, done.stdout + done.stderr
 
 
 def duplication(root: Path, scratch: Path) -> str:
-    """The duplication check's line for a clean tree; `Blocked` on new clones, `Invalid` when it
+    """The duplication check's line for a clean tree; `Refused` on new clones, `Invalid` when it
     examined nothing or wrote no report."""
     if not (root / BASELINE).is_file():
         raise Invalid(f"{BASELINE} is missing, so there is nothing to judge NEW duplication "
@@ -69,7 +72,8 @@ def duplication(root: Path, scratch: Path) -> str:
                       f"    jscpd . --baseline {BASELINE} --update-baseline")
     jscpd = os.environ.get("PRECOMMIT_JSCPD") or "jscpd"
     rc, said = _run([jscpd, ".", "--baseline", BASELINE, "--fail-on-new-clones",
-                     "--reporters", "json", "--output", str(scratch)], "jscpd", root)
+                     "--reporters", "json", "--output", str(scratch)], "jscpd", root,
+                    "PRECOMMIT_JSCPD")
     report = scratch / "jscpd-report.json"
     if not report.is_file():
         raise Invalid(f"jscpd wrote no report (rc={rc}):\n{said}")
@@ -87,11 +91,12 @@ def duplication(root: Path, scratch: Path) -> str:
         raise Invalid(f"jscpd exited {rc} and its report counts no new clone:\n{said}")
     if new > 0:
         # jscpd keys a clone by its content, so one that shrank under an edit reads as new.
-        raise Blocked(
+        raise Refused(
             f"{said}\n{new} new clone(s), {lines} new duplicated lines, over a baseline of "
             f"accepted duplication, in {sources} files (rc={rc}).\n"
             "A clone that shrank or split under your edit is counted as new even when the "
-            "duplication went DOWN. Compare the duplicated lines with HEAD's first:\n"
+            "duplication went DOWN. Compare the duplicated lines with HEAD's first, from the "
+            "repository's root:\n"
             "    d=$(mktemp -d); git archive HEAD | tar -x -C \"$d\"\n"
             "    (cd \"$d\" && jscpd . --reporters json --output r)  # statistics.total"
             ".duplicatedLines\n"
@@ -102,10 +107,11 @@ def duplication(root: Path, scratch: Path) -> str:
 
 
 def probe_fit(root: Path) -> str:
-    """The probe check's own lines for a covered task set; `Blocked` on a refusal it names,
+    """The probe check's own lines for a covered task set; `Refused` on a refusal it names,
     `Invalid` on anything else."""
     seam = os.environ.get("PRECOMMIT_PROBE")
-    rc, said = _run([seam] if seam else [sys.executable, *PROBE_CHECK], "the probe check", root)
+    rc, said = _run([seam] if seam else [sys.executable, *PROBE_CHECK], "the probe check", root,
+                    "PRECOMMIT_PROBE")
     lines = said.splitlines()
     if rc == 0:
         if not any(line.startswith(CHECK_OK) for line in lines):
@@ -114,7 +120,7 @@ def probe_fit(root: Path) -> str:
     if rc == 1:
         if not any(line.startswith(CHECK_REFUSED) for line in lines):
             raise Invalid(f"the probe check exited 1 naming no refusal:\n{said}")
-        raise Blocked(
+        raise Refused(
             f"{said}\na probe task is missing or wrong (above). Fix it in "
             f"{TASKS_DIR}/<server>.json and run the free check again, through the same `uv run` "
             "as this hook, from the repository root: python -m scry_core.probe <server> --check "
@@ -147,14 +153,14 @@ def main(argv: list[str] | None = None) -> int:
             print(duplication(root, Path(scratch)))
         print("== mcp_probe (the probe's tasks still fit the MCP servers)")
         print(probe_fit(root))
-    except Blocked as e:
-        print(f"pre-commit: BLOCKED -- {e}", file=sys.stderr)
+    except Refused as e:
+        print(f"pre-commit: REFUSED: {e}", file=sys.stderr)
         return EXIT_FAIL
     except Invalid as e:
-        print(f"pre-commit: INVALID -- {e}", file=sys.stderr)
+        print(f"pre-commit: INVALID: {e}", file=sys.stderr)
         return EXIT_INVALID
     except Exception as e:  # noqa: BLE001 -- anything else stopped it before a verdict
-        print(f"pre-commit: INVALID -- the hook stopped before its verdict: "
+        print(f"pre-commit: INVALID: the hook stopped before its verdict: "
               f"{type(e).__name__}: {e}", file=sys.stderr)
         return EXIT_INVALID
     return EXIT_PASS

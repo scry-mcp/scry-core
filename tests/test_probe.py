@@ -350,7 +350,7 @@ def test_a_capture_asked_wrongly_is_usage(
 def _invalid(probe_env: Path, run_dir: Path, ids: str, said: str,
              capsys: pytest.CaptureFixture[str]) -> None:
     rc, lines = _capture(run_dir, ids, capsys)
-    assert rc == probe.EXIT_INVALID and lines[0].startswith("INVALID ") and said in lines[0], lines
+    assert rc == probe.EXIT_INVALID and lines[0].startswith("INVALID: ") and said in lines[0], lines
     assert not (probe_env / "captured").exists()
 
 
@@ -588,7 +588,7 @@ def test_a_property_no_task_names_is_a_coverage_hole(
         probe_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _edit(probe_env / "tasks" / "dosbox-x.json", ', "e9_stamp"]', "]")
     assert _refused(probe_env, capsys, "dosbox-x") == [
-        "INVALID no task names dosbox-x step.e9_stamp"]
+        "INVALID: no task names dosbox-x step.e9_stamp"]
 
 
 def test_a_tool_with_no_task_and_a_server_with_no_refusal_are_holes() -> None:
@@ -605,7 +605,9 @@ def test_a_value_the_description_holds_is_contamination(
     tasks = probe_env / "tasks" / "mame.json"
     _edit(tasks, '"length": 6}', '"length": 1024}')
     assert _refused(probe_env, capsys, "mame") == [
-        "INVALID mame task M1: '1024' is in read_memory's own description"]
+        "INVALID: mame task M1: '1024' is in read_memory's own description; "
+        "change the task's value, or list it under the task's `grammar` if the description "
+        "must hold it"]
     _edit(tasks, '"length": 1024}', '"length": 1024}, "grammar": [1024]')
     rc, _ = _run(["mame"], capsys)
     assert rc == probe.EXIT_FAIL  # the captured answers say 6: judged, no longer refused
@@ -644,7 +646,9 @@ def test_a_hex_literal_in_the_prompt_is_checked_too() -> None:
                                     description="e.g. `ref=0x1234`")
     narrowed = dataclasses.replace(surface, tools={"read_memory": described})
     assert probe.contamination(narrowed, [task]) == [
-        "mame task M3: '0x1234' is in read_memory's own description"]
+        "mame task M3: '0x1234' is in read_memory's own description; "
+        "change the task's value, or list it under the task's `grammar` if the description "
+        "must hold it"]
 
 
 def test_values_are_read_at_every_depth() -> None:
@@ -666,7 +670,10 @@ def test_small_numbers_and_booleans_are_not_contamination() -> None:
 
 
 @pytest.mark.parametrize(("task", "problem"), [
-    ({"prompt": "p", "tool": "step"}, "task #0: needs an `id` of letters, digits, `_` or `-`"),
+    ({"prompt": "p", "tool": "step"},
+     "task #0: needs an `id` of letters, digits, `_` or `-`; got None"),
+    ({"id": "D 1", "prompt": "p", "tool": "step"},
+     "task D 1: needs an `id` of letters, digits, `_` or `-`; got 'D 1'"),
     ({"id": "D1", "prompt": "", "tool": "step", "args": {"count": 3}}, "task D1: needs a `prompt`"),
     ({"id": "D1", "prompt": "p", "tool": "stepp"}, "task D1: `tool` names no tool of this server"),
     ({"id": "D1", "prompt": "p", "tool": "step", "args": {"steps": 3}},
@@ -697,8 +704,13 @@ def test_a_required_argument_must_be_expected_or_allowed_and_ids_are_unique() ->
 def test_a_task_file_with_nothing_to_examine_is_invalid(
         probe_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     (probe_env / "tasks" / "mame.json").write_text('{"tasks": []}')
-    assert _refused(probe_env, capsys, "mame")[0].startswith("INVALID ")
+    assert _refused(probe_env, capsys, "mame")[0].startswith("INVALID: ")
     assert "holds no tasks" in _refused(probe_env, capsys, "mame")[0]
+    for doc, said in (('[]', 'holds [], not {"tasks": [...]}'),
+                      ('{"task": []}', 'has no `tasks` key: a task file is {"tasks": [...]}'),
+                      ('{"tasks": {}}', '`tasks` is {}, not a list of tasks')):
+        (probe_env / "tasks" / "mame.json").write_text(doc)
+        assert said in _refused(probe_env, capsys, "mame")[0], doc
     (probe_env / "tasks" / "mame.json").write_text("{")
     assert "mame.json" in _refused(probe_env, capsys, "mame")[0]
 
@@ -740,7 +752,9 @@ def test_a_grammar_entry_exempts_its_value_whatever_the_case() -> None:
     task: dict[str, Any] = {"id": "M1", "prompt": "p", "tool": "read_memory",
                             "args": {"ref": "bug"}}
     assert probe.contamination(surface, [task]) == [
-        "mame task M1: 'bug' is in read_memory's own description"]
+        "mame task M1: 'bug' is in read_memory's own description; "
+        "change the task's value, or list it under the task's `grammar` if the description "
+        "must hold it"]
     task["grammar"] = ["BUG"]
     assert probe.contamination(surface, [task]) == []
 
@@ -793,7 +807,7 @@ def test_a_probe_that_breaks_is_invalid_not_a_fail(
 
     monkeypatch.setattr(probe, "run_model", broken)
     rc, lines = _run(["mame"], capsys)
-    assert (rc, lines[0]) == (probe.EXIT_INVALID, "INVALID the probe broke, so nothing here is "
+    assert (rc, lines[0]) == (probe.EXIT_INVALID, "INVALID: the probe broke, so nothing here is "
                                                   "a verdict: KeyError: 'verdicts'")
 
 
@@ -823,21 +837,21 @@ def test_check_that_cannot_examine_is_3(
         monkeypatch: pytest.MonkeyPatch) -> None:
     (probe_env / "tasks" / "mame.json").write_text("{")
     rc, lines = _run(["mame", "--check"], capsys)
-    assert rc == probe.EXIT_INVALID and lines[0].startswith("INVALID ") and "mame.json" in lines[0]
+    assert rc == probe.EXIT_INVALID and lines[0].startswith("INVALID: ") and "mame.json" in lines[0]
 
     def broken(_repo: probe.ProbeRepo, _server: str) -> None:
         raise KeyError("tools")
 
     monkeypatch.setattr(probe, "load_surface", broken)
     assert _run(["mame", "--check"], capsys) == (probe.EXIT_INVALID, [
-        "INVALID the check broke, so nothing here is a verdict: KeyError: 'tools'"])
+        "INVALID: the check broke, so nothing here is a verdict: KeyError: 'tools'"])
 
 
 def test_check_names_an_entry_that_is_not_a_task(
         probe_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _edit(probe_env / "tasks" / "mame.json", "\n]}", ',\n  "oops"\n]}')
     assert _run(["mame", "--check"], capsys) == (probe.EXIT_FAIL, [
-        "REFUSED mame task #3: needs an `id` of letters, digits, `_` or `-`"])
+        "REFUSED mame task #3: is not a task, an object with an `id`; got 'oops'"])
 
 
 @pytest.mark.parametrize(("task", "refused"), [
@@ -846,7 +860,7 @@ def test_check_names_an_entry_that_is_not_a_task(
     ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX"}, "allow": 3}',
      "mame task M4: `allow` must be a list of argument names"),
     ('{"prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX", "length": 1024}}',
-     "mame task #3: needs an `id` of letters, digits, `_` or `-`"),
+     "mame task #3: needs an `id` of letters, digits, `_` or `-`; got None"),
     ('{"id": "M4", "prompt": "p", "tool": "read_memory", "args": {"ref": "PlayerX"}, '
      '"allow": ["length", "cpu"], "grammar": 7}',
      "mame task M4: `grammar` must be a list of strings or numbers"),
@@ -907,12 +921,12 @@ def test_a_missing_capture_or_an_empty_answer_is_invalid(
         probe_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     (probe_env / "answers" / "mame-run3.txt").unlink()
     assert _run(["mame"], capsys) == (probe.EXIT_INVALID, [
-        f"INVALID {probe.ANSWERS_ENV} holds no mame-run3.txt",
+        f"INVALID: {probe.ANSWERS_ENV} holds no mame-run3.txt",
         _only_out(probe_env)])
     (probe_env / "answers" / "mame-run3.txt").write_text("I would read the memory.\n")
     rc, lines = _run(["mame"], capsys)
     assert (rc, lines[0]) == (probe.EXIT_INVALID,
-                              "INVALID mame run 3 answered no line for any task")
+                              "INVALID: mame run 3 answered no line for any task")
 
 
 def _only_out(probe_env: Path) -> str:
@@ -979,7 +993,7 @@ def test_a_model_call_that_failed_is_invalid(
         document: str, rc: int, message: str) -> None:
     _fake_claude(probe_env, monkeypatch, document, rc)
     code, lines = _run(["mame", "--runs", "1"], capsys)
-    assert code == probe.EXIT_INVALID and lines[0].startswith(f"INVALID {message}"), lines
+    assert code == probe.EXIT_INVALID and lines[0].startswith(f"INVALID: {message}"), lines
 
 
 def test_a_document_that_is_not_an_object_or_not_text_is_invalid(
@@ -989,10 +1003,10 @@ def test_a_document_that_is_not_an_object_or_not_text_is_invalid(
     printed.write_text("null\n")
     _fake_claude(probe_env, monkeypatch, printed)
     assert _run(["mame", "--runs", "1"], capsys)[1][0].startswith(
-        "INVALID `claude` reported an error")
+        "INVALID: `claude` reported an error")
     printed.write_bytes(b"\xff\xfe\n")
     assert _run(["mame", "--runs", "1"], capsys)[1][0].startswith(
-        "INVALID `claude` printed no JSON document")
+        "INVALID: `claude` printed no JSON document")
 
 
 def test_a_claude_that_cannot_be_run_is_invalid(
@@ -1002,7 +1016,7 @@ def test_a_claude_that_cannot_be_run_is_invalid(
     monkeypatch.setenv("PATH", str(probe_env / "bin"))
     monkeypatch.delenv(probe.ANSWERS_ENV)
     assert _run(["mame", "--runs", "1"], capsys)[1][0].startswith(
-        "INVALID `claude` could not be run:")
+        "INVALID: `claude` could not be run:")
 
 
 def test_no_claude_or_one_that_hangs_is_invalid(
@@ -1010,12 +1024,12 @@ def test_no_claude_or_one_that_hangs_is_invalid(
         monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(probe.ANSWERS_ENV)
     monkeypatch.setenv("PATH", str(probe_env))
-    assert _run(["mame", "--runs", "1"], capsys)[1][0] == "INVALID `claude` is not on PATH"
+    assert _run(["mame", "--runs", "1"], capsys)[1][0] == "INVALID: `claude` is not on PATH"
     _fake_claude(probe_env, monkeypatch, "claude-ok.json")
     (probe_env / "bin" / "claude").write_text("#!/bin/sh\nexec /bin/sleep 5\n")
     monkeypatch.setattr(probe, "CLAUDE_TIMEOUT_S", 0.2)
     assert _run(["mame", "--runs", "1"], capsys)[1][0] == (
-        "INVALID `claude` did not answer within 0.2 s")
+        "INVALID: `claude` did not answer within 0.2 s")
 
 
 # ---- pointing the probe at a repository ----------------------------------------------------
@@ -1075,7 +1089,7 @@ def test_a_servers_file_the_probe_cannot_use_is_invalid(
     servers.write_text(text)
     rc = probe.main(["all", "--check", "--servers", str(servers), "--tasks", str(tmp_path)])
     out = capsys.readouterr().out
-    assert rc == probe.EXIT_INVALID and out.startswith("INVALID ") and said in out, out
+    assert rc == probe.EXIT_INVALID and out.startswith("INVALID: ") and said in out, out
 
 
 def test_a_servers_file_that_is_not_there_or_breaks_is_invalid(
@@ -1135,7 +1149,7 @@ def test_a_run_directory_that_cannot_be_made_is_invalid(
 
     monkeypatch.setattr(probe, "new_run_dir", refused)
     rc, lines = _run(["mame"], capsys)
-    assert rc == probe.EXIT_INVALID and lines[0].startswith("INVALID no run directory"), lines
+    assert rc == probe.EXIT_INVALID and lines[0].startswith("INVALID: no run directory"), lines
 
 
 def test_a_judge_the_servers_file_gives_judges_the_call(tmp_path: Path) -> None:
@@ -1263,7 +1277,7 @@ def test_a_report_that_cannot_be_written_is_invalid(
 
     monkeypatch.setattr(probe, "new_run_dir", unwritable)
     rc, lines = _run(["mame"], capsys)
-    assert rc == probe.EXIT_INVALID and lines[0].startswith("INVALID the report could not be")
+    assert rc == probe.EXIT_INVALID and lines[0].startswith("INVALID: the report could not be")
 
 
 def test_a_capture_check_on_a_task_file_with_no_id_is_invalid(tmp_path: Path) -> None:
@@ -1278,3 +1292,12 @@ def test_an_expected_object_matches_key_by_key_with_alternatives_inside() -> Non
     expected = {"a": {"any_of": [1, 2]}, "b": [3]}
     assert any_of.matches(expected, {"a": 2, "b": [3]})
     assert not any_of.matches(expected, {"a": 2, "b": [3], "c": 0})
+
+
+def test_every_option_says_what_it_does_in_the_help(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        probe.main(["--help"])
+    usage = " ".join(capsys.readouterr().out.split("options:", 1)[1].split())
+    for said in ("--runs RUNS how many times", "--check only the refusals",
+                 "--capture CAPTURE a run directory", "--ids IDS with --capture"):
+        assert said in usage, said

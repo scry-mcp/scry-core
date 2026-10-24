@@ -100,7 +100,7 @@ from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType, ModuleType
-from typing import Any
+from typing import Any, cast
 
 from scry_core.client_cap import delivered
 from scry_core.probe_any_of import (
@@ -176,7 +176,7 @@ def broke(what: str, e: Exception) -> str:
     """The INVALID line for an exception nobody expected: a traceback exits 1, which reads as a
     FAIL, so every entry point catches the rest and says this instead."""
     traceback.print_exc()
-    return f"INVALID the {what} broke, so nothing here is a verdict: {type(e).__name__}: {e}"
+    return f"INVALID: the {what} broke, so nothing here is a verdict: {type(e).__name__}: {e}"
 
 
 @dataclass(frozen=True)
@@ -319,8 +319,16 @@ def read_tasks(repo: ProbeRepo, path: Path, *, raw: bool = False) -> list[dict[s
         doc = json.loads(text if raw else resolve_root(repo, text))
     except (OSError, json.JSONDecodeError) as e:
         raise Invalid(f"{path}: {e}") from None
-    tasks = doc.get("tasks") if isinstance(doc, dict) else None
-    if not isinstance(tasks, list) or not tasks:
+    # THE SHAPE IS SAID, not only that nothing was found: each way a file can miss is a different
+    # edit, and "holds no tasks" for all of them sends the reader to count rows.
+    if not isinstance(doc, dict):
+        raise Invalid(f'{path} holds {doc!r:.40}, not {{"tasks": [...]}}')
+    if "tasks" not in doc:
+        raise Invalid(f'{path} has no `tasks` key: a task file is {{"tasks": [...]}}')
+    tasks = doc["tasks"]
+    if not isinstance(tasks, list):
+        raise Invalid(f"{path}: `tasks` is {tasks!r:.40}, not a list of tasks")
+    if not tasks:
         raise Invalid(f"{path} holds no tasks, so there is nothing to examine")
     return tasks
 
@@ -347,8 +355,12 @@ def _problems_by_task(surface: Surface, tasks: list[dict[str, Any]]) -> list[lis
         out.append(found)
         tid = task.get("id") if isinstance(task, dict) else None
         where = f"{surface.server} task {tid or f'#{i}'}"
-        if not isinstance(task, dict) or not isinstance(tid, str) or not TASK_ID.fullmatch(tid):
-            found.append(f"{where}: needs an `id` of letters, digits, `_` or `-`")
+        # A FILE'S ENTRY IS WHATEVER ITS JSON HELD, whatever the list is typed as.
+        if not isinstance(cast(object, task), dict):
+            found.append(f"{where}: is not a task, an object with an `id`; got {task!r:.60}")
+            continue
+        if not isinstance(tid, str) or not TASK_ID.fullmatch(tid):
+            found.append(f"{where}: needs an `id` of letters, digits, `_` or `-`; got {tid!r:.60}")
             continue
         if tid in seen:
             found.append(f"{where}: the id is used twice")
@@ -484,7 +496,8 @@ def contamination(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
                 pattern = rf"(?<![\w]){re.escape(spelled)}(?![\w])"
                 if re.search(pattern, tool.description, re.IGNORECASE):
                     out.append(f"{surface.server} task {task['id']}: {spelled!r} is in "
-                               f"{tool.name}'s own description")
+                               f"{tool.name}'s own description; change the task's value, or "
+                               "list it under the task's `grammar` if the description must hold it")
                     break
     return out
 
@@ -728,7 +741,7 @@ def check(repo: ProbeRepo, names: tuple[str, ...]) -> int:
                 lines.append(f"{CHECK_OK}{name}: {len(tasks)} tasks cover "
                              f"{len(surface.tools)} tools")
     except Invalid as e:
-        lines.append(f"INVALID {e}")
+        lines.append(f"INVALID: {e}")
         rc = EXIT_INVALID
     except Exception as e:  # noqa: BLE001 -- see `broke`
         lines.append(broke("check", e))
@@ -779,10 +792,16 @@ def main(argv: list[str]) -> int:
                              "`CHECKS`, `CAPTURED`)")
     parser.add_argument("--tasks", type=Path, required=True,
                         help="the directory holding `<server>.json`")
-    parser.add_argument("--runs", type=_positive, default=None)
-    parser.add_argument("--check", action="store_true")
-    parser.add_argument("--capture", type=Path, default=None)
-    parser.add_argument("--ids", default=None)
+    parser.add_argument("--runs", type=_positive, default=None,
+                        help="how many times each task is asked of the model (see OUTPUT)")
+    parser.add_argument("--check", action="store_true",
+                        help="only the refusals that need no model, no network and no run "
+                             "(see CHECK)")
+    parser.add_argument("--capture", type=Path, default=None,
+                        help="a run directory whose answers to `--ids` are kept as the "
+                             "server's captures (see CAPTURE)")
+    parser.add_argument("--ids", default=None,
+                        help="with --capture: the task ids to keep, comma-separated")
     opts = parser.parse_args(argv)
     # USAGE FIRST, from the options alone: a wrong call is answered as one (exit 2) whatever the
     # servers file holds, and before it is run.
@@ -793,7 +812,7 @@ def main(argv: list[str]) -> int:
     try:
         repo = configure(opts.servers, opts.tasks)
     except Invalid as e:
-        print(f"INVALID {e}")
+        print(f"INVALID: {e}")
         return EXIT_INVALID
     except Exception as e:  # noqa: BLE001 -- see `broke`
         print(broke("servers file", e))
@@ -817,7 +836,7 @@ def main(argv: list[str]) -> int:
     try:
         out = new_run_dir(repo, dt.datetime.now(dt.UTC))
     except OSError as e:
-        print(f"INVALID no run directory under {repo.out_dir}: {e}")
+        print(f"INVALID: no run directory under {repo.out_dir}: {e}")
         return EXIT_INVALID
     report: list[str] = []
     rc = EXIT_INVALID
@@ -825,7 +844,7 @@ def main(argv: list[str]) -> int:
         prepared = [(load_surface(repo, n), load_tasks(repo, n)) for n in names]
         refused = [p for s, tasks in prepared for p in refusals(s, tasks)]
         if refused:
-            report += [f"INVALID {p}" for p in refused]
+            report += [f"INVALID: {p}" for p in refused]
         else:
             outcomes = []
             for surface, tasks in prepared:
@@ -839,7 +858,7 @@ def main(argv: list[str]) -> int:
                           f"{passed} PASS, {failed} FAIL")
             rc = EXIT_FAIL if failed else EXIT_PASS
     except Invalid as e:
-        report.append(f"INVALID {e}")
+        report.append(f"INVALID: {e}")
         rc = EXIT_INVALID
     except Exception as e:  # noqa: BLE001 -- see `broke`
         report.append(broke("probe", e))
@@ -848,7 +867,7 @@ def main(argv: list[str]) -> int:
     try:
         (out / "report.txt").write_text("\n".join(report) + "\n", encoding="utf-8")
     except OSError as e:
-        report.insert(0, f"INVALID the report could not be written to {out}: {e}")
+        report.insert(0, f"INVALID: the report could not be written to {out}: {e}")
         rc = EXIT_INVALID
     print("\n".join(report))
     return rc

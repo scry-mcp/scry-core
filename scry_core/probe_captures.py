@@ -112,7 +112,7 @@ def capture(repo: probe.ProbeRepo, server: str, run_dir: Path, ids: list[str]) -
                             encoding="utf-8")
             print(f"captured {path}")
     except Invalid as e:
-        print(f"INVALID {e}")
+        print(f"INVALID: {e}")
         return EXIT_INVALID
     except Exception as e:  # noqa: BLE001 -- see `broke`
         print(probe.broke("capture", e))

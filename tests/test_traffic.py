@@ -295,7 +295,7 @@ def test_before_puts_the_earlier_figures_beside_each_line(
 def test_a_missing_input_is_invalid(tmp_path: Path, capsys: pytest.CaptureFixture[str],
                                     extra: list[str], said: str) -> None:
     rc, printed = _run(tmp_path, capsys, "mame", *extra)
-    assert rc == EXIT_INVALID and printed[0].startswith("INVALID ") and said in printed[0]
+    assert rc == EXIT_INVALID and printed[0].startswith("INVALID: ") and said in printed[0]
 
 
 @pytest.mark.parametrize("doc, said", [

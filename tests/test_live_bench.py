@@ -94,7 +94,10 @@ def test_a_flipped_byte_is_named_and_exits_1(
     (manifest.parent / "board/b.bin").write_bytes(DATA)
     rc, out, _ = _run(capsys, "check", *_at(manifest))
     got = hashlib.sha256(b"X" + DATA[1:]).hexdigest()
-    assert (rc, out) == (1, f"MISMATCH board/a.bin: sha256 {got}, the manifest pins {PIN}\n")
+    at = manifest.parent
+    assert (rc, out) == (1, f"MISMATCH board/a.bin: sha256 {got}, the manifest pins {PIN}\n"
+                            f"FAIL {at}: 1 of 2 files do not match the manifest; "
+                            f"{bench.fill_remedy(at)}\n")
 
 
 def test_every_missing_or_wrong_file_is_named_in_manifest_order_and_exits_1(
@@ -106,7 +109,9 @@ def test_every_missing_or_wrong_file_is_named_in_manifest_order_and_exits_1(
     rc, out, _ = _run(capsys, "check", *_at(manifest))
     at = manifest.parent
     assert (rc, out) == (1, f"MISSING board/a.bin: not in the bench at {at}\n"
-                            f"MISMATCH board/b.bin: sha256 {PIN}, the manifest pins none\n")
+                            f"MISMATCH board/b.bin: sha256 {PIN}, the manifest pins none\n"
+                            f"FAIL {at}: 2 of 2 files do not match the manifest; "
+                            f"{bench.fill_remedy(at)}\n")
 
 
 @pytest.mark.parametrize("text", ["[]", "{}", "not json", json.dumps([{"path": "a"}]),
@@ -198,7 +203,8 @@ def test_fill_refuses_a_source_that_is_not_the_pinned_one_and_leaves_the_copy(
     _write(manifest, [_entry("a.bin")])
     (manifest.parent / "a.bin").write_bytes(b"left alone")
     rc, out, _ = _run(capsys, "fill", *_at(manifest), "--from", f"src={checkout}")
-    assert rc == 1 and out.startswith("REFUSED a.bin: src:a.bin: sha256 ")
+    assert rc == 1 and out.startswith("REFUSED a.bin: src:a.bin: the checkout's sha256 ")
+    assert "`--record` pins the checkout's instead" in out.splitlines()[0], out
     assert (manifest.parent / "a.bin").read_bytes() == b"left alone"
     assert sorted(p.name for p in manifest.parent.iterdir()) == ["a.bin", bench.MANIFEST]
 
@@ -222,7 +228,9 @@ def test_record_pins_the_fresh_copies_and_the_source_head(
     _write(manifest, [_entry("a.bin", sha256=""), other])
     rc, out, _ = _run(capsys, "fill", *_at(manifest), "--from", f"src={checkout}",
                       "--record")
-    assert rc == 0 and out.endswith("1 from sources not named; manifest recorded\n")
+    assert rc == 0 and out.endswith(
+        "1 from sources not named, not verified (name their source with --from); "
+        "manifest recorded\n")
     assert json.loads(manifest.read_text()) == [
         {**_entry("a.bin"), "source_commit": head}, other]
 
@@ -421,3 +429,11 @@ def test_a_bench_root_that_is_not_there_is_named_as_such(tmp_path: Path) -> None
     reason = bench.Bench(tmp_path / "nowhere").missing("board/")
     assert "the bench does not exist" in reason and "ABSENT" not in reason
 
+
+
+def test_one_source_named_twice_is_named(
+    manifest: Path, capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as e:
+        bench.main(["fill", *_at(manifest), "--from", "src=a", "--from", "src=b"])
+    assert e.value.code == 2 and "--from names src twice" in capsys.readouterr().err

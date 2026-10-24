@@ -6,6 +6,7 @@ is the CONTROL: without it, a hook that blocked everything would satisfy every r
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -88,8 +89,8 @@ def test_new_duplication_blocks_naming_the_count_the_total_and_the_remedies(
     _jscpd(repo / "jscpd", 3, 3, 1)
     rc, said = _hook(capsys)
     assert rc == verdict.EXIT_FAIL
-    for words in ("BLOCKED", "3 new clone", "48 new duplicated lines", "shrank or split",
-                  "--update-baseline"):
+    for words in ("pre-commit: REFUSED: ", "3 new clone", "48 new duplicated lines",
+                  "shrank or split", "from the repository's root", "--update-baseline"):
         assert words in said, words
 
 
@@ -125,6 +126,7 @@ def test_a_jscpd_that_cannot_be_run_is_invalid(
     monkeypatch.setenv("PRECOMMIT_JSCPD", str(repo / "absent"))
     rc, said = _hook(capsys)
     assert rc == verdict.EXIT_INVALID and "jscpd could not be run" in said
+    assert "it is PRECOMMIT_JSCPD's value" in said, said
 
 
 def test_an_uncovered_tool_blocks_naming_the_hole_and_how_to_measure_after(
@@ -251,3 +253,15 @@ def test_the_real_probe_check_passes_a_repository_whose_tasks_cover_its_server(
     rc, said = _hook(capsys)
     assert rc == verdict.EXIT_PASS, said
     assert "OK toy: 2 tasks cover 1 tools" in said
+
+
+def test_a_jscpd_absent_from_path_is_invalid_saying_where_it_was_looked_for(
+        repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("PRECOMMIT_JSCPD", raising=False)
+    git = shutil.which("git")
+    assert git is not None
+    monkeypatch.setenv("PATH", str(Path(git).parent))     # git for the root, and no jscpd
+    assert shutil.which("jscpd") is None
+    rc, said = _hook(capsys)
+    assert rc == verdict.EXIT_INVALID, said
+    assert "it is looked for on PATH (or named by PRECOMMIT_JSCPD)" in said, said

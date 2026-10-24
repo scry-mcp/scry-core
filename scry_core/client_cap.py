@@ -35,11 +35,15 @@ def delivered(text: str) -> str:
     return _utf16(text)[:2 * CLIENT_TEXT_CAP].decode("utf-16-le", errors="ignore")
 
 
+def _lost(text: str) -> str:
+    """Everything past the cap, measured in the client's unit."""
+    return _utf16(text)[2 * CLIENT_TEXT_CAP:].decode("utf-16-le", errors="replace")
+
+
 def past_the_cut(text: str) -> str:
-    """What the model loses, from the first unit past the cap, measured in the client's unit and
-    folded onto one line so each offending text stays one line of the report."""
-    lost = _utf16(text)[2 * CLIENT_TEXT_CAP:].decode("utf-16-le", errors="replace")
-    return " ".join(lost[:PAST_THE_CUT_SHOWN].split())
+    """What the model loses, from its first word past the cap, folded onto one line so each
+    offending text stays one line of the report."""
+    return " ".join(_lost(text).split())[:PAST_THE_CUT_SHOWN]
 
 
 def _texts(server: str, mcp: Any) -> list[tuple[str, str]]:
@@ -56,8 +60,10 @@ def _texts(server: str, mcp: Any) -> list[tuple[str, str]]:
 
 
 def over_the_cap(server: str, mcp: Any) -> list[str]:
-    """One line per text of `mcp` over the cap, naming it and what is lost."""
-    return [f'{server} {name} {utf16_units(text)} > {CLIENT_TEXT_CAP}: "{past_the_cut(text)}"'
+    """One line per text of `mcp` over the cap, naming it and what the client drops (the start
+    of what is lost, never the start of the text)."""
+    return [f"{server} {name} {utf16_units(text)} > {CLIENT_TEXT_CAP}, the client drops: "
+            + (f'"{past_the_cut(text)}"' if _lost(text).strip() else "whitespace only")
             for name, text in _texts(server, mcp) if utf16_units(text) > CLIENT_TEXT_CAP]
 
 

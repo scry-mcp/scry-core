@@ -76,6 +76,7 @@ def test_a_suite_that_declares_no_anchor_is_refused_before_it_runs(
     result = pytester.runpytest("-p", "no:cacheprovider")
     assert result.ret == pytest.ExitCode.USAGE_ERROR
     result.stderr.fnmatch_lines(["*has no `reply_shapes_anchors` to wrap*"])
+    assert 'reply_shapes_anchors = ["scry_core.reply_contract", "server"]' in result.stderr.str()
 
 
 def test_a_declared_anchor_no_import_can_find_is_refused_before_it_runs(
@@ -120,6 +121,7 @@ def test_a_declared_anchor_imported_after_the_guard_is_red_naming_it(
     result.assert_outcomes(passed=1, errors=1)
     # fnmatch reads `[...]` as a character class, so the list is matched as plain text.
     assert "escaped it: ['fake_server._summary']" in result.stdout.str()
+    assert "import it in the suite's conftest.py" in result.stdout.str()
 
 
 def test_a_declared_module_with_no_anchor_is_no_anchor(pytester: pytest.Pytester) -> None:

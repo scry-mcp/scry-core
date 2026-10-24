@@ -319,7 +319,7 @@ def main(argv: list[str]) -> int:
         lines = report(doc, before)
         out = write_table(doc, repo.root, opts.server)
     except Invalid as e:
-        print(f"INVALID {e}")
+        print(f"INVALID: {e}")
         return EXIT_INVALID
     except Exception as e:  # noqa: BLE001 -- see `broke`
         print(broke("traffic", e))

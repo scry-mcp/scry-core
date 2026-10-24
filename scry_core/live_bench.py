@@ -150,6 +150,18 @@ def check_command(at: Path) -> str:
     return f"python -m scry_core.live_bench check --bench {at}"
 
 
+def fill_remedy(at: Path) -> str:
+    """What copies a bench's missing or moved files back, as every remedy says it."""
+    return (f"`{fill_command(at)}` copies them from a checkout that still matches the pin "
+            "(`--record` re-pins one that moved)")
+
+
+def fill_command(at: Path) -> str:
+    """The command that copies a bench's files back from a checkout matching their pins, quoted
+    as a remedy wherever a copy is missing or moved."""
+    return f"python -m scry_core.live_bench fill --bench {at} --from <source_repo>=<checkout>"
+
+
 @dataclass(frozen=True)
 class Bench:
     """A server's bench, at the `root` its live tier resolved, with its manifest inside it.
@@ -188,9 +200,7 @@ class Bench:
             return ""
         more = f" (and {len(found) - 1} more)" if len(found) > 1 else ""
         return (f"bench {found[0]}{more}; `{check_command(self.root)}` lists them all, and "
-                f"`python -m scry_core.live_bench fill --bench {self.root} --from "
-                "<source_repo>=<checkout>` copies them from a checkout that still matches the pin "
-                "(`--record` re-pins one that moved)")
+                + fill_remedy(self.root))
 
     @functools.cached_property
     def pinned(self) -> frozenset[str]:
@@ -202,9 +212,13 @@ def _check(at: Path) -> int:
     found = problems(at)
     for line in found:
         print(line)
+    pinned = len(load(at / MANIFEST))
     if not found:
-        print(f"OK {at}: {len(load(at / MANIFEST))} files match the manifest")
-    return EXIT_FAIL if found else EXIT_PASS
+        print(f"OK {at}: {pinned} files match the manifest")
+        return EXIT_PASS
+    print(f"FAIL {at}: {len(found)} of {pinned} files do not match the manifest; "
+          + fill_remedy(at))
+    return EXIT_FAIL
 
 
 def _head(checkout: Path) -> str:
@@ -267,7 +281,8 @@ def _fill(at: Path, sources: dict[str, Path], record: bool) -> int:
             why = _take(e, sources[e.source_repo], tmp)
             got = "" if why else digest(tmp)
             if not why and not record and got != e.sha256:
-                why = f"sha256 {got}, the manifest pins {e.sha256 or 'none'}"
+                why = (f"the checkout's sha256 {got}, the manifest pins {e.sha256 or 'none'}: "
+                       "`--record` pins the checkout's instead")
             if why:
                 print(f"REFUSED {e.path}: {e.source_repo}:{e.source_path}: {why}")
                 refused += 1
@@ -289,8 +304,9 @@ def _fill(at: Path, sources: dict[str, Path], record: bool) -> int:
             json.dumps([e.as_json() for e in out], indent=2) + "\n", encoding="utf-8")
     recorded = ("" if not record else "; manifest recorded" if not refused else
                 "; manifest NOT recorded, so the copies made now are off their old pins")
+    unverified = ", not verified (name their source with --from)" if others else ""
     print(f"fill {at}: {copied} copied, {kept} already in place, {refused} refused, "
-          f"{others} from sources not named{recorded}")
+          f"{others} from sources not named{unverified}{recorded}")
     return EXIT_FAIL if refused else EXIT_PASS
 
 
@@ -327,8 +343,10 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     p = parser()
     args = p.parse_args(argv)
-    if args.action == "fill" and len(dict(args.sources)) != len(args.sources):
-        p.error("--from names one source twice")
+    if args.action == "fill":
+        names = [name for name, _ in args.sources]
+        if twice := sorted({n for n in names if names.count(n) > 1}):
+            p.error(f"--from names {', '.join(twice)} twice")
     try:
         if args.action == "check":
             return _check(args.bench)

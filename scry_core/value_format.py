@@ -23,12 +23,14 @@ so a struct reads as its fields and a name as text:
 
 A format that names its own size (an array, a string, a struct) needs no `length`, and a
 bare scalar with none reads as one value; `length` is TOTAL bytes, a whole number of the
-scalar, and more than one of them reads as a list. The
+scalar, and more than one of them reads as a list. A float that is NaN or infinite reads as
+the text `nan`, `inf` or `-inf`, which JSON can carry. The
 byte order is the target's, which the session knows and this module does not.
 """
 
 from __future__ import annotations
 
+import math
 import re
 import struct
 from dataclasses import dataclass
@@ -98,7 +100,7 @@ class Format:
         if self.kind in ("scalar", "array", "pointer"):
             assert self.elem is not None
             code, elem = SCALARS[self.elem]
-            values: list[Value] = [struct.unpack(end + code, raw[i:i + elem])[0]
+            values: list[Value] = [_json_number(struct.unpack(end + code, raw[i:i + elem])[0])
                                    for i in range(0, n, elem)]
             return values if self.kind == "array" or len(values) > 1 else values[0]
         if self.kind == "string":
@@ -111,6 +113,15 @@ class Format:
             out[name] = fmt.decode(raw[at:at + fmt.size], order)
             at += fmt.size
         return out
+
+
+def _json_number(v: int | float) -> Value:
+    """A decoded number as a reply carries it: NaN and the infinities are no JSON number, so they
+    are the text `nan`, `inf` or `-inf`, which says what the bytes hold and keeps the reply valid
+    JSON; every other value stays a number."""
+    if isinstance(v, float) and not math.isfinite(v):
+        return "nan" if math.isnan(v) else ("inf" if v > 0 else "-inf")
+    return v
 
 
 def parse(spec: str) -> Format:

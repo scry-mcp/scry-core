@@ -83,7 +83,7 @@ def test_over_cap_measures_the_objects_the_probe_reads(repo: probe.ProbeRepo) ->
     module.mcp = types.SimpleNamespace(instructions="i",  # type: ignore[attr-defined]
                                        list_tools=list_tools)
     over = probe_checks.over_cap(dataclasses.replace(repo, modules={"long": module}))
-    assert over == [f'long t {CLIENT_TEXT_CAP + 3} > {CLIENT_TEXT_CAP}: "cut"']
+    assert over == [f'long t {CLIENT_TEXT_CAP + 3} > {CLIENT_TEXT_CAP}, the client drops: "cut"']
     shown = probe_checks.margins(dataclasses.replace(repo, modules={"long": module}))
     assert shown == [f"long t {CLIENT_TEXT_CAP + 3} units, margin -3",
                      f"long instructions 1 units, margin {CLIENT_TEXT_CAP - 1}"]

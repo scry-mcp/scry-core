@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import math
+import struct
+
 import pytest
 
 from scry_core import value_format as vf
@@ -167,3 +171,19 @@ def test_the_refusals_name_every_shape_and_a_positive_length() -> None:
         vf.parse("ptr64")
     with pytest.raises(vf.FormatError, match="positive whole number"):
         vf.parse("u32").width_for(-4)
+
+
+@pytest.mark.parametrize("spec, raw, want", [
+    ("f32", struct.pack("<f", math.nan), "nan"),
+    ("f32", struct.pack("<f", math.inf), "inf"),
+    ("f64", struct.pack("<d", -math.inf), "-inf"),
+    ("f32[2]", struct.pack("<ff", 1.5, math.nan), [1.5, "nan"]),
+    ("{a:f64,b:u8}", struct.pack("<dB", math.inf, 7), {"a": "inf", "b": 7}),
+])
+def test_a_float_that_json_cannot_carry_is_rendered_as_its_text(
+        spec: str, raw: bytes, want: object) -> None:
+    """NaN and the infinities are not JSON numbers: rendered as `nan`, `inf`, `-inf`, a reply
+    stays valid JSON and says what the bytes hold; a finite float stays a number."""
+    got = vf.parse(spec).decode(raw, "little")
+    assert got == want
+    json.dumps(got, allow_nan=False)

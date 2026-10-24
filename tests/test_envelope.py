@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import threading
 from typing import Any
 
@@ -28,7 +29,8 @@ class _Server:
         def count(n: int) -> dict[str, Any]:
             if n < 0:
                 raise RuntimeError("a defect in the body")
-            return {"summary": f"count {n}", "status": "ok", "n": n, "session": {}}
+            value: Any = math.nan if n == 13 else n
+            return {"summary": f"count {n}", "status": "ok", "n": value, "session": {}}
 
     def refusal(self, name: str, arguments: dict[str, Any],
                 cause: ValidationError) -> dict[str, Any]:
@@ -65,3 +67,12 @@ def test_a_defect_in_a_body_keeps_the_sdks_path_and_is_never_a_refusal() -> None
     with pytest.raises(ToolError, match="Error executing tool count"):
         s.call(n=-1)
     assert s.calls == []
+
+
+def test_a_reply_that_is_not_valid_json_is_refused_at_the_boundary() -> None:
+    """A NaN reaching a reply would ship as `NaN`, which no JSON parser takes: the envelope
+    serialises with `allow_nan=False`, so such a reply fails here, at the boundary, instead of
+    reaching a client as invalid JSON. Floats a session reads are rendered as text before."""
+    with pytest.raises(ValueError, match="count's reply holds NaN, which is not JSON compliant"):
+        _Server().call(n=13)
+    assert _Server().call(n=12).structured_content["n"] == 12

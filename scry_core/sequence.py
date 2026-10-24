@@ -57,6 +57,31 @@ def refused_text(refused: list[dict[str, Any]]) -> str:
             + "; ".join(one(e) for e in refused) + ". Nothing was run")
 
 
+def step_op(step: object) -> str | None:
+    """The operation a list's step names: its `op` as text, or None for a step that is no mapping
+    or names none."""
+    return str(step.get("op")) if isinstance(step, dict) and "op" in step else None
+
+
+def not_a_step(index: int, step: object, no_op: str) -> dict[str, Any]:
+    """The refusal of a step naming no operation of the server, `no_op` saying why there is none
+    to name when the step names none at all. THE VOCABULARY IS NAMED ONCE, in the refusal's own
+    `operations` (`vocabulary_named`), never inside this message: a message is repeated in
+    `errors` and in the joined refusal, and a list of every operation in each copy buries the one
+    step that failed."""
+    return {"step": index, "op": contract.or_unavailable(step_op(step), no_op),
+            "code": "bad_argument",
+            "message": f"is not a step ({step!r}): see `operations` for the server's own "
+                       "operation names"}
+
+
+def vocabulary_named(refused: list[dict[str, Any]], ops: Ops) -> dict[str, Any]:
+    """What a list's refusal names beside its errors: the vocabulary, `operations`, when a step
+    named no operation of it, and nothing otherwise."""
+    unknown = any(not isinstance(e["op"], str) or e["op"] not in ops for e in refused)
+    return {"operations": sorted(ops)} if unknown else {}
+
+
 #: `drive`'s verify when no `expect` was given.
 NO_EXPECT: dict[str, Any] = {
     "checked": False,

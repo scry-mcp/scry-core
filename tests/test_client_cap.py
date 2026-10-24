@@ -21,7 +21,11 @@ def test_the_measure_is_the_clients_at_the_boundary() -> None:
     the BMP counts two units, so a text of cap characters can be over the cap."""
     assert over_the_cap("s", _server("i", "x" * CLIENT_TEXT_CAP)) == []
     over = over_the_cap("s", _server("i", "x" * CLIENT_TEXT_CAP + "cut"))
-    assert over == [f's t0 {CLIENT_TEXT_CAP + 3} > {CLIENT_TEXT_CAP}: "cut"'], over
+    drops = f"> {CLIENT_TEXT_CAP}, the client drops:"
+    assert over == [f's t0 {CLIENT_TEXT_CAP + 3} {drops} "cut"'], over
+    blank = over_the_cap("s", _server("i", "x" * CLIENT_TEXT_CAP + "  \n "))
+    assert blank == [f"s t0 {CLIENT_TEXT_CAP + 4} > {CLIENT_TEXT_CAP}, the client drops: "
+                     "whitespace only"], blank
     astral = "x" * (CLIENT_TEXT_CAP - 1) + "\U0001f600"
     assert len(astral) == CLIENT_TEXT_CAP and len(over_the_cap("s", _server(astral, "d"))) == 1
     with pytest.raises(Invalid, match="lists no tools"):
@@ -29,7 +33,7 @@ def test_the_measure_is_the_clients_at_the_boundary() -> None:
     with pytest.raises(Invalid, match="declares no instructions"):
         over_the_cap("s", _server("", "d"))
     long = over_the_cap("s", _server("i", "x" * CLIENT_TEXT_CAP + "y" * 200))
-    assert long == [f's t0 {CLIENT_TEXT_CAP + 200} > {CLIENT_TEXT_CAP}: '
+    assert long == [f's t0 {CLIENT_TEXT_CAP + 200} > {CLIENT_TEXT_CAP}, the client drops: '
                     f'"{"y" * PAST_THE_CUT_SHOWN}"'], long
 
 
@@ -76,3 +80,8 @@ def test_the_margins_name_the_texts_nearest_the_cap_first_on_every_run() -> None
         f"s t0 {CLIENT_TEXT_CAP} units, margin 0",
         f"s t1 {CLIENT_TEXT_CAP - 7} units, margin 7"]
     assert len(margins("s", server)) == 4
+
+
+def test_lost_text_behind_a_run_of_blanks_is_shown_and_never_called_whitespace() -> None:
+    over = over_the_cap("s", _server("i", "x" * CLIENT_TEXT_CAP + " " * 70 + "REAL TEXT"))
+    assert over and over[0].endswith('the client drops: "REAL TEXT"'), over

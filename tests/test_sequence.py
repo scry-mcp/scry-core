@@ -443,3 +443,17 @@ def test_an_act_is_told_without_the_envelope_and_stopped_by_its_own_code() -> No
     assert sequence.act_stopped({"message": "x"})[0] == "step_failed"
     assert sequence.act_ran_out()["available"] is False
     assert sequence.NO_EXPECT["checked"] is False
+
+
+def test_a_step_naming_no_operation_points_at_the_vocabulary_named_once() -> None:
+    ops: sequence.Ops = {"resume": lambda: {}, "status": lambda: {}}
+    row = sequence.not_a_step(1, {"op": "warp"}, "no op")
+    assert row == {"step": 1, "op": "warp", "code": "bad_argument",
+                   "message": "is not a step ({'op': 'warp'}): see `operations` for the "
+                              "server's own operation names"}, row
+    nameless = sequence.not_a_step(0, "registers", "the step names no `op`")
+    assert nameless["op"] == contract.unavailable("the step names no `op`"), nameless
+    assert sequence.vocabulary_named([row], ops) == {"operations": ["resume", "status"]}
+    assert sequence.vocabulary_named([nameless], ops) == {"operations": ["resume", "status"]}
+    known = {"step": 0, "op": "status", "code": "bad_argument", "message": "x"}
+    assert sequence.vocabulary_named([known], ops) == {}
