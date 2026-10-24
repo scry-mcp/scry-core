@@ -63,6 +63,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.avi` | an AVI's main header: its frame size, and its frames, by the header once the file is finished and by its chunks while it is written |
 | `scry_core.wav` | what a recording says, measured from the WAV: whether it sounded, how loud, when, whether it clipped, and how close two recordings are |
 | `scry_core.docs` | a tool description's `{NAME}` placeholders, filled from the constants that enforce them |
+| `scry_core.reference` | a server's reference generated from its registry: per tool its call, arguments, reply fields, description and a live example, on its family's page; the index and the envelope in `REFERENCE.md`; and `drift`, the check each server's test runs |
 | `scry_core.screen_map` | screen maps (`scry-map/1`): which screen of an application a machine shows, off one read of it, and its named controls, in a file layer and a session layer |
 
 Each server pins it by a release tag, never by a branch:
@@ -76,7 +77,7 @@ not pointed at. The probe's paths below, and traffic's servers file, are a serve
 own; the bench is the directory a server's live tier resolved, and its manifest is
 `<bench>/bench.json`. The hook takes none: it runs from inside a repository that tracks
 `.jscpd-baseline.json`, has `jscpd` on the path and keeps its probe at `mcp_probe/servers.py` and
-`mcp_probe/tasks/`:
+`mcp_probe/tasks/`. The reference runs from a server repository too, where `<module>` imports:
 
 ```sh
 python -m scry_core.probe all --check --servers mcp_probe/servers.py --tasks mcp_probe/tasks
@@ -84,6 +85,7 @@ python -m scry_core.live_bench check --bench <bench>
 python -m scry_core.traffic <server> --servers mcp_probe/servers.py --transcript <jsonl>
 python -m scry_core.hook
 python -m scry_core.replay <document> [--binary PATH] [--rompath DIR] [--transcript PATH]
+python -m scry_core.reference <module>:<attribute> [--examples JSONL ...] [--write]
 ```
 
 `--help` on each is its contract. A real probe run asks the `claude` CLI and needs the network;

@@ -82,15 +82,23 @@ def _fields(model: type) -> list[str]:
     return list(TypeAdapter(model).json_schema()["properties"])
 
 
+def model_gap(tools: Iterable[str], models: Mapping[str, type]) -> str:
+    """How the tools and their reply models fail to pair, in one sentence, or empty."""
+    names = set(tools)
+    if missing := sorted(names - models.keys()):
+        return f"tools with no reply model: {missing}"
+    if stray := sorted(models.keys() - names):
+        return f"reply models with no tool: {stray}"
+    return ""
+
+
 def declare(server: MCPServer, models: Mapping[str, type]) -> None:
     """Publish each registered tool's model as its `outputSchema` and keep it for `check`. A tool
     with no model, or a model with no tool, is the server's bug, a `ValueError`: one would answer
     a shape nobody declared, the other declare a shape nobody answers."""
     tools = {t.name: t for t in registered(server)}
-    if missing := sorted(tools.keys() - models.keys()):
-        raise ValueError(f"tools with no reply model: {missing}")
-    if stray := sorted(models.keys() - tools.keys()):
-        raise ValueError(f"reply models with no tool: {stray}")
+    if gap := model_gap(tools, models):
+        raise ValueError(gap)
     for name, tool in tools.items():
         tool.fn_metadata = tool.fn_metadata.model_copy(
             update={"output_schema": published(models[name])})
@@ -168,9 +176,9 @@ def _top_level(text: str, listing: bool = False) -> list[str]:
     return names
 
 
-def own_fields(model: type) -> list[str]:
-    """The fields `model` adds to the envelope every reply carries."""
-    shared = set(_fields(ReplyEnvelope))
+def own_fields(model: type, envelope: type = ReplyEnvelope) -> list[str]:
+    """The fields `model` adds to `envelope`, the one every reply carries unless named."""
+    shared = set(_fields(envelope))
     return [f for f in _fields(model) if f not in shared]
 
 

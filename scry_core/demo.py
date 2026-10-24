@@ -211,14 +211,16 @@ def with_block(text: str, block: str) -> str:
     return f"{text[:start]}\n{block.strip(chr(10))}\n{text[end:]}"
 
 
-def first_difference(want: str, got: str) -> str:
-    """The first line where `got` departs from `want`, by number, or empty when they agree."""
+def first_difference(want: str, got: str, sides: tuple[str, str] = ("the README", "the run")
+                     ) -> str:
+    """The first line where `got` departs from `want`, by number, or empty when they agree;
+    `sides` names where each came from."""
     a, b = want.splitlines(), got.splitlines()
     for i, (x, y) in enumerate(zip(a, b, strict=False), start=1):
         if x != y:
-            return f"line {i}: the README has {x!r}, the run has {y!r}"
+            return f"line {i}: {sides[0]} has {x!r}, {sides[1]} has {y!r}"
     if len(a) != len(b):
-        return f"line {min(len(a), len(b)) + 1}: the README has {len(a)}, the run {len(b)}"
+        return f"line {min(len(a), len(b)) + 1}: {sides[0]} has {len(a)}, {sides[1]} {len(b)}"
     return ""
 
 
@@ -276,7 +278,8 @@ class Normaliser:
 # ======================================================================== the transcript
 
 
-def _fenced(value: Any) -> str:
+def fenced(value: Any) -> str:
+    """`value` as a JSON code block, as a transcript and a reference page show it."""
     return "```json\n" + json.dumps(value, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -284,9 +287,9 @@ def _entry(n: int, tool: str, args: Mapping[str, Any], reply: Reply | None, line
     """One step of a transcript: its verdict line, then the call and the whole answer folded
     under it."""
     parts = [f"**{n}. `{tool}`**: {line}", "", "<details><summary>call and reply</summary>",
-             "", _fenced(dict(args))]
+             "", fenced(dict(args))]
     if reply is not None:
-        parts += ["", _fenced(reply.data)]
+        parts += ["", fenced(reply.data)]
         if reply.attachments:
             parts += ["", "Also attached: " + ", ".join(reply.attachments) + "."]
     parts += ["", "</details>"]
@@ -444,7 +447,7 @@ async def _cleanup(client: Client, out: Outcome) -> None:
     transcript only and never changes the verdict."""
     try:
         reply = _reply(await client.call_tool(CLEANUP_TOOL, {}))
-        out.transcripts.whole.append(f"Cleanup `{CLEANUP_TOOL}`:\n\n" + _fenced(reply.data))
+        out.transcripts.whole.append(f"Cleanup `{CLEANUP_TOOL}`:\n\n" + fenced(reply.data))
     except Exception as e:  # the verdict is already formed; this only reports
         out.transcripts.whole.append(f"Cleanup `{CLEANUP_TOOL}` failed: {_why(e)}")
 
