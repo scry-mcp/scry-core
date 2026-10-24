@@ -261,10 +261,11 @@ def test_a_jscpd_absent_from_path_is_invalid_saying_where_it_was_looked_for(
     monkeypatch.delenv("PRECOMMIT_JSCPD", raising=False)
     git = shutil.which("git")
     assert git is not None
-    # A DIRECTORY HOLDING GIT ALONE, so a host whose git and jscpd share one bin is no exception.
+    # A DIRECTORY HOLDING GIT ALONE, so a host whose git and jscpd share one bin is no exception;
+    # the link keeps git's own file name, which Windows needs to find it (`git.exe`).
     only_git = tmp_path / "only-git"
     only_git.mkdir()
-    (only_git / "git").symlink_to(git)
+    (only_git / Path(git).name).symlink_to(git)
     monkeypatch.setenv("PATH", str(only_git))
     assert shutil.which("jscpd") is None
     rc, said = _hook(capsys)
