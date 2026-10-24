@@ -17,10 +17,12 @@ WHY THE EXAMPLES COME FROM A TRANSCRIPT. An example typed by hand shows the repl
 believed in. `examples_from` picks, per tool, a call a live run made and judged, and
 `docs/reference/examples.json` holds the pick, rewritten only from a run.
 
-    uv run python -m scry_core.reference <module>:<attribute> [--examples JSONL ...] [--write]
+    uv run python -m scry_core.reference <module>:<attribute> \
+        [--examples JSONL ... [--scratch DIR]] [--write]
 
 Run from the server's repository, where `<module>` imports. The attribute is the server's
-`Registry`. `--examples` rewrites `examples.json` from those transcripts first; then `--write`
+`Registry`. `--examples` rewrites `examples.json` from those transcripts first (`--scratch` names
+the run's temporary directory, written `$TMPDIR` there); then `--write`
 rewrites the pages, or, without it, the pages are compared. Exit codes: 0 the pages agree with
 the registry (or were rewritten); 1 drift, one finding a line; 2 a usage error (a spec naming no
 registry included); 3 INVALID, nothing was compared (a registry with no tool or a roster naming
@@ -33,6 +35,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import re
 import types
 from collections.abc import Iterable, Mapping, Sequence
@@ -64,13 +67,12 @@ REFERENCE_PAGE = "REFERENCE.md"
 PAGES_DIR = "docs/reference"
 EXAMPLES_PATH = f"{PAGES_DIR}/examples.json"
 
-#: How much of a long list (then `... N more`) and of a long string an example keeps: enough to
-#: show the reply's shape; the whole reply stays in the live run's transcript.
-EXAMPLE_ITEMS = 6
-EXAMPLE_CHARS = 240
-
 #: The blocks `REFERENCE.md` holds, beside the tools' blocks the family pages hold.
 INDEX_BLOCK, ENVELOPE_BLOCK = "index", "envelope"
+
+#: Reply fields an example leaves out: the `session` block closes every reply alike, and
+#: `REFERENCE.md` documents it once.
+LEFT_OUT = frozenset({"session"})
 
 
 def begin_marker(name: str) -> str:
@@ -405,27 +407,14 @@ def write(reg: Registry) -> list[str]:
 # ======================================================================== the examples
 
 
-def _abridged(value: Any) -> Any:
-    """`value` cut to its shape: a long list's first items then the string `... N more` in its
-    place (so a list of numbers ends in a string), a long string's first characters."""
-    if isinstance(value, dict):
-        return {k: _abridged(v) for k, v in value.items()}
-    if isinstance(value, list | tuple):
-        kept = [_abridged(v) for v in value[:EXAMPLE_ITEMS]]
-        return kept + ([f"... {len(value) - EXAMPLE_ITEMS} more"]
-                       if len(value) > EXAMPLE_ITEMS else [])
-    if isinstance(value, str) and len(value) > EXAMPLE_CHARS:
-        return f"{value[:EXAMPLE_CHARS]} ... ({len(value)} characters)"
-    return value
-
-
 def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
                   norm: demo.Normaliser) -> dict[str, Any]:
     """One example per tool of `tools`, by name, from a live run's records (`tool`, `args`,
     `reply`, `section`, the cell's `label` or `cell`, its `verdict`). Only a record of an OK cell
     whose reply carries a `status` is a candidate (an exception the harness caught is none); the
     first with an `ok` reply wins, else the first refusal, since a refusal is a real reply too.
-    Its paths are spelled for any host as a demo's are and its long values abridged."""
+    Its paths are spelled for any host as a demo's are, the `LEFT_OUT` fields dropped and its long
+    values abridged."""
     ok: dict[str, Mapping[str, Any]] = {}
     refused: dict[str, Mapping[str, Any]] = {}
     for rec in records:
@@ -434,8 +423,9 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
                 and "status" in reply):
             (ok if reply["status"] == "ok" else refused).setdefault(str(name), rec)
     return {name: {"from": f"{rec.get('section', '')}: {rec.get('label', rec.get('cell', ''))}",
-                   "call": _abridged(norm.reply(dict(rec.get("args") or {}))),
-                   "reply": _abridged(norm.reply(dict(rec["reply"])))}
+                   "call": demo.abridged(norm.reply(dict(rec.get("args") or {}))),
+                   "reply": demo.abridged(norm.reply(
+                       {k: v for k, v in rec["reply"].items() if k not in LEFT_OUT}))}
             for name, rec in sorted({**refused, **ok}.items())}
 
 
@@ -473,6 +463,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("registry", help="<module>:<attribute> naming the server's Registry")
     p.add_argument("--examples", nargs="+", type=Path, metavar="JSONL",
                    help=f"rewrite {EXAMPLES_PATH} from these live transcripts first")
+    p.add_argument("--scratch", type=Path, metavar="DIR",
+                   help="the live run's temporary directory, spelled $TMPDIR in the examples")
     p.add_argument("--write", action="store_true", help="rewrite the pages")
     ns = p.parse_args(argv)
     try:
@@ -482,7 +474,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if ns.examples:
             tools = {t.name for t in registered(reg.server)}
-            norm = demo.Normaliser(reg.root.resolve(), Path.home().resolve(), {})
+            scratch = [] if ns.scratch is None else [str(ns.scratch), os.path.realpath(ns.scratch)]
+            norm = demo.Normaliser(reg.root.resolve(), Path.home().resolve(), {},
+                                   marks=dict.fromkeys(scratch, "$TMPDIR"))
             picked = examples_from(_records(ns.examples), tools, norm)
             if not picked:
                 raise Invalid("the transcripts hold no OK cell of a tool of this server")

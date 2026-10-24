@@ -30,7 +30,10 @@ the cleanup call unless its last step already made it, so no emulator outlives i
 THE README BLOCK IS GENERATED, never typed. `--update-readme` rewrites what sits between
 `<!-- demo-transcript:begin -->` and `<!-- demo-transcript:end -->` with the normalised
 transcript and copies the capture this run wrote to `screen.png` beside the README, only after
-a run whose every step was OK: a README showing a failed run would be a README that lies.
+a run whose every step was OK: a README showing a failed run would be a README that lies. The
+same run rewrites the server's front door (`Demo.front`) between `<!-- demo-flow:begin <name> -->`
+and its end marker with the steps declared `shown`, each as its call and its reply, both
+abridged to their shape (`abridged`), so the examples a stranger reads first are a real run too.
 
 NORMALISATION hides what differs between two honest runs and nothing else: `$HOME` becomes `~`
 and the repository root `.`, wherever either begins a path; in a REPLY the value of every key in
@@ -67,6 +70,11 @@ from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 BEGIN = "<!-- demo-transcript:begin -->"
 END = "<!-- demo-transcript:end -->"
 VOLATILE_MARK = "<volatile>"
+
+#: How much of a long list (then `... N more`) and of a long string a flow or an example keeps:
+#: enough to show the reply's shape; the whole reply stays in the transcript.
+ABRIDGED_ITEMS = 6
+ABRIDGED_CHARS = 240
 HOST_MARK = "<host>"
 
 #: The tool every Scry server ends a session with.
@@ -156,6 +164,8 @@ class Step:
     #: INVALID rather than its FAIL: what a runner sets where only a step that failed in the
     #: server's own words is a verdict.
     broken_is_invalid: bool = False
+    #: The step is one of the calls the front door shows (`Demo.front`), its reply abridged.
+    shown: bool = False
 
 
 @dataclass(frozen=True)
@@ -182,33 +192,44 @@ class Demo:
     host_args: Mapping[str, str] = field(default_factory=dict)
     reads: frozenset[str] = frozenset()
     verdict: Callable[[int, int], str] | None = None
+    #: The server's front-door README, whose `flow_begin(name)` block `--update-readme` rewrites
+    #: with the steps declared `shown`.
+    front: Path | None = None
 
 
 # ======================================================================== the README block
 
 
-def block_span(text: str) -> tuple[int, int]:
-    """Where the generated block sits in `text`: just after BEGIN, and at END. Markers absent,
-    repeated or out of order raise `Invalid`."""
-    if text.count(BEGIN) != 1 or text.count(END) != 1:
-        raise Invalid(f"the README must hold {BEGIN} and {END} exactly once each "
-                      f"(found {text.count(BEGIN)} and {text.count(END)})")
-    start, end = text.index(BEGIN) + len(BEGIN), text.index(END)
-    if end < start:
-        raise Invalid(f"{END} comes before {BEGIN}")
-    return start, end
+def flow_begin(name: str) -> str:
+    return f"<!-- demo-flow:begin {name} -->"
 
 
-def block_of(text: str) -> str:
-    """The generated block of a README's `text`, without the newlines that frame it."""
-    start, end = block_span(text)
-    return text[start:end].strip("\n")
+def flow_end(name: str) -> str:
+    return f"<!-- demo-flow:end {name} -->"
 
 
-def with_block(text: str, block: str) -> str:
-    """`text` with its generated block replaced by `block`."""
-    start, end = block_span(text)
-    return f"{text[:start]}\n{block.strip(chr(10))}\n{text[end:]}"
+def block_span(text: str, begin: str = BEGIN, end: str = END) -> tuple[int, int]:
+    """Where a generated block sits in `text`: just after `begin`, and at `end` (the transcript's
+    markers unless named). Markers absent, repeated or out of order raise `Invalid`."""
+    if text.count(begin) != 1 or text.count(end) != 1:
+        raise Invalid(f"the README must hold {begin} and {end} exactly once each "
+                      f"(found {text.count(begin)} and {text.count(end)})")
+    start, stop = text.index(begin) + len(begin), text.index(end)
+    if stop < start:
+        raise Invalid(f"{end} comes before {begin}")
+    return start, stop
+
+
+def block_of(text: str, begin: str = BEGIN, end: str = END) -> str:
+    """A generated block of a README's `text`, without the newlines that frame it."""
+    start, stop = block_span(text, begin, end)
+    return text[start:stop].strip("\n")
+
+
+def with_block(text: str, block: str, begin: str = BEGIN, end: str = END) -> str:
+    """`text` with a generated block replaced by `block`."""
+    start, stop = block_span(text, begin, end)
+    return f"{text[:start]}\n{block.strip(chr(10))}\n{text[stop:]}"
 
 
 def first_difference(want: str, got: str, sides: tuple[str, str] = ("the README", "the run")
@@ -231,6 +252,13 @@ def readme_drift(readme: Path, normalised: Path) -> str:
                             normalised.read_text(encoding="utf-8").strip("\n"))
 
 
+def flow_drift(front: Path, name: str, flow: Path) -> str:
+    """How a run's flow departs from the block demo `name` holds in the front door, or empty."""
+    return first_difference(block_of(front.read_text(encoding="utf-8"), flow_begin(name),
+                                     flow_end(name)),
+                            flow.read_text(encoding="utf-8").strip("\n"))
+
+
 # ===================================================================== normalisation
 
 
@@ -243,15 +271,18 @@ class Normaliser:
     home: Path
     volatile: Mapping[str, str]
     host: Mapping[str, str] = field(default_factory=dict)
+    #: Further prefixes the run chose, each with its mark (a live run's scratch as `$TMPDIR`):
+    #: spelled first, since a scratch may lie inside the root or the home.
+    marks: Mapping[str, str] = field(default_factory=dict)
 
     def text(self, text: str) -> str:
         """`text` with the root as `.` and the home as `~` wherever one BEGINS a path: followed
         by a separator or the end, never inside a longer name (`/Users/mx` is not under
         `/Users/m`). The root goes first, since it usually lies inside the home and the longer
         prefix has to win. A prefix of `/` is left alone: it would rewrite every separator."""
-        for prefix, mark in ((self.root, "."), (self.home, "~")):
-            if str(prefix) != os.sep:
-                text = re.sub(re.escape(str(prefix)) + r"(?=/|$|[^\w.-])", mark, text)
+        for prefix, mark in (*self.marks.items(), (str(self.root), "."), (str(self.home), "~")):
+            if prefix != os.sep:
+                text = re.sub(re.escape(prefix) + r"(?=/|$|[^\w.-])", mark, text)
         return text
 
     def reply(self, value: Any, also: Mapping[str, str] | None = None) -> Any:
@@ -276,6 +307,30 @@ class Normaliser:
 
 
 # ======================================================================== the transcript
+
+
+def abridged(value: Any) -> Any:
+    """`value` cut to its shape: a long list's first items then the string `... N more` in its
+    place (so a list of numbers ends in a string), a long string's first characters."""
+    if isinstance(value, dict):
+        return {k: abridged(v) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        kept = [abridged(v) for v in value[:ABRIDGED_ITEMS]]
+        return kept + ([f"... {len(value) - ABRIDGED_ITEMS} more"]
+                       if len(value) > ABRIDGED_ITEMS else [])
+    if isinstance(value, str) and len(value) > ABRIDGED_CHARS:
+        return f"{value[:ABRIDGED_CHARS]} ... ({len(value)} characters)"
+    return value
+
+
+def _shown(tool: str, args: Mapping[str, Any], reply: Reply | None) -> str:
+    """One step as the front door shows it: the call as it is typed and the reply, both
+    abridged."""
+    call = f"{tool}(" + ", ".join(f"{k}={json.dumps(abridged(v), ensure_ascii=False)}"
+                                  for k, v in args.items()) + ")"
+    answer = "(no reply)" if reply is None else json.dumps(
+        abridged(reply.data), indent=2, ensure_ascii=False)
+    return f"```\n{call}\n-> {answer}\n```"
 
 
 def fenced(value: Any) -> str:
@@ -304,14 +359,17 @@ class Transcripts:
     norm: Normaliser
     whole: list[str] = field(default_factory=list)
     normalised: list[str] = field(default_factory=list)
+    flow: list[str] = field(default_factory=list)
 
     def add(self, n: int, tool: str, args: Mapping[str, Any], reply: Reply | None,
-            line: str, volatile: Mapping[str, str] | None = None) -> None:
+            line: str, volatile: Mapping[str, str] | None = None, shown: bool = False) -> None:
         self.whole.append(_entry(n, tool, args, reply, line))
-        shown = None if reply is None else Reply(self.norm.reply(reply.data, volatile),
-                                                 reply.attachments)
-        self.normalised.append(_entry(n, tool, self.norm.arguments(dict(args)), shown,
-                                      self.norm.text(line)))
+        normal = None if reply is None else Reply(self.norm.reply(reply.data, volatile),
+                                                  reply.attachments)
+        normal_args = self.norm.arguments(dict(args))
+        self.normalised.append(_entry(n, tool, normal_args, normal, self.norm.text(line)))
+        if shown:
+            self.flow.append(_shown(tool, normal_args, normal))
 
 
 # ========================================================================= running
@@ -389,7 +447,8 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                 for n, step in enumerate(demo.steps, start=1):
                     ok, line, args, reply = await _step(client, step, run)
                     out.lines.append(norm.text(line))
-                    out.transcripts.add(n, step.tool, args, reply, line, step.volatile)
+                    out.transcripts.add(n, step.tool, args, reply, line, step.volatile,
+                                        step.shown)
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
@@ -466,6 +525,8 @@ def _declared(demo: Demo) -> None:
         if not isinstance(step.options, bool | frozenset):
             raise ValueError(f"step {step.name}: `options` is {step.options!r}, not True, False "
                              "or a frozenset of option names")
+    if demo.front is not None and not any(step.shown for step in demo.steps):
+        raise ValueError(f"the demo {demo.name} names a front door and shows no step")
     named = {("offers", n) for n in demo.offers - OFFERABLE} | {
         ("reads", n) for n in demo.reads - KNOWN_OPTIONS} | {
         (f"step {s.name}", n) for s in demo.steps if isinstance(s.options, frozenset)
@@ -535,6 +596,9 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
         if demo.readme is None or demo.capture is None:
             raise _no_readme(demo)
         block_span(demo.readme.read_text(encoding="utf-8"))
+        if demo.front is not None:
+            block_span(demo.front.read_text(encoding="utf-8"), flow_begin(demo.name),
+                       flow_end(demo.name))
     why = demo.precheck(run) if demo.precheck else ""
     if why:
         raise Invalid(why)
@@ -546,9 +610,12 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
                       {**VOLATILE, **demo.volatile}, demo.host_args)
     out = asyncio.run(_drive(demo, run, run.dir / "server.stderr", norm))
     normalised = transcript.with_name(transcript.stem + ".normalised.md")
+    flow = transcript.with_name(transcript.stem + ".flow.md")
     if out.transcripts.whole:
         transcript.write_text("\n\n".join(out.transcripts.whole) + "\n", encoding="utf-8")
         normalised.write_text("\n\n".join(out.transcripts.normalised) + "\n", encoding="utf-8")
+    if out.transcripts.flow:
+        flow.write_text("\n\n".join(out.transcripts.flow) + "\n", encoding="utf-8")
     for line in out.lines:
         print(line)
     if out.transcripts.whole:
@@ -556,7 +623,16 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
         print(f"normalised: {normalised}")
     if out.code == EXIT_PASS and update_readme and capture is not None:
         _update_readme(demo, capture, normalised)
+        if demo.front is not None:
+            _update_front(demo, demo.front, flow)
     return out.code
+
+
+def _update_front(demo: Demo, front: Path, flow: Path) -> None:
+    front.write_text(with_block(front.read_text(encoding="utf-8"),
+                                flow.read_text(encoding="utf-8"), flow_begin(demo.name),
+                                flow_end(demo.name)), encoding="utf-8")
+    print(f"README: {front} flow {demo.name} rewritten")
 
 
 def _no_readme(demo: Demo) -> Invalid:

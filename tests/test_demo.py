@@ -399,3 +399,80 @@ def test_first_difference_names_the_line() -> None:
     assert d.first_difference("a\nb", "a\nb") == ""
     assert d.first_difference("a\nb", "a\nc") == "line 2: the README has 'b', the run has 'c'"
     assert d.first_difference("a", "a\nb") == "line 2: the README has 1, the run 2"
+
+
+FRONT = "# The server\n\nWhy.\n\n{begin}\nold flow\n{end}\n\nMore why.\n"
+
+
+def _front(tmp_path: Path) -> Path:
+    path = tmp_path / "README.md"
+    path.write_text(FRONT.format(begin=d.flow_begin("x"), end=d.flow_end("x")), encoding="utf-8")
+    return path
+
+
+def _shown_demo(tmp_path: Path) -> d.Demo:
+    steps = [
+        d.Step("boot", "start", {"value": 7}, _said("value"), options=True),
+        d.Step("look", "read", {}, _said("value"), shown=True),
+        d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
+               lambda reply, run: "a picture"),
+        d.Step("end", "close", {}, lambda reply, run: "closed"),
+    ]
+    return _demo(tmp_path, steps, front=_front(tmp_path))
+
+
+def test_update_readme_writes_the_shown_steps_into_the_front_door_between_its_prose(
+        tmp_path: Path, log: Path) -> None:
+    demo = _shown_demo(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    assert demo.front is not None
+    text = demo.front.read_text()
+    assert text.startswith("# The server\n\nWhy.\n\n") and text.endswith("\n\nMore why.\n"), text
+    flow = text[text.index(d.flow_begin("x")):text.index(d.flow_end("x"))]
+    assert "read()\n-> {" in flow and '"value": 7' in flow, flow
+    assert "start(" not in flow and "picture(" not in flow, "only the shown steps"
+    assert d.flow_drift(demo.front, "x", tmp_path / "out" / "transcript.flow.md") == ""
+
+
+def test_a_flow_that_departs_from_the_run_is_drift_naming_the_line(
+        tmp_path: Path, log: Path) -> None:
+    demo = _shown_demo(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    assert demo.front is not None
+    demo.front.write_text(demo.front.read_text().replace('"value": 7', '"value": 8'))
+    assert d.flow_drift(demo.front, "x", tmp_path / "out" / "transcript.flow.md").startswith(
+        "line ")
+
+
+def test_a_front_door_without_its_flow_markers_is_invalid_and_runs_nothing(
+        tmp_path: Path, log: Path) -> None:
+    demo = _shown_demo(tmp_path)
+    assert demo.front is not None
+    demo.front.write_text("# The server\n")
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    assert demo.front.read_text() == "# The server\n" and _calls(log) == []
+
+
+def test_a_long_value_in_a_flow_is_abridged_to_its_shape() -> None:
+    shown = d.abridged({"rows": list(range(20)), "text": "x" * 1000, "n": 3})
+    assert shown["rows"][-1] == f"... {20 - d.ABRIDGED_ITEMS} more"
+    assert shown["text"].endswith(" ... (1000 characters)") and shown["n"] == 3
+
+
+def test_a_long_reply_is_shown_in_the_flow_abridged(tmp_path: Path, log: Path) -> None:
+    steps = [d.Step("boot", "start", {"value": 7, "binary": "x" * 1000}, _said("value"),
+                    shown=True),
+             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
+                    lambda reply, run: "a picture")]
+    demo = _demo(tmp_path, steps, front=_front(tmp_path))
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    flow = (tmp_path / "out" / "transcript.flow.md").read_text()
+    assert " ... (1000 characters)" in flow and "x" * 1000 not in flow, flow
+
+
+def test_a_front_door_with_no_step_shown_is_a_declaration_error_and_runs_nothing(
+        tmp_path: Path, log: Path) -> None:
+    demo = _demo(tmp_path, front=_front(tmp_path))
+    with pytest.raises(ValueError, match="shows no step"):
+        _run(demo, tmp_path, "--update-readme")
+    assert _calls(log) == [], "the server ran for a front door it could not fill"

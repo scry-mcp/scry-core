@@ -14,7 +14,7 @@ import pytest
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
-from scry_core import reference, reply_schema, roster
+from scry_core import demo, reference, reply_schema, roster
 from scry_core.demo import Normaliser
 from scry_core.reference import begin_marker, end_marker
 from scry_core.strict_arguments import registered, strict_arguments
@@ -370,9 +370,9 @@ def test_an_example_keeps_the_shape_of_a_long_reply_and_spells_the_host_s_paths(
              "path": str(tmp_path / "out.png"), "pid": 4242}
     shown = reference.examples_from([_record("peek", "OK", reply)], {"peek"}, norm)["peek"]
     rows = shown["reply"]["rows"]
-    assert rows[:reference.EXAMPLE_ITEMS] == list(range(reference.EXAMPLE_ITEMS))
-    assert rows[-1] == f"... {20 - reference.EXAMPLE_ITEMS} more", rows
-    assert shown["reply"]["text"] == "x" * reference.EXAMPLE_CHARS + " ... (1000 characters)"
+    assert rows[:demo.ABRIDGED_ITEMS] == list(range(demo.ABRIDGED_ITEMS))
+    assert rows[-1] == f"... {20 - demo.ABRIDGED_ITEMS} more", rows
+    assert shown["reply"]["text"] == "x" * demo.ABRIDGED_CHARS + " ... (1000 characters)"
     assert shown["reply"]["path"] == "./out.png"
     assert shown["reply"]["pid"] == 4242, "only a demo hides by key; an example shows the run"
 
@@ -449,7 +449,7 @@ _COMMAND_FIXTURE = '''
 from pathlib import Path
 from typing import Any
 from mcp.server.mcpserver import MCPServer
-from scry_core import reference, reply_schema, roster
+from scry_core import demo, reference, reply_schema, roster
 from scry_core.strict_arguments import strict_arguments
 
 server = MCPServer("cli")
@@ -477,3 +477,23 @@ def test_the_command_run_as_a_module_takes_the_registry_a_server_built(tmp_path:
                           check=False, timeout=60)
     assert done.returncode == 0, done.stdout + done.stderr
     assert (tmp_path / "docs/reference/net.md").is_file()
+
+
+def test_an_example_leaves_out_the_session_block_reference_md_documents_once(
+        tmp_path: Path) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    reply = {"status": "ok", "value": 1, "session": {"alive": True, "altered": False}}
+    shown = reference.examples_from([_record("peek", "OK", reply)], {"peek"}, norm)["peek"]
+    assert shown["reply"] == {"status": "ok", "value": 1}, shown
+
+
+def test_the_run_s_scratch_directory_is_spelled_for_any_run(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    scratch = tmp_path / "s9.ABCDEF"
+    jsonl = tmp_path / "transcript.jsonl"
+    rec = _record("peek", "OK", {"status": "ok", "path": f"{scratch}/job/f7.wav"})
+    jsonl.write_text(json.dumps(rec) + "\n", encoding="utf-8")
+    assert _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--scratch",
+                 str(scratch)) in (0, 1)
+    held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
+    assert held["peek"]["reply"]["path"] == "$TMPDIR/job/f7.wav", held
