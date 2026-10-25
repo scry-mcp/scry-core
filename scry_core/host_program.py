@@ -10,12 +10,10 @@ from pathlib import Path
 
 import pytest
 
-#: Cases a file's mode decides: Windows keeps no mode bit that refuses a read or a write.
+#: The cases only a POSIX host can hold, each skipped on Windows with its reason.
 MODE_BITS = pytest.mark.skipif(sys.platform == "win32", reason="Windows keeps no mode bit")
-#: Cases whose file name holds a character Windows refuses in one (a quote, a colon, a newline).
 POSIX_NAMES = pytest.mark.skipif(sys.platform == "win32",
                                  reason="Windows forbids that character in a file name")
-#: A probe's task file spells POSIX paths, as the answers captured with it do.
 POSIX_TASKS = pytest.mark.skipif(sys.platform == "win32",
                                  reason="the task file spells POSIX paths")
 
