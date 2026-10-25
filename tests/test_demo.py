@@ -5,6 +5,7 @@ the README block and the normalisation."""
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -322,7 +323,8 @@ def test_a_volatile_key_is_hidden_and_a_shown_value_is_not(tmp_path: Path, log: 
     assert norm.count('"value": 7') == 3, "a shown value was normalised away (one argument, " \
         "two replies)"
     assert '"where": "."' in norm and str(tmp_path) not in norm
-    assert '"dest": "./out/shot.png"' in norm, "a Path argument was not sent as its text"
+    dest = json.dumps(os.path.join(".", "out", "shot.png"))
+    assert f'"dest": {dest}' in norm, "a Path argument was not sent as its text"
 
 
 def test_a_demo_declares_its_own_volatile_keys_and_its_arguments_keep_theirs(
@@ -360,18 +362,19 @@ def test_a_host_argument_is_hidden_and_the_demos_own_are_not(tmp_path: Path, log
     assert '"binary": "<host>"' in norm.split("```json")[1], "the call did not hide it"
     assert '"value": 7' in norm, "the demo's own argument was hidden"
     assert "display=1" in (tmp_path / "out" / "transcript.md").read_text()
-    n = d.Normaliser(Path("/r"), Path("/h"), {}, {"binary": "x"})
-    assert n.arguments({"a": [{"binary": "p"}], "binary": "q", "c": "/r/f"}) == {
-        "a": [{"binary": "<host>"}], "binary": "<host>", "c": "./f"}
+    n = d.Normaliser(tmp_path / "r", tmp_path / "h", {}, {"binary": "x"})
+    assert n.arguments({"a": [{"binary": "p"}], "binary": "q", "c": str(tmp_path / "r" / "f")}) \
+        == {"a": [{"binary": "<host>"}], "binary": "<host>", "c": os.path.join(".", "f")}
 
 
 def test_the_normaliser_matches_whole_path_prefixes_only() -> None:
-    n = d.Normaliser(Path("/Users/m/repo"), Path("/Users/m"), d.VOLATILE)
-    got = n.reply({"a": ["/Users/m/repo/x", "/Users/m/y", 3, ("/Users/m",)],
-                   "/Users/m/k": {"pid": 9, "b": "/Users/mx/f /Users/m/repo-notes/a"},
-                   "c": "at /Users/m: here"})
-    assert got == {"a": ["./x", "~/y", 3, ["~"]],
-                   "~/k": {"pid": "<volatile>", "b": "/Users/mx/f ~/repo-notes/a"},
+    m, sep = str(Path(Path.cwd().anchor, "Users", "m")), os.sep
+    n = d.Normaliser(Path(m, "repo"), Path(m), d.VOLATILE)
+    got = n.reply({"a": [f"{m}{sep}repo{sep}x", f"{m}{sep}y", 3, (m,)],
+                   f"{m}{sep}k": {"pid": 9, "b": f"{m}x{sep}f {m}{sep}repo-notes{sep}a"},
+                   "c": f"at {m}: here"})
+    assert got == {"a": [f".{sep}x", f"~{sep}y", 3, ["~"]],
+                   f"~{sep}k": {"pid": "<volatile>", "b": f"{m}x{sep}f ~{sep}repo-notes{sep}a"},
                    "c": "at ~: here"}
     assert d.Normaliser(Path("/"), Path("/"), {}).text("/a/b") == "/a/b"
 
@@ -598,7 +601,8 @@ def test_load_answers_the_demo_a_file_declares_without_running_it(tmp_path: Path
 def test_a_flow_spells_the_repository_as_an_absolute_placeholder(
         tmp_path: Path, log: Path) -> None:
     flow = _flow_of(tmp_path, {"value": 7, "binary": str(tmp_path / "bin" / "x")})
-    assert f'"/path/to/{tmp_path.name}/bin/x"' in flow and '"./bin/x"' not in flow, flow
+    placed = json.dumps(f"/path/to/{tmp_path.name}{os.sep}bin{os.sep}x")
+    assert placed in flow and json.dumps(os.path.join(".", "bin", "x")) not in flow, flow
 
 
 @pytest.mark.parametrize("shown", ["value", True, ("value", 3)])

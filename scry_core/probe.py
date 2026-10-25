@@ -85,6 +85,7 @@ import inspect
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -279,13 +280,19 @@ def load_tasks(repo: ProbeRepo, server: str) -> list[dict[str, Any]]:
     return read_tasks(repo, tasks_file(repo, server))
 
 
+def _json_root(repo: ProbeRepo) -> str:
+    """The root as a JSON string spells it: a Windows path's backslashes doubled."""
+    return json.dumps(str(repo.root))[1:-1]
+
+
 def resolve_root(repo: ProbeRepo, text: str) -> str:
-    return text.replace(ROOT_MARK, str(repo.root))
+    """JSON `text` with the mark replaced by the root."""
+    return text.replace(ROOT_MARK, _json_root(repo))
 
 
 def mark_root(repo: ProbeRepo, text: str) -> str:
     """The inverse of `resolve_root`."""
-    return text.replace(str(repo.root), ROOT_MARK)
+    return text.replace(_json_root(repo), ROOT_MARK)
 
 
 def read_tasks(repo: ProbeRepo, path: Path, *, raw: bool = False) -> list[dict[str, Any]]:
@@ -519,8 +526,11 @@ def ask(server: str, prompt: str, run: int, out: Path) -> str:
 def _ask_model(prompt: str, saved: Path) -> str:
     # A cwd outside the repository: no project instructions above it.
     with tempfile.TemporaryDirectory(prefix="mcp_probe-") as cwd:
+        # Resolved first: Windows' lookup of a bare name tries `.exe` alone, and npm's is a `.cmd`.
+        found = shutil.which(MODEL_COMMAND[0]) or MODEL_COMMAND[0]
         try:
-            proc = subprocess.run(MODEL_COMMAND, input=prompt, capture_output=True, text=True,
+            proc = subprocess.run([found, *MODEL_COMMAND[1:]], input=prompt, capture_output=True,
+                                  text=True,
                                   errors="replace", cwd=cwd, timeout=CLAUDE_TIMEOUT_S,
                                   check=False)
         except FileNotFoundError:

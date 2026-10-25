@@ -18,6 +18,12 @@ from scry_core import verdict
 
 DATA = b"the pinned bytes\n"
 PIN = hashlib.sha256(DATA).hexdigest()
+#: A capture's program, writing DATA's bytes as they are: `print` writes CRLF on Windows.
+GEN = b"import sys\nsys.stdout.buffer.write(b'the pinned bytes\\n')\n"
+#: The cases a file's mode decides: Windows keeps no such mode and a superuser reads and writes
+#: whatever it says, so there they could not fail and are not run (their green would say nothing).
+MODES_BIND = pytest.mark.skipif(sys.platform == "win32" or os.geteuid() == 0,
+                                reason="no file mode binds this process")
 
 
 def _entry(path: str, sha256: str = PIN, source_path: str = "",
@@ -165,6 +171,7 @@ def test_an_unknown_or_malformed_option_exits_2(
     assert e.value.code == 2
 
 
+@MODES_BIND
 def test_fill_copies_what_matches_its_pin_and_keeps_the_mode(
     manifest: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path,
 ) -> None:
@@ -238,7 +245,7 @@ def test_record_pins_the_fresh_copies_and_the_source_head(
 def test_record_keeps_a_captures_argv_and_pins_its_output(
     manifest: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path,
 ) -> None:
-    checkout = _checkout(tmp_path, {"gen.py": b"print('the pinned bytes')\n"})
+    checkout = _checkout(tmp_path, {"gen.py": GEN})
     argv = [sys.executable, "gen.py"]
     _write(manifest, [_entry("out.bin", sha256="", source_path="gen.py", capture=argv)])
     assert _run(capsys, "fill", *_at(manifest), "--from", f"src={checkout}",
@@ -264,8 +271,9 @@ def test_a_capture_is_the_output_of_its_program_run_in_the_checkout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("PYTHONDONTWRITEBYTECODE", raising=False)
-    checkout = _checkout(tmp_path, {"gen.py": b"import helper\nprint(helper.TEXT)\n",
-                                    "helper.py": b"TEXT = 'the pinned bytes'\n"})
+    checkout = _checkout(tmp_path, {
+        "gen.py": b"import helper, sys\nsys.stdout.buffer.write(helper.TEXT)\n",
+        "helper.py": b"TEXT = b'the pinned bytes\\n'\n"})
     argv = [sys.executable, "gen.py"]
     _write(manifest, [_entry("out.bin", source_path="gen.py", capture=argv)])
     rc, _, _ = _run(capsys, "fill", *_at(manifest), "--from", f"src={checkout}")
@@ -356,10 +364,6 @@ def test_pinned_is_every_path_the_manifest_pins_or_invalid(manifest: Path) -> No
 
 
 
-#: The cases a file's mode decides: a superuser reads and writes whatever the mode says, so under
-#: one they could not fail and are not run (their green would say nothing).
-MODES_BIND = pytest.mark.skipif(os.name != "nt" and os.geteuid() == 0,
-                                reason="the superuser is not held to a file's mode")
 
 @MODES_BIND
 def test_a_copy_that_cannot_be_read_is_a_reason_and_not_a_crash(

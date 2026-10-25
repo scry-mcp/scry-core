@@ -8,18 +8,14 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from scry_core import hook, verdict
+from scry_core import hook, host_program, verdict
+from scry_core.probe_checks import SERVERS_FILE, TASKS_DIR
 
-
-def _program(path: Path, body: str) -> Path:
-    path.write_text(f"#!{sys.executable}\n{body}")
-    path.chmod(0o755)
-    return path
+_program = host_program.write
 
 
 #: A report jscpd's JSON reporter wrote on a real tree, the template every fake report is cut from.
@@ -28,7 +24,7 @@ REPORT = Path(__file__).resolve().parent / "fixtures" / "hook" / "jscpd-report.j
 FLAGS = ("--baseline", "--fail-on-new-clones", "--reporters")
 
 
-def _jscpd(at: Path, sources: int, new: int, rc: int, report: bool = True) -> None:
+def _jscpd(at: Path, sources: int, new: int, rc: int, report: bool = True) -> Path:
     """A jscpd that writes the real report with this case's `sources`, `newClones` and the
     duplicated lines (the tree's and the new clones') into the `--output` it is given, after
     checking it was asked for the baseline, new clones and the JSON reporter."""
@@ -38,17 +34,24 @@ def _jscpd(at: Path, sources: int, new: int, rc: int, report: bool = True) -> No
              "pathlib.Path(out, 'jscpd-report.json').write_text(json.dumps(doc))\n"
              ) if report else ""
     Path(f"{at}.json").write_text(REPORT.read_text())
-    _program(at, "import json, os, pathlib, sys\n"
-                 f"if not all(f in sys.argv for f in {FLAGS!r}) or 'json' not in sys.argv:\n"
-                 "    sys.exit(97)\n"
-                 "out = sys.argv[sys.argv.index('--output') + 1]\n"
-                 "pathlib.Path(sys.argv[0] + '.cwd').write_text(os.getcwd())\n"
-                 "pathlib.Path(out).mkdir(parents=True, exist_ok=True)\n" + write +
-                 f"print('fake jscpd: sources={sources} newClones={new}')\nsys.exit({rc})\n")
+    return _program(at, "import json, os, pathlib, sys\n"
+                        f"if not all(f in sys.argv for f in {FLAGS!r}) or 'json' not in sys.argv:\n"
+                        "    sys.exit(97)\n"
+                        "out = sys.argv[sys.argv.index('--output') + 1]\n"
+                        "pathlib.Path(sys.argv[0] + '.cwd').write_text(os.getcwd())\n"
+                        "pathlib.Path(out).mkdir(parents=True, exist_ok=True)\n" + write +
+                        f"print('fake jscpd: sources={sources} newClones={new}')\nsys.exit({rc})\n")
 
 
-def _probe(at: Path, printed: str, rc: int) -> None:
-    _program(at, f"import sys\nprint({printed!r})\nsys.exit({rc})\n")
+def _probe(at: Path, printed: str, rc: int) -> Path:
+    return _program(at, f"import sys\nprint({printed!r})\nsys.exit({rc})\n")
+
+
+def _mypy(at: Path, printed: str, rc: int) -> Path:
+    """A mypy that prints `printed` and exits `rc`, once it was asked for win32 strictly."""
+    return _program(at, "import sys\n"
+                        f"if sys.argv[1:] != {hook.WIN32_ARGS!r}:\n    sys.exit(97)\n"
+                        f"print({printed!r})\nsys.exit({rc})\n")
 
 
 @pytest.fixture
@@ -62,10 +65,12 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     subprocess.run(["git", "init", "-q", str(at)], check=True)
     (at / hook.BASELINE).write_text("{}")
     (at / "clean.py").write_text("x = 1\n")
-    _jscpd(tmp_path / "jscpd", 3, 0, 0)
-    _probe(tmp_path / "probe", "OK mame: 4 tasks cover 2 tools", 0)
-    monkeypatch.setenv("PRECOMMIT_JSCPD", str(tmp_path / "jscpd"))
-    monkeypatch.setenv("PRECOMMIT_PROBE", str(tmp_path / "probe"))
+    jscpd = _jscpd(tmp_path / "jscpd", 3, 0, 0)
+    probe = _probe(tmp_path / "probe", "OK mame: 4 tasks cover 2 tools", 0)
+    mypy = _mypy(tmp_path / "mypy", "Success: no issues found in 1 source file", 0)
+    monkeypatch.setenv("PRECOMMIT_JSCPD", str(jscpd))
+    monkeypatch.setenv("PRECOMMIT_PROBE", str(probe))
+    monkeypatch.setenv("PRECOMMIT_MYPY", str(mypy))
     monkeypatch.chdir(at / "sub")
     return tmp_path
 
@@ -81,6 +86,7 @@ def test_a_clean_run_passes_from_anywhere_in_the_repository(
     rc, said = _hook(capsys)
     assert rc == verdict.EXIT_PASS, said
     assert "3 files, no new duplication" in said and "OK mame: 4 tasks cover 2 tools" in said
+    assert "win32: 1 files clean on win32" in said, said
     ran_in = Path((repo / "jscpd.cwd").read_text()).resolve()
     assert ran_in == (repo / "repo").resolve(), "jscpd ran outside the repository's root"
 
@@ -136,7 +142,7 @@ def test_an_uncovered_tool_blocks_naming_the_hole_and_how_to_measure_after(
     rc, said = _hook(capsys)
     assert rc == verdict.EXIT_FAIL and "no task on mame frame_grab" in said
     assert ("from the repository root: python -m scry_core.probe <server> --check "
-            "--servers mcp_probe/servers.py --tasks mcp_probe/tasks") in said
+            f"--servers {SERVERS_FILE} --tasks {TASKS_DIR}") in said
     assert "only for a task added for a new or changed tool" in said, (
         "a typo in a task file is fixed with the free check, never sent to a paid model run")
 
@@ -182,7 +188,7 @@ def test_the_real_probe_check_is_what_runs_without_its_seam(
     servers file: here there is none, so the real check answers INVALID about it."""
     monkeypatch.delenv("PRECOMMIT_PROBE")
     rc, said = _hook(capsys)
-    assert rc == verdict.EXIT_INVALID and "mcp_probe/servers.py" in said, said
+    assert rc == verdict.EXIT_INVALID and str(SERVERS_FILE) in said, said
 
 
 def test_an_unknown_option_is_usage() -> None:
@@ -279,7 +285,7 @@ TWENTY = "#" * 20 + "\n" + "x = " + "1" * 74 + "\n"
 
 def _plant(repo: Path, rel: str, text: str) -> None:
     (repo / "repo" / rel).parent.mkdir(parents=True, exist_ok=True)
-    (repo / "repo" / rel).write_text(text)
+    (repo / "repo" / rel).write_bytes(text.encode())    # its bytes counted, never CRLF
 
 
 def _exempt(repo: Path, table: str) -> None:
@@ -415,6 +421,40 @@ def test_a_file_that_does_not_parse_is_invalid_naming_it(
     _plant(repo, "broken.py", "def (:\n")
     rc, said = _hook(capsys)
     assert rc == verdict.EXIT_INVALID and "broken.py could not be read" in said, said
+
+
+@pytest.mark.parametrize(("printed", "rc"), [
+    ("No module named mypy", 1), ("", 0), ("Success: no issues found in 0 source files", 0),
+    ("usage: mypy [-h]\nmypy: error: unrecognized arguments", 2)])
+def test_a_win32_check_that_did_not_judge_is_invalid(
+        repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch,
+        printed: str, rc: int) -> None:
+    monkeypatch.setenv("PRECOMMIT_MYPY", str(_mypy(repo / "mypy", printed, rc)))
+    got, said = _hook(capsys)
+    assert got == verdict.EXIT_INVALID and f"mypy on win32 exited {rc} without a verdict" in said
+
+
+def test_a_type_error_on_win32_blocks_naming_it_and_the_command(
+        repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    error = 'p.py:2: error: Module has no attribute "tcgetattr"  [attr-defined]'
+    monkeypatch.setenv("PRECOMMIT_MYPY", str(_mypy(repo / "mypy", f"{error}\nFound 1 error", 1)))
+    rc, said = _hook(capsys)
+    assert rc == verdict.EXIT_FAIL and "pre-commit: REFUSED: " in said and error in said
+    assert "uv run mypy --strict --platform win32 ." in said, said
+
+
+def test_the_real_mypy_refuses_a_posix_only_call_and_passes_its_guarded_twin(
+        repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    """No seam: the hook runs mypy itself, on a tree that types clean on this host."""
+    monkeypatch.delenv("PRECOMMIT_MYPY")
+    _plant(repo, "posix.py", "import sys\nimport termios\n\nif sys.platform != 'win32':\n"
+                             "    termios.tcgetattr(0)\n")
+    rc, said = _hook(capsys)
+    assert rc == verdict.EXIT_PASS and "win32: 2 files clean on win32" in said, said
+    _plant(repo, "posix.py", "import termios\n\ntermios.tcgetattr(0)\n")
+    rc, said = _hook(capsys)
+    assert rc == verdict.EXIT_FAIL and 'posix.py:3: error: Module has no attribute "tcgetattr"' \
+        in said, said
 
 
 def test_this_repository_is_within_its_prose_ceiling() -> None:

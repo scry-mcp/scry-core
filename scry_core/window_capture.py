@@ -93,6 +93,11 @@ def capture(pid: int, dest: Path) -> Image:
     cannot or answers blank."""
     if sys.platform != "darwin":
         raise Blocked(f"a window is captured on macOS only, not {sys.platform}")
+    else:  # an `else`, so mypy skips this branch elsewhere instead of calling it unreachable
+        return _capture_on_macos(pid, dest)
+
+
+def _capture_on_macos(pid: int, dest: Path) -> Image:
     try:
         number = window_of(pid)
         if number is None:

@@ -66,7 +66,8 @@ class Entry:
 def _relative(text: object, what: str) -> str:
     """`text` as a normalized relative path, refused when it could leave its directory."""
     path = Path(text) if isinstance(text, str) else None
-    if path is None or not path.parts or path.is_absolute() or ".." in path.parts:
+    # `anchor`, not `is_absolute`: Windows calls `\etc` relative, and it still leaves the bench
+    if path is None or not path.parts or path.anchor or ".." in path.parts:
         raise Invalid(f"{what} {text!r} is not a relative path inside its directory")
     return path.as_posix()
 

@@ -239,7 +239,7 @@ class Normaliser:
         longer name (`/Users/mx` is not under `/Users/m`). A prefix of `/` is left alone."""
         marks = sorted(self.marks.items(), key=lambda pm: -len(pm[0]))
         for prefix, mark in (*marks, (str(self.root), "."), (str(self.home), "~")):
-            prefix = prefix.rstrip(os.sep)
+            prefix = prefix.rstrip(os.sep + (os.altsep or ""))
             if prefix:
                 text = re.sub(r"(?<![\w.-])" + re.escape(prefix) + r"(?=/|$|[^\w.-])",
                               _literally(mark), text)

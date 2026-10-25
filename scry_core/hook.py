@@ -2,7 +2,7 @@
 
 Run as `python -m scry_core.hook` from inside the repository, under its own `uv run`, so the
 pinned package is the one that runs. It needs `jscpd` on the path and a tracked
-`.jscpd-baseline.json`. Three checks, each about the tree as a whole; the linters and the suite
+`.jscpd-baseline.json`. Four checks, each about the tree as a whole; the linters and the suite
 are the battery, run directly. Skipping is git's own `--no-verify`.
 
 DUPLICATION: jscpd against the baseline, read through its JSON reporter, never its table. A run
@@ -16,9 +16,15 @@ over its bytes, against a quarter, or a sixth under `tests/`. A registered tool'
 its description, held by the client's cap, so it is not counted. `[tool.scry-prose] exempt =
 { "<path>" = "<reason>" }` in `pyproject.toml` is for generated or vendored files only.
 
-SEAMS: `PRECOMMIT_JSCPD` and `PRECOMMIT_PROBE` name programs to run in place of either.
+WIN32: `mypy --strict --platform win32 .` in the repository's own environment, so a POSIX-only
+call goes red on any host. A 1 is a refusal only when it names an `error:` line, a 0 a pass only
+when it says how many files it checked.
 
-EXIT: 0 clean; 1 new duplication, a probe refusal or a file over its ceiling; 2 usage, an
+SEAMS: `PRECOMMIT_JSCPD`, `PRECOMMIT_PROBE` and `PRECOMMIT_MYPY` name programs to run in place of
+jscpd, the probe check and `python -m mypy`.
+
+EXIT: 0 clean; 1 new duplication, a probe refusal, a file over its ceiling or a type error on
+win32; 2 usage, an
 exemption with no reason or no file; 3 INVALID (it examined nothing, or could not finish).
 """
 
@@ -30,6 +36,7 @@ import codecs
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -44,6 +51,11 @@ from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 BASELINE = ".jscpd-baseline.json"
 PROBE_CHECK = ["-m", "scry_core.probe", "all", "--check", "--servers", str(SERVERS_FILE),
                "--tasks", str(TASKS_DIR)]
+
+
+WIN32_ARGS = ["--strict", "--platform", "win32", "."]
+_MYPY_CHECKED = re.compile(r"^Success: no issues found in (\d+) source files?$", re.M)
+_MYPY_ERROR = re.compile(r"^.+:\d+: error: ", re.M)
 
 
 PROSE_CEILING = 0.25
@@ -138,6 +150,23 @@ def probe_fit(root: Path) -> str:
             "The same command with `--runs 3` in place of `--check` drives the model and costs a "
             "run: it is only for a task added for a new or changed tool.")
     raise Invalid(f"the probe check exited {rc}:\n{said}")
+
+
+def win32(root: Path) -> str:
+    """The win32 check's line for a tree mypy passes on win32; `Refused` naming its errors,
+    `Invalid` when mypy did not judge."""
+    seam = os.environ.get("PRECOMMIT_MYPY")
+    mypy = [seam] if seam else [sys.executable, "-m", "mypy"]
+    rc, said = _run([*mypy, *WIN32_ARGS], "mypy", root, "PRECOMMIT_MYPY")
+    checked = _MYPY_CHECKED.search(said)
+    if rc == 0 and checked and int(checked.group(1)) > 0:
+        return f"win32: {checked.group(1)} files clean on win32"
+    if rc == 1 and _MYPY_ERROR.search(said):
+        raise Refused(f"{said}\nmypy finds the errors above when it checks this tree as Windows "
+                      "sees it: a call Windows lacks is guarded by `sys.platform`, which mypy "
+                      "reads. The same command, from the repository root: uv run mypy "
+                      f"{' '.join(WIN32_ARGS)}")
+    raise Invalid(f"mypy on win32 exited {rc} without a verdict:\n{said}")
 
 
 def _is_tool(decorator: ast.expr) -> bool:
@@ -237,11 +266,13 @@ def prose(root: Path) -> str:
 
 
 def _root() -> Path:
-    done = _git(["rev-parse", "--show-toplevel"])
+    # RELATIVE, never `--show-toplevel`: an MSYS2 git spells that path as its own `/tmp/...`,
+    # which a native Python cannot open.
+    done = _git(["rev-parse", "--show-cdup"])
     if done.returncode != 0:
         raise Invalid(f"git does not say where the repository root is (rc={done.returncode}): "
                       f"{done.stderr.decode(errors='replace').strip()}")
-    return Path(done.stdout.decode(errors="surrogateescape").strip())
+    return (Path.cwd() / done.stdout.decode(errors="surrogateescape").strip()).resolve()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -257,6 +288,8 @@ def main(argv: list[str] | None = None) -> int:
         print(probe_fit(root))
         print("== prose (comments and docstrings within their ceiling)")
         print(prose(root))
+        print("== win32 (mypy --strict --platform win32: no POSIX-only call unguarded)")
+        print(win32(root))
     except Refused as e:
         print(f"pre-commit: REFUSED: {e}", file=sys.stderr)
         return EXIT_FAIL

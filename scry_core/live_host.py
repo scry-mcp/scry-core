@@ -14,6 +14,7 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
@@ -77,7 +78,7 @@ def canary(argv: Sequence[str]) -> str:
 def _end_group(proc: subprocess.Popen[bytes]) -> bool:
     """SIGKILL the group `proc` leads (on Windows `proc`); whether it is still alive."""
     with contextlib.suppress(ProcessLookupError, PermissionError):
-        if WINDOWS:
+        if WINDOWS or sys.platform == "win32":     # the second is the one mypy reads
             proc.kill()
         else:
             os.killpg(proc.pid, signal.SIGKILL)
@@ -136,7 +137,7 @@ _KILL = getattr(signal, "SIGKILL", signal.SIGTERM)
 def _signal(pid: int, pgid: int, sig: signal.Signals) -> None:
     """`sig` to the group `pid` leads, else to `pid` alone."""
     with contextlib.suppress(ProcessLookupError, PermissionError):
-        if pgid == pid and not WINDOWS:
+        if pgid == pid and not WINDOWS and sys.platform != "win32":
             os.killpg(pid, sig)
         else:
             os.kill(pid, sig)

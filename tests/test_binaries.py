@@ -11,23 +11,15 @@ from pathlib import Path
 
 import pytest
 
-from scry_core import binaries
+from scry_core import binaries, host_program
 from scry_core.reply_contract import Invalid
 
 LADDER = binaries.Ladder(product="Emu", executable="emu", variable="EMU_BINARY")
 
 
 def _build(where: Path, body: str = "print('Emu 1.0')") -> Path:
-    """An executable named `emu` that runs `body` as Python, on this host's terms: a `#!/bin/sh`
-    script with its exec bit on POSIX, an `emu.cmd` on Windows, which runs no shebang. Both are
-    written on every host, and the one this host runs is answered."""
-    where.mkdir(parents=True, exist_ok=True)
-    (where / "emu.py").write_text(body + "\n")
-    (where / "emu.cmd").write_text(f'@"{sys.executable}" "{where / "emu.py"}" %*\r\n')
-    exe = where / "emu"
-    exe.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{where / "emu.py"}" "$@"\n')
-    exe.chmod(0o755)
-    return where / "emu.cmd" if os.name == "nt" else exe
+    """An executable named `emu` that runs `body` as Python, as this host runs a program."""
+    return host_program.write(where / "emu", body + "\n")
 
 
 @pytest.mark.parametrize(("rung", "code"), [

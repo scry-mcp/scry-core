@@ -13,7 +13,7 @@ from scry_core.reply_contract import Invalid
 
 
 def _sums(path: Path, lines: list[str]) -> Path:
-    path.write_text("\n".join(lines) + "\n")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path
 
 

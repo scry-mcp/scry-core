@@ -15,6 +15,11 @@ from scry_core import media_replies, media_tools, png, reply_schema, series
 from scry_core.client_cap import CLIENT_TEXT_CAP, utf16_units
 from scry_core.reply_contract import Invalid
 
+
+def _abs(name: str) -> str:
+    """An absolute path as this host spells one."""
+    return str(Path(Path.cwd().anchor, name))
+
 RED, BLACK = (255, 0, 0), (0, 0, 0)
 
 
@@ -122,26 +127,26 @@ def test_series_diff_region_track_and_golden_check_on_one_series(tmp_path: Path)
 
 @pytest.mark.parametrize("method, kw, said", [
     ("image", {"a": "a.png", "b": "/b.png"}, "a='a.png' must be an absolute path"),
-    ("image", {"a": "/a", "b": "/b", "crop": [0, 0, 0, 1]}, "crop="),
-    ("image", {"a": "/a", "b": "/b", "shift": [1]}, "shift="),
-    ("image", {"a": "/a", "b": "/b", "tolerance": 256}, "tolerance=256"),
-    ("image", {"a": "/a", "b": "/b", "tolerance": True}, "tolerance=True"),
-    ("series", {"a": "/a", "b": ""}, "b is empty"),
-    ("series", {"a": "/a", "b": "/b", "crop": [1]}, "crop="),
-    ("region", {"manifest": "/m", "measure": "area"}, "measure='area' is one of"),
-    ("region", {"manifest": "/m", "measure": "match"}, "`ref` goes with measure"),
-    ("region", {"manifest": "/m", "ref": "/r.png"}, "`ref` goes with measure"),
-    ("region", {"manifest": "/m", "measure": "match", "ref": "r.png"}, "ref='r.png'"),
-    ("region", {"manifest": "/m", "threshold": 0}, "threshold=0"),
-    ("region", {"manifest": "/m", "threshold": 1.5}, "threshold=1.5"),
-    ("region", {"manifest": "/m", "limit": 0}, "limit=0"),
-    ("region", {"manifest": "/m", "limit": series.LIMIT_MAX + 1}, "limit="),
-    ("region", {"manifest": "/m", "crop": "x"}, "crop="),
-    ("golden", {"checksums": "/g"}, "one of the two"),
-    ("golden", {"checksums": "/g", "manifest": "/m", "dir": "/d"}, "one of the two"),
-    ("golden", {"checksums": "g", "dir": "/d"}, "checksums='g'"),
-    ("golden", {"checksums": "/g", "dir": "d"}, "dir='d'"),
-    ("golden", {"checksums": "/g", "manifest": "m"}, "manifest='m'"),
+    ("image", {"a": _abs("a"), "b": _abs("b"), "crop": [0, 0, 0, 1]}, "crop="),
+    ("image", {"a": _abs("a"), "b": _abs("b"), "shift": [1]}, "shift="),
+    ("image", {"a": _abs("a"), "b": _abs("b"), "tolerance": 256}, "tolerance=256"),
+    ("image", {"a": _abs("a"), "b": _abs("b"), "tolerance": True}, "tolerance=True"),
+    ("series", {"a": _abs("a"), "b": ""}, "b is empty"),
+    ("series", {"a": _abs("a"), "b": _abs("b"), "crop": [1]}, "crop="),
+    ("region", {"manifest": _abs("m"), "measure": "area"}, "measure='area' is one of"),
+    ("region", {"manifest": _abs("m"), "measure": "match"}, "`ref` goes with measure"),
+    ("region", {"manifest": _abs("m"), "ref": "/r.png"}, "`ref` goes with measure"),
+    ("region", {"manifest": _abs("m"), "measure": "match", "ref": "r.png"}, "ref='r.png'"),
+    ("region", {"manifest": _abs("m"), "threshold": 0}, "threshold=0"),
+    ("region", {"manifest": _abs("m"), "threshold": 1.5}, "threshold=1.5"),
+    ("region", {"manifest": _abs("m"), "limit": 0}, "limit=0"),
+    ("region", {"manifest": _abs("m"), "limit": series.LIMIT_MAX + 1}, "limit="),
+    ("region", {"manifest": _abs("m"), "crop": "x"}, "crop="),
+    ("golden", {"checksums": _abs("g")}, "one of the two"),
+    ("golden", {"checksums": _abs("g"), "manifest": _abs("m"), "dir": _abs("d")}, "one of the two"),
+    ("golden", {"checksums": "g", "dir": _abs("d")}, "checksums='g'"),
+    ("golden", {"checksums": _abs("g"), "dir": "d"}, "dir='d'"),
+    ("golden", {"checksums": _abs("g"), "manifest": "m"}, "manifest='m'"),
 ])
 def test_a_wrong_shape_is_refused_by_the_judge_and_by_the_body(method: str, kw: dict[str, Any],
                                                                said: str) -> None:
@@ -154,13 +159,13 @@ def test_a_wrong_shape_is_refused_by_the_judge_and_by_the_body(method: str, kw: 
 
 
 @pytest.mark.parametrize("tool, method, kw, stray", [
-    ("image_compare", "series", {"a": "/a", "b": "/b", "tolerance": 0}, "`tolerance`"),
-    ("image_compare", "image", {"a": "/a", "b": "/b", "limit": 3}, "`limit`"),
-    ("image_compare", "golden", {"checksums": "/g", "dir": "/d", "crop": [0, 0, 1, 1]},
+    ("image_compare", "series", {"a": _abs("a"), "b": _abs("b"), "tolerance": 0}, "`tolerance`"),
+    ("image_compare", "image", {"a": _abs("a"), "b": _abs("b"), "limit": 3}, "`limit`"),
+    ("image_compare", "golden", {"checksums": _abs("g"), "dir": _abs("d"), "crop": [0, 0, 1, 1]},
      "`crop`"),
-    ("image_compare", "region", {"manifest": "/m", "a": "/a"}, "`a`"),
+    ("image_compare", "region", {"manifest": _abs("m"), "a": _abs("a")}, "`a`"),
     ("audio_compare", "measure", {"path": "/p", "align": False}, "`align`"),
-    ("audio_compare", "diff", {"a": "/a", "b": "/b", "channel": 0}, "`channel`"),
+    ("audio_compare", "diff", {"a": _abs("a"), "b": _abs("b"), "channel": 0}, "`channel`"),
 ])
 def test_an_argument_the_method_does_not_take_is_refused_naming_the_method(
         tool: str, method: str, kw: dict[str, Any], stray: str) -> None:
@@ -175,9 +180,9 @@ def test_an_argument_the_method_does_not_take_is_refused_naming_the_method(
 
 def test_the_limits_themselves_are_accepted() -> None:
     check = media_tools.TOOLS["image_compare"].check
-    check(method="image", a="/a", b="/b", tolerance=255)
-    check(method="region", manifest="/m", threshold=1, limit=series.LIMIT_MAX)
-    check(method="region", manifest="/m", limit=1)
+    check(method="image", a=_abs("a"), b=_abs("b"), tolerance=255)
+    check(method="region", manifest=_abs("m"), threshold=1, limit=series.LIMIT_MAX)
+    check(method="region", manifest=_abs("m"), limit=1)
 
 
 def test_every_description_fits_a_client_and_says_what_it_touches() -> None:
@@ -224,7 +229,7 @@ def test_register_makes_each_body_s_fields_the_servers_reply(tmp_path: Path) -> 
     assert got["image_compare"].__name__ == "image_compare"
     assert got["image_compare"].__doc__ == media_tools.image_compare.__doc__
     with pytest.raises(Invalid, match="one of the two"):
-        got["image_compare"]("golden", checksums="/g")
+        got["image_compare"]("golden", checksums=_abs("g"))
     folder = tmp_path / "d"
     folder.mkdir()
     (folder / "a.png").write_bytes(b"a")
@@ -240,8 +245,8 @@ def test_a_judge_takes_the_defaults_its_body_declares(monkeypatch: pytest.Monkey
     seen: list[dict[str, Any]] = []
     monkeypatch.setattr(media_tools, "_judge_region", lambda **kw: seen.append(kw))
     gate = media_tools._gate(media_tools._region, media_tools._judge_region)
-    gate(manifest="/m")
-    assert seen == [{"manifest": "/m", "crop": None, "measure": "signature", "ref": "",
+    gate(manifest=_abs("m"))
+    assert seen == [{"manifest": _abs("m"), "crop": None, "measure": "signature", "ref": "",
                      "threshold": series.THRESHOLD_DEFAULT, "limit": series.LIMIT_DEFAULT}]
     gate(limit=3, ctx="ignored")
     assert seen[-1]["manifest"] == "" and seen[-1]["limit"] == 3 and "ctx" not in seen[-1]

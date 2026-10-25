@@ -4,11 +4,11 @@ a link to one, a FIFO; a regular file and nothing at all are not refused here.""
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 import pytest
 
+from scry_core import host_program
 from scry_core.state_files import not_a_state, refused_load
 
 
@@ -32,9 +32,8 @@ def test_a_directory_and_a_link_to_one_are_named(tmp_path: Path) -> None:
         f"the file is a link to {tmp_path / 'd.sav'}, which is a directory, not a state")
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="no FIFO on Windows")
 def test_a_fifo_is_named_and_never_opened(tmp_path: Path) -> None:
-    os.mkfifo(tmp_path / "f.sav")
+    host_program.fifo(tmp_path / "f.sav")
     assert not_a_state(tmp_path / "f.sav") == "the file is a FIFO, not a state"
 
 
@@ -48,9 +47,7 @@ def test_a_load_of_a_name_that_holds_no_state_is_refused_naming_what_is_there(
 
 
 def test_a_link_to_a_fifo_is_named_with_its_target(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("no FIFO on Windows")
-    os.mkfifo(tmp_path / "f")
+    host_program.fifo(tmp_path / "f")
     (tmp_path / "l.sav").symlink_to(tmp_path / "f")
     assert not_a_state(tmp_path / "l.sav") == (
         f"the file is a link to {tmp_path / 'f'}, which is a FIFO, not a state")

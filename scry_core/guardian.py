@@ -18,6 +18,8 @@ POLL_S = 1.0
 STOP_GRACE_S = 5.0
 
 SUPPORTED = sys.platform != "win32"
+#: Windows has no SIGKILL, and there `os.kill` terminates for any signal.
+KILL: int = getattr(signal, "SIGKILL", signal.SIGTERM)
 
 #: Kills are by pid, so only a real child is watched.
 _POPEN = subprocess.Popen
@@ -92,7 +94,7 @@ def watch(server: int, child: int, poll_s: float, deadline: float) -> None:
             # Pids are reused: kill only if the start time matches; with none, by pid.
             if born is None or (born and started(child) == born):
                 with contextlib.suppress(ProcessLookupError, PermissionError):
-                    os.kill(child, signal.SIGKILL)
+                    os.kill(child, KILL)
             return
         time.sleep(poll_s)
 

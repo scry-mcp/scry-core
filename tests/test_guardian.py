@@ -5,7 +5,6 @@ these cases SIGKILL, the ending that runs no `finally`."""
 from __future__ import annotations
 
 import os
-import signal
 import subprocess
 import sys
 import time
@@ -59,14 +58,14 @@ def _server(mode: str = "guarded", deadline: float = 0.0
 def _reap(*pids: int) -> None:
     for pid in pids:
         if pid and _alive(pid):
-            os.kill(pid, signal.SIGKILL)
+            os.kill(pid, guardian.KILL)
 
 
 @POSIX
 def test_a_sigkilled_server_takes_its_emulator_with_it() -> None:
     proc, child, guard = _server()
     try:
-        proc.send_signal(signal.SIGKILL)
+        proc.kill()
         proc.wait()
         assert _gone_within(child, WITHIN_S), "the emulator outlived its server"
         assert _gone_within(guard, WITHIN_S), "the guardian lingered"
@@ -80,7 +79,7 @@ def test_without_a_guardian_the_emulator_outlives_its_server() -> None:
     the case above is the guardian's doing and not the child dying with its parent."""
     proc, child, _ = _server("bare")
     try:
-        proc.send_signal(signal.SIGKILL)
+        proc.kill()
         proc.wait()
         assert not _gone_within(child, WITHIN_S), "the child died on its own"
     finally:
@@ -176,13 +175,13 @@ def test_watch_leaves_quietly_when_the_child_dies_between_its_poll_and_its_kill(
 
     def kill(pid: int, sig: int) -> None:
         calls.append((pid, sig))
-        if sig == signal.SIGKILL:
+        if sig == guardian.KILL:
             raise ProcessLookupError
 
     monkeypatch.setattr(os, "kill", kill)
     monkeypatch.setattr(guardian, "started", lambda pid: "the same start")
     guardian.watch(os.getppid() + 1, 12345, 0.01, 0.0)   # "reparented" at the first look
-    assert calls == [(12345, 0), (12345, signal.SIGKILL)]
+    assert calls == [(12345, 0), (12345, guardian.KILL)]
 
 
 def test_main_names_the_process_before_it_watches(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -230,7 +229,7 @@ def test_a_reused_pid_is_left_alone_and_one_it_may_not_signal_too(
     monkeypatch.setattr(guardian, "started", lambda pid: next(born))
 
     def kill(pid: int, sig: int) -> None:
-        if sig == signal.SIGKILL:
+        if sig == guardian.KILL:
             killed.append(pid)
     monkeypatch.setattr(os, "kill", kill)
     guardian.watch(os.getppid() + 1, 4242, 0.01, 0.0)       # parent gone, but not our child
@@ -262,7 +261,7 @@ def test_watch_leaves_when_the_child_is_already_gone_and_sleeps_while_all_is_wel
     monkeypatch.setattr(time, "sleep", slept.append)
 
     def kill(pid: int, sig: int) -> None:
-        if sig == signal.SIGKILL:
+        if sig == guardian.KILL:
             killed.append(pid)
     monkeypatch.setattr(os, "kill", kill)
     monkeypatch.setattr(guardian, "started", lambda pid: "the same start")
@@ -282,7 +281,7 @@ def test_a_host_where_ps_cannot_be_asked_still_kills_by_the_pid(
     killed: list[int] = []
 
     def kill(pid: int, sig: int) -> None:
-        if sig == signal.SIGKILL:
+        if sig == guardian.KILL:
             killed.append(pid)
     monkeypatch.setattr(os, "kill", kill)
     guardian.watch(os.getppid() + 1, 4242, 0.01, 0.0)

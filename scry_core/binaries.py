@@ -117,8 +117,9 @@ def _spawn(argv: list[str], out: IO[bytes], err: IO[bytes],
     if sys.platform == "win32":
         return subprocess.Popen(argv, stdout=out, stderr=err, stdin=subprocess.DEVNULL, env=env,
                                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-    return subprocess.Popen(argv, stdout=out, stderr=err, stdin=subprocess.DEVNULL, env=env,
-                            start_new_session=True)
+    else:  # an `else`, so mypy skips this branch on win32 instead of calling it unreachable
+        return subprocess.Popen(argv, stdout=out, stderr=err, stdin=subprocess.DEVNULL, env=env,
+                                start_new_session=True)
 
 
 def _end_group(proc: subprocess.Popen[bytes], ran_out: bool) -> None:

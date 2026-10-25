@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import math
 import struct
+import sys
 import wave
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,11 @@ from test_media_tools import judged_by_its_model  # noqa: F401  (every reply hel
 
 from scry_core import media_tools, wav
 from scry_core.reply_contract import Invalid
+
+
+def _abs(name: str) -> str:
+    """An absolute path as this host spells one."""
+    return str(Path(Path.cwd().anchor, name))
 
 RATE = 8000
 AMP = 16000                       # a sine of this amplitude peaks at 20*log10(16000/32768)
@@ -211,15 +217,16 @@ def test_the_two_tools_answer_and_judge_their_arguments(tmp_path: Path) -> None:
     check = media_tools.TOOLS["audio_compare"].check
     for kw, said in (
             ({"method": "measure", "path": "s.wav"}, "must be an absolute path"),
-            ({"method": "measure", "path": "/s", "window": [1, 0]}, "window="),
-            ({"method": "measure", "path": "/s", "window": [-1, 2]}, "window="),
-            ({"method": "measure", "path": "/s", "channel": True}, "channel="),
-            ({"method": "diff", "a": "/a", "b": "/b", "align": 1}, "align is true"),
-            ({"method": "diff", "a": "/a", "b": "b"}, "b='b'")):
+            ({"method": "measure", "path": _abs("s"), "window": [1, 0]}, "window="),
+            ({"method": "measure", "path": _abs("s"), "window": [-1, 2]}, "window="),
+            ({"method": "measure", "path": _abs("s"), "channel": True}, "channel="),
+            ({"method": "diff", "a": _abs("a"), "b": _abs("b"), "align": 1}, "align is true"),
+            ({"method": "diff", "a": _abs("a"), "b": "b"}, "b='b'")):
         with pytest.raises(Invalid, match=said):
             check(**kw)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows keeps no mode that refuses a read")
 def test_an_unreadable_wav_is_refused(tmp_path: Path) -> None:
     path = Path(_write(tmp_path / "s.wav", [_sine(800)]))
     path.chmod(0)

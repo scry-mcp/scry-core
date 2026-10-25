@@ -14,7 +14,6 @@ import datetime as dt
 import json
 import os
 import shutil
-import stat
 import subprocess
 import sys
 import types
@@ -23,7 +22,7 @@ from typing import Any
 
 import pytest
 
-from scry_core import probe, probe_captures, probe_checks
+from scry_core import host_program, probe, probe_captures, probe_checks
 from scry_core import probe_any_of as any_of
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "probe"
@@ -308,7 +307,7 @@ def test_the_writer_keeps_every_line_and_the_root_mark(
     answers = probe_env / "answers" / "mame-run2.txt"
     answers.write_text(answers.read_text() + '\nM1: {"tool": "status", "args": {}}\n')
     _edit(probe_env / "answers" / "mame-run3.txt", '"ref": "PlayerX"',
-          f'"ref": "{REPO.root}/PlayerX"')
+          f'"ref": {json.dumps(f"{REPO.root}/PlayerX")}')
     run_dir = _a_run(capsys)
     assert _capture(run_dir, "M1", capsys)[0] == probe.EXIT_PASS
     runs = _written(probe_env, "M1")["runs"]
@@ -448,7 +447,7 @@ def test_a_task_naming_the_tree_round_trips_through_the_mark(
     for k in (1, 2, 3):
         answers = probe_env / "answers" / f"mame-run{k}.txt"
         answers.write_text(answers.read_text() + '\nM4: {"tool": "read_memory", "args": '
-                           f'{{"ref": "{REPO.root}/x", "length": 6}}}}\n')
+                           f'{{"ref": {json.dumps(f"{REPO.root}/x")}, "length": 6}}}}\n')
     run_dir = _a_run(capsys)
     assert _capture(run_dir, "M1,M2,M3,M4", capsys)[0] == probe.EXIT_PASS
     m4 = _written(probe_env, "M4")
@@ -457,6 +456,15 @@ def test_a_task_naming_the_tree_round_trips_through_the_mark(
     assert probe_captures.capture_problems(REPO, "mame", probe_env / "captured" / "mame",
                                   probe_env / "tasks" / "mame.json") == []
 
+
+
+def test_a_root_json_has_to_escape_resolves_and_marks_as_a_json_string_spells_it(
+        tmp_path: Path) -> None:
+    """A Windows root's backslashes: substituted raw, `C:\\Users` is no JSON at all."""
+    repo = dataclasses.replace(REPO, root=tmp_path / "C:\\Users\\x")
+    text = probe.resolve_root(repo, json.dumps({"ref": f"{probe.ROOT_MARK}/a"}))
+    assert json.loads(text) == {"ref": f"{repo.root}/a"}
+    assert probe.mark_root(repo, text) == json.dumps({"ref": f"{probe.ROOT_MARK}/a"})
 
 def test_a_capture_taken_again_replaces_only_its_own_file(
         probe_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -952,10 +960,13 @@ def _fake_claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, document: str 
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     argv = tmp_path / "argv"
-    fake = bin_dir / "claude"
-    fake.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{argv}"\ncat > "{argv}.stdin"\n'
-                    f'cat "{FIXTURES / document}"\nexit {rc}\n')
-    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    host_program.write(bin_dir / "claude", "import pathlib, sys\n"
+                       f"pathlib.Path({str(argv)!r}).write_text(''.join(a + '\\n' for a in "
+                       "sys.argv[1:]))\n"
+                       f"pathlib.Path({str(argv) + '.stdin'!r}).write_bytes("
+                       "sys.stdin.buffer.read())\n"
+                       f"sys.stdout.buffer.write(pathlib.Path({str(FIXTURES / document)!r})"
+                       f".read_bytes())\nsys.exit({rc})\n")
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.delenv(probe.ANSWERS_ENV, raising=False)
     return argv
@@ -1009,10 +1020,14 @@ def test_a_document_that_is_not_an_object_or_not_text_is_invalid(
         "INVALID: `claude` printed no JSON document")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows runs no file by its mode bit")
 def test_a_claude_that_cannot_be_run_is_invalid(
         probe_env: Path, capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch) -> None:
-    (probe_env / "bin" / "claude").mkdir(parents=True)
+    """Found on PATH, executable by its mode, and no program: the exec itself fails."""
+    (probe_env / "bin").mkdir(parents=True)
+    (probe_env / "bin" / "claude").write_bytes(b"\x00\x01 not a program")
+    (probe_env / "bin" / "claude").chmod(0o755)
     monkeypatch.setenv("PATH", str(probe_env / "bin"))
     monkeypatch.delenv(probe.ANSWERS_ENV)
     assert _run(["mame", "--runs", "1"], capsys)[1][0].startswith(
@@ -1026,7 +1041,7 @@ def test_no_claude_or_one_that_hangs_is_invalid(
     monkeypatch.setenv("PATH", str(probe_env))
     assert _run(["mame", "--runs", "1"], capsys)[1][0] == "INVALID: `claude` is not on PATH"
     _fake_claude(probe_env, monkeypatch, "claude-ok.json")
-    (probe_env / "bin" / "claude").write_text("#!/bin/sh\nexec /bin/sleep 5\n")
+    host_program.write(probe_env / "bin" / "claude", "import time\ntime.sleep(5)\n")
     monkeypatch.setattr(probe, "CLAUDE_TIMEOUT_S", 0.2)
     assert _run(["mame", "--runs", "1"], capsys)[1][0] == (
         "INVALID: `claude` did not answer within 0.2 s")
