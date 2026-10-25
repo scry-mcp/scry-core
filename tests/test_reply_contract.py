@@ -71,6 +71,13 @@ def test_the_source_scan_reads_a_keyword_code_and_leaves_other_calls_alone(tmp_p
     assert contract.codes_written_in([src]) == [("m.py", 3, "no_session")]
 
 
+def test_the_source_scan_reads_a_file_in_its_own_declared_coding(tmp_path: Path) -> None:
+    """Never in the host's: Windows' cp1252 cannot read a UTF-8 source, nor UTF-8 this one."""
+    src = tmp_path / "m.py"
+    src.write_bytes(b"# -*- coding: latin-1 -*-\ninvalid('no_session', 'caf\xe9')\n")
+    assert contract.codes_written_in([src]) == [("m.py", 2, "no_session")]
+
+
 @pytest.mark.parametrize(("reply", "said"), [
     ({"status": "INVALID", "message": "x"}, "code"),
     ({"status": "INVALID", "code": "bad_argument", "message": " "}, "message"),

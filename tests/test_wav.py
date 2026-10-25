@@ -15,12 +15,8 @@ import pytest
 from test_media_tools import judged_by_its_model  # noqa: F401  (every reply held to its model)
 
 from scry_core import media_tools, wav
+from scry_core.host_program import absolute as _abs
 from scry_core.reply_contract import Invalid
-
-
-def _abs(name: str) -> str:
-    """An absolute path as this host spells one."""
-    return str(Path(Path.cwd().anchor, name))
 
 RATE = 8000
 AMP = 16000                       # a sine of this amplitude peaks at 20*log10(16000/32768)

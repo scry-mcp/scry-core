@@ -1,4 +1,4 @@
-"""A test double's program as this host runs one: Python behind its launcher."""
+"""A test double as this host runs one: Python behind its launcher."""
 
 from __future__ import annotations
 
@@ -21,6 +21,11 @@ def write(path: Path, body: str) -> Path:
         path.write_text(f"#!{sys.executable}\n{body}", encoding="utf-8")
         path.chmod(0o755)
         return path
+
+
+def absolute(*parts: str) -> str:
+    """An absolute path as this host spells one."""
+    return str(Path(Path.cwd().anchor, *parts))
 
 
 def fifo(path: Path) -> None:

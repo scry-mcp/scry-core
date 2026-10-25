@@ -187,7 +187,7 @@ def codes_written_in(sources: Iterable[Path]) -> list[tuple[str, int, str]]:
     the text so a branch no test reaches is covered; a missing or non-literal code raises."""
     seen: list[tuple[str, int, str]] = []
     for path in sources:
-        for node in ast.walk(ast.parse(path.read_text())):
+        for node in ast.walk(ast.parse(path.read_bytes())):   # its own coding, never the host's
             if not isinstance(node, ast.Call):
                 continue
             callee = node.func

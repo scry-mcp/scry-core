@@ -35,3 +35,8 @@ def test_a_fifo_blocks_its_reader_until_it_is_released(tmp_path: Path) -> None:
 
 def test_releasing_what_no_reader_holds_is_no_error(tmp_path: Path) -> None:
     host_program.release_fifo(tmp_path / "absent")
+
+
+def test_an_absolute_path_is_one_this_host_calls_absolute() -> None:
+    path = Path(host_program.absolute("a", "b"))
+    assert path.is_absolute() and path.parts[-2:] == ("a", "b")

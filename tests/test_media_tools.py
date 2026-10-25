@@ -13,12 +13,8 @@ import pytest
 
 from scry_core import media_replies, media_tools, png, reply_schema, series
 from scry_core.client_cap import CLIENT_TEXT_CAP, utf16_units
+from scry_core.host_program import absolute as _abs
 from scry_core.reply_contract import Invalid
-
-
-def _abs(name: str) -> str:
-    """An absolute path as this host spells one."""
-    return str(Path(Path.cwd().anchor, name))
 
 RED, BLACK = (255, 0, 0), (0, 0, 0)
 
