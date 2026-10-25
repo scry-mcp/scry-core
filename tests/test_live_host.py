@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from scry_core import guardian
 from scry_core import live_host as host
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="process groups and `ps` are "
@@ -187,7 +188,7 @@ def test_an_emulator_that_ignores_sigterm_is_killed(
                    f"open({str(ready)!r}, 'w').close()\ntime.sleep(600)", ledger, launched)
     _waited(ready)
     assert ledger.reap() == host.Leftovers(1, 1)
-    assert proc.wait(5) == -host._KILL
+    assert proc.wait(5) == -guardian.KILL
 
 
 def test_an_emulator_in_the_runs_own_group_is_signalled_alone(

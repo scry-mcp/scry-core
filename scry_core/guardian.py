@@ -48,7 +48,8 @@ class Guard(Protocol):
 
 
 class Job:
-    """A Windows job object that ends its process when its last handle closes."""
+    """A Windows job object that ends its process when its last handle closes; `kill` is that
+    close, so `wait` has nothing left to wait for."""
 
     def __init__(self, handle: int) -> None:
         self.handle: int | None = handle
@@ -70,7 +71,12 @@ def spawn(child: object, server: str, deadline: float = 0.0) -> Guard | None:
     if not isinstance(child, _POPEN):
         return None
     if sys.platform == "win32":
-        return _job(child.pid)
+        try:
+            return _job(child.pid)
+        except OSError:
+            if child.poll() is not None:    # Windows will not place an ended process
+                return None
+            raise
     else:
         return _POPEN(
             # `-I` keeps a stray cwd `scry_core` out and drops PYTHONPATH, so `program` carries

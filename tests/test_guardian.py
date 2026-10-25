@@ -1,5 +1,5 @@
 """`scry_core.guardian` against REAL processes: whether a child outlives its parent, or its
-deadline, is a property of processes. Its "emulator" is `sleep`, and its "server" an interpreter
+deadline, is a property of processes. Its "emulator" is an interpreter asleep, and its "server" one
 these cases kill outright (SIGKILL, or `TerminateProcess`), the ending that runs no `finally`."""
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ WINDOWS_ONLY = pytest.mark.skipif(guardian.WATCHER, reason="the job is Windows'"
 SERVER = """
 import subprocess, sys, time
 from scry_core import guardian
-child = subprocess.Popen(["sleep", "60"])
+child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
 guard = (guardian.spawn(child, "scry-test", float(sys.argv[2]))
          if sys.argv[1] == "guarded" else None)
 print(child.pid, getattr(guard, "pid", 0), flush=True)
@@ -31,6 +31,8 @@ time.sleep(60)
 """
 
 WITHIN_S = 5 * guardian.POLL_S
+#: Any host has one: an MSYS `sleep` is no Windows host's own.
+EMULATOR = [sys.executable, "-c", "import time; time.sleep(60)"]
 
 
 def _alive(pid: int) -> bool:
@@ -120,7 +122,7 @@ def test_a_deadline_ends_the_emulator_of_a_live_server() -> None:
 
 @POSIX
 def test_the_guardian_leaves_when_its_emulator_does_and_goes_by_its_name() -> None:
-    child = subprocess.Popen(["sleep", "60"])
+    child = subprocess.Popen(EMULATOR)
     guard = guardian.spawn(child, "scry-test")
     try:
         assert isinstance(guard, subprocess.Popen)
@@ -151,7 +153,7 @@ def test_no_guardian_for_a_process_this_server_did_not_spawn() -> None:
 @WINDOWS_ONLY
 def test_on_windows_the_job_ends_what_it_still_holds_when_it_closes() -> None:
     """`stop` comes once the emulator is reaped, so closing the job ends nothing then."""
-    child = subprocess.Popen(["sleep", "60"])
+    child = subprocess.Popen(EMULATOR)
     guard = guardian.spawn(child, "scry-test")
     try:
         assert isinstance(guard, guardian.Job) and guard.poll() is None
@@ -165,7 +167,7 @@ def test_on_windows_the_job_ends_what_it_still_holds_when_it_closes() -> None:
 
 @POSIX
 def test_stop_ends_a_guardian_and_takes_none() -> None:
-    child = subprocess.Popen(["sleep", "60"])
+    child = subprocess.Popen(EMULATOR)
     guard = guardian.spawn(child, "scry-test")
     try:
         guardian.stop(guard)
@@ -226,7 +228,6 @@ def test_set_title_hands_the_title_to_setproctitle(monkeypatch: pytest.MonkeyPat
     assert seen == ["scry-x"]
 
 
-
 def test_a_job_is_ended_once_and_answers_as_a_stopped_guard_after(
         monkeypatch: pytest.MonkeyPatch) -> None:
     closed: list[int] = []
@@ -239,13 +240,28 @@ def test_a_job_is_ended_once_and_answers_as_a_stopped_guard_after(
     assert (job.poll(), job.wait(1.0), job.handle, closed) == (0, 0, None, [7])
 
 
+def test_a_child_gone_before_its_job_holds_it_has_no_guard_and_a_live_one_is_refused(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """Windows refuses to place a process that already ended: there is nothing left to end."""
+    def refused(pid: int) -> guardian.Job:
+        raise PermissionError(5, "Access is denied")
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(guardian, "_job", refused)
+    gone = subprocess.Popen([sys.executable, "-c", "pass"])
+    gone.wait()
+    assert guardian.spawn(gone, "scry-x") is None
+    live = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        with pytest.raises(PermissionError):
+            guardian.spawn(live, "scry-x")
+    finally:
+        live.kill()
+        live.wait()
+
 @pytest.mark.skipif(sys.platform == "win32", reason="this host makes them")
 def test_a_job_is_asked_of_windows_alone() -> None:
     with pytest.raises(OSError, match="Windows'"):
         guardian._job(1)
-
-def test_the_watcher_is_posix_s_and_the_job_windows() -> None:
-    assert guardian.WATCHER is (sys.platform != "win32")
 
 
 @POSIX

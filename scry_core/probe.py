@@ -282,7 +282,7 @@ def load_tasks(repo: ProbeRepo, server: str) -> list[dict[str, Any]]:
 
 def _json_root(repo: ProbeRepo) -> str:
     """The root as a JSON string spells it: a Windows path's backslashes doubled."""
-    return json.dumps(str(repo.root))[1:-1]
+    return json.dumps(str(repo.root), ensure_ascii=False)[1:-1]
 
 
 def resolve_root(repo: ProbeRepo, text: str) -> str:

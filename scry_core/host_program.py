@@ -34,6 +34,7 @@ def absolute(*parts: str) -> str:
 def temporary(name: str) -> str:
     return str(Path(tempfile.gettempdir(), name))
 
+
 def fifo(path: Path) -> None:
     """A FIFO at `path`, or the test skipped where there is none."""
     import pytest

@@ -465,6 +465,11 @@ def test_a_root_json_has_to_escape_resolves_and_marks_as_a_json_string_spells_it
     text = probe.resolve_root(repo, json.dumps({"ref": f"{probe.ROOT_MARK}/a"}))
     assert json.loads(text) == {"ref": f"{repo.root}/a"}
     assert probe.mark_root(repo, text) == json.dumps({"ref": f"{probe.ROOT_MARK}/a"})
+    # the captures are written whole, an accented root as it is spelled
+    accented = dataclasses.replace(REPO, root=tmp_path / "josé")
+    line = json.dumps({"ref": f"{accented.root}/a"}, ensure_ascii=False)
+    assert probe.mark_root(accented, line) == json.dumps({"ref": f"{probe.ROOT_MARK}/a"})
+
 
 def test_a_capture_taken_again_replaces_only_its_own_file(
         probe_env: Path, capsys: pytest.CaptureFixture[str]) -> None:

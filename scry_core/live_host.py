@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, cast
 
+from scry_core.guardian import KILL
+
 #: SDL hint that keeps a newly launched app from taking focus (macOS makes it frontmost).
 BACKGROUND_VAR = "SDL_MAC_BACKGROUND_APP"
 #: A healthy host ends the canary in seconds; a blocked one never returns.
@@ -78,7 +80,7 @@ def canary(argv: Sequence[str]) -> str:
 def _end_group(proc: subprocess.Popen[bytes]) -> bool:
     """SIGKILL the group `proc` leads (on Windows `proc`); whether it is still alive."""
     with contextlib.suppress(ProcessLookupError, PermissionError):
-        if WINDOWS or sys.platform == "win32":     # the second is the one mypy reads
+        if WINDOWS or sys.platform == "win32":     # the tests' seam, then the spelling mypy narrows
             proc.kill()
         else:
             os.killpg(proc.pid, signal.SIGKILL)
@@ -130,11 +132,8 @@ def _alive(pids: set[int], within_s: float) -> set[int]:
         time.sleep(0.1)
 
 
-#: Windows has no SIGKILL; its SIGTERM already ends a process outright.
-_KILL = getattr(signal, "SIGKILL", signal.SIGTERM)
 
-
-def _signal(pid: int, pgid: int, sig: signal.Signals) -> None:
+def _signal(pid: int, pgid: int, sig: int) -> None:
     """`sig` to the group `pid` leads, else to `pid` alone."""
     with contextlib.suppress(ProcessLookupError, PermissionError):
         if pgid == pid and not WINDOWS and sys.platform != "win32":
@@ -219,7 +218,7 @@ class EmulatorLedger:
             _signal(p, pgid, signal.SIGTERM)
         if left := _alive(set(alive), LEAVE_S):
             for p in left:
-                _signal(p, alive[p], _KILL)
+                _signal(p, alive[p], KILL)
             left = _alive(left, LEAVE_S)
         states = _processes()
         return Leftovers(len(mine), len(alive), tuple(sorted(
