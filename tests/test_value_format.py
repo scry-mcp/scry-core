@@ -192,3 +192,12 @@ def test_a_float_that_json_cannot_carry_is_rendered_as_its_text(
 def test_a_count_past_the_integer_limit_is_a_format_error() -> None:
     with pytest.raises(vf.FormatError, match="count"):
         vf.parse("u8[" + "9" * 5000 + "]")
+
+
+def test_a_count_is_judged_by_its_value_not_its_leading_zeros() -> None:
+    assert vf.parse("u8[0000000000001]").count == 1
+
+
+def test_a_spec_nested_past_the_interpreter_s_depth_is_a_format_error() -> None:
+    with pytest.raises(vf.FormatError, match="nested"):
+        vf.parse("{a:" * 1500 + "u8" + "}" * 1500)

@@ -112,6 +112,13 @@ def _json_number(v: int | float) -> Value:
 
 def parse(spec: str) -> Format:
     """A `Format` from its spec, or a `FormatError` naming what the grammar takes."""
+    try:
+        return _parse(spec)
+    except RecursionError:
+        raise FormatError(f"{spec[:40]}...: nested deeper than this reads") from None
+
+
+def _parse(spec: str) -> Format:
     spec = spec.strip()
     if spec in SCALARS:
         return Format(spec, "scalar", None, elem=spec)
@@ -128,15 +135,15 @@ def parse(spec: str) -> Format:
             klass = klass.upper()
         if rest.startswith("@"):
             raise FormatError(f"{spec}: the class goes right after the width, `ptr{bits}@CODE`")
-        target = parse(rest) if rest else None
+        target = _parse(rest) if rest else None
         if target is not None and target.kind == "pointer":
             raise FormatError(f"{spec}: a pointer to a pointer is not a shape this reads")
         return Format(spec, "pointer", bits // 8, elem=f"u{bits}", target=target,
                       target_class=klass)
     m = _ARRAY.match(spec)
     if m and (m.group(1) in SCALARS or m.group(1) == "char"):
-        if len(m.group(2)) > _COUNT_DIGITS_MAX:
-            raise FormatError(f"{spec[:40]}...: a count of {len(m.group(2))} digits is past any "
+        if len(digits := m.group(2).lstrip("0")) > _COUNT_DIGITS_MAX:
+            raise FormatError(f"{spec[:40]}...: a count of {len(digits)} digits is past any "
                               f"memory this reads")
         elem, count = m.group(1), int(m.group(2))
         if count <= 0:
@@ -155,7 +162,7 @@ def parse(spec: str) -> Format:
             fm = _FIELD.match(part)
             if fm is None:
                 raise FormatError(f"{spec}: a struct field is `name:type`; got {part!r}")
-            name, sub = fm.group(1), parse(fm.group(2))
+            name, sub = fm.group(1), _parse(fm.group(2))
             if sub.kind == "struct":
                 raise FormatError(f"{spec}: a struct field is a scalar, an array, a "
                                   f"string or a pointer, not another struct ({name})")

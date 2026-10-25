@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import codecs
 import io
 import json
 import os
@@ -149,6 +150,8 @@ def _is_tool(decorator: ast.expr) -> bool:
 
 def prose_bytes(source: bytes) -> int:
     """The bytes of `source`'s comment tokens and docstrings, a registered tool's left out."""
+    # ast's columns on line 1 do not count a BOM, so the line offsets must not either
+    source = source.removeprefix(codecs.BOM_UTF8)
     starts = [0]
     for line in source.splitlines(keepends=True):
         starts.append(starts[-1] + len(line))
@@ -177,7 +180,10 @@ def _exemptions(root: Path) -> dict[str, str]:
         doc = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as e:
         raise Misconfigured(f"pyproject.toml does not parse: {e}") from None
-    table = doc.get("tool", {}).get("scry-prose", {}).get("exempt", {})
+    try:
+        table = doc.get("tool", {}).get("scry-prose", {}).get("exempt", {})
+    except AttributeError:
+        raise Misconfigured("[tool.scry-prose] is not a table under [tool]") from None
     if not isinstance(table, dict):
         raise Misconfigured("[tool.scry-prose] exempt is not a table of path = reason")
     for rel, why in table.items():

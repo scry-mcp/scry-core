@@ -450,11 +450,18 @@ class _BadSpec(ValueError):
 def _loaded(spec: str) -> Registry:
     """The `Registry` `spec` names, else a `_BadSpec`."""
     module, _, attribute = spec.partition(":")
-    if not attribute:
+    if not attribute or not module or module.startswith("."):
         raise _BadSpec(f"{spec!r} is not <module>:<attribute>")
     try:
-        found = getattr(importlib.import_module(module), attribute)
-    except (ImportError, AttributeError) as e:
+        loaded = importlib.import_module(module)
+    except ModuleNotFoundError as e:
+        # only the named module missing is the caller's; a dependency it imports is the module's
+        if e.name is None or not (module == e.name or module.startswith(f"{e.name}.")):
+            raise
+        raise _BadSpec(f"{spec} names nothing: {e}") from e
+    try:
+        found = getattr(loaded, attribute)
+    except AttributeError as e:
         raise _BadSpec(f"{spec} names nothing: {e}") from e
     if not isinstance(found, Registry):
         raise _BadSpec(f"{spec} is a {type(found).__name__}, not a Registry")

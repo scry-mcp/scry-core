@@ -480,6 +480,9 @@ def _declared(demo: Demo) -> None:
         if not isinstance(step.volatile, Mapping):
             raise ValueError(f"step {step.name}: `volatile` is {step.volatile!r}, not a mapping "
                              "of keys to their reasons")
+        if not (isinstance(step.shown, tuple) and all(isinstance(k, str) for k in step.shown)):
+            raise ValueError(f"step {step.name}: `shown` is {step.shown!r}, not a tuple of the "
+                             "reply's field names")
         if not isinstance(step.options, bool | frozenset):
             raise ValueError(f"step {step.name}: `options` is {step.options!r}, not True, False "
                              "or a frozenset of option names")

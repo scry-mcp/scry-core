@@ -443,7 +443,8 @@ def test_an_examples_file_that_is_not_an_object_by_tool_is_invalid(
 
 
 @pytest.mark.parametrize("spec", ["fixture_registry", "fixture_registry:Path",
-                                  "no_such_module:REGISTRY", "fixture_registry:NOPE"])
+                                  "no_such_module:REGISTRY", "fixture_registry:NOPE",
+                                  ":REGISTRY", ".relative:REGISTRY"])
 def test_a_spec_that_names_no_registry_is_a_usage_error(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, spec: str) -> None:
     _main(tmp_path, monkeypatch)  # the fixture module, importable
@@ -703,3 +704,12 @@ def test_a_module_that_raises_while_it_is_built_is_invalid_not_usage(
     monkeypatch.syspath_prepend(str(tmp_path))
     assert reference.main(["unbuilt_registry:REGISTRY"]) == 3
     assert "a tool has no reply model" in capsys.readouterr().out
+
+
+def test_a_module_whose_own_import_fails_is_invalid_not_usage(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    (tmp_path / "half_registry.py").write_text("import no_such_dependency_of_it\n")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    assert reference.main(["half_registry:REGISTRY"]) == 3
+    assert "no_such_dependency_of_it" in capsys.readouterr().out

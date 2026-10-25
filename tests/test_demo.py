@@ -599,3 +599,11 @@ def test_a_flow_spells_the_repository_as_an_absolute_placeholder(
         tmp_path: Path, log: Path) -> None:
     flow = _flow_of(tmp_path, {"value": 7, "binary": str(tmp_path / "bin" / "x")})
     assert f'"/path/to/{tmp_path.name}/bin/x"' in flow and '"./bin/x"' not in flow, flow
+
+
+@pytest.mark.parametrize("shown", ["value", True, ("value", 3)])
+def test_a_shown_that_is_not_a_tuple_of_field_names_is_refused_before_a_call(
+        tmp_path: Path, shown: object) -> None:
+    with pytest.raises(ValueError, match="`shown` is"):
+        d.main(_demo(tmp_path, [d.Step("s", "start", {}, _said("value"),
+                                       shown=shown)]), [])  # type: ignore[arg-type]
