@@ -1,39 +1,39 @@
 """`hook` -- the pre-commit of a repository that pins this package, held once here.
 
 Run as `python -m scry_core.hook` from inside the repository, under its own `uv run`, so the
-pinned package is the one that runs: each repository's `.githooks/pre-commit.sh` is that one
-line, so the decision lives here and only the invocation is copied. It needs `jscpd` on the path,
-a tracked `.jscpd-baseline.json`, and the probe laid out as `probe_checks` reads it.
+pinned package is the one that runs. It needs `jscpd` on the path and a tracked
+`.jscpd-baseline.json`. Three checks, each about the tree as a whole; the linters and the suite
+are the battery, run directly. Skipping is git's own `--no-verify`.
 
-IT RUNS TWO CHECKS, the ones whose answer is about the tree as a whole and that nobody would
-otherwise run: new duplication, and a probe task set that no longer fits the MCP servers. The
-linters and the suite are the battery, run directly. Skipping is git's own `--no-verify`.
+DUPLICATION: jscpd against the baseline, read through its JSON reporter, never its table. A run
+that analysed no file is INVALID.
 
-THE DUPLICATION is jscpd's, against the tracked `.jscpd-baseline.json`, read through its JSON
-reporter: the console table is aligned columns a reader scans, and a number picked out of it by
-position cannot say which metric it landed on. A run that analysed no file is INVALID, since jscpd
-exits 0 having lexed nothing when pointed at a language it cannot read.
+PROBE: `python -m scry_core.probe all --check`, which asks no model. A 1 is a refusal only when
+it prints `REFUSED ...`, a 0 a pass only when it covered a server (`OK ...`).
 
-THE PROBE is `python -m scry_core.probe all --check` on the repository's servers file and tasks,
-the check alone, which asks no model: free, offline, the same answer every time. A 1 is a refusal
-only when the check prints one (`REFUSED ...`), since a probe that died on import exits 1 too; a 0
-is a pass only when it covered a server (`OK ...`).
+PROSE: per tracked or untracked `*.py`, symlinks aside, the bytes of its comments and docstrings
+over its bytes, against a quarter, or a sixth under `tests/`. A registered tool's docstring is
+its description, held by the client's cap, so it is not counted. `[tool.scry-prose] exempt =
+{ "<path>" = "<reason>" }` in `pyproject.toml` is for generated or vendored files only.
 
-THE SEAMS: `PRECOMMIT_JSCPD` and `PRECOMMIT_PROBE` name programs to run in place of `jscpd` and of
-the probe's check, which is how this module's own suite hands each one that fails on demand.
+SEAMS: `PRECOMMIT_JSCPD` and `PRECOMMIT_PROBE` name programs to run in place of either.
 
-EXIT: 0 clean; 1 new duplication or a probe refusal; 2 usage; 3 INVALID (it examined nothing, or
-could not finish). INVALID is never folded into green.
+EXIT: 0 clean; 1 new duplication, a probe refusal or a file over its ceiling; 2 usage, an
+exemption with no reason or no file; 3 INVALID (it examined nothing, or could not finish).
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
+import io
 import json
 import os
 import subprocess
 import sys
 import tempfile
+import tokenize
+import tomllib
 from pathlib import Path
 
 from scry_core.probe import CHECK_OK, CHECK_REFUSED
@@ -45,8 +45,17 @@ PROBE_CHECK = ["-m", "scry_core.probe", "all", "--check", "--servers", str(SERVE
                "--tasks", str(TASKS_DIR)]
 
 
+PROSE_CEILING = 0.25
+PROSE_CEILING_TESTS = 1 / 6
+EXIT_USAGE = 2
+
+
 class Refused(Exception):
     """A verdict against the commit, with what to do about it."""
+
+
+class Misconfigured(Exception):
+    """The repository's configuration of a check is wrong, so the commit is not judged."""
 
 
 def _run(argv: list[str], what: str, root: Path, seam: str) -> tuple[int, str]:
@@ -130,16 +139,103 @@ def probe_fit(root: Path) -> str:
     raise Invalid(f"the probe check exited {rc}:\n{said}")
 
 
-def _root() -> Path:
+def _is_tool(decorator: ast.expr) -> bool:
+    if not isinstance(decorator, ast.Call):
+        return False
+    f = decorator.func
+    return (isinstance(f, ast.Name) and f.id == "tool") or (
+        isinstance(f, ast.Attribute) and f.attr == "tool")
+
+
+def prose_bytes(source: bytes) -> int:
+    """The bytes of `source`'s comment tokens and docstrings, a registered tool's left out."""
+    starts = [0]
+    for line in source.splitlines(keepends=True):
+        starts.append(starts[-1] + len(line))
+    n = sum(len(t.string.encode()) for t in tokenize.tokenize(io.BytesIO(source).readline)
+            if t.type == tokenize.COMMENT)
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if not isinstance(node, ast.Module) and any(map(_is_tool, node.decorator_list)):
+            continue
+        first = node.body[0] if node.body else None
+        if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) \
+                and isinstance(first.value.value, str) and first.end_lineno is not None \
+                and first.end_col_offset is not None:
+            # ast's columns are UTF-8 byte offsets, so the span is counted in bytes directly.
+            n += (starts[first.end_lineno - 1] + first.end_col_offset
+                  - starts[first.lineno - 1] - first.col_offset)
+    return n
+
+
+def _exemptions(root: Path) -> dict[str, str]:
+    path = root / "pyproject.toml"
+    if not path.is_file():
+        return {}
     try:
-        done = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True,
-                              text=True, errors="replace", check=False)
+        doc = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as e:
+        raise Misconfigured(f"pyproject.toml does not parse: {e}") from None
+    table = doc.get("tool", {}).get("scry-prose", {}).get("exempt", {})
+    if not isinstance(table, dict):
+        raise Misconfigured("[tool.scry-prose] exempt is not a table of path = reason")
+    for rel, why in table.items():
+        if not isinstance(why, str) or not why.strip():
+            raise Misconfigured(f"{rel} is exempted with no reason")
+        if not (root / rel).is_file():
+            raise Misconfigured(f"{rel} is exempted but does not exist")
+    return table
+
+
+def _git(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[bytes]:
+    try:
+        return subprocess.run(["git", *args], capture_output=True, check=False, cwd=cwd)
     except OSError as e:
         raise Invalid(f"git could not be run: {e}") from None
+
+
+def _python_files(root: Path) -> list[str]:
+    listed: set[str] = set()
+    for extra in ([], ["--others", "--exclude-standard"]):
+        done = _git(["ls-files", "-z", *extra], root)
+        if done.returncode != 0:
+            raise Invalid(f"git ls-files failed (rc={done.returncode}): "
+                          f"{done.stderr.decode(errors='replace').strip()}")
+        listed.update(done.stdout.decode(errors="surrogateescape").split("\0"))
+    return sorted(rel for rel in listed if rel.endswith(".py") and not (root / rel).is_symlink()
+                  and (root / rel).is_file())
+
+
+def prose(root: Path) -> str:
+    """The prose check's line for a tree within its ceilings; `Refused` naming each file over."""
+    exempt = _exemptions(root)
+    judged, over = 0, []
+    for rel in _python_files(root):
+        if rel in exempt:
+            continue
+        source = (root / rel).read_bytes()
+        try:
+            share = prose_bytes(source) / len(source) if source else 0.0
+        except (SyntaxError, ValueError, tokenize.TokenError) as e:
+            raise Invalid(f"{rel} could not be read: {type(e).__name__}: {e}") from None
+        ceiling = PROSE_CEILING_TESTS if rel.startswith("tests/") else PROSE_CEILING
+        judged += 1
+        if share > ceiling:
+            over.append(f"{rel}: prose {share:.1%} of {len(source)} bytes, ceiling {ceiling:.1%}")
+    if judged == 0:
+        raise Invalid("prose examined 0 files, so this is not a verdict")
+    if over:
+        raise Refused("\n".join(over))
+    return f"prose: {judged} files within the ceiling"
+
+
+def _root() -> Path:
+    done = _git(["rev-parse", "--show-toplevel"])
     if done.returncode != 0:
         raise Invalid(f"git does not say where the repository root is (rc={done.returncode}): "
-                      f"{done.stderr.strip()}")
-    return Path(done.stdout.strip())
+                      f"{done.stderr.decode(errors='replace').strip()}")
+    return Path(done.stdout.decode(errors="surrogateescape").strip())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -153,9 +249,14 @@ def main(argv: list[str] | None = None) -> int:
             print(duplication(root, Path(scratch)))
         print("== mcp_probe (the probe's tasks still fit the MCP servers)")
         print(probe_fit(root))
+        print("== prose (comments and docstrings within their ceiling)")
+        print(prose(root))
     except Refused as e:
         print(f"pre-commit: REFUSED: {e}", file=sys.stderr)
         return EXIT_FAIL
+    except Misconfigured as e:
+        print(f"pre-commit: USAGE: {e}", file=sys.stderr)
+        return EXIT_USAGE
     except Invalid as e:
         print(f"pre-commit: INVALID: {e}", file=sys.stderr)
         return EXIT_INVALID
