@@ -393,3 +393,8 @@ def test_a_file_that_does_not_parse_is_invalid_naming_it(
     _plant(repo, "broken.py", "def (:\n")
     rc, said = _hook(capsys)
     assert rc == verdict.EXIT_INVALID and "broken.py could not be read" in said, said
+
+
+def test_this_repository_is_within_its_prose_ceiling() -> None:
+    """scry-core has no pre-commit of its own (it holds no server), so its suite runs the check."""
+    assert hook.prose(Path(__file__).resolve().parent.parent).startswith("prose: ")

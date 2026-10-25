@@ -1,6 +1,3 @@
-"""The server's lock over its one machine, and the wait for it to be free that wakes on a release
-and never polls."""
-
 from __future__ import annotations
 
 import threading
@@ -11,7 +8,6 @@ from scry_core import boundary
 
 
 def _take(lock: boundary.ServerLock, still: Callable[[], bool], got: list[bool]) -> None:
-    """What a waiter does: wait while `still()`, and give back what it took."""
     took = lock.acquire_while(still)
     got.append(took)
     if took:
@@ -19,8 +15,7 @@ def _take(lock: boundary.ServerLock, still: Callable[[], bool], got: list[bool])
 
 
 def test_a_wait_for_the_lock_wakes_when_the_holder_releases_and_never_polls() -> None:
-    """A still call holds the lock for a while: whoever waits for it to be free asks its question
-    once when it starts and once when the call ends, not twenty times a second in between."""
+    """The waiter asks once at its start and once at the release, not repeatedly in between."""
     lock = boundary.ServerLock()
     asked: list[float] = []
     got: list[bool] = []
@@ -39,7 +34,7 @@ def test_a_wait_for_the_lock_wakes_when_the_holder_releases_and_never_polls() ->
 
 
 class _Asked:
-    """A `due` that counts its askings and says when the first one came."""
+    """A `due` that counts its askings."""
 
     def __init__(self) -> None:
         self.count = 0
@@ -82,8 +77,7 @@ def test_a_nested_hold_frees_the_lock_only_at_its_outermost_release() -> None:
 
 
 def test_the_holder_is_known_and_a_wake_makes_a_waiter_ask_again_without_a_release() -> None:
-    """What made a wait moot can happen under the lock (a writer closed by the call holding it):
-    a wake has the waiter ask now, and it gives up while the lock is still held."""
+    """A wake makes the waiter ask again while the lock is still held."""
     lock = boundary.ServerLock()
     due = _Asked()
     got: list[bool] = []

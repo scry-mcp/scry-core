@@ -1,44 +1,29 @@
-"""A SESSION RECORDED AS IT WAS DONE, and exported as `perform`'s own document: what a Scry server's
-call boundary feeds (`Recorder`), the rules of the export (`document`), the tool body that writes
-it (`export`), and the check a replayed step holds to (`diverged`). The runner that plays a
-document back is `scry_core.replay`, apart, because a server never needs the client it uses.
+"""A session recorded as it was done and exported as `perform`'s own document. `Recorder` is fed
+by a server's call boundary, `document` holds the export rules, `export` writes it, `diverged` is
+the check a replayed step holds to. The runner is `scry_core.replay`, apart: a server never needs
+the client it uses.
 
-THE RECORDING is always on from a `start` that left a session up (the document's start; a plan it
-ran that failed included) and cleared by the next one; `close` keeps it, so a session can be
-exported after it closed. Every outermost call is recorded with its arguments as given, its status,
-what its reply says that a replay must hold to, and the machine around it (`Machine`), except a
-sequence (`perform`, `drive`), whose steps are recorded instead, and the tools that are no step of a
-sequence (`outside`: `close`, the exporter); a `start` that runs a plan has its plan's steps
-recorded after it. The server's `record_max` calls the export would keep at most (a call it would
-drop costs nothing), its own `perform`'s step limit; past it the recording stops and the export
-says it is cut there. The document names the server's entry file (`entry`), the saved states it
-loads and the declarations the session's `start` found stored (`needs`), so a runner needs no list
-of servers and a replay that would start under other breakpoints says so before it plays.
+The recording starts at a `start` that left a session up (a failed plan included), is cleared by
+the next one and survives `close`. Every outermost call is recorded except a sequence (its steps
+are recorded instead) and the `outside` tools. Past `record_max` the recording stops and the export
+says it is cut there. The document names the entry file, the states it loads and the declarations
+the start found stored (`needs`), so a replay that would start under other breakpoints says so
+before it plays.
 
-THE EXPORT keeps what moved the machine and what was checked, drops the rest and names each drop:
+Export rules, each drop named:
 
-- a call the server refused is dropped, unless the machine moved under it (which cuts);
-- a tool declared `drop` (a read the export does not check, or a call that changes nothing in the
-  emulated machine) is dropped, unless the call moved the machine (a reader that steps the guest to
-  read it), which is kept as a step: dropped, the replay would fall behind;
-- a tool declared with fields is kept as a CHECK: the step carries `recorded`, those fields of its
-  reply, and the replay's `perform` compares them; one whose arguments name what a dropped call
-  wrote (`dest`, or its reply's `WRITTEN` fields: the file, the directory, a file inside it) is
-  dropped, because the replay does not write it and the check would hold by construction;
-- any other tool is kept as a STEP; one that left the machine at a new stop carries the stop's
-  fields (`stop_fields`) as its `recorded`;
-- a RELEASE (a call that left the machine running), and a call declared `wall` that came back with
-  the machine moved (a `resume(seconds=)` that stopped, a `stop`) or whose reply says its wall-clock
-  bound ended it (`WALL_VERDICTS`), CUT the document there: whatever ends such a run, the clock or a
-  breakpoint, stops the cpu at a place inside its frame, and no replayed advance reaches it, a count
-  of frames ending at the frame's edge; every stop after it would inherit the shift, so what came
-  before is the bench;
-- a kept call that writes a file the session named (`dest`) CUTS the document there: a replay
-  finds the file there and is refused;
-- the first call the rules cannot place (ended without a reply, refused after the machine moved,
-  with the machine unreadable around it, or finding the machine elsewhere than the call before
-  left it: something outside the recording moved it) CUTS the document there: what came
-  before stands, and the reply names the call and why.
+- a refused call is dropped, unless the machine moved under it (which cuts);
+- a `drop` tool is dropped, unless the call moved the machine: dropped, the replay falls behind;
+- a tool declared with fields is a CHECK carrying `recorded`; dropped when its arguments name what
+  a dropped call wrote (`dest`, the `WRITTEN` fields), since it would hold by construction;
+- any other tool is a STEP, carrying `stop_fields` as `recorded` if it left a new stop;
+- a RELEASE, a `wall` call that moved the machine, or a reply with a `WALL_VERDICTS` verdict CUTS:
+  the clock or a breakpoint stops the cpu inside a frame no replayed advance reaches, so every
+  later stop would inherit the shift;
+- a kept call writing a file the session named (`dest`) CUTS: a replay finds the file and is
+  refused;
+- the first call the rules cannot place (no reply, refused after the machine moved, machine
+  unreadable or not where the call before left it) CUTS; what came before stands.
 """
 
 from __future__ import annotations
@@ -54,44 +39,30 @@ from typing import Any, Literal, Protocol, get_args
 from scry_core import fresh, judges, prose
 from scry_core.reply_contract import Invalid, unavailable
 
-#: The most calls a recording keeps beside the ones its export would drop, whatever its
-#: `record_max`: a session that reads a million times is bounded too.
+#: Storage ceiling per kept call, so a session that reads a million times is bounded too.
 STORED_PER_KEPT = 10
-#: The most dropped calls an export's reply lists, the newest; `dropped_total` counts them all.
 DROPPED_SHOWN = 40
-#: The document's own version, which a runner of another shape refuses.
 DOCUMENT_VERSION = 3
-#: The tool that exports, which is never recorded.
 EXPORT_TOOL = "perform_export"
-#: The key a step's recorded fields sit under: no Scry tool declares an argument by that name.
+#: No Scry tool declares an argument by this name.
 RECORDED = "recorded"
-#: A reply's `verdict` when the call's wall-clock bound ended it, whatever the tool: such a run
-#: stopped wherever the clock found the cpu, and ends the document.
 WALL_VERDICTS = frozenset({"TIMEOUT"})
-#: Why a release ends the document: the run stops where the clock or the machine (a breakpoint)
-#: stops the cpu, inside a frame and inside whatever loop it is in, and no replayed advance
-#: reaches that place (a count of frames ends at a frame's edge); every stop after it would
-#: inherit the shift.
 RELEASED = ("it released the machine, and the stop that ends a run lands at a place inside its "
             "frame that no replayed advance reaches")
 RUN_STOPPED_INSIDE = ("its run was stopped by the wall clock or by the machine itself, at a place "
                       "inside its frame that no replayed advance reaches")
-#: The reply fields that name a file or a directory a call wrote, beside its `dest` argument.
 WRITTEN = ("path", "manifest", "dir")
 
-#: What a tool's calls become in an export: kept as a `step`; a `wall` step, a run the wall clock
-#: ends; `drop`ped; or, a tuple of field names, kept as a check of those fields.
+#: `wall`: a run the wall clock ends. A tuple of field names: a check of those fields.
 Word = Literal["step", "wall", "drop"]
 ExportAs = Word | tuple[str, ...]
-#: A tool's declaration: one for every call, or one per value of its `method` argument.
 Replay = ExportAs | Mapping[str, ExportAs]
 WORDS: tuple[str, ...] = get_args(Word)
 
 
 @dataclass(frozen=True)
 class States:
-    """The tool that saves and loads a state, its two `method` values and the argument that
-    names the state."""
+    """The tool that saves and loads a state, its `method` values and the state-name argument."""
 
     tool: str
     save: str
@@ -101,10 +72,8 @@ class States:
 
 @dataclass(frozen=True)
 class Machine:
-    """The machine around a call, as the server reads it. `running`: whether it runs. `seq`: the
-    sequence number of the stop it is at, None when not known. `stop`: that stop in the fields a
-    replayed advance answers with (`stop_fields`); with `seq`, what says a call moved the machine.
-    `known`: False when the server could not be read at all."""
+    """The machine around a call. `seq` is the stop's sequence number; `seq` with `stop` (in
+    `stop_fields`) says whether a call moved the machine; `known` is False when unreadable."""
 
     running: bool
     seq: int | None
@@ -112,15 +81,12 @@ class Machine:
     known: bool = True
 
 
-#: What a recording keeps for a machine the server could not read.
 UNREAD = Machine(running=True, seq=None, known=False)
 
 
 @dataclass(frozen=True)
 class Call:
-    """One recorded call: `status` is the reply's, or `ended` for a call with no reply (cancelled,
-    or failed in its body); `walled` when its reply says the wall clock's bound ended it; `wrote`
-    the files it names as written (its `dest`, its reply's `path`)."""
+    """One recorded call: `status` is the reply's, or `ended` when there was no reply."""
 
     op: str
     args: Mapping[str, Any]
@@ -130,36 +96,33 @@ class Call:
     after: Machine
     walled: bool = False
     wrote: tuple[str, ...] = ()
-    #: Whether the export could keep it (a step or a check), which is what `record_max` counts.
+    #: What `record_max` counts.
     keepable: bool = True
 
 
 @dataclass
 class Recording:
-    """What a session did since its `start`: the calls, how many of them an export could keep,
-    `full` once that reached the server's `record_max`, and the declarations its start found
-    stored."""
+    """What a session did since its `start`."""
 
     start: Mapping[str, Any]
     calls: list[Call] = field(default_factory=list)
     kept: int = 0
     full: bool = False
-    #: Whether it stopped at the storage ceiling (calls an export drops), not at `record_max`.
+    #: Stopped at the storage ceiling, not at `record_max`.
     stored_out: bool = False
-    #: By list's reply key, the references it listed as the start began (`Recorder.lists`).
     declarations: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
 class Declared:
-    """How a tool's calls are exported, and whether it reads only (what a drop is said to be)."""
+    """How a tool's calls are exported, and whether it only reads."""
 
     export_as: ExportAs
     read_only: bool
 
 
 class Declaration(Protocol):
-    """What the Recorder reads of a server's stored declaration: its family and its ref."""
+    """A server's stored declaration, as the Recorder reads it."""
 
     @property
     def kind(self) -> str: ...
@@ -169,21 +132,12 @@ class Declaration(Protocol):
 
 
 class Recorder:
-    """One server's recording, fed by its `scry_core.boundary.Boundary`. `server` and `entry`
-    name the server and its entry file, which a runner starts; `record_max` the most calls an
-    export keeps, the server's own bound; `machine` reads the machine (`Machine`); `live` says
-    whether a session is up, as the start refuses over one; `declarations` the declarations the
-    store holds as a start succeeds (what it re-arms), each with its `kind` and `ref`, and
-    `kinds` each kind's list tool and the reply field its rows are under (two kinds may share
-    one field, and several fields one tool); `stop_fields` names the
-    fields of a reply that say where a stop is; `sequences` the tools whose steps are recorded
-    in their place; `start_tool` the tool that begins a recording and `plan` its argument whose
-    steps are recorded after it, `plan_with` the arguments that only bound the plan and leave the
-    start with it (a replayed start runs no plan, and the server refuses its bound alone);
-    `outside` the tools that are no step a replay could take
-    (`close`, the exporter's own); `states` the tool and methods that save and load a state.
-    Each is the server's own vocabulary, declared by the server: nothing
-    here names a tool."""
+    """One server's recording, fed by its `scry_core.boundary.Boundary`. Every argument is the
+    server's own vocabulary; nothing here names a tool. `kinds` maps a declaration kind to its
+    list tool and the reply field its rows are under; `sequences` are the tools whose steps are
+    recorded in their place; `plan` is the `start_tool` argument whose steps are recorded after
+    it and `plan_with` the arguments that only bound the plan (a replayed start runs no plan, and
+    the server refuses its bound alone); `outside` are the tools no replay could take."""
 
     def __init__(self, server: str, entry: str, record_max: int, machine: Callable[[], Machine],
                  live: Callable[[], bool], *,
@@ -211,31 +165,26 @@ class Recorder:
         self.declared: dict[str, Declared | dict[str, Declared]] = {}
         self.recording: Recording | None = None
         self._starting: Recording | None = None
-        # What the store held as the start's plan began (or as it ended, with no plan): what a
-        # replayed `start` re-arms, before the plan's own steps declare anything.
+        # What a replayed `start` re-arms, before the plan's own steps declare anything.
         self._found_declared: dict[str, list[str]] | None = None
 
     def declare(self, tool: str, export_as: Replay | None, read_only: bool) -> None:
-        """A tool registered: how its calls are exported, by default `drop` for a reader and
-        `step` for the rest, or a mapping of that per `method`. Anything else is refused at
-        import, as a typo would be a step."""
+        """A tool registered: how its calls are exported, `drop` for a reader and `step` by
+        default, or a mapping per `method`. A typo is refused at import, not silently a step."""
         if isinstance(export_as, Mapping):
             self.declared[tool] = {m: _declared(tool, e, read_only) for m, e in export_as.items()}
         else:
             self.declared[tool] = _declared(tool, export_as, read_only)
 
     def kind(self, tool: str, args: Mapping[str, Any]) -> Declared:
-        """A call's declaration; a tool registered nowhere here, or a `method` its mapping does
-        not name, is a step that reads."""
+        """A call's declaration; an unregistered tool or unnamed `method` is a step."""
         declared = self.declared.get(tool, Declared("step", False))
         if isinstance(declared, dict):
             return declared.get(str(args.get("method")), Declared("step", False))
         return declared
 
     def begin(self, tool: str, parent: str | None, given: Mapping[str, Any]) -> Machine | None:
-        """The machine before a call this recording takes, or None for one it does not: a
-        tool `outside`, a sequence (its steps are taken instead), a call nested in anything
-        but a sequence or a plan, and any call while nothing records."""
+        """The machine before a call this recording takes, or None for one it does not."""
         if tool in self.outside:
             return None
         if parent is None and tool == self.start_tool:
@@ -259,12 +208,9 @@ class Recorder:
 
     def end(self, tool: str, parent: str | None, given: Mapping[str, Any],
             reply: Mapping[str, Any], began: Machine | None) -> None:
-        """A call answered: a successful outermost `start` makes its recording the session's;
-        a call `begin` took is added to its recording."""
+        """A call answered: a successful outermost `start` makes its recording the session's."""
         if parent is None and tool == self.start_tool:
-            # A START THAT LEFT A SESSION UP is that session's, a plan that failed included: the
-            # recording before it belongs to a machine that is gone. One refused while a session
-            # was live touched nothing, and the session up is the one recorded.
+            # A start refused over a live session touched nothing, so the earlier recording stays.
             session = reply.get("session")
             up = reply.get("status") == "ok" or (not self._found_live and isinstance(session, dict)
                                                  and session.get("alive") is True)
@@ -293,9 +239,7 @@ class Recorder:
 
     def ended(self, tool: str, parent: str | None, given: Mapping[str, Any],
               began: Machine | None) -> None:
-        """A call that ended with no reply, cancelled or failed: a `start` takes the recording
-        with it (the machine it started is not the one recorded); any other call taken is added
-        as `ended`, which cuts the export there."""
+        """A call that ended with no reply: a `start` drops the recording, any other is `ended`."""
         if parent is None and tool == self.start_tool:
             self.recording = self._starting = None
         elif began is not None:
@@ -304,8 +248,7 @@ class Recorder:
     def _add(self, parent: str | None, call: Call) -> None:
         into = self._starting if parent == self.start_tool else self.recording
         if into is None:
-            # `begin` takes no call while there is nothing to add to: reaching here is this
-            # module's defect, said as one, never an `assert` that `python -O` removes.
+            # Not an `assert`: `python -O` removes it.
             raise RuntimeError(f"{call.op} was taken with no recording to add it to")
         if into.full:
             return
@@ -319,23 +262,21 @@ class Recorder:
         into.kept += call.keepable
 
     def _stored(self) -> dict[str, list[str]]:
-        """The declarations the store holds as a start succeeds, sorted, by list's reply key; none
-        when the server cannot say, which a replay then has nothing to compare against."""
+        """The stored declarations by list's reply key, sorted; empty when the server cannot say."""
         try:
             held: dict[str, list[str]] = {key: [] for key in self.lists}
             for d in self._declarations():
                 if d.kind in self.kinds:
                     held[self.kinds[d.kind][1]].append(d.ref)
             return {key: sorted(refs) for key, refs in held.items()}
-        except Exception:  # noqa: BLE001 -- as `_read`: a recorder never fails a call
+        except Exception:  # noqa: BLE001 -- as `_read`
             return {}
 
     def _was_live(self) -> bool:
-        """Whether a session was up as a start began; unreadable counts as up, so a start that
-        cannot be told apart keeps the recording rather than handing it to a refusal."""
+        """Whether a session was up as a start began; unreadable counts as up."""
         try:
             return self._live()
-        except Exception:  # noqa: BLE001 -- as `_read`: a recorder never fails a call
+        except Exception:  # noqa: BLE001 -- as `_read`
             return True
 
     def _read(self) -> Machine:
@@ -346,7 +287,6 @@ class Recorder:
             return UNREAD
 
 
-# ============================================================================ the export
 
 
 @dataclass
@@ -369,13 +309,12 @@ class Account:
 
 
 def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
-    """The recorder's recording as `perform`'s document, by the rules the module docstring sets
-    out, and the account of what was kept, dropped and cut."""
+    """The recording as `perform`'s document by the module's rules, and the account."""
     recording = recorder.recording
     if recording is None:
         raise RuntimeError("document() of a recorder with no recording: `export` refuses first")
     out = Account()
-    unwritten: set[str] = set()          # files that dropped calls wrote, which no replay writes
+    unwritten: set[str] = set()          # files dropped calls wrote
     previous: Machine | None = None
     for n, call in enumerate(recording.calls, start=1):
         declared = recorder.kind(call.op, call.args)
@@ -437,8 +376,7 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
 
 
 def _reads_any(args: Mapping[str, Any], files: set[str]) -> bool:
-    """Whether an argument names one of `files`, a directory holding one, or a file inside one
-    (a series' `dest` is a directory, and its manifest a file in it)."""
+    """Whether an argument names one of `files`, a directory holding one, or a file inside one."""
     named = [Path(v) for v in args.values() if isinstance(v, str) and v]
     return any(Path(f) == n or n in Path(f).parents or Path(f) in n.parents
                for f in files for n in named)
@@ -492,12 +430,9 @@ def _dropped_why(declared: Declared) -> str:
 
 
 def export(recorder: Recorder, dest: str, overwrite: bool = False) -> dict[str, Any]:
-    """`perform_export`'s body: the recording written to `dest` (absolute or `~`-led, `.json`,
-    refused if it is there unless `overwrite`), and the account: `path`, `steps`, `checks`,
-    `dropped` (the newest `DROPPED_SHOWN`) with `dropped_total`, `cut`, and `replay`, the
-    runner's command line. `no_recording` when no `start` succeeded since the server began, or
-    when the recording holds no step a replay could take (cut at its first, or every call
-    dropped)."""
+    """`perform_export`'s body: the recording written to `dest`, and the account (`dropped` holds
+    the newest `DROPPED_SHOWN`). Raises `no_recording` when no `start` succeeded or no step is
+    left to replay."""
     target = judges.writable_file("dest", dest)
     if target.suffix != ".json":
         raise Invalid("bad_argument", f"dest={dest!r} must end in `.json`: the document is JSON")
@@ -529,7 +464,7 @@ def export(recorder: Recorder, dest: str, overwrite: bool = False) -> dict[str, 
 def diverged(recorded: Mapping[str, Any], reply: Mapping[str, Any]
              ) -> tuple[str, Any, Any] | None:
     """The first recorded field the reply does not hold to: (field, recorded, got), or None.
-    Both sides are compared as JSON carries them, since the recorded side came through it."""
+    Both sides are compared as JSON carries them."""
     for name, value in recorded.items():
         got = json.loads(json.dumps(reply.get(name), default=str))
         if got != value:
@@ -543,8 +478,7 @@ def step_arguments(step: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def refuse_recorded(step: Mapping[str, Any]) -> str | None:
-    """Why a step's `recorded` is not one (a sequence's preflight refuses the step with it), or
-    None when it is a mapping or absent."""
+    """Why a step's `recorded` is not a mapping, or None."""
     if isinstance(step.get(RECORDED, {}), dict):
         return None
     return (f"carries `{RECORDED}` as {step[RECORDED]!r}: it is the fields a replay holds the "
@@ -553,10 +487,9 @@ def refuse_recorded(step: Mapping[str, Any]) -> str | None:
 
 def divergence(i: int, op: str, reply: Mapping[str, Any],
                apart: tuple[str, Any, Any]) -> tuple[str, dict[str, Any]]:
-    """The message and the fields of the INVALID `diverged` a sequence answers when step `i`
-    (`op`, counted from 1 in the message as the progress line counts) did not hold to its
-    `recorded`: what the runner reads (`failed_at`, `field`,
-    `recorded`, `got`) and the step's own reply under `failed`, as a failed step carries it."""
+    """The message and fields of the INVALID `diverged` for step `i` (0-based; the message counts
+    from 1): what the runner reads (`failed_at`, `field`, `recorded`, `got`) and the step's reply
+    under `failed`."""
     field, recorded, got = apart
     return (f"step {i + 1} ({op!r}) diverged: `{field}` was recorded {recorded!r} and came back "
             f"{got!r}", {"failed_at": i, "failed": {"op": op, "reply": dict(reply)},
@@ -564,8 +497,7 @@ def divergence(i: int, op: str, reply: Mapping[str, Any],
 
 
 class Unrecorded:
-    """The recorder of a server that records nothing: every hook a no-op, so a boundary calls
-    them without asking whether a recording is there."""
+    """The recorder of a server that records nothing: every hook a no-op."""
 
     recording: Recording | None = None
 
@@ -584,9 +516,7 @@ class Unrecorded:
         """No recording to add to."""
 
 
-#: `perform_export`'s description halves both servers share, filled by each into its docstring
-#: (`docs.filled`) around what that server keeps and cuts: what the document is for, and what
-#: `dest` takes and the reply says.
+#: `perform_export`'s description halves both servers share (`docs.filled`).
 EXPORTS = ("Write what this session did since its `start` to `dest` as `perform`'s own document, "
            "so an investigation becomes a bench: `uv run python -m scry_core.replay <dest>`, from "
            "this server's repository, plays it with no model and exits 0 when every step held. "
@@ -601,8 +531,7 @@ DOC_VALUES = {"EXPORTS": EXPORTS, "EXPORT_REPLY": EXPORT_REPLY}
 
 
 def export_summary(args: dict[str, Any], reply: dict[str, Any]) -> str:
-    """`perform_export`'s one line: what the document holds, what was dropped, where the cut
-    fell, and where it went."""
+    """`perform_export`'s one line."""
     cut = f", cut at call {reply['cut']['call']}" if "call" in reply.get("cut", {}) else ""
     return (f"perform_export: {prose.counted(reply['steps'], 'step')}, "
             f"{prose.counted(reply['checks'], 'check')}, "

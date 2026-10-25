@@ -1,14 +1,4 @@
-"""A CANCELLED CALL, as every Scry server ends it: at once, the way its own bound would have ended
-it, and said in the next reply.
-
-The protocol cancels a request by notification (`notifications/cancelled`), and the SDK answers
-it by cancelling the request's scope and sending no response. A tool body here is synchronous and
-runs on a worker thread the SDK does not stop, so a wait would run on to its bound and hold the
-next call behind it. `check` is the poll point every bounded wait calls (`progress.Ticker` calls
-it at each poll): past a cancellation it raises the event loop's own `CancelledError`, which
-unwinds the tool to the server's boundary, where the end the tool declared (`OnCancel`) is applied
-and the `Cancelled` record is kept for the next reply, because the cancelled call has none.
-"""
+"""A cancelled call ends at once, as its own bound would have."""
 
 from __future__ import annotations
 
@@ -21,25 +11,18 @@ from typing import Any, Literal, get_args
 
 import anyio.from_thread
 
-#: How a tool ends when its call is cancelled, declared where it is registered: `stop` for one
-#: that comes back with the machine STOPPED, `kill` for one whose failure path ends the emulator
-#: (`start`), `none` for one that leaves the machine as it was.
+#: How a cancelled tool ends: `stop` the machine, `kill` the emulator, or `none`.
 OnCancel = Literal["stop", "kill", "none"]
 ON_CANCEL: tuple[OnCancel, ...] = get_args(OnCancel)
-#: What the machine was left as, in the record.
 Left = Literal["stopped", "running", "closed", "unknown"]
 
 
-# THE END OF A CANCELLED CALL RUNS SHIELDED: the request stays cancelled while the server stops
-# the machine it left, and that stop may wait on a bounded poll of its own, whose `check` would
-# raise again and abandon the very cleanup the cancellation asked for.
+# Cleanup after a cancel runs shielded, or its own polls would raise again and abandon it.
 _shield = threading.local()
 
 
 def check() -> None:
-    """Raise the event loop's `CancelledError` if this call was cancelled; a no-op outside an
-    AnyIO worker thread (a test, a direct call), where no request can be cancelled, and inside
-    `shielded`."""
+    """Raise `CancelledError` if this call was cancelled."""
     if shielding():
         return
     try:
@@ -50,7 +33,7 @@ def check() -> None:
 
 @contextlib.contextmanager
 def shielded() -> Iterator[None]:
-    """Run the end of a cancelled call with `check` silenced, on this thread only."""
+
     _shield.depth = getattr(_shield, "depth", 0) + 1
     try:
         yield
@@ -59,15 +42,12 @@ def shielded() -> Iterator[None]:
 
 
 def shielding() -> bool:
-    """Whether this thread is ending a cancelled call (`shielded`)."""
+
     return getattr(_shield, "depth", 0) > 0
 
 
 def is_cancellation(e: BaseException) -> bool:
-    """Whether `e` is a cancelled call unwinding, never a tool's own error: the event loop's
-    `CancelledError`, and on a worker thread the request itself asked, so one a tool body let
-    escape from a loop of its own is not taken for the call's. Outside a worker the type is all
-    there is to go on."""
+    """Whether `e` is this call's own cancellation unwinding."""
     if not isinstance(e, asyncio.CancelledError):
         return False
     try:
@@ -81,8 +61,7 @@ def is_cancellation(e: BaseException) -> bool:
 
 @dataclass(frozen=True)
 class Cancelled:
-    """A call that was cancelled: which tool, how long it had run, and what it left, and the
-    cancelled calls before it that no reply reported (`recorded`)."""
+    """A cancelled call plus earlier unreported ones."""
 
     tool: str
     after_s: float
@@ -97,15 +76,13 @@ class Cancelled:
         return note
 
     def summary(self, summary: str) -> str:
-        """The next reply's summary, saying first what the cancelled call left."""
+
         before = f", and {', '.join(self.earlier)} before it" if self.earlier else ""
         return f"after a cancelled {self.tool} ({self.left}){before}: {summary}"
 
 
 def recorded(previous: Cancelled | None, tool: str, after_s: float, left: Left) -> Cancelled:
-    """The record of a call just cancelled, keeping the names of those no reply has reported
-    yet: what the machine was left as is the newest call's, but a caller still has to learn
-    that the earlier ones never answered."""
+    """Record a cancelled call, keeping earlier unreported ones."""
     earlier = () if previous is None else (*previous.earlier, previous.tool)
     return Cancelled(tool, after_s, left, earlier)
 

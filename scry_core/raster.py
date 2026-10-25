@@ -1,17 +1,13 @@
-"""What a picture is compared by: its crop, its signature, its difference from another, and the
-measures a region is tracked by. No emulator here: a server hands in cells or a decoded PNG.
+"""Crop, signature, difference and match measures over a picture.
 
-ONE SIGNATURE for both servers, so "is it the same screen" has one answer whoever asks and a
-number can be cached or documented once. It is BLAKE2b with an 8-byte digest, written as 16
-lowercase hex characters (a string, because a JSON integer past 2^53 loses digits in a JavaScript
-client), over `scry-sig/1|<kind>|<w>x<h>|` and then the cells of the crop, row by row, where `w`
-and `h` are the crop's: the signature says what a region shows, wherever it sits. A cell is its
-RESOLVED colour, never an index: a pixel is its RGB triplet; a text cell is its code page 437
-byte and the RGB its attribute gives the foreground and the background. So a palette change is a
-signature change, and two screens that look the same have one signature.
+The signature is shared by both servers: BLAKE2b with an 8-byte digest, 16 lowercase hex
+characters (a string, because a JSON integer past 2^53 loses digits in JavaScript), over
+`scry-sig/1|<kind>|<w>x<h>|` and then the crop's cells row by row, `w` and `h` being the crop's.
+A cell is its resolved colour, never an index (a text cell: its CP437 byte plus foreground and
+background RGB), so a palette change changes the signature.
 
-A CROP is `[x, y, width, height]` inside the picture, width and height at least one. One that
-leaves the picture is refused, never padded: a padded crop compares pixels nobody drew.
+A crop is `[x, y, width, height]` inside the picture, width and height at least one; one that
+leaves the picture is refused, never padded.
 """
 
 from __future__ import annotations
@@ -25,15 +21,14 @@ from scry_core.png import Raster
 from scry_core.reply_contract import Invalid, unavailable
 
 Kind = Literal["pixel", "text"]
-#: Bytes a cell of each kind: an RGB triplet; a CP437 byte and two triplets.
+#: Bytes per cell: RGB; a CP437 byte and two RGB.
 CELL_BYTES: dict[str, int] = {"pixel": 3, "text": 7}
 SIGNATURE_TAG = b"scry-sig/1"
 SIGNATURE_BYTES = 8
 
 def inside(crop: Sequence[int] | None, width: int, height: int, what: str = "the picture",
            name: str = "crop") -> Rect:
-    """The rectangle `crop` names (the whole `width` x `height` when None), judged to lie inside
-    it: one that leaves is refused with the size, never padded."""
+    """The rectangle `crop` names (the whole picture when None); one that leaves it is refused."""
     if crop is None:
         return 0, 0, width, height
     x, y, w, h = rect(name, crop)
@@ -44,7 +39,7 @@ def inside(crop: Sequence[int] | None, width: int, height: int, what: str = "the
 
 
 def rgb(raster: Raster) -> bytes:
-    """`raster`'s pixels as RGB triplets, an indexed one resolved through its palette."""
+    """`raster`'s pixels as RGB triplets, resolving any palette."""
     if raster.palette is None:
         return raster.pixels
     lut = [bytes(c) for c in raster.palette]
@@ -52,7 +47,7 @@ def rgb(raster: Raster) -> bytes:
 
 
 def cells_of(cells: bytes, width: int, cell: int, area: Rect) -> bytes:
-    """The cells of `area`, row by row, out of `cells` laid `width` cells to a row."""
+    """The cells of `area`, row by row, out of `cells` `width` to a row."""
     x, y, w, h = area
     stride = width * cell
     return b"".join(cells[(y + r) * stride + x * cell:(y + r) * stride + (x + w) * cell]
@@ -61,8 +56,7 @@ def cells_of(cells: bytes, width: int, cell: int, area: Rect) -> bytes:
 
 def signature(kind: Kind, width: int, height: int, cells: bytes,
               crop: Sequence[int] | None = None) -> str:
-    """The signature of the `crop` of a `width` x `height` grid of `kind` cells (the module
-    docstring says what is hashed). `cells` of the wrong length is the server's bug."""
+    """The signature of the `crop` of `kind` cells; a wrong `cells` length is ValueError."""
     size = CELL_BYTES[kind]
     if len(cells) != width * height * size:
         raise ValueError(f"{width}x{height} {kind} cells are {width * height * size} bytes; got "
@@ -75,12 +69,12 @@ def signature(kind: Kind, width: int, height: int, cells: bytes,
 
 
 def picture_signature(raster: Raster, crop: Sequence[int] | None = None) -> str:
-    """The signature of a picture's pixels, resolved: the same number the screen it shows has."""
+    """The signature of a picture's pixels."""
     return signature("pixel", raster.width, raster.height, rgb(raster), crop)
 
 
 def cropped(raster: Raster, crop: Sequence[int] | None) -> Raster:
-    """The part of `raster` inside `crop`, keeping its palette."""
+    """The part of `raster` inside `crop`."""
     area = inside(crop, raster.width, raster.height)
     if area == (0, 0, raster.width, raster.height):
         return raster
@@ -89,8 +83,7 @@ def cropped(raster: Raster, crop: Sequence[int] | None) -> Raster:
 
 
 def _enlarged(a: Raster, b: Raster) -> str:
-    """What to say when one picture is the other's size times a whole factor: a view's PNG is
-    enlarged by its `scale`, and a crop of it would compare a corner of the enlargement."""
+    """The hint for one picture being the other enlarged by a whole factor."""
     for big, small, which in ((a, b, "the first is {}x the second"),
                               (b, a, "the second is {}x the first")):
         factor, rest = divmod(big.width, small.width)
@@ -102,10 +95,9 @@ def _enlarged(a: Raster, b: Raster) -> str:
 
 def diff(a: Raster, b: Raster, crop: Sequence[int] | None = None,
          shift: Sequence[int] = (0, 0), tolerance: int = 0) -> dict[str, Any]:
-    """`a` against `b`: pixel (x, y) of `a` against (x + dx, y + dy) of `b`, over the part of
-    `crop` (on both pictures) where both lie inside it; a channel within `tolerance` counts as
-    equal. Answers `differing_pixels`, `bbox` (`[x, y, w, h]` in `a`'s coordinates, unavailable
-    when none differ), `max_delta` per channel, and `compared`, the rectangle of `a` compared."""
+    """`a` against `b` shifted by `shift`, within `crop`; a channel within `tolerance` is equal.
+    Answers `differing_pixels`, `bbox` (`[x, y, w, h]` in `a`'s coordinates), `max_delta` per
+    channel and `compared`, the rectangle of `a` compared."""
     if crop is None and (a.width, a.height) != (b.width, b.height):
         raise Invalid("bad_argument", f"the pictures are {a.width}x{a.height} and "
                       f"{b.width}x{b.height}: name a `crop` that lies inside both"
@@ -120,8 +112,7 @@ def diff(a: Raster, b: Raster, crop: Sequence[int] | None = None,
                       "itself: nothing is left to compare")
     pa, pb = rgb(a), rgb(b)
     differing, peak = 0, [0, 0, 0]
-    # The box's edges, kept as the scan goes: a list of every differing pixel would be the
-    # whole picture's worth of ints for one rectangle.
+    # Edges kept as the scan goes: a list of every differing pixel would be a picture's worth.
     x_lo, y_lo, x_hi, y_hi = right, bottom, left - 1, top - 1
     for y in range(top, bottom):
         ra = (y * a.width) * 3
@@ -146,12 +137,12 @@ def diff(a: Raster, b: Raster, crop: Sequence[int] | None = None,
 
 
 def changed_pixels(previous: Raster, current: Raster, crop: Sequence[int] | None = None) -> int:
-    """How many pixels of `crop` differ between two pictures of one size."""
+    """How many pixels of `crop` differ between two same-size pictures."""
     return int(diff(previous, current, crop)["differing_pixels"])
 
 
 def match_fraction(raster: Raster, ref: Raster, crop: Sequence[int] | None = None) -> float:
-    """The fraction of `crop`'s pixels equal to `ref`, a picture of the crop's size."""
+    """The fraction of `crop`'s pixels equal to `ref`."""
     area = inside(crop, raster.width, raster.height)
     if (ref.width, ref.height) != area[2:]:
         raise Invalid("bad_argument", f"`ref` is {ref.width}x{ref.height} and the crop is "

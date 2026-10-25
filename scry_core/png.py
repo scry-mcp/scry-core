@@ -1,16 +1,13 @@
-"""One PNG codec for both servers, in the standard library: indexed or RGB, a transparent index,
-APNG, the nearest-neighbour enlargement, and a decoder.
+"""One stdlib PNG codec for both servers: indexed or RGB, a transparent index, APNG, enlargement, a
+decoder.
 
-WHY NOT PILLOW. Neither server takes a dependency it can do without, and a PNG is five chunks and
-a zlib stream. What matters here is the INDEXED form: a picture of palette indices written as an
-indexed PNG keeps the index of every pixel in the file, so the file is the data and not only a
-view of it, which is what lets a golden compare pens and not colours that two pens can share.
+No Pillow: the indexed form keeps the palette index of every pixel in the file, so a golden
+compares pens and not colours that two pens can share.
 
-THE DECODER reads what a comparison is handed: 8 bits a sample, no interlace, indexed (colour
-type 3) or RGB (type 2), any of the five row filters, every chunk's CRC checked, the image data
-inflated no further than its header declares. Any other kind (grey, alpha, 16-bit, interlaced) is
-refused by name rather than guessed at, and the ancillary chunks are skipped: a `tRNS` says how a
-viewer draws an index, not which index the pixel holds.
+The decoder reads 8 bits a sample, no interlace, indexed (type 3) or RGB (type 2), all five row
+filters, every CRC checked, the image data inflated no further than the header declares. Other
+kinds are refused by name, and ancillary chunks are skipped: a `tRNS` says how a viewer draws an
+index, not which index the pixel holds.
 """
 
 from __future__ import annotations
@@ -22,13 +19,10 @@ from dataclasses import dataclass
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 PLTE_MAX = 256
 INDEXED, RGB = 3, 2            # PNG colour types
-#: The colour types this decoder refuses, named in its refusal.
 OTHER_KINDS = {0: "greyscale", 4: "greyscale with alpha", 6: "RGB with alpha"}
 _FILTER_NONE = b"\x00"
-#: zlib's own default level: a picture here is written on every call that shows one.
 ZLIB_LEVEL = 6
-#: The most pixels a picture read here may declare: far past any emulated screen, and a header
-#: that claims more is refused before anything is allocated for it.
+#: A header claiming more pixels is refused before anything is allocated.
 PIXELS_MAX = 1 << 26
 
 
@@ -38,8 +32,8 @@ class NotAPicture(ValueError):
 
 @dataclass(frozen=True)
 class Raster:
-    """A picture before it is encoded: one byte per pixel with `palette` (the PLTE, each entry
-    `(r, g, b)`), or three bytes per pixel with none."""
+    """One byte per pixel with a `palette` of `(r, g, b)` entries, or three bytes per pixel
+    without."""
 
     width: int
     height: int
@@ -66,8 +60,8 @@ class Raster:
 
 
 def enlarged(raster: Raster, factor: int) -> Raster:
-    """`raster` with every pixel a `factor` x `factor` square of itself: nothing is resampled,
-    so an indexed picture keeps its indices."""
+    """`raster` with every pixel a `factor` x `factor` square, so an indexed picture keeps its
+    indices."""
     if factor == 1:
         return raster
     depth = raster.depth
@@ -81,9 +75,8 @@ def enlarged(raster: Raster, factor: int) -> Raster:
 
 
 def encode(raster: Raster, clear: int | None = None) -> bytes:
-    """The PNG file of `raster`: 8 bits a sample, filter none on every row. `clear` names one
-    index of an indexed raster drawn fully transparent (a `tRNS` chunk), for pixels that stand
-    for no entry; an index past the palette is refused, since a viewer has no colour for it."""
+    """The PNG file of `raster`. `clear` names one index of an indexed raster drawn fully
+    transparent (a `tRNS` chunk); an index past the palette is refused."""
     if clear is not None and clear < 0:
         raise ValueError(f"clear={clear} is not an index")
     if raster.palette is not None:
@@ -101,12 +94,8 @@ def encode(raster: Raster, clear: int | None = None) -> bytes:
 
 
 def encode_animation(frames: list[Raster], delay: tuple[int, int]) -> bytes:
-    """An animated PNG (APNG) of `frames`, every one shown for `delay` (numerator, denominator,
-    in seconds) and played for ever. The first frame is the file's still image as well, so a
-    viewer that knows no animation shows it. APNG is three more chunk kinds over a PNG: `acTL`
-    counts the frames, an `fcTL` places each, and `fdAT` carries every frame after the first
-    under one sequence of numbers shared with the `fcTL`s. All frames share the first one's
-    size and palette."""
+    """An APNG of `frames`, each shown for `delay` (numerator, denominator, in seconds), looping for
+    ever. The first frame is also the still image; all frames share its size and palette."""
     if not frames:
         raise ValueError("an animation has at least one frame")
     first = frames[0]
@@ -130,8 +119,7 @@ def encode_animation(frames: list[Raster], delay: tuple[int, int]) -> bytes:
 
 
 def decode(data: bytes) -> Raster:
-    """The raster a PNG file holds, of the kinds the module docstring names, or `NotAPicture`
-    saying what it met."""
+    """The raster a PNG file holds, or `NotAPicture` saying what it met."""
     if not data.startswith(PNG_SIGNATURE):
         raise NotAPicture("not a PNG: the file does not open with the PNG signature")
     pos, header, palette = len(PNG_SIGNATURE), b"", b""
@@ -179,8 +167,7 @@ def decode(data: bytes) -> Raster:
         entries = tuple((palette[i], palette[i + 1], palette[i + 2])
                         for i in range(0, len(palette), 3))
     depth = 1 if colour == INDEXED else 3
-    # Inflated no further than the size the header declares, plus one byte to tell "too long"
-    # from "exact": a small file can inflate to gigabytes, and a header can claim them too.
+    # The extra byte tells "too long" from "exact"; a small file can inflate to gigabytes.
     expected = height * (width * depth + 1)
     try:
         raw = zlib.decompressobj().decompress(b"".join(idat), expected + 1)
@@ -228,7 +215,7 @@ def _unfiltered(raw: bytes, width: int, height: int, depth: int) -> bytes:
 
 
 def _head(raster: Raster) -> list[bytes]:
-    """The signature, `IHDR`, and `PLTE` when the raster is indexed."""
+    """The signature, `IHDR`, and `PLTE` if indexed."""
     header = struct.pack(">IIBBBBB", raster.width, raster.height, 8,
                          INDEXED if raster.palette is not None else RGB, 0, 0, 0)
     out = [PNG_SIGNATURE, _chunk(b"IHDR", header)]

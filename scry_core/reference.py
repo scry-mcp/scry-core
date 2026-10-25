@@ -1,30 +1,18 @@
-"""A server's reference generated from its registry: per tool its call, every argument with its
-type, default and bounds, the fields its reply adds, its description and an example a live run
-made, on its family's page (`docs/reference/<family>.md`, the family's name in lower case with
-dashes), and in `REFERENCE.md` the index of every family and tool and the envelope every reply
-carries.
+"""A server's reference generated from its registry: per tool its call, arguments, reply fields,
+description and a live example, on its family's page (`docs/reference/<family>.md`), and in
+`REFERENCE.md` the index and the envelope every reply carries.
 
-WHY GENERATED. An argument documented by hand falls behind the code the day the code moves, and
-nobody sees it, because the page still reads well. So what the registry knows is read from it,
-and each server's drift test holds the pages to it (`drift`), naming the tool whose block and
-code disagree. The prose outside the markers is the hand-written why: a rewrite keeps every line
-of it, each paragraph travelling with the block it follows.
-
-WHY A PAGE PER FAMILY. A reader comes back for one tool, so the page they read holds its family
-and no other; the families are the server's own roster (`scry_core.roster`).
-
-WHY THE EXAMPLES COME FROM A TRANSCRIPT. An example typed by hand shows the reply its author
-believed in. `examples_from` picks, per tool, a call a live run made and judged, and
-`docs/reference/examples.json` holds the pick, rewritten only from a run.
+Generated because a hand-written argument list falls behind the code unseen; each server's drift
+test holds the pages to the registry. The prose outside the markers is hand-written and a rewrite
+keeps it, each paragraph travelling with the block it follows. Examples come from a live run's
+transcript (`examples_from`, held in `docs/reference/examples.json`), never typed by hand.
 
     uv run python -m scry_core.reference <module>:<attribute> \
         [--examples JSONL ... [--mark PATH=TEXT ...]] [--write]
 
-Run from the server's repository, where `<module>` imports. The attribute is the server's
-`Registry`. `--examples` rewrites `examples.json` from those transcripts first (each `--mark`
-spells a directory of the run's host, its scratch or its bench, as the text it names); then
-`--write`
-rewrites the pages, or, without it, the pages are compared. Exit codes: 0 the pages agree with
+Run from the server's repository. `--examples` rewrites `examples.json` from the transcripts
+first (`--mark` spells a host directory as the text it names); `--write` rewrites the pages,
+else they are compared. Exit codes: 0 the pages agree with
 the registry (or were rewritten); 1 drift, one finding a line; 2 a usage error (a spec naming no
 registry included); 3 INVALID, nothing was compared (a registry with no tool or a roster naming
 one it lacks, a transcript or an `examples.json` that cannot be read, a transcript with no OK
@@ -68,11 +56,9 @@ REFERENCE_PAGE = "REFERENCE.md"
 PAGES_DIR = "docs/reference"
 EXAMPLES_PATH = f"{PAGES_DIR}/examples.json"
 
-#: The blocks `REFERENCE.md` holds, beside the tools' blocks the family pages hold.
 INDEX_BLOCK, ENVELOPE_BLOCK = "index", "envelope"
 
-#: Reply fields an example leaves out: the `session` block closes every reply alike, and
-#: `REFERENCE.md` documents it once.
+#: Reply fields an example leaves out; `REFERENCE.md` documents `session` once.
 LEFT_OUT = frozenset({"session"})
 
 
@@ -89,10 +75,8 @@ _MARKER = re.compile(begin_marker("(?P<begin>\\S+)") + "|" + end_marker("(?P<end
 
 @dataclass(frozen=True)
 class Registry:
-    """What a server's reference is generated from: its registered tools (`server`, after
-    `strict_arguments`, whose schemas are the ones a client is shown), each one's reply model,
-    its roster, its envelope (the fields any of its replies may carry, which `REFERENCE.md`
-    lists once) and the repository it lives in."""
+    """What a reference is generated from: the server (after `strict_arguments`, so its schemas
+    are the ones a client sees), reply models, roster, envelope and repository root."""
 
     server: MCPServer
     models: Mapping[str, type]
@@ -166,9 +150,7 @@ def _in_cell(text: str) -> str:
 
 
 def _markdown_text(text: str) -> str:
-    """A description as markdown shows it: a `<` outside a code span is text, not a tag, and a
-    line the docstring indents is flush, since four spaces after a blank line would be read as a
-    code block."""
+    """A description as markdown shows it: `<` outside code is text, and indentation is flush."""
     parts = _CODE.split(text)
     return "".join(p if i % 2 else _CODE_BLOCK_INDENT.sub("", p).replace("<", "&lt;")
                    for i, p in enumerate(parts))
@@ -176,8 +158,7 @@ def _markdown_text(text: str) -> str:
 
 #: What markdown shows as typed: a fenced block, a double-backtick span, a single one.
 _CODE = re.compile(r"(```.*?```|``.+?``|`[^`\n]+`)", re.DOTALL)
-#: Four spaces or more opening a line, which markdown would read as a code block; a list nests
-#: with fewer, and keeps them.
+#: Four spaces open a markdown code block; a list nests with fewer, and keeps them.
 _CODE_BLOCK_INDENT = re.compile(r"^ {4,}", re.MULTILINE)
 
 
@@ -223,8 +204,7 @@ def _example(example: Mapping[str, Any] | None) -> list[str]:
 
 def tool_block(tool: Tool, model: type, envelope: type,
                example: Mapping[str, Any] | None) -> str:
-    """One tool's generated block: heading, title, call, description, arguments, reply fields,
-    example."""
+    """One tool's generated block."""
     lines = [f"## `{tool.name}`", ""]
     if tool.title:
         lines += [f"*{tool.title}*", ""]
@@ -264,8 +244,7 @@ def _examples(reg: Registry) -> dict[str, Any]:
 
 @dataclass(frozen=True)
 class _Expected:
-    """A page as the registry would have it: its heading when it has to be created, its blocks
-    by name in the roster's order, and the family it holds (empty for `REFERENCE.md`)."""
+    """A page as the registry would have it; `family` is empty for `REFERENCE.md`."""
 
     title: str
     blocks: dict[str, str]
@@ -273,8 +252,7 @@ class _Expected:
 
 
 def _generated(reg: Registry, examples: Mapping[str, Any]) -> dict[str, _Expected]:
-    """Every page the registry generates, by path relative to the repository; `Invalid` for a
-    registry with no tool or a roster naming one the server lacks."""
+    """Every page the registry generates, by repository-relative path."""
     tools = {t.name: t for t in registered(reg.server)}
     if not tools:
         raise Invalid("the registry holds no tool, so there is nothing to compare")
@@ -288,8 +266,7 @@ def _generated(reg: Registry, examples: Mapping[str, Any]) -> dict[str, _Expecte
     pages = {REFERENCE_PAGE: _Expected("# Reference", {INDEX_BLOCK: _index(reg),
                                                       ENVELOPE_BLOCK: _envelope(reg)})}
     for family, names in reg.roster.families:
-        # "The ... tools", never the bare family name: a page titled `# Lua` would take the
-        # anchor `#lua` its own tool `lua` needs.
+        # a page titled `# Lua` would take the anchor `#lua` its own tool needs.
         pages[_page(family)] = _Expected(f"# The {family} tools", {
             n: tool_block(tools[n], reg.models[n], reg.envelope, examples.get(n))
             for n in names}, family)
@@ -301,7 +278,7 @@ def _generated(reg: Registry, examples: Mapping[str, Any]) -> dict[str, _Expecte
 
 @dataclass(frozen=True)
 class _Segment:
-    """One block of a page and the hand-written prose that follows it, up to the next block."""
+    """One block of a page and the hand-written prose after it."""
 
     name: str
     block: str
@@ -309,8 +286,8 @@ class _Segment:
 
 
 def _parsed(text: str) -> tuple[str, list[_Segment]]:
-    """A page as the prose before its first block and its segments in the page's order; an
-    `Invalid` naming the block whose markers do not pair."""
+    """A page as the prose before its first block and its segments; `Invalid` on unpaired
+    markers."""
     head, segments = text, list[_Segment]()
     at, open_name, body_at = 0, "", 0
     for m in _MARKER.finditer(text):
@@ -335,9 +312,8 @@ def _parsed(text: str) -> tuple[str, list[_Segment]]:
 
 
 def _rewritten(text: str, want: _Expected) -> str:
-    """`text` with the blocks of `want` in its order. A block keeps the prose that followed it,
-    a missing one goes in at its place in the roster, and a block of no tool of the page goes
-    while its prose joins the block before it, so no hand-written line is lost."""
+    """`text` with the blocks of `want` in its order. A dropped block's prose joins the block
+    before it, so no hand-written line is lost."""
     head, segments = _parsed(text)
     if want.family and head.startswith("# "):
         head = want.title + head[len(head.split("\n", 1)[0]):]
@@ -362,8 +338,8 @@ def _rewritten(text: str, want: _Expected) -> str:
 
 
 def drift(reg: Registry) -> list[str]:
-    """Each way the pages and `examples.json` depart from the registry, one finding per line, or
-    empty; `Invalid` when nothing could be compared."""
+    """Each way the pages and `examples.json` depart from the registry; `Invalid` when nothing
+    could be compared."""
     examples = _examples(reg)
     pages = _generated(reg, examples)
     found: list[str] = []
@@ -415,10 +391,8 @@ def drift(reg: Registry) -> list[str]:
 
 
 def write(reg: Registry) -> list[str]:
-    """Rewrite every page from the registry, creating the pages that are not there under their
-    heading, and answer the paths of the pages that changed. Every page is rebuilt before the
-    first is written, so a page whose markers do not pair (`Invalid`) leaves all of them as
-    they were."""
+    """Rewrite every page from the registry and answer the paths that changed. All are rebuilt
+    before the first is written, so an `Invalid` page leaves every one as it was."""
     changed = {}
     for rel, want in _generated(reg, _examples(reg)).items():
         path = reg.root / rel
@@ -440,12 +414,9 @@ def write(reg: Registry) -> list[str]:
 
 def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
                   norm: demo.Normaliser) -> dict[str, Any]:
-    """One example per tool of `tools`, by name, from a live run's records (`tool`, `args`,
-    `reply`, `section`, the cell's `label` or `cell`, its `verdict`). Only a record of an OK cell
-    whose reply carries a `status` is a candidate (an exception the harness caught is none); the
-    first with an `ok` reply wins, else the first refusal, since a refusal is a real reply too.
-    Its paths are spelled for any host as a demo's are, the `LEFT_OUT` fields dropped and its long
-    values abridged."""
+    """One example per tool of `tools` from a live run's records. Only an OK cell whose reply
+    carries a `status` is a candidate; the first `ok` reply wins, else the first refusal.
+    Paths are spelled host-independently, `LEFT_OUT` dropped, long values abridged."""
     ok: dict[str, Mapping[str, Any]] = {}
     refused: dict[str, Mapping[str, Any]] = {}
     for rec in records:
@@ -461,7 +432,7 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
 
 
 def _records(paths: Sequence[Path]) -> list[dict[str, Any]]:
-    """Every record of the JSON Lines files `paths`; `Invalid` for one that cannot be read."""
+    """Every record of the JSON Lines files `paths`."""
     try:
         return [json.loads(line) for p in paths
                 for line in p.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -473,7 +444,7 @@ def _records(paths: Sequence[Path]) -> list[dict[str, Any]]:
 
 
 def _loaded(spec: str) -> Registry:
-    """The `Registry` `spec` names, or a `ValueError` saying what it names instead."""
+    """The `Registry` `spec` names, else a `ValueError`."""
     module, _, attribute = spec.partition(":")
     if not attribute:
         raise ValueError(f"{spec!r} is not <module>:<attribute>")
@@ -547,8 +518,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover -- run in a child by the tests
-    # `-m` runs this file as `__main__`, a second copy of the module whose `Registry` is not the
-    # class a server built its registry from, so the command runs the imported copy's `main`.
+    # `-m` makes a second copy of the module whose `Registry` is not the server's class.
     from scry_core.reference import main as imported_main
 
     raise SystemExit(imported_main())

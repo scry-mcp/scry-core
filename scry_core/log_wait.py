@@ -1,13 +1,9 @@
-"""A wait for a line of a log, the one engine both servers drive: what the log ALREADY holds is
-answered first, and only then does it wait, so a line that went past before the call is still
-found (`already`). The wait ends on a match (`TARGET`), on its bound (`TIMEOUT`), on a machine
-that stopped (a stopped machine logs nothing, so the wait could not end) or on an emulator that
-went away; before either of the last three it reads the log once more, since the loop checks its
-condition first and reads last, and a line written in between was never looked for.
+"""Wait for a log line, the engine both servers drive. The log's existing lines are answered
+first (`already`), so a line written before the call is still found. Before a STOPPED or GONE
+ending it reads once more, since the loop reads last.
 
-What a log is and how a server answers stay the server's: the engine is handed `fresh`, which
-returns the whole lines the log gained since it was last called (`lines_since` reads one file),
-and gives back what it found or how it ended, for the server to compose into its reply.
+The engine is handed `fresh` (the whole lines gained since its last call) and returns what it
+found or how it ended; the server composes the reply.
 """
 
 from __future__ import annotations
@@ -30,14 +26,12 @@ LAST_LINE_SHOWN = 40
 
 
 def lines_since(log: Path, mark: int) -> tuple[list[str], int]:
-    """The WHOLE lines a log gained since byte `mark`, and the byte after the last of them,
-    which is the next mark. A half-written line stops being a line: the read is cut at the last
-    newline, so a line is only ever seen whole, and once, however the writer's flushes fall. A
-    log that is not there yet, or that is SHORTER than the mark (rewritten), is read from its
-    start: a mark past the end describes a file that no longer exists. A byte-order mark is the
-    file's, not its first line's, and the mark returned still counts its bytes. A mark inside a
-    line (a size taken while the writer was mid-line) leaves that line's rest out: a line begun
-    before the mark belongs to before it."""
+    """The whole lines a log gained since byte `mark`, and the next mark.
+
+    A half-written line is cut at the last newline, so a line is seen whole and once. A missing
+    or shorter-than-mark (rewritten) log is read from its start. A mark inside a line skips that
+    line's rest. The returned mark counts a byte-order mark's bytes.
+    """
     if not log.exists():
         return [], 0
     if mark > log.stat().st_size:
@@ -47,7 +41,7 @@ def lines_since(log: Path, mark: int) -> tuple[list[str], int]:
         before = fh.read(1) if mark else b"\n"
         raw = fh.read()
     if before != b"\n":
-        head = raw.find(b"\n") + 1           # 0 when the line has not ended yet: nothing whole
+        head = raw.find(b"\n") + 1           # 0: line not ended
         mark, raw = mark + head, raw[head:]
     bom = len(codecs.BOM_UTF8) if mark == 0 and raw.startswith(codecs.BOM_UTF8) else 0
     raw = raw[bom:]
@@ -58,9 +52,8 @@ def lines_since(log: Path, mark: int) -> tuple[list[str], int]:
 
 @dataclass(frozen=True)
 class Found:
-    """The first matching line, and the counts that place it: `already` it was in the log when
-    the wait first looked; `lines_before` the lines examined before it; `lines_total` how many
-    matched in the read that found it; `arrived_during` the lines written while it waited."""
+    """The first matching line; `already` it was in the log at the first look, `lines_total` the
+    matches in the read that found it, `arrived_during` the lines written while waiting."""
     line: str
     already: bool
     lines_total: int
@@ -79,9 +72,7 @@ Ending = Literal["TIMEOUT", "STOPPED", "GONE"]
 
 @dataclass(frozen=True)
 class Ended:
-    """A wait that found nothing: how it ended, the lines that arrived while it waited and
-    every line it examined, and how long it waited; `at_bound` a stop found as the bound ran
-    out rather than by a poll inside it."""
+    """A wait that found nothing; `at_bound` a stop found as the bound ran out, not by a poll."""
     ending: Ending
     arrived_during: int
     lines_examined: int
@@ -93,8 +84,7 @@ def wait(rx: re.Pattern[str], fresh: Callable[[], list[str]], *, seconds: float,
          stopped: Callable[[], bool], alive: Callable[[], bool],
          progress: mprogress.Progress = mprogress.no_progress,
          label: str = "log_wait") -> Found | Ended:
-    """Wait up to `seconds` for a line `rx` matches among what `fresh` hands back. `stopped`
-    and `alive` are asked passively, every poll; `label` heads the progress line."""
+    """Wait up to `seconds` for a line `rx` matches among what `fresh` hands back."""
     clock = mprogress.Ticker(seconds, progress)
     first = fresh()
     total = len(first)
@@ -146,9 +136,7 @@ def wait(rx: re.Pattern[str], fresh: Callable[[], list[str]], *, seconds: float,
 
 
 def timeout_note(pattern: str, ended: Ended, where: str, writer: str) -> str:
-    """The `note` of a wait whose bound ran out: what arrived and what was examined (`where` says
-    over what span of the log), so an expired bound is never read as "there was nothing to match
-    against", and a silent `writer` (the guest, the driver) is said as such."""
+    """The `note` of a wait whose bound ran out; `where` names the span of log examined."""
     silent = ("" if ended.arrived_during else
               f" The {writer} wrote NOTHING at all in this window, so the question may be "
               "whether it is still writing rather than what it wrote.")
@@ -159,8 +147,7 @@ def timeout_note(pattern: str, ended: Ended, where: str, writer: str) -> str:
 
 
 def gone_message(pattern: str, ended: Ended, seconds: float) -> str:
-    """The refusal of a wait whose emulator went away: nothing more will be written, so a longer
-    wait cannot help."""
+    """The refusal of a wait whose emulator went away."""
     return (f"the emulator is GONE, {ended.waited_s} s into a {seconds:g} s wait for /{pattern}/, "
             "and a final read of the log after it died found nothing matching either. Nothing "
             "more will be written, so this needs a new session, not a bigger bound")

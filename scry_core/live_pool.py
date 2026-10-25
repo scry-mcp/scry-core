@@ -1,30 +1,22 @@
 """Run a live tier's independent jobs as parallel child processes, and merge what each declares.
 
-A live run spends most of its time waiting on emulators, so the jobs that share nothing (a
-matrix's sections, a suite's files) can wait side by side. Each job is a child process of the
-caller's own script; it writes a SUMMARY, a JSON document in the format this module writes and
-reads, and the parent merges the summaries:
+Each job is a child process of the caller's own script; it writes a SUMMARY, a JSON document in
+the format this module writes and reads, and the parent merges the summaries:
 
     jobs = [live_pool.Job("A", [sys.executable, script], env={"X_LIVE_SECTIONS": "A"},
                           planned=labels_of_a)]
     result = live_pool.run_pool(jobs, live_pool.default_workers(), out_dir, "X_LIVE_SUMMARY")
 
-THE SUMMARY IS THE INTERFACE, never the child's printed lines: a merge that picked numbers out of
-a recap would read whatever column it landed on. A job whose child leaves no readable summary,
-or could not be started, FAILS every label it planned, with the reason, because a job that died
-is a failure, never a shorter green. A summary that plans other labels than the parent gave its
-job makes the result INVALID, and that job's labels FAIL rather than merge a plan nobody
-declared. The exit code is reported beside the summary and judged by the caller, who knows what
-its children's codes mean.
+The summary is the interface, never the child's printed lines. A job whose child leaves no
+readable summary, or could not be started, FAILS every label it planned; a summary that plans
+other labels than its job's makes the result INVALID and that job's labels FAIL. The exit code is
+reported beside the summary and judged by the caller.
 
-INTERRUPTED, every child is sent the interrupt itself (SIGINT on POSIX, so a Python child unwinds
-through its own cleanup and closes what it launched) and killed if it is still there after
-`STOP_GRACE_S`, or at once on a second interrupt. Windows has no SIGINT to send to one process,
-so there the child is terminated outright, and anything it launched is left for its owner to
-reap. Each child runs in a process group of its own, so a Ctrl-C at the terminal reaches the
-parent alone and the stop is the one interrupt a child gets: a second one is what makes a
-Python child abandon its cleanup. The price is that a signal sent to the parent's group, or a
-parent killed outright, does not reach the children; the parent's stop is what ends them.
+Interrupted, every child is sent SIGINT (terminated outright on Windows, where anything it
+launched is left for its owner) and killed after `STOP_GRACE_S`, or at once on a second
+interrupt. Each child runs in its own process group, so a Ctrl-C at the terminal reaches the
+parent alone and the child gets exactly one interrupt; the price is that a parent killed outright
+does not reach its children.
 """
 
 from __future__ import annotations
@@ -49,33 +41,21 @@ SUMMARY_FORMAT = "scry-live-summary"
 SUMMARY_VERSION = 1
 Outcome = Literal["OK", "FAIL", "BLOCKED"]
 OUTCOMES: frozenset[str] = frozenset(get_args(Outcome))
-# How often the parent looks up from waiting on its children: a bare lock wait on Windows lets
-# no Ctrl-C through, a timed one does.
+# A bare lock wait on Windows lets no Ctrl-C through, a timed one does.
 POLL_INTERVAL_S = 0.5
-# How long an interrupted child is given to unwind before it is killed.
 STOP_GRACE_S = 10.0
-# A job's name is the stem of its log and summary files: one plain word, so it is never a path,
-# and compared case-folded, because macOS and Windows file names are.
+# A job name is a file stem, so never a path; compared case-folded like macOS and Windows names.
 _JOB_NAME = re.compile(r"[A-Za-z0-9_-]+")
-# What every child is started with before its job's own environment: its output unbuffered, so
-# a child that is stopped keeps its last lines in the log, and Python's UTF-8 mode, so a child's
-# print of a label is not refused by a Windows code page.
+# Unbuffered so a stopped child keeps its last log lines; UTF-8 so a label prints under a Windows
+# code page.
 _CHILD_ENV = {"PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
-# Each child in a process group of its own (the module docstring says why).
 _OWN_GROUP: dict[str, Any] = (
     {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
     if sys.platform == "win32" else {"process_group": 0})
-# A CHILD UNWINDS ON THE POOL'S INTERRUPT WHATEVER ITS LAUNCHER IGNORED: a pool started as a
-# background job of a non-interactive shell has SIGINT ignored, an ignored signal survives exec,
-# and a Python child born so never installs the handler its cleanup runs under. So on POSIX each
-# child starts through this trampoline, which execs the job's own argv with SIGINT at its default,
-# and SIGPIPE and SIGXFSZ too: the trampoline is itself a Python, which ignores those two at
-# startup, undoing what `Popen`'s `restore_signals` did. SIGINT is UNBLOCKED as well: a mask
-# survives exec like a disposition does, and a blocked SIGINT is never delivered, only kept
-# pending. Only SIGINT: it is the pool's stop, and a block of any other signal is the launcher's.
-# Isolated (`-I`), so neither a module in the pool's directory nor the job's `PYTHON*` variables
-# reach it. A `preexec_fn` would do it in the parent's fork, which is unsafe beside the threads
-# the pool starts children from.
+# A background pool has SIGINT ignored, and ignored signals and blocked masks survive exec, so a
+# Python child would never install its cleanup handler. On POSIX each child starts through this
+# isolated (`-I`) trampoline, which restores SIGINT, SIGPIPE and SIGXFSZ (a Python ignores the
+# last two at startup) and unblocks SIGINT. A `preexec_fn` is unsafe beside the pool's threads.
 _RESTORE_SIGNALS: tuple[str, ...] = () if sys.platform == "win32" else (
     sys.executable, "-I", "-c",
     "import os, signal, sys\n"
@@ -86,17 +66,14 @@ _RESTORE_SIGNALS: tuple[str, ...] = () if sys.platform == "win32" else (
 
 
 def default_workers() -> int:
-    """Half the CPUs available, at least one, so the person at the machine keeps the other half:
-    `os.process_cpu_count` where Python has it (3.13+, which honours the process's affinity),
-    else `os.cpu_count`, the machine's."""
+    """Half the CPUs available (affinity-aware where Python has it), at least one."""
     count = getattr(os, "process_cpu_count", os.cpu_count)()
     return max(1, (count or 1) // 2)
 
 
 @dataclass(frozen=True)
 class Summary:
-    """What one job ran: every label it planned, each label's outcome, a reason for any of them,
-    its transcript and how long it took by its own clock."""
+    """What one job ran: its planned labels, each one's outcome and reason, and its transcript."""
     planned: tuple[str, ...]
     outcomes: Mapping[str, Outcome]
     reasons: Mapping[str, str]
@@ -105,8 +82,7 @@ class Summary:
 
 
 def write_summary(path: Path, summary: Summary) -> None:
-    """The summary as the child's last act. Written beside and renamed over, so a parent never
-    reads half a document."""
+    """Write the summary beside and rename it over, so a parent never reads half a document."""
     doc = {"format": SUMMARY_FORMAT, "version": SUMMARY_VERSION,
            "planned": list(summary.planned), "outcomes": dict(summary.outcomes),
            "reasons": dict(summary.reasons), "transcript": summary.transcript,
@@ -125,9 +101,7 @@ def _string_map(value: object) -> TypeGuard[dict[str, str]]:
 
 
 def read_summary(path: Path) -> Summary:
-    """A summary, or ValueError naming what is wrong with it: not JSON, another format or
-    version, a field missing or of the wrong type, an outcome or a reason for a label nobody
-    planned, a planned label with no outcome, or an outcome outside OK, FAIL and BLOCKED."""
+    """Read a summary, or raise ValueError naming what is wrong with it."""
     doc: Any = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(doc, dict) or doc.get("format") != SUMMARY_FORMAT:
         raise ValueError(f"{path} is not a {SUMMARY_FORMAT} document")
@@ -153,8 +127,7 @@ def read_summary(path: Path) -> Summary:
 
 @dataclass(frozen=True)
 class Job:
-    """One job: its name (the stem of its log and summary files), the argv that runs it, what
-    it adds to the environment, and the labels the parent expects it to judge."""
+    """One job: its name, its argv, its added environment and the labels it must judge."""
     name: str
     argv: Sequence[str]
     planned: tuple[str, ...] = field(kw_only=True)
@@ -164,13 +137,11 @@ class Job:
 @dataclass
 class JobResult:
     job: Job
-    #: None when the child was never started.
     rc: int | None
     log: Path
-    #: By the parent's clock, from the start to the exit.
     elapsed_s: float
     summary: Summary | None
-    #: Why this job's labels FAIL whatever its summary says; empty when they stand as declared.
+    #: Why this job's labels FAIL whatever its summary says; empty when they stand.
     failed_why: str = ""
 
     def outcomes(self) -> dict[str, Outcome]:
@@ -186,9 +157,8 @@ class JobResult:
 
 @dataclass
 class PoolResult:
-    #: In the jobs' declared order, whatever order they ended in.
     results: list[JobResult]
-    #: Why the merge cannot be believed; empty when it can.
+    #: Why the merge cannot be believed.
     invalid: str = ""
     outcomes: dict[str, Outcome] = field(default_factory=dict)
     reasons: dict[str, str] = field(default_factory=dict)
@@ -214,7 +184,7 @@ def _check_jobs(jobs: Sequence[Job], workers: int) -> None:
 
 
 class _Children:
-    """The children alive now, and the stop that ends them: once stopping, no new one starts."""
+    """The live children and the stop that ends them; once stopping, none starts."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -227,8 +197,7 @@ class _Children:
             if self._stopping:
                 return None
             if _RESTORE_SIGNALS and shutil.which(argv[0], path=env.get("PATH")) is None:
-                # What the trampoline's exec would fail on, refused here before it, and told apart
-                # by what is on disk: a path that is there and may not be run is not "no program".
+                # The trampoline's exec would fail here; tell "not executable" from "no program".
                 if os.sep in argv[0] and os.path.lexists(argv[0]):
                     raise PermissionError(f"{argv[0]!r} is not executable")
                 raise FileNotFoundError(f"no program {argv[0]!r}")
@@ -258,7 +227,7 @@ class _Children:
                 except subprocess.TimeoutExpired:
                     proc.kill()
         except BaseException:
-            # A SECOND INTERRUPT INSIDE THE GRACE: nobody is waiting for a clean end any more.
+            # A second interrupt inside the grace: nobody waits for a clean end any more.
             for proc in live:
                 proc.kill()
             raise
@@ -266,7 +235,7 @@ class _Children:
 
 def _run_job(job: Job, out_dir: Path, summary_var: str, children: _Children) -> JobResult:
     log, summary_path = out_dir / f"{job.name}.log", out_dir / f"{job.name}.json"
-    # A SUMMARY LEFT BY AN EARLIER RUN in the same directory would be read as this child's.
+    # A summary left by an earlier run would be read as this child's.
     summary_path.unlink(missing_ok=True)
     summary_path.with_name(summary_path.name + ".part").unlink(missing_ok=True)
     env = {**os.environ, **_CHILD_ENV, **job.env, summary_var: str(summary_path)}
@@ -297,12 +266,11 @@ def _run_job(job: Job, out_dir: Path, summary_var: str, children: _Children) -> 
 
 def run_pool(jobs: Sequence[Job], workers: int, out_dir: Path, summary_var: str,
              on_done: Callable[[JobResult], None] | None = None) -> PoolResult:
-    """Run `jobs`, at most `workers` at once, taken in declared order; each child finds the path
-    its summary goes to in `summary_var`. `on_done` sees each result as its job ends, from a
-    worker thread, one call at a time; if it raises, the pool stops as if interrupted. Refused
-    with ValueError before anything starts: no job, `workers` below one, a name that is not one
-    plain word or that two jobs share case aside, a job planning no label, or a label planned
-    twice."""
+    """Run `jobs`, at most `workers` at once; each child finds its summary path in `summary_var`.
+
+    `on_done` sees each result from a worker thread, one call at a time; if it raises, the pool
+    stops as if interrupted. Raises ValueError before anything starts on a bad job set.
+    """
     _check_jobs(jobs, workers)
     out_dir = out_dir.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -319,8 +287,7 @@ def run_pool(jobs: Sequence[Job], workers: int, out_dir: Path, summary_var: str,
     futures: list[Future[JobResult]] = []
     try:
         futures = [pool.submit(run_and_report, job) for job in jobs]
-        # WAITED ON AS A SET, not in declared order: in order, a job whose report raised would
-        # sit unseen behind a slow one still running.
+        # As a set, not in order: else a raised report hides behind a slower job.
         pending = set(futures)
         while pending:
             done, pending = wait(pending, timeout=POLL_INTERVAL_S, return_when=FIRST_EXCEPTION)

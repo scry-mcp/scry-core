@@ -1,12 +1,4 @@
-"""Where an emulator's window goes: one helper answers, both servers ask it the same way.
-
-The helper is the host's, named by `WINDOW_APP` and never guessed: a path this package invented
-(beside it, under the home) would read differently in every clone and point at somebody's private
-configuration. Asked `<helper> <app> [--shared] [--display main|secondary]`, it prints the
-emulator's placement flags one argv token per line; a WATCHED (shared) run goes to the display
-named, else to the one the session exported in `WINDOW_SHARED_DISPLAY`, else to the secondary. A
-host with one display may answer no flags at all, which is an answer and not a failure.
-"""
+"""Asks the host's placement helper (`WINDOW_APP`) where an emulator window goes."""
 
 from __future__ import annotations
 
@@ -17,25 +9,18 @@ from pathlib import Path
 
 from scry_core.reply_contract import Invalid
 
-#: The variable that names the helper.
 HELPER_VAR = "WINDOW_APP"
-#: The two display NAMES the helper knows, spelled as it spells them, and the variable a session
-#: exports with its answer to "main or secondary?", read when `display` is empty so the reply can
-#: SAY which display a shared start went to.
 DISPLAYS = ("main", "secondary")
 SHARED_DISPLAY_VAR = "WINDOW_SHARED_DISPLAY"
-#: What a `start`'s `display` takes: a display, or "" for not given; and its schema description.
 DISPLAY_OPTIONS = ("", *DISPLAYS)
 DISPLAY_ARGUMENT = ("Where a watched (`shared`) window opens: `main` or `secondary`; empty, the "
                     "display `WINDOW_SHARED_DISPLAY` names, else the secondary.")
-#: How long the helper is given: it reads the display topology and prints flags, and one that
-#: hangs would hold `start`, and the server's one lock, for ever.
+# A hung helper would hold the server's one lock for ever.
 HELPER_TIMEOUT_S = 15.0
 
 
 def check_display(shared: bool, display: str) -> None:
-    """A `display` belongs to a watched run: on any other nobody is looking at a display, so the
-    helper would ignore it, out loud on a stderr no caller sees, and it is refused here."""
+    """Refuse a `display` on an unwatched run; the helper would only complain on a hidden stderr."""
     if display and not shared:
         raise Invalid("bad_argument",
             f"display={display!r} on a run nobody watches: such a run never obeys the display. "
@@ -43,10 +28,8 @@ def check_display(shared: bool, display: str) -> None:
 
 
 def shared_display(shared: bool, display: str) -> str:
-    """Which display a shared start goes to, as its reply reports it: the argument, else the
-    session's exported answer, else the helper's default (the secondary); "" for a run nobody
-    watches. An unusable value in the environment is refused naming the variable, never passed
-    on for the helper to reject on a stderr nobody sees."""
+    """The display a shared start goes to: argument, else the variable, else secondary; "" if
+    unshared."""
     if not shared:
         return ""
     if display:
@@ -61,20 +44,16 @@ def shared_display(shared: bool, display: str) -> str:
 
 @dataclass(frozen=True)
 class Placed:
-    """The helper's answer: its flags (an empty list is an answer on a one-display host), or
-    None with `why` it gave no answer."""
+    """The helper's flags (empty on a one-display host), or None with `why` it gave none."""
     flags: list[str] | None
     why: str = ""
 
 
 def ask(app: str, shared: bool, display: str = "") -> Placed:
-    """The placement flags the helper prints for `app`, or why there are none: unset, not an
-    executable file, failed to run, timed out, or answered non-zero (in its own words).
+    """The placement flags the helper prints for `app`, or why there are none.
 
-    `is_file()` AND `os.access`, never `exists()`: what arrives can be a link a checkout did not
-    materialise, or a short text file with no exec bit, and running either raises an OSError that
-    `check=False` does not catch. `os.access(X_OK)` answers True for any file on Windows, so the
-    `except` is the half that carries the case there."""
+    `is_file()` and `os.access`, not `exists()`: a dangling link or non-exec file raises an
+    OSError that `check=False` misses. `X_OK` is always True on Windows; the `except` covers it."""
     named = os.environ.get(HELPER_VAR, "").strip()
     helper = Path(named)
     if not named:
@@ -87,8 +66,7 @@ def ask(app: str, shared: bool, display: str = "") -> Placed:
     if display:
         cmd += ["--display", display]
     try:
-        # STDIN CLOSED: the helper inherits the server's own protocol stream otherwise. Its
-        # output is decoded leniently, so a stray byte is a word in its answer, never a crash.
+        # stdin closed: else the helper inherits the server's protocol stream.
         output = subprocess.run(cmd, capture_output=True, text=True, errors="replace",
                                 check=False, timeout=HELPER_TIMEOUT_S,
                                 stdin=subprocess.DEVNULL)
@@ -98,8 +76,7 @@ def ask(app: str, shared: bool, display: str = "") -> Placed:
         return Placed(None, f"the helper at {helper} did not answer within "
                             f"{HELPER_TIMEOUT_S:g} s")
     if output.returncode != 0:
-        # THE HELPER'S OWN WORDS: without its stderr a bad display or a topology failure reads
-        # as a missing program.
+        # Its own words: without stderr a bad display reads as a missing program.
         said = output.stderr.strip() or output.stdout.strip() or "nothing"
         return Placed(None, f"the helper at {helper} answered exit code {output.returncode} and "
                             f"printed {said!r}")

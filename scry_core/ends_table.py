@@ -1,12 +1,4 @@
-"""A server reference's table of how a cancelled call ends, held against what its tools declare
-(`scry_core.boundary.Boundary.declared_ends`): the table is a promise to a caller, and a promise
-nobody compares with the code drifts the day a tool changes its end.
-
-The table sits under `SECTION` and has a row per end, the end and the tools in backticks, what
-the end leaves between them:
-
-    | `stop` | the machine stopped ... | `run_to`, `run_for` |
-"""
+"""A reference's table of how a cancelled call ends, held against `Boundary.declared_ends`."""
 
 from __future__ import annotations
 
@@ -21,9 +13,8 @@ _ROW = re.compile(r"^\| `(\w+)` \|.*\| (.*) \|\s*$", re.MULTILINE)
 
 def unlike(reference: str, declared: Mapping[str, cancel.OnCancel]
            ) -> dict[str, dict[str, list[str]]]:
-    """Where the table and the declarations disagree, per end: `table_only` (named in its row,
-    declared otherwise) and `declared_only`; empty when they agree. A reference with no section,
-    no table in it, or one end in two rows is a `ValueError`, never an agreement."""
+    """Per end, `table_only` and `declared_only` tools; empty when they agree. A missing section,
+    table or a duplicated end raises `ValueError`."""
     start = reference.find(SECTION)
     if start < 0:
         raise ValueError(f"the reference has no section {SECTION!r}")

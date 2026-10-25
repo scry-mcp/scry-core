@@ -1,52 +1,43 @@
-"""`traffic` -- what a server's replies and its tool list cost the model, per tool, in one unit.
+"""`traffic` -- what a server's replies and its tool list cost the model, per tool.
 
 Run as `python -m scry_core.traffic <server> --servers <file> [--transcript <jsonl> ...]
-[--before <table>]`, where <server> is a server the servers file loads (the probe's servers file:
-`scry_core.probe` says what it holds).
+[--before <table>]`; <server> is one the servers file loads (see `scry_core.probe`).
 
-THE UNIT is the client's: UTF-16 code units (`client_cap.utf16_units`) of ONE copy of a reply in
-compact JSON, non-ASCII as itself (the wire's indented twin is transport, not context). It is a
-proxy for tokens, never a token count, and it follows Python's serialisation: a whole float prints
-`5.0` where JavaScript prints `5`.
+THE UNIT is UTF-16 code units (`client_cap.utf16_units`) of one reply as compact JSON, non-ASCII
+as itself. A proxy for tokens, not a token count, and it follows Python's serialisation (`5.0`
+where JavaScript prints `5`).
 
-THE REPLIES come from live transcripts, JSON Lines with one call per line read for `tool` and
-`reply`; other keys are ignored. A line counts as a reply only when its `reply` is an envelope (an
-object carrying `status`): a harness's own records (an exception it caught, a call that hung, a
-pseudo-tool in parentheses) never reached a client and are counted as `skipped`; a call under a
-name the server does not list (a harness's own helper) is counted under `foreign`, outside every
-figure. INVALID: no reply at all, which is a run that examined nothing; and no call the server
-lists, which is a transcript of another server.
+THE REPLIES come from JSON Lines transcripts, one call per line read for `tool` and `reply`. A
+line is a reply only when `reply` is an envelope (an object with `status`); anything else (a
+caught exception, a hung call, a parenthesised pseudo-tool) is `skipped`. A call under a name the
+server does not list is `foreign`, outside every figure. INVALID: no reply at all, or no call
+the server lists.
 
-THE TOOL LIST is the server's `list_tools()`, uncapped: per tool its description and its
-definition (name, description and input schema, compact JSON, which is what a model is handed),
-and the server's `instructions` and the sum of its tool names.
+THE TOOL LIST is `list_tools()`, uncapped: per tool its description and definition, plus the
+server's `instructions` and tool names.
 
-PICTURES are a second column, never summed with the units: a reply's `image_tokens` is the sum,
-over the `image` blocks a client is handed attached, of the API's visual tokens for the picture as
-attached (`picture.tiles`): a step's picture inside a sequence is never attached, whatever a body
-recorded before the MCP boundary says. A block that says `inline: true` without a whole width
-and height of at least one pixel is INVALID rather than free, under any tool name, a foreign one
-included.
+PICTURES are a second column, never summed with the units: `image_tokens` counts the visual
+tokens of the `image` blocks a client is handed attached (`picture.tiles`); a step's picture
+inside a sequence is never attached. A block saying `inline: true` without a whole width and
+height of at least one pixel is INVALID, under any tool name.
 
-A TOOL IS FLAGGED FOR REVIEW when its largest reply is over `REVIEW_MAX_UNITS` (`max`), or when
-it is among the fewest tools whose replies make `REVIEW_SHARE` of all reply units (`share`).
-A listed tool no transcript called is `unmeasured`.
+A TOOL IS FLAGGED when its largest reply is over `REVIEW_MAX_UNITS` (`max`), or it is among the
+fewest tools making `REVIEW_SHARE` of all reply units (`share`). A listed tool no transcript
+called is `unmeasured`.
 
-OUTPUT. The full table, as JSON (`"format": "scry-traffic/1"`), goes to a new file under the
-servers file's `ROOT/tmp/traffic/`. Stdout, in this order: one line per flagged tool,
+OUTPUT. The full table, JSON (`"format": "scry-traffic/1"`), goes to a new file under the servers
+file's `ROOT/tmp/traffic/`. Stdout, in order: one line per flagged tool,
 
     REVIEW <server> <tool> [why] calls=N max=N p50=N total=N share=P% image_tokens=N description=N
 
-(`why` is `max`, `share` or both, `p50` the lower median, `description` its units), one
-`TOTAL <server> ...` line with the replies' figures (`foreign=N` names the unlisted tools it set
-apart) and the list's, and last `TABLE <path>`. With `--before`, an earlier table of the same
+(`p50` the lower median), one `TOTAL <server> ...` line (`foreign=N`
+counts the unlisted calls), and last `TABLE <path>`. With `--before`, an earlier table of the same
 server, each REVIEW `max`, the replies' `units`, every `image_tokens` and each list figure carry
-` (was N)`, or ` (was -)` where that table had none; a table written before `foreign` or
-`image_tokens` existed is a valid one.
+` (was N)`, or ` (was -)` where that table had none.
 
-Exit 0 with a table, 2 for a wrong call, 3 INVALID: a transcript or a `--before` that is missing,
-does not parse or does not fit, a server that lists no tools, a table that could not be written,
-a servers file the probe would refuse, or anything unforeseen.
+Exit 0 with a table, 2 for a wrong call, 3 INVALID: a transcript or `--before` that is missing,
+unparseable or misfit, a server listing no tools, an unwritable table, a servers file the probe
+refuses, or anything unforeseen.
 """
 
 from __future__ import annotations
@@ -70,16 +61,11 @@ from scry_core.probe import EXIT_INVALID, Invalid, broke, configure
 
 EXIT_TABLE = 0
 TABLE_FORMAT = "scry-traffic/1"
-#: What a caller reading the output matches, never its own spelling of them.
 LINE_REVIEW, LINE_TOTAL, LINE_TABLE = "REVIEW ", "TOTAL ", "TABLE "
-#: A reply over the most a description may hold is flagged: a description is cut there because
-#: the client will not carry more for one tool, and a reply that size is paid on every call.
 REVIEW_MAX_UNITS = CLIENT_TEXT_CAP
-#: The Pareto cut: the fewest tools that carry this share of every reply unit measured.
 REVIEW_SHARE = 0.80
-#: Where tables go, under the servers file's `ROOT`; no option moves it, as with the probe's runs.
 TABLES_UNDER_ROOT = Path("tmp") / "traffic"
-#: The table's shape, checked on a `--before` so a drifted table is refused, not read as "-".
+#: Checked on `--before` so a drifted table is refused, not read as "-".
 TABLE_KEYS = {"replies": ("calls", "units", "skipped", "unmeasured"),
               "list": ("instructions", "names", "descriptions", "definitions", "tools")}
 
@@ -90,9 +76,7 @@ def json_units(value: Any) -> int:
 
 
 def image_tokens(value: Any) -> int:
-    """The visual tokens of every picture `value` attaches as a client receives it: a reply
-    recorded before the MCP boundary still says `inline: true` on a step's picture inside
-    `perform` or `drive`, which the boundary never attaches (`unattached_below`)."""
+    """The visual tokens of every picture `value` attaches to a client."""
     return _tokens(unattached_below(value))
 
 
@@ -116,8 +100,7 @@ def _tokens(value: Any) -> int:
 
 @dataclass(frozen=True)
 class Calls:
-    """Every reply's units and image tokens by tool, and how many non-blank transcript lines
-    were not replies."""
+    """Every reply's units and image tokens by tool, and the non-reply lines skipped."""
 
     units: dict[str, list[int]]
     image_tokens: dict[str, list[int]]
@@ -136,8 +119,7 @@ def read_transcripts(paths: Iterable[Path]) -> Calls:
     tokens: dict[str, list[int]] = {}
     skipped = 0
     for path in paths:
-        # JSON Lines ends a record at "\n" alone: `splitlines` would also cut at a U+2028 a
-        # JSON string may hold raw.
+        # "\n" alone: `splitlines` would also cut at a raw U+2028 inside a JSON string.
         for n, line in enumerate(_read(path, "--transcript").split("\n"), 1):
             if not line.strip():
                 continue
@@ -163,8 +145,7 @@ def read_transcripts(paths: Iterable[Path]) -> Calls:
 
 
 def for_review(totals: dict[str, int], maxima: dict[str, int]) -> dict[str, list[str]]:
-    """Each flagged tool and why: `max` (one reply over the ceiling), `share` (in the Pareto
-    set). Ties at the cut are broken by name, so the set is the same on every run."""
+    """Each flagged tool and why: `max` or `share`. Ties at the cut break by name."""
     why: dict[str, list[str]] = {}
     grand = sum(totals.values())
     running = 0
@@ -242,8 +223,8 @@ def read_before(path: Path, server: str) -> dict[str, Any]:
 
 
 def _was(before: dict[str, Any] | None, *keys: str) -> str:
-    """` (was N)` for the value at `keys` in the earlier table, ` (was -)` where it had none,
-    and nothing without an earlier table."""
+    """` (was N)` for the value at `keys` in the earlier table, ` (was -)` if absent, "" without
+    one."""
     if before is None:
         return ""
     node: Any = before
@@ -280,7 +261,7 @@ def report(doc: dict[str, Any], before: dict[str, Any] | None) -> list[str]:
 
 
 def write_table(doc: dict[str, Any], root: Path, server: str) -> Path:
-    """The table, serialised before anything is created so a failure leaves no half file."""
+    """Write the table; serialised first so a failure leaves no half file."""
     text = json.dumps(doc, indent=1)
     under = root / TABLES_UNDER_ROOT
     try:
@@ -307,8 +288,7 @@ def main(argv: list[str]) -> int:
                         help="an earlier table of the same server, to compare against")
     opts = parser.parse_args(argv)
     try:
-        # The probe's loader, so the server measured is the one the probe asks about. It wants
-        # a tasks directory; traffic reads no task, so the placeholder is never opened.
+        # The probe's loader; it wants a tasks directory this tool never opens.
         repo = configure(opts.servers, Path())
         if opts.server not in repo.servers:
             parser.error(f"argument server: invalid choice: {opts.server!r} (choose from "

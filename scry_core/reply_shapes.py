@@ -1,11 +1,7 @@
-"""The pytest plugin that runs the shape guard (`reply_shapes_guard`), loaded by pytest through
-the `pytest11` entry point wherever this package is installed.
+"""Pytest plugin (`pytest11` entry point) that runs the shape guard.
 
-THIN ON PURPOSE, AND NOT MEASURED. pytest imports an entry-point plugin before pytest-cov starts,
-and pytest-cov documents that such a plugin cannot be measured. So this module defines the
-hooks and nothing else, the ini option is declared here without importing the guard, and every
-hook body imports the guard only once the session has begun, where coverage sees it: what runs
-is measured, and only these few lines are left out of the measure, by name, in `pyproject.toml`.
+Thin and unmeasured on purpose: pytest-cov cannot measure an entry-point plugin, so hook bodies
+import the guard late, where coverage sees it.
 """
 
 from __future__ import annotations
@@ -15,7 +11,6 @@ from typing import Any
 
 import pytest
 
-#: The ini option a suite declares its anchors in, by module name.
 ANCHORS_INI = "reply_shapes_anchors"
 
 
@@ -25,7 +20,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    # `--help` and `--version` run no suite, so they need no declaration.
     if config.option.help or config.option.version:
         return
     from scry_core import reply_shapes_guard

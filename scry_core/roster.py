@@ -1,8 +1,4 @@
-"""A server's tools BY FAMILY, the one table its `instructions` render their roster and their
-"answers while it runs" sentence from: a family every member of which answers a running machine
-is named once, whole, instead of tool by tool, and the table partitions what the server
-registers, which each server's suite holds it to (`unlisted`).
-"""
+"""A server's tools by family: the table its instructions render the roster from."""
 
 from __future__ import annotations
 
@@ -11,32 +7,27 @@ from dataclasses import dataclass
 
 
 def listed(names: Iterable[str]) -> str:
-    """Names as a roster lists them: plain, since every word of the list is a tool's name and the
-    client's cap is counted on every character."""
+    """Names joined plain: the client's cap counts every character."""
     return ", ".join(names)
 
 
 def by_method(running_ok: Iterable[str], methods: Mapping[str, Iterable[str]]) -> set[str]:
-    """The names a running machine answers: each operation whole, and a fold that answers by
-    some of its methods only, named with them (`map_write(method=load|save)`)."""
+    """Names a running machine answers; a fold answering by some methods names them."""
     return ({op for op in running_ok if op not in methods}
             | {f"{op}(method={'|'.join(ok)})" for op, ok in methods.items()})
 
 
 def answers_while_running(running_ok: Iterable[str], not_steps: Iterable[str],
                           kept_out: Iterable[str]) -> list[str]:
-    """What a refusal for a running machine names as answering: the operations a list may run
-    on it, the last stop's registers, and the tools that are no step (the two batch tools, the
-    session's end) but the ones `kept_out` (the server's start and its other lifecycle tool)."""
+    """What a refusal for a running machine names as answering."""
     return [*sorted(running_ok), "registers(from_last_stop=True)",
             *sorted(set(not_steps) - set(kept_out))]
 
 
 @dataclass(frozen=True)
 class Roster:
-    """`families`, `(name, tools)` in the order the instructions list them, and `answering`,
-    what a refusal for a running machine names as answering (a tool, or a call spelled with its
-    argument, such as `registers(from_last_stop=True)`)."""
+    """`families` as `(name, tools)` in listing order; `answering` may spell a call with
+    arguments."""
 
     families: tuple[tuple[str, tuple[str, ...]], ...]
     answering: tuple[str, ...]
@@ -46,8 +37,7 @@ class Roster:
         return " ".join(f"{name}: {listed(tools)}." for name, tools in self.families)
 
     def answering_split(self) -> tuple[list[str], list[str]]:
-        """The families every member of which answers a running machine, and the other names
-        that do, in roster order with what no family holds last."""
+        """Families wholly answering a running machine, then the other names."""
         running = set(self.answering)
         whole = [name for name, tools in self.families if running >= set(tools)]
         rest = [t for name, tools in self.families if name not in whole for t in tools
@@ -56,13 +46,12 @@ class Roster:
         return whole, rest + [t for t in self.answering if t not in held]
 
     def answering_named(self) -> set[str]:
-        """Every name the running sentence covers, its whole families expanded."""
+        """Every name the running sentence covers."""
         whole, rest = self.answering_split()
         return {t for name, tools in self.families if name in whole for t in tools} | set(rest)
 
     def running_sentence(self) -> str:
-        """`these answer: A and B whole, and x, y.`, each half only when it names
-        something."""
+        """`these answer: A and B whole, and x, y.`, each half only when non-empty."""
         whole, rest = self.answering_split()
         parts = []
         if whole:
@@ -73,8 +62,7 @@ class Roster:
         return f"these answer: {', and '.join(parts)}."
 
     def unlisted(self, registered: Iterable[str]) -> list[str]:
-        """What breaks the partition: a registered tool no family holds, one a family holds that
-        is not registered, or one two families hold. Empty when the table is the registry."""
+        """What breaks the partition of `registered` into families; empty when it holds."""
         listed = [t for _, tools in self.families for t in tools]
         twice = sorted({t for t in listed if listed.count(t) > 1})
         return ([f"held twice: {t}" for t in twice]

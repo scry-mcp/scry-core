@@ -1,13 +1,7 @@
-"""What the host shows of an emulator's window, for a live tier that has to see something drawn
-there and nowhere else (the presence edge): the window found by its owner's pid, captured by the
-host, and two captures compared by where they differ. macOS only.
-
-THE CAPTURE IS THE HOST'S OWN (`screencapture -l`, the window's own buffer whatever covers it),
-so it needs the Screen Recording permission for the process running the tier. Nothing here asks
-for it: a host that has not granted it answers with why (`Blocked`), and the cell that needed the
-capture is BLOCKED, never a FAIL. The PNG is converted to an uncompressed BMP by `sips`, which
-ships with the system, so reading it needs nothing more than the standard library.
-"""
+"""An emulator's window as the host shows it (macOS only): found by its owner's pid, captured with
+`screencapture -l`, and two captures compared. Without the Screen Recording permission the host
+answers with why (`Blocked`) and the cell is BLOCKED, never a FAIL. `sips` converts the PNG to a
+BMP so reading it needs only the standard library."""
 
 from __future__ import annotations
 
@@ -20,12 +14,11 @@ from pathlib import Path
 from scry_core import focus_watch
 from scry_core.presence import LOOK, Look
 
-#: How long a host capture or a conversion may take before it is a capture that failed.
 CAPTURE_TIMEOUT_S = 15.0
 
 
 class Blocked(Exception):
-    """The host could not capture the window, and why: the cell is BLOCKED."""
+    """The host could not capture the window."""
 
 
 def window_of(pid: int) -> int | None:
@@ -47,8 +40,7 @@ Pixel = tuple[int, int, int]
 
 @dataclass(frozen=True)
 class Image:
-    """A capture as rows of packed red-green-blue bytes, top row first: a row is compared whole,
-    and only a row that differs is looked at pixel by pixel."""
+    """A capture as rows of packed RGB bytes, top row first, so equal rows compare whole."""
 
     width: int
     height: int
@@ -67,16 +59,15 @@ class Image:
 
 
 def read_bmp(path: Path) -> Image:
-    """A 24- or 32-bit BMP in blue-green-red order, as `sips` writes one; any other layout, or a
-    file shorter than its header says, is a ValueError."""
+    """A 24- or 32-bit BGR BMP as `sips` writes it; any other layout or a short file is a
+    ValueError."""
     data = path.read_bytes()
     if data[:2] != b"BM":
         raise ValueError(f"{path} is not a BMP")
     offset = struct.unpack_from("<I", data, 10)[0]
     width, height = struct.unpack_from("<ii", data, 18)
     bpp, compression = struct.unpack_from("<HI", data, 28)
-    # BITFIELDS is read only with the masks of blue-green-red order, the ones `sips` writes for a
-    # capture with an alpha channel; any other order would swap the channels in silence.
+    # Only the BGR masks: any other BITFIELDS order would swap channels in silence.
     bgr = compression == 3 and struct.unpack_from("<III", data, 54) == (0xFF0000, 0xFF00, 0xFF)
     if bpp not in (24, 32) or not (compression == 0 or bgr) or width <= 0 or height == 0:
         raise ValueError(f"{path}: {bpp}-bit, compression {compression}, {width}x{height}, is not "
@@ -98,8 +89,8 @@ def read_bmp(path: Path) -> Image:
 
 
 def capture(pid: int, dest: Path) -> Image:
-    """The window `pid` owns, captured by the host into `dest` (a PNG, with its BMP beside it)
-    and read back; `Blocked` when the host cannot, or answers with a blank image."""
+    """The window `pid` owns, captured into `dest` (PNG, BMP beside it); `Blocked` when the host
+    cannot or answers blank."""
     if sys.platform != "darwin":
         raise Blocked(f"a window is captured on macOS only, not {sys.platform}")
     try:
@@ -123,24 +114,19 @@ def capture(pid: int, dest: Path) -> Image:
         image = read_bmp(bmp)
     except (OSError, subprocess.TimeoutExpired, ValueError, struct.error, IndexError,
             KeyError) as e:
-        # WHATEVER THE HOST'S TOOLS DO WRONG is a capture this host could not make.
         raise Blocked(f"the window could not be captured: {type(e).__name__}: {e}") from None
     if len(set(image.rows)) < 2 and len(set(image.pixels(0))) < 2:
-        # A capture of one colour shows no window content: some hosts answer a capture they
-        # will not make with a blank image rather than a refusal.
+        # Some hosts answer a capture they will not make with a blank image, not a refusal.
         raise Blocked(f"the capture of window {number} holds one colour, so it shows nothing")
     return image
 
 
 @dataclass(frozen=True)
 class Difference:
-    """Where two captures of one window differ: how many pixels, the box they span
-    (`x0, y0, x1, y1`, inclusive) as a share of the capture's width and height, the farthest any
-    of them lies inside that box from its nearest side (a fraction of the box's shorter side), how
-    many lie nearest each side (top, bottom, left, right), and the mean change of each channel
-    over them. A frame drawn on a window's inner edges spans
-    nearly the whole content and stays shallow; the box, not the capture, is the reference,
-    because the capture also holds the window's title bar, which nothing draws on."""
+    """Where two captures differ: pixel count, the inclusive box (`x0, y0, x1, y1`) and its span as
+    a share of the capture, the deepest pixel from its nearest side (fraction of the box's shorter
+    side), pixels nearest each side (top, bottom, left, right), and the mean change per channel.
+    The box is the reference, not the capture, which also holds a title bar nothing draws on."""
 
     changed: int
     box: tuple[int, int, int, int]
@@ -151,7 +137,7 @@ class Difference:
 
 
 def difference(before: Image, after: Image) -> Difference:
-    """`after` against `before`, pixel by pixel; captures of different sizes are a ValueError."""
+    """`after` against `before`; captures of different sizes are a ValueError."""
     if (before.width, before.height) != (after.width, after.height):
         raise ValueError(f"the captures differ in size: {before.width}x{before.height} against "
                          f"{after.width}x{after.height}")
@@ -185,16 +171,15 @@ def difference(before: Image, after: Image) -> Difference:
                       (sums[0] / n, sums[1] / n, sums[2] / n))
 
 
-#: How far from a side the edge may reach in a capture, in edge widths, with room for scaling.
+#: Farthest the edge may reach from a side, in edge widths, with room for scaling.
 EDGE_REACH = 2.5
-#: How much of the window a drawn edge's changed box spans: the content, but not the title bar.
+#: Least share of the window a drawn edge's box spans: the content, not the title bar.
 CONTENT_SPAN = 0.75
 
 
 def edge_verdict(d: Difference, look: Look = LOOK) -> tuple[bool, str]:
-    """Whether `d`, a capture with the edge drawn against one without, is the edge: a frame
-    round the content on all four sides, nowhere deeper than the edge reaches, towards orange;
-    and what was measured."""
+    """Whether `d` (edge drawn against not) is the edge: an orange-ward frame on all four sides,
+    no deeper than the edge reaches; and what was measured."""
     x0, y0, x1, y1 = d.box
     perimeter = 2 * ((x1 - x0) + (y1 - y0))
     reach = EDGE_REACH * look.edge

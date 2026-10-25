@@ -1,15 +1,7 @@
-"""THE FOCUS GATE a live section takes `scry_core.focus_watch` through, the same flow on every
-server: a control proves the watch sees what it must (a start in front, none behind, the owner's
-Space moved on purpose) before its samples may clear anything, and the verdict judges the run
-after it. Each outcome is a cell's, in `live_pool`'s words: `OK`, `FAIL`, or `BLOCKED` when the
-window could not be judged at all, or the control could not be taken.
+"""The focus-watch flow shared by every server: a control proves the watch sees what it must, then
+the verdict judges the run.
 
-THE SPACE CONTROL IS AN ACTUATOR, so it lives here and not beside the instrument: `move_space`
-presses Mission Control's shortcuts through System Events (it needs the Accessibility permission)
-and reads the result back through the instrument's own `spaces`. On a host where every display
-holds one Space there is nothing to move to, and on one without the private CoreGraphics
-symbols nothing to read: in both the control could not be taken, which is BLOCKED, never the
-watch's FAIL.
+`move_space` is an actuator, so it lives here and not beside the instrument.
 """
 
 from __future__ import annotations
@@ -24,19 +16,16 @@ from typing import Protocol
 from scry_core import focus_watch
 from scry_core.live_pool import Outcome
 
-#: How long each control start is held in front, or behind, for the watch to sample it (the
-#: servers' `hold` callbacks wait it out).
+#: How long each control start is held in front, or behind, for the watch to sample it.
 HOLD_S = 4.0
-#: Shorter than this, a judged window says too little about a run to be its verdict.
+#: Shorter than this, a judged window is too little to be a verdict.
 MIN_WINDOW_MS = 60_000
 
-# THE SPACE CONTROL'S KEYS: Mission Control's Ctrl+Right and Ctrl+Left, as key codes.
+# Mission Control's Ctrl+Right and Ctrl+Left key codes.
 KEY_RIGHT, KEY_LEFT = 124, 123
 SPACE_KEYS = (KEY_RIGHT, KEY_LEFT)
 SPACE_SETTLE_S = 1.5
-#: What `move_space` says when every display holds one Space.
 NO_OTHER_SPACE = "no other Space to move to"
-#: What it says when a display holds more and the shortcuts moved nothing.
 SHORTCUTS_OFF = ("the shortcuts moved nothing though a display holds {} Spaces: Mission "
                  "Control's \"Move left a space\" and \"Move right a space\" may be off")
 
@@ -54,8 +43,8 @@ def _press(key: int) -> str:
 
 @dataclass(frozen=True)
 class Moved:
-    """What `move_space` did: its window (epoch ms), "" or what did not hold, and whether the
-    control could be taken at all (`taken`): one that could not is not one that failed."""
+    """What `move_space` did; `taken` False means the control could not be taken, not that it
+    failed."""
 
     began: int
     ended: int
@@ -64,14 +53,12 @@ class Moved:
 
 
 def move_space(settle_s: float = SPACE_SETTLE_S) -> Moved:
-    """The owner's Space moved one along and back, by System Events, for a CONTROL that must see
-    SPACE_CHANGED over the window returned. Right then Left, or Left then Right when there is no
-    Space to the right. Whether a key moved the owner is read off the Spaces, never off the
-    keystroke's own answer, since one that timed out may still have acted; so the way back is
-    pressed whenever the owner moved, and the owner is checked to end where they began. `why` is
-    "" when all of that held, else what did not. Not `taken`, so BLOCKED and never a FAIL: a
-    host whose Spaces cannot be read, which presses nothing; a keystroke refused, which needs
-    Accessibility for this process; no other Space to move to; shortcuts that moved nothing."""
+    """Move the owner's Space along and back (epoch-ms window returned); `why` is "" when it all
+    held.
+
+    A key's effect is read off the Spaces, never its answer: a timed-out one may still have acted.
+    Not `taken` (BLOCKED, never a FAIL): Spaces unreadable, keystroke refused, no other Space, or
+    shortcuts that moved nothing."""
     began = focus_watch.now_ms()
     if missing := focus_watch.spaces_missing():
         return Moved(began, focus_watch.now_ms(),
@@ -100,7 +87,7 @@ def move_space(settle_s: float = SPACE_SETTLE_S) -> Moved:
         whys.append(_press(back))
         time.sleep(settle_s)
     elif any(whys):
-        taken = False                       # a keystroke refused: the move was never made
+        taken = False                       # keystroke refused: never moved
     else:
         most = max(focus_watch.space_counts() or (1,))
         whys.append(SHORTCUTS_OFF.format(most) if most > 1 else NO_OTHER_SPACE)
@@ -113,7 +100,7 @@ def move_space(settle_s: float = SPACE_SETTLE_S) -> Moved:
 
 
 class Watched(Protocol):
-    """What the flow reads off a watch: its samples, its record, and its end."""
+    """What the flow reads off a watch."""
 
     samples: list[focus_watch.Sample]
     path: Path
@@ -124,7 +111,7 @@ class Watched(Protocol):
 
 @dataclass(frozen=True)
 class Judged:
-    """One cell's outcome and the reason it reads."""
+    """One cell's outcome and its reason."""
 
     status: Outcome
     reason: str
@@ -132,23 +119,21 @@ class Judged:
 
 @dataclass(frozen=True)
 class Control:
-    """The control's three cells, and where the judged window opens."""
+    """The control's three cells."""
 
     front: Judged
     behind: Judged
     space: Judged
-    # The end of the control, where the judged window opens; None when it did not hold.
+    # Where the judged window opens; None when the control did not hold.
     since: int | None
 
 
 def control(watch: Watched, names: Collection[str],
             hold: Callable[[bool], tuple[int, int]]) -> Control:
-    """The control over `watch`: `hold(background)` launches one start as asked and returns its
-    window (epoch ms); then the owner's Space is moved and put back (`move_space`)."""
+    """Run the control over `watch`; `hold(background)` launches one start and returns its
+    window."""
     front_w, behind_w = hold(False), hold(True)
-    # A WINDOW THE WATCH COULD NOT COVER (no sample it could take, a stretch unsampled) is
-    # BLOCKED here as in `verdict`: it says nothing about the start, nor about a Space moved. A
-    # Space move names nobody (`verdict` says why).
+    # A window the watch could not cover says nothing about the start, so it is BLOCKED.
     seen = focus_watch.judge(watch.samples, names, start_ms=front_w[0], end_ms=front_w[1])
     front = Judged("BLOCKED" if seen.status == "INVALID"
                    else "OK" if seen.status == "TOOK_FOCUS" else "FAIL", seen.reason)
@@ -166,12 +151,12 @@ def control(watch: Watched, names: Collection[str],
 
 
 def verdict(watch: Watched, names: Collection[str], since: int | None, end_ms: int) -> Judged:
-    """The run's verdict, the watch ended first: judged only after a control that held
-    (`since`), over a window of at least `MIN_WINDOW_MS`."""
+    """End the watch, then judge the run, only after a held control and a window of
+    `MIN_WINDOW_MS`."""
     record = f"record {watch.path}"
     try:
         watch.__exit__(None, None, None)
-    except Exception as e:  # the watch's own failure, raised at its end: a record not written
+    except Exception as e:  # a record not written
         return Judged("BLOCKED", f"the watch failed ({type(e).__name__}: {e}), so the run "
                                  f"cannot be judged; {record}")
     if since is None:
@@ -181,11 +166,9 @@ def verdict(watch: Watched, names: Collection[str], since: int | None, end_ms: i
                                  f"judge; {record}")
     v = focus_watch.judge(watch.samples, names, start_ms=since, end_ms=end_ms)
     if v.status == "INVALID":
-        # THE INSTRUMENT, not the server: no sample it could take, or a stretch unsampled.
         return Judged("BLOCKED", f"the watch cannot judge the run: {v.reason}; {record}")
     if v.status == "SPACE_CHANGED":
-        # A SPACE MOVE NAMES NOBODY: the owner may have made it. Never green, never the
-        # server's FAIL on that alone: the record is there to read.
+        # A Space move names nobody (the owner may have made it): never green, never FAIL.
         return Judged("BLOCKED", f"a Space moved and nothing names who moved it: {v.reason}; "
                                  f"{record}")
     return Judged("OK" if v.status == "CLEAN" else "FAIL", f"{v.status}: {v.reason}; {record}")

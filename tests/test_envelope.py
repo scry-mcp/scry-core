@@ -1,5 +1,4 @@
-"""`scry_core.envelope`: the schema's refusal given the server's envelope, off the event loop, and
-every other error left on the SDK's path; driven through the SDK's own `call_tool`."""
+"""`scry_core.envelope`, driven through the SDK's own `call_tool`."""
 
 from __future__ import annotations
 
@@ -18,7 +17,6 @@ from scry_core.envelope import Envelope
 
 
 class _Server:
-    """A server of one tool, `count(n: int)`, whose refusal records how it was called."""
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict[str, Any], str, bool]] = []
@@ -70,9 +68,7 @@ def test_a_defect_in_a_body_keeps_the_sdks_path_and_is_never_a_refusal() -> None
 
 
 def test_a_reply_that_is_not_valid_json_is_refused_at_the_boundary() -> None:
-    """A NaN reaching a reply would ship as `NaN`, which no JSON parser takes: the envelope
-    serialises with `allow_nan=False`, so such a reply fails here, at the boundary, instead of
-    reaching a client as invalid JSON. Floats a session reads are rendered as text before."""
+    """`allow_nan=False`: a NaN reply fails here instead of reaching a client as invalid JSON."""
     with pytest.raises(ValueError, match="count's reply holds NaN, which is not JSON compliant"):
         _Server().call(n=13)
     assert _Server().call(n=12).structured_content["n"] == 12

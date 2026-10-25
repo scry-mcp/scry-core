@@ -1,10 +1,6 @@
-"""Which emulator a session runs, where that choice came from, and what the build says it is.
+"""The binary ladder: the caller's `binary`, else the server's variable, else the PATH.
 
-ONE LADDER, CLIMBED ONCE PER LAUNCH: the caller's `binary`, else the server's variable, else the
-executable the PATH finds. The first rung that holds anything is the one taken, and a wrong value
-there is refused rather than passed over: a caller who named a build and silently got another
-would be measuring the wrong emulator. The reply says which rung it was, so the choice is never
-made in silence. Both servers climb it; each names its product, its executable and its variable.
+The first rung holding anything is taken, and a wrong value there is refused, never passed over.
 """
 
 from __future__ import annotations
@@ -26,8 +22,7 @@ from scry_core.reply_contract import Code, Invalid
 ARGUMENT = "argument"
 PATH_RUNG = "PATH"
 VERSION_TIMEOUT_S = 5.0
-#: The most of each of `-version`'s two streams read, and of the line kept: a version is one
-#: line, and a build that starts instead can print without end.
+#: Cap per `-version` stream: a build that starts instead can print without end.
 VERSION_READ_MAX = 4096
 
 
@@ -39,22 +34,19 @@ class Resolved:
 
 @dataclass(frozen=True)
 class Ladder:
-    """One server's ladder: `product` as a refusal names it, the `executable` the PATH rung
-    looks for, and the `variable` of the middle rung."""
+    """One server's ladder."""
     product: str
     executable: str
     variable: str
 
     def resolve(self, binary: str) -> Resolved:
-        """The absolute executable the ladder lands on. A relative value is `bad_argument`
-        naming its argument or the variable. One naming no executable file is refused naming
-        what all three rungs held and why the one taken is no executable: `bad_argument` when
-        the caller's own `binary` was the rung, `host_failed` when the host's variable or PATH
-        was, since that is the host's to fix."""
+        """The absolute executable the ladder lands on.
+
+        Refusal is `bad_argument` when the caller's `binary` was the rung, else `host_failed`."""
         held = os.environ.get(self.variable, "")
         on_path = shutil.which(self.executable)
-        # The variable is held to the argument's rule: a relative path would resolve against
-        # the server's working directory, which is nobody's project.
+        # The variable gets the argument's rule: a relative path would resolve against the
+        # server's working directory.
         if binary:
             try:
                 given = judges.absolute("binary", binary)
@@ -78,16 +70,14 @@ class Ladder:
                 f"`binary` held {named}, {self.variable} held {variable}, and the PATH holds "
                 f"{on_path or f'no `{self.executable}`'}. The first rung holding a value is the "
                 f"one taken, and it has to name an executable file")
-        # THE PATH `which` APPROVED, unchanged: `abspath` collapses `..` by spelling, so through
-        # a symlinked directory it would name another file. A relative PATH entry is joined, not
-        # normalised, for the same reason.
+        # `abspath` collapses `..` by spelling and through a symlinked directory would name
+        # another file, so a relative PATH entry is joined, not normalised.
         return Resolved(found if os.path.isabs(found) else os.path.join(os.getcwd(), found),
                         origin)
 
 
 def why_not(path: str) -> str:
-    """Why a named path is no executable file, in the words its owner looks for: a file that is
-    there without its exec bit is not missing."""
+    """Why a named path is no executable file."""
     if not os.path.exists(path):        # a dangling link included: nothing there to run
         return "no such file"
     if os.path.isdir(path):
@@ -97,18 +87,11 @@ def why_not(path: str) -> str:
 
 def version(binary: str, env: Mapping[str, str] | None = None,
             seconds: float = VERSION_TIMEOUT_S) -> str | dict[str, Any]:
-    """The first line `<binary> -version` prints, or why there is none. `env` is the environment
-    the server launches the emulator with (None: the server's own): a build that does not know
-    `-version` may start instead of answering, and must start as a real launch would. `seconds`
-    is the bound, never longer than the launch's own.
+    """The first line `<binary> -version` prints, or why there is none.
 
-    THE EXIT CODE IS NOT THE SIGNAL: a build may print its banner on stderr and exit non-zero
-    for an informational option, so a version is the first non-blank line, stdout before
-    stderr. What makes it unavailable is a spawn that failed, a timeout, or nothing printed.
-    Such a build may also start the emulator, so the probe is its own process group, ended
-    whole when the bound runs out (a wrapper that does not `exec` leaves the emulator as its
-    child), its output goes to files read no further than `VERSION_READ_MAX`, and its stdin is
-    closed, so it cannot read the server's own protocol stream."""
+    The exit code is no signal (a banner may go to stderr with rc!=0). The probe runs in its own
+    process group, ended whole at the bound, with stdin closed so it cannot read the server's
+    protocol stream."""
     with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
         try:
             proc = _spawn([binary, "-version"], out, err, env)
@@ -139,9 +122,8 @@ def _spawn(argv: list[str], out: IO[bytes], err: IO[bytes],
 
 
 def _end_group(proc: subprocess.Popen[bytes], ran_out: bool) -> None:
-    """End the probe's group, whatever is left of it, and reap the probe. On Windows the tree is
-    followed by parent pid with no start time, so it is ended only while the probe still runs:
-    a pid freed by its exit can be another program's."""
+    """End the probe's group and reap it. On Windows the tree is followed by parent pid, so it
+    is ended only while the probe still runs: a freed pid can be another program's."""
     if sys.platform == "win32":
         if ran_out:
             with contextlib.suppress(subprocess.TimeoutExpired):
@@ -161,7 +143,6 @@ def _head(file: IO[bytes]) -> bytes:
 
 def facts(resolved: Resolved, env: Mapping[str, str] | None = None,
           seconds: float = VERSION_TIMEOUT_S) -> dict[str, Any]:
-    """The three fields a launch answers about its binary, its version probed with `env` within
-    `seconds`."""
+    """The three fields a launch answers about its binary."""
     return {"binary": resolved.path, "binary_origin": resolved.origin,
             "version": version(resolved.path, env, seconds)}

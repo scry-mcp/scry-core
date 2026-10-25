@@ -5,31 +5,24 @@ pinned by its sha256 in the bench's manifest, so a live run reads no other repos
     python -m scry_core.live_bench fill --bench <bench> --from some-project=/path/to/checkout ...
     python -m scry_core.live_bench fill ... --from some-project=... --record
 
-THE BENCH IS NAMED, NEVER FOUND, and its manifest is `<bench>/bench.json` by contract. This module
-belongs to no server and knows none: each server's live tier resolves its own bench (its own
-variable, its own default) and hands the directory here, so a new consumer needs no release of
-this package and a default resolved from where it happens to be installed cannot read some other
-tree's bench in silence.
+The bench is named, never found: its manifest is `<bench>/bench.json` by contract, and each
+server's live tier resolves its own bench, so a default resolved from where this package is
+installed cannot read some other tree's bench in silence.
 
-WHY A COPY AND NOT THE CHECKOUT ITSELF: a tier that drives another project's working tree
-measures whatever that tree holds today, and a session working there can change it under the
-run (a symbol file rewritten, a binary rebuilt, a declaration cleared). The copy changes only
-when somebody fills it again, and the hash says whether it is still the copy that was pinned.
+A copy and not the checkout: a session working in the checkout can change it under a run, while
+the copy changes only when somebody fills it again.
 
 `fill` copies the manifest's entries from the checkouts named by `--from <source_repo>=<path>`
-and refuses a source whose bytes are not the ones pinned; `--record` writes the pins instead,
+and refuses a source whose bytes are not the pinned ones; `--record` writes the pins instead,
 from the copies it just made, with each source's `HEAD`. An entry with a `capture` holds the
-output of a program run once in its checkout (`capture` is its argv, run there; `source_path`
-names that program in the reports),
-which is how a known answer is taken from a real run without the tier running it again. A
-capture runs with `PYTHONDONTWRITEBYTECODE` set, so its checkout gains no `__pycache__`.
+output of a program run once in its checkout (`capture` is its argv, run there with
+`PYTHONDONTWRITEBYTECODE` set; `source_path` names that program in the reports).
 
 Exit codes: 0 the bench matches (or was filled), 1 a file is missing or does not match, or a
 source was refused, 2 a usage error, 3 INVALID (an empty manifest, a bench root that does not
 exist, a manifest that is not one, a `--from` the manifest does not name or that is not a
 directory, `--record` on a checkout with no `HEAD`, and anything else that stopped the action
-before its verdict, such as a copy that cannot be read: 1 is a verdict about the bench, so an
-error never answers it).
+before its verdict: 1 is a verdict about the bench, so an error never answers it).
 """
 
 from __future__ import annotations
@@ -71,8 +64,7 @@ class Entry:
 
 
 def _relative(text: object, what: str) -> str:
-    """`text` as a path inside the bench or a checkout, in one spelling (`a/./b` is `a/b`),
-    refused when it could leave it."""
+    """`text` as a normalized relative path, refused when it could leave its directory."""
     path = Path(text) if isinstance(text, str) else None
     if path is None or not path.parts or path.is_absolute() or ".." in path.parts:
         raise Invalid(f"{what} {text!r} is not a relative path inside its directory")
@@ -117,15 +109,13 @@ def digest(path: Path) -> str:
 
 
 def _under(path: str, prefix: str) -> bool:
-    """Whether `path` is `prefix` or lies inside it, by whole path segments: `board` is not a
-    prefix of `board2/x`."""
+    """Whether `path` is `prefix` or inside it, by whole segments (`board` is not in `board2/x`)."""
     head = prefix.rstrip("/")
     return not head or path == head or path.startswith(head + "/")
 
 
 def problems(at: Path, prefix: str = "") -> list[str]:
-    """One line per entry under `prefix` (a directory or one file of the bench at `at`, every entry
-    when empty) that is absent from the bench or does not match its pin.
+    """One line per entry under `prefix` (all when empty) absent from the bench or off its pin.
 
     `Invalid` when the bench root does not exist or nothing lies under `prefix`: neither
     examined a file, so neither may read as a match."""
@@ -146,30 +136,27 @@ def problems(at: Path, prefix: str = "") -> list[str]:
 
 
 def check_command(at: Path) -> str:
-    """The command that judges the bench at `at`, as a reason's remedy names it."""
+    """The command that judges the bench at `at`."""
     return f"python -m scry_core.live_bench check --bench {at}"
 
 
 def fill_remedy(at: Path) -> str:
-    """What copies a bench's missing or moved files back, as every remedy says it."""
+    """The remedy sentence for a missing or moved file."""
     return (f"`{fill_command(at)}` copies them from a checkout that still matches the pin "
             "(`--record` re-pins one that moved)")
 
 
 def fill_command(at: Path) -> str:
-    """The command that copies a bench's files back from a checkout matching their pins, quoted
-    as a remedy wherever a copy is missing or moved."""
+    """The command that copies a bench's files back from a checkout matching their pins."""
     return f"python -m scry_core.live_bench fill --bench {at} --from <source_repo>=<checkout>"
 
 
 @dataclass(frozen=True)
 class Bench:
-    """A server's bench, at the `root` its live tier resolved, with its manifest inside it.
+    """A server's bench at the `root` its live tier resolved.
 
-    What a live tier asks of it is worked out once per `Bench` and per question: why the files
-    under a prefix cannot be used (`missing`), and the paths the manifest pins (`pinned`). A run
-    asks the same question for every cell of a board, and the answer cannot change under it
-    except by somebody filling the bench, which is a new run."""
+    Answers are cached per `Bench`: a run asks the same question for every cell of a board, and
+    the answer changes only by filling the bench, which is a new run."""
 
     root: Path
     _reasons: dict[str, str] = field(default_factory=dict, init=False, repr=False,
@@ -180,8 +167,7 @@ class Bench:
         return self.root / MANIFEST
 
     def missing(self, prefix: str) -> str:
-        """Why the files under `prefix` cannot be used, naming the first file and the remedy, or
-        empty when every one matches its pin: the reason a live board is BLOCKED with."""
+        """Why the files under `prefix` cannot be used (a board is BLOCKED with it), or empty."""
         if prefix not in self._reasons:
             self._reasons[prefix] = self._why(prefix)
         return self._reasons[prefix]
@@ -194,7 +180,7 @@ class Bench:
         try:
             found = problems(self.root, prefix)
         except (Invalid, OSError) as e:
-            # No file was examined, so no copy can be the remedy: the reason is the whole answer.
+            # Nothing was examined, so no copy can be the remedy.
             return f"bench unusable: {e}"
         if not found:
             return ""
@@ -204,7 +190,7 @@ class Bench:
 
     @functools.cached_property
     def pinned(self) -> frozenset[str]:
-        """Every path the manifest pins; `Invalid` when it is not a manifest."""
+        """Every path the manifest pins."""
         return frozenset(e.path for e in load(self.manifest))
 
 
@@ -231,7 +217,7 @@ def _head(checkout: Path) -> str:
 
 
 def _take(e: Entry, checkout: Path, into: Path) -> str:
-    """The source of `e` written to `into`, answering why not when it could not be."""
+    """Write the source of `e` to `into`; the reason it could not be, or empty."""
     if e.capture is not None:
         env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
         try:

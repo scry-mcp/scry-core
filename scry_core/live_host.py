@@ -1,31 +1,8 @@
-"""The host a server's live tier runs on: whether it can start the emulator at all, which
-emulators a run launched and whether any outlived it, and the run's scratch, left as its verdict
-says.
+"""Host checks for a live tier: SDL canary, ledger of launched emulators, run scratch.
 
-    run = live_host.LiveRun.for_process("mame-live-matrix-", job=bool(summary))
-    if why := run.begin(canary_argv, "MAME"):     # before the first start
-        ...                                        # INVALID, nothing launched
-    ...
-    if line := run.close(on_end):                  # the machine closed, the emulators proved gone
-        ...                                        # a FAIL beside the verdict
-    run.finished = True
-    run.leave(kept=red)
-
-A HOST WHOSE INPUT LAYER STOPPED ANSWERING BLOCKS EVERY SDL PROGRAM AT ITS INIT, deaf to
-signals, and a run that went on into it would fail every cell on the code and leave an emulator
-behind per start. So a run launches the emulator once first, in a form that ends by itself, and
-refuses the host when it does not (`canary`). And an emulator is never evidence: a run proves at
-its end that every one its sessions launched is gone (`EmulatorLedger`), killing and naming any
-that is not.
-
-A RUN'S JOBS LIVE INSIDE IT. A pooled job is handed a scratch under its parent's
-(`LiveRun.job_env`), so what the parent removes or keeps it removes or keeps whole, and a job
-that died before declaring anything leaves nothing anonymous behind. The ledger is the parent's
-too: every launch of every job, and of every server a run spawns, is recorded in the one file
-the parent named in the environment, at the server's own launch point, so a start that then
-failed is recorded as well.
-
-POSIX only, as the live tiers are: the end check reads `ps` and signals process groups.
+A host whose input layer stopped answering blocks every SDL program at its init, deaf to signals,
+so a run first launches an emulator that ends by itself and refuses the host when it does not.
+Pooled jobs record into the parent's ledger and scratch. POSIX only (`ps`, process groups).
 """
 
 from __future__ import annotations
@@ -45,37 +22,26 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, cast
 
-#: macOS makes a newly launched app with a window the frontmost one, which takes the person's
-#: focus and can move them to another Space; SDL reads this hint before its init and keeps the
-#: app behind. Every unwatched launch sets it, the canary always.
+#: SDL hint that keeps a newly launched app from taking focus (macOS makes it frontmost).
 BACKGROUND_VAR = "SDL_MAC_BACKGROUND_APP"
-#: A healthy host starts and ends either emulator's canary in a few seconds; a blocked one never
-#: returns, so the bound only has to tell those apart.
+#: A healthy host ends the canary in seconds; a blocked one never returns.
 CANARY_S = 20.0
-#: Where a live run's ledger of launched emulators is, for its jobs and the servers it spawns.
 LEDGER_VAR = "SCRY_LIVE_LEDGER"
-#: The ledger's name inside the run's scratch.
 LEDGER_NAME = "emulators.tsv"
-#: Where a pooled job's scratch is, inside its parent's; set by the parent, never by hand.
+#: Set by the parent run: a pooled job's scratch, inside its own.
 SCRATCH_VAR = "SCRY_LIVE_SCRATCH"
-#: How long a leftover emulator is given to leave on SIGTERM before SIGKILL, and then to vanish.
+#: Seconds a leftover emulator is given to leave after each signal.
 LEAVE_S = 5.0
-#: How much of a command name Linux's `ps` keeps: a longer name is matched by its prefix.
+#: Linux's `ps` cuts a command name to this; a longer one is matched by prefix.
 COMM_MAX = 15
-#: WINDOWS HAS NO PROCESS GROUPS AND NO `ps -A`: its processes are listed by `tasklist` and ended
-#: one pid at a time (both signals are `TerminateProcess` there), so the guards that remain are
-#: the program's name and the run's own ledger.
+#: Windows has no process groups or `ps -A`; both signals are `TerminateProcess`.
 WINDOWS = os.name == "nt"
 
 
 def canary(argv: Sequence[str]) -> str:
-    """Empty when the emulator `argv` names started and ended by itself (rc 0) within `CANARY_S`,
-    otherwise why not, for the run to print as INVALID before it launches anything else.
+    """Empty when `argv` (an emulator that ends by itself) exits 0 within `CANARY_S`, else why.
 
-    `argv` initialises SDL as the run's first start does and ENDS BY ITSELF on a healthy host. It
-    runs launched behind, in its own process group and in a working directory of its own that is
-    removed after it (an emulator writes its configuration where it runs), and its group is
-    killed on any way out but a clean end, an interrupt included."""
+    Runs in its own process group and a throwaway cwd; the group is killed on any unclean exit."""
     cwd = tempfile.mkdtemp(prefix="scry-canary-")
     name = Path(argv[0]).name
     try:
@@ -85,7 +51,7 @@ def canary(argv: Sequence[str]) -> str:
                                     stderr=subprocess.STDOUT, start_new_session=True)
         except OSError as e:
             return f"{name} could not be launched: {e}"
-        # NOT `with proc`: its exit waits for the process, and one stuck in the kernel never ends.
+        # Not `with proc`: its exit waits, and a kernel-stuck process never ends.
         try:
             out, _ = proc.communicate(timeout=CANARY_S)
         except subprocess.TimeoutExpired:
@@ -109,8 +75,7 @@ def canary(argv: Sequence[str]) -> str:
 
 
 def _end_group(proc: subprocess.Popen[bytes]) -> bool:
-    """SIGKILL to the group `proc` leads (on Windows, `proc` itself), then whether it is still
-    there."""
+    """SIGKILL the group `proc` leads (on Windows `proc`); whether it is still alive."""
     with contextlib.suppress(ProcessLookupError, PermissionError):
         if WINDOWS:
             proc.kill()
@@ -122,8 +87,7 @@ def _end_group(proc: subprocess.Popen[bytes]) -> bool:
 
 
 def _processes() -> dict[int, tuple[int, str, str]]:
-    """Every process on the host, `pid -> (pgid, state, command)`, from one `ps` listing; on
-    Windows from one `tasklist` listing (`_tasklist`)."""
+    """Every process on the host, `pid -> (pgid, state, command)`."""
     if WINDOWS:
         return _tasklist()
     done = subprocess.run(["ps", "-A", "-o", "pid=,pgid=,stat=,comm="], capture_output=True,
@@ -139,8 +103,6 @@ def _processes() -> dict[int, tuple[int, str, str]]:
 
 
 def _tasklist() -> dict[int, tuple[int, str, str]]:
-    """Every process on a Windows host as `_processes` answers it: each its own group (there are
-    none) and running (no state is listed)."""
     done = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
                           errors="replace", check=False)
     if done.returncode != 0:
@@ -157,11 +119,9 @@ def _tasklist_rows(text: str) -> dict[int, tuple[int, str, str]]:
 
 
 def _alive(pids: set[int], within_s: float) -> set[int]:
-    """The processes of `pids` still alive after waiting up to `within_s` for them to leave."""
     deadline = time.monotonic() + within_s
     while True:
-        # A ZOMBIE IS GONE: it ended and only waits for its parent (the run, for an emulator it
-        # launched in process) to read its exit status.
+        # A zombie is gone: it ended and only awaits its parent's wait().
         alive = {p for p, (_, state, _) in _processes().items()
                  if p in pids and not state.startswith("Z")}
         if not alive or time.monotonic() >= deadline:
@@ -169,13 +129,12 @@ def _alive(pids: set[int], within_s: float) -> set[int]:
         time.sleep(0.1)
 
 
-#: The last signal: Windows has no SIGKILL, and its SIGTERM already ends a process outright.
+#: Windows has no SIGKILL; its SIGTERM already ends a process outright.
 _KILL = getattr(signal, "SIGKILL", signal.SIGTERM)
 
 
 def _signal(pid: int, pgid: int, sig: signal.Signals) -> None:
-    """`sig` to the group `pid` leads, or to `pid` alone when it lives in somebody else's group:
-    MAME runs in its server's, which in process is the run's own."""
+    """`sig` to the group `pid` leads, else to `pid` alone."""
     with contextlib.suppress(ProcessLookupError, PermissionError):
         if pgid == pid and not WINDOWS:
             os.killpg(pid, sig)
@@ -184,8 +143,7 @@ def _signal(pid: int, pgid: int, sig: signal.Signals) -> None:
 
 
 def _started(pid: int) -> str:
-    """When `pid` started, as `ps` says it (`lstart`), or empty when it cannot say: with the
-    name, what tells the emulator a run launched from a later process the system gave its pid."""
+    """`pid`'s `ps` start time, or empty; tells an emulator from a later holder of its pid."""
     try:
         done = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True,
                               text=True, check=False)
@@ -195,24 +153,21 @@ def _started(pid: int) -> str:
 
 
 def _same_program(recorded: str, comm: str) -> bool:
-    """Whether `ps`'s command `comm` is the program recorded under `recorded`: macOS lists the
-    path, Linux the name cut to `COMM_MAX`."""
+    """Whether `ps`'s `comm` is the program recorded as `recorded` (macOS lists the path)."""
     shown = Path(comm).name
-    if WINDOWS:     # `tasklist` names the image, `mamed.exe`, which a launch may have named bare
+    if WINDOWS:     # `tasklist` names the image (`mamed.exe`)
         return Path(shown).stem.lower() == Path(recorded).stem.lower()
     return shown == recorded or (len(recorded) > COMM_MAX and shown == recorded[:COMM_MAX])
 
 
 @dataclass(frozen=True)
 class Leftovers:
-    """What a run found alive of the emulators it launched: how many it recorded, how many were
-    still alive, and the ones still there after SIGKILL, each `(pid, state)`."""
+    """Counts recorded and found alive; `survived` holds `(pid, state)` after SIGKILL."""
     recorded: int = 0
     found: int = 0
     survived: tuple[tuple[int, str], ...] = ()
 
     def line(self) -> str:
-        """The FAIL line a run prints beside its verdict, empty when nothing outlived it."""
         if not self.found:
             return ""
         stuck = ", ".join(f"pid {p} state {s}" for p, s in self.survived)
@@ -221,29 +176,25 @@ class Leftovers:
 
 
 class EmulatorLedger:
-    """The emulators a live run launched, one `<pid>\\t<name>\\t<started>` line each, and the end
-    check that proves them gone. The name and the start time guard a pid the system gave another
-    process after the emulator left: the same program, launched by somebody else, included."""
+    """Launched emulators, one `<pid>\\t<name>\\t<started>` line each; name and start time guard
+    against a reused pid."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
 
     @classmethod
     def from_environment(cls) -> EmulatorLedger | None:
-        """The ledger the live run this process belongs to named, or None outside one."""
         named = os.environ.get(LEDGER_VAR)
         return cls(Path(named)) if named else None
 
     def record(self, pid: int, program: str) -> None:
-        """One launch, called by a server right after its emulator's process exists, before
-        anything that could fail; a ledger that cannot be written never fails the launch, and
-        the run's end reports how many it recorded."""
+        """One launch, right after the process exists; a write failure never fails the launch."""
         started = _started(pid)
         with contextlib.suppress(OSError), self.path.open("a", encoding="utf-8") as out:
             out.write(f"{pid}\t{Path(program).name}\t{started}\n")
 
     def recorded(self) -> dict[int, str]:
-        """The program each recorded pid was launched as."""
+
         return {pid: name for pid, (name, _) in self._rows().items()}
 
     def _rows(self) -> dict[int, tuple[str, str]]:
@@ -256,8 +207,7 @@ class EmulatorLedger:
                 if len(row) in (2, 3) and row[0].isdigit() and row[1]}
 
     def reap(self) -> Leftovers:
-        """Every recorded emulator still alive under its own name, sent SIGTERM, then SIGKILL
-        after `LEAVE_S`, and what survived both."""
+        """SIGTERM then SIGKILL every recorded emulator still alive under its name; the rest."""
         mine, now = self._rows(), _processes()
         alive = {p: pgid for p, (pgid, state, comm) in now.items()
                  if p in mine and _same_program(mine[p][0], comm) and not state.startswith("Z")
@@ -277,22 +227,19 @@ class EmulatorLedger:
 
 @dataclass
 class LiveRun:
-    """One live run's life on its host: its scratch (named now, made on first use), the canary
-    and the ledger at its start, the proof at its end, and what it leaves.
+    """One live run on its host.
 
-    `job`: a pooled job, whose parent ran the canary, reaps for it and owns its scratch."""
+    `job`: a pooled job; its parent ran the canary, reaps for it and owns its scratch."""
     scratch: Path
     job: bool
     say: Callable[[str], None] = print
-    #: Whether the run has ended, by its verdict or by `unfinished`: it ends once.
     finished: bool = False
     ledger: EmulatorLedger | None = field(default=None, init=False)
     _closed: bool = field(default=False, init=False)
 
     @classmethod
     def for_process(cls, prefix: str, job: bool) -> LiveRun:
-        """This process's run: in a pooled job the scratch its parent handed it, else a new one
-        named `<prefix><random>` directly under the host's temporary directory."""
+        """This process's run: a job takes its parent's scratch, else a new `<prefix><random>`."""
         handed = os.environ.get(SCRATCH_VAR) if job else None
         return cls(Path(handed) if handed else
                    Path(tempfile.gettempdir()) / f"{prefix}{uuid.uuid4().hex[:12]}", job)
@@ -302,13 +249,11 @@ class LiveRun:
         return self.scratch
 
     def job_env(self, name: str) -> dict[str, str]:
-        """What a pooled job named `name` is started with: its scratch, inside this run's."""
         return {SCRATCH_VAR: str(self.made() / "jobs-scratch" / name)}
 
     def begin(self, canary_argv: Sequence[str] | None, emulator: str) -> str:
-        """Before the run's first start, outside a job: the canary, then the ledger every launch
-        is recorded in. Answers why the host is refused (nothing made, nothing launched), or
-        empty. `canary_argv` None: no `emulator` resolves on this host."""
+        """Outside a job: canary, then ledger. Answers why the host is refused, or empty.
+        `canary_argv` None: no `emulator` resolves here."""
         if self.job:
             return ""
         if canary_argv is None:
@@ -322,9 +267,8 @@ class LiveRun:
         return ""
 
     def close(self, on_end: Callable[[], object]) -> str:
-        """Once: the machine this process holds closed (`on_end`), then every emulator the run
-        launched proved gone. Answers the FAIL line for the verdict, empty when nothing outlived
-        the run; a check that could not read the host is a FAIL too, never a pass."""
+        """Once: `on_end`, then prove every launched emulator gone. Answers the FAIL line, or
+        empty; an unreadable host is a FAIL."""
         if self._closed:
             return ""
         self._closed = True
@@ -340,9 +284,8 @@ class LiveRun:
             return (f"FAIL  the end check could not read this host's processes ({e}), so the "
                     f"emulators this run launched may still be alive")
         if not left.recorded:
-            # NOTHING RECORDED IS NOT NOTHING LEFT: a server that never wrote the ledger (one
-            # pinned to a core without it, or spawned before the run named it) leaves this same
-            # empty file, and an end check that examined nothing is no verdict.
+            # Nothing recorded is not nothing left: a server that never wrote the ledger leaves
+            # this same empty file.
             return ("INVALID  the ledger recorded no emulator launch, so the end check examined "
                     "nothing: a run that launched one has a server that did not record it")
         if not left.found:
@@ -350,9 +293,7 @@ class LiveRun:
         return left.line()
 
     def leave(self, kept: bool) -> None:
-        """A RUN LEAVES WHAT IT SAYS IT KEEPS AND NOTHING ELSE: green, its scratch is removed with
-        everything in it (its jobs' and its transcript too); red, INVALID or broken, it is kept
-        and named. A job leaves its own to its parent."""
+        """Remove the scratch when green, else keep and name it. A job leaves it to its parent."""
         if self.job or not self.scratch.exists():
             return
         if kept:
@@ -362,8 +303,7 @@ class LiveRun:
         self.say("scratch removed, the transcript with it")
 
     def unfinished(self, on_end: Callable[[], object]) -> None:
-        """The end of a run that never reached its verdict (an INVALID, an uncaught exception, a
-        signal made an exit): its machine closed, its emulators proved gone, its scratch kept."""
+        """End a run that never reached its verdict: close, prove emulators gone, keep scratch."""
         if self.finished:
             return
         self.finished = True

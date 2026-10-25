@@ -1,7 +1,3 @@
-"""The comparisons, on pictures built by hand: a signature recomputed here from its definition,
-one palette entry that moves it, a crop one pixel off refused, a diff whose box is counted by
-hand, a shifted diff, and the region measures."""
-
 from __future__ import annotations
 
 import hashlib
@@ -32,8 +28,8 @@ def _with(base: Raster, points: dict[tuple[int, int], tuple[int, int, int]]) -> 
 
 
 def test_the_signature_is_its_definition() -> None:
-    """Recomputed from the text of the definition: the tag, the kind, the crop's size, then the
-    crop's cells row by row, resolved through the palette."""
+    """Recomputed from the definition: tag, kind, crop size, then the cells resolved through the
+    palette."""
     crop = [1, 1, 2, 2]
     cells = bytes((255, 0, 0)) + bytes((255, 255, 255)) + bytes((255, 255, 255)) + bytes(
         (255, 0, 0))
@@ -43,8 +39,7 @@ def test_the_signature_is_its_definition() -> None:
 
 
 def test_one_palette_entry_moves_the_signature_and_an_index_alone_does_not() -> None:
-    """Index 3 drawn in another colour is another screen; the same colours under other indices
-    are the same screen."""
+    """Another colour is another screen; the same colours under other indices are not."""
     other = Raster(4, 3, INDEXED.pixels, (*PALETTE[:3], (0, 0, 254)))
     assert raster.picture_signature(other) != raster.picture_signature(INDEXED)
     swapped = Raster(4, 3, bytes({0: 1, 1: 0, 2: 2, 3: 3}[i] for i in INDEXED.pixels),
@@ -86,16 +81,13 @@ def test_a_crop_keeps_the_palette_and_the_whole_crop_is_the_picture() -> None:
 
 
 def test_a_diff_counts_its_box_by_hand() -> None:
-    """Two pixels changed, at (1, 0) and (3, 2): the box is from x 1 to 3 and y 0 to 2, so
-    [1, 0, 3, 3]; the largest channel change is 200 on red and 5 on blue."""
+    """Pixels changed at (1, 0) and (3, 2) give the box [1, 0, 3, 3]."""
     a = _rgb(4, 3, (10, 10, 10))
     b = _with(a, {(1, 0): (210, 10, 10), (3, 2): (10, 10, 15)})
     got = raster.diff(a, b)
     assert got == {"differing_pixels": 2, "bbox": [1, 0, 3, 3], "max_delta": [200, 0, 5],
                    "compared": [0, 0, 4, 3]}
-    # Within a tolerance of 5 the blue change counts as equal; the box shrinks to one pixel.
     assert raster.diff(a, b, tolerance=5)["bbox"] == [1, 0, 1, 1]
-    # A crop that misses both leaves nothing differing, and says no box.
     nothing = {"available": False, "why": "no pixel differs"}
     assert raster.diff(a, b, crop=[0, 1, 2, 2])["bbox"] == nothing
     assert raster.diff(a, a) == {"differing_pixels": 0, "bbox": nothing, "max_delta": [0, 0, 0],
@@ -103,8 +95,8 @@ def test_a_diff_counts_its_box_by_hand() -> None:
 
 
 def test_a_shifted_diff_finds_a_moved_sprite_equal() -> None:
-    """A red pixel at (1, 1) in `a` is at (2, 1) in `b`: shifted by [1, 0] they match over the
-    three columns both cover; unshifted they differ at both places."""
+    """A pixel moved from (1, 1) to (2, 1) matches under shift [1, 0] over the columns both
+    cover."""
     base = _rgb(4, 3, (0, 0, 0))
     a = _with(base, {(1, 1): (255, 0, 0)})
     b = _with(base, {(2, 1): (255, 0, 0)})
@@ -117,13 +109,10 @@ def test_a_shifted_diff_finds_a_moved_sprite_equal() -> None:
 
 
 def test_a_box_is_in_the_first_pictures_pixels_under_a_crop_and_a_shift() -> None:
-    """The changed pixel is at (2, 2) of `a`. Off the origin by a crop, and with `b` read one
-    row up and one column left of `a` (shift [-1, -1]), the box still names `a`'s (2, 2)."""
+    """Under a crop and a shift the box still names the first picture's coordinates."""
     base = _rgb(4, 3, (0, 0, 0))
     a = _with(base, {(2, 2): (50, 0, 0)})
     assert raster.diff(a, base, crop=[1, 1, 3, 2])["bbox"] == [2, 2, 1, 1]
-    # Under shift [-1, -1], a's (1, 1) meets b's (0, 0), changed too: two differences, the box
-    # from a's (1, 1) to its (2, 2).
     b = _with(base, {(0, 0): (9, 9, 9)})
     got = raster.diff(a, b, crop=[0, 0, 4, 3], shift=[-1, -1])
     assert got["compared"] == [1, 1, 3, 2]
@@ -142,8 +131,7 @@ def test_pictures_of_two_sizes_need_a_crop_inside_both() -> None:
 
 
 def test_a_picture_a_whole_multiple_of_the_other_is_told_it_may_be_an_enlarged_view() -> None:
-    """A view's PNG is enlarged by its `scale`; a crop of it against a golden at the screen's
-    size would compare a corner of the enlargement, so the refusal names the factor."""
+    """A view's PNG is enlarged by its `scale`, so the refusal names the factor."""
     big, small = _rgb(16, 12, (1, 1, 1)), _rgb(4, 3, (1, 1, 1))
     for a, b, which in ((big, small, "the first is 4x the second"),
                         (small, big, "the second is 4x the first")):

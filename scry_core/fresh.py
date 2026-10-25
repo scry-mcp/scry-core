@@ -1,8 +1,4 @@
-"""Files the media layer creates: each one made new, never written over unless the caller asked
-to replace it (`replace`, whole or not at all), and never left half written. One rule for every
-writer, because a half file read back later is a wrong answer that looks like a file, and a file
-written over unasked is somebody else's evidence gone.
-"""
+"""New files for the media layer: never overwritten unasked, never left half written."""
 
 from __future__ import annotations
 
@@ -18,10 +14,8 @@ from scry_core.reply_contract import Code, Invalid
 
 
 def create(path: Path, data: bytes, what: str, named_by_caller: bool = False) -> None:
-    """`data` at `path`, created here: a file already there is refused (`bad_argument`, it is
-    the caller's), and a write that fails part-way takes the file away again. A path that
-    cannot be opened is `bad_argument` when the caller named it (its `dest`), `host_failed`
-    when the server chose it. `what` names the file in the refusal."""
+    """`data` at a new `path`; an existing file is `bad_argument`, a failed write removes it.
+    An unopenable path is `bad_argument` if the caller named it, else `host_failed`."""
     try:
         out = path.open("xb")
     except FileExistsError:
@@ -35,13 +29,9 @@ def create(path: Path, data: bytes, what: str, named_by_caller: bool = False) ->
 
 def replace(path: Path, data: bytes, what: str, named_by_caller: bool = True,
             new_mode: int | None = None) -> None:
-    """`data` at `path`, over what is there, whole or not at all: written beside it, then renamed
-    over it, so a reader never meets half a file and a write that fails, a cancel included,
-    leaves the old one whole and nothing beside it. A file replaced keeps its mode; a new one
-    takes `new_mode` when given, whatever the umask, else the umask's. A path that cannot take
-    the new file is `bad_argument` when the caller named it, `host_failed` when the server chose
-    it, as in `create`; a rename that fails once the file is written whole is the host's
-    (`host_failed`: a full disk, a volume gone read-only)."""
+    """`data` over `path`, whole or not at all: written beside it, then renamed over.
+    A replaced file keeps its mode; a new one takes `new_mode` if given, else the umask's.
+    Refusal codes as in `create`; a failed rename is always `host_failed`."""
     code: Code = "bad_argument" if named_by_caller else "host_failed"
     beside = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     try:
@@ -65,9 +55,8 @@ def replace(path: Path, data: bytes, what: str, named_by_caller: bool = True,
 
 
 def numbered(folder: Path, name: Callable[[int], str], data: bytes, what: str) -> Path:
-    """`data` at the first `folder / name(n)`, n from 1, that nobody has taken, `folder`
-    created if it is not there. Taking a name is the exclusive create itself, so two writers at
-    once take two names rather than one refusing the other."""
+    """`data` at the first free `folder / name(n)`, n from 1; the exclusive create takes the
+    name."""
     try:
         folder.mkdir(parents=True, exist_ok=True)
     except OSError as e:
@@ -87,8 +76,7 @@ def numbered(folder: Path, name: Callable[[int], str], data: bytes, what: str) -
 
 
 def numbered_dir(folder: Path, name: Callable[[int], str], what: str) -> Path:
-    """A new directory at the first `folder / name(n)`, n from 1, that nobody has taken,
-    `folder` created if it is not there: the mkdir itself takes the name."""
+    """A new directory at the first free `folder / name(n)`, n from 1; the mkdir takes the name."""
     try:
         folder.mkdir(parents=True, exist_ok=True)
     except OSError as e:
@@ -107,8 +95,7 @@ def numbered_dir(folder: Path, name: Callable[[int], str], what: str) -> Path:
 
 def directory(dest: Path | None, folder: Path, name: Callable[[int], str],
               what: str) -> Path:
-    """A directory made new for a piece of work: `dest` (a path the caller named and the
-    server judged), or the first free `folder / name(n)` (`numbered_dir`)."""
+    """A new directory: `dest` if the caller named one, else `numbered_dir`."""
     if dest is None:
         return numbered_dir(folder, name, what)
     try:
@@ -123,9 +110,7 @@ def directory(dest: Path | None, folder: Path, name: Callable[[int], str],
 
 @contextlib.contextmanager
 def taken_back(where: Path) -> Iterator[None]:
-    """The work that fills `where`, a directory `directory` just made: any exception, a refusal
-    or a cancel alike, takes the whole directory away again, so no half piece of work is left
-    where a caller or the next call would find it."""
+    """Removes `where` on any exception, a cancel included, so no half-filled directory stays."""
     try:
         yield
     except BaseException:
@@ -134,7 +119,7 @@ def taken_back(where: Path) -> Iterator[None]:
 
 
 def remove_dir(where: Path) -> None:
-    """`where` and everything in it, gone: a directory made for work that produced nothing."""
+    """Remove `where` and its contents."""
     shutil.rmtree(where, ignore_errors=True)
 
 

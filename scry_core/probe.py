@@ -2,38 +2,35 @@
 
 Run as `python -m scry_core.probe <server> --servers <file> --tasks <dir> [--runs N]`, where
 <server> is a server the servers file loads, or `all`, and N (default 3) is how many independent
-model runs judge each task. `--check` asks no model: see CHECK below; `--capture` keeps a run:
-see CAPTURE.
+model runs judge each task. `--check` asks no model: see CHECK; `--capture` keeps a run: see
+CAPTURE.
 
 THE REPOSITORY IS NAMED, NEVER FOUND. `--servers` is a Python file whose `load()` returns each
 server's MODULE by its registered name (`.mcp` is the server, each tool the module attribute of
 the same name), and which defines `ROOT`, the repository's root, which `{root}` in a task stands
-for. It may
-define `CHECKS`, each server's own pre-gate judge by name, and `CAPTURED`, the servers whose real
-runs the repository keeps. `--tasks` is the directory of `<server>.json`. Both are required: this
-module belongs to no repository, and a default would read another one's.
+for. It may define `CHECKS`, each server's own pre-gate judge by name, and `CAPTURED`, the servers
+whose real runs the repository keeps. `--tasks` is the directory of `<server>.json`. Both are
+required: this module belongs to no repository, and a default would read another one's.
 
-TWO DIRECTORIES ARE DERIVED FROM `ROOT`, and the derivation is the contract (no option moves
-them): a run writes its directory under `ROOT/tmp/mcp_probe/`, and the captures live under
+TWO DIRECTORIES ARE DERIVED FROM `ROOT`, and no option moves them: a run writes its directory
+under `ROOT/tmp/mcp_probe/`, and the captures live under
 `ROOT/tests/fixtures/mcp_probe/captured/<server>/`.
 
 WHAT IT ASKS. Per server, ONE prompt: the server's `instructions` and every tool as `list_tools()`
 delivers it (name, description, input schema), each text cut where the client cuts it
-(`client_cap.delivered`), then the tasks of `<tasks>/<server>.json`.
-A fresh `claude --print` on haiku at low effort, with no tool, no MCP server, no settings and so no
-project instructions, answers one line per task:
+(`client_cap.delivered`), then the tasks. A fresh `claude --print` on
+haiku at low effort, with no tool, MCP server or settings, answers one line per task:
 
     <id>: {"tool": "<name>", "args": {...}}      or      <id>: CANNOT <reason>
 
 WHAT IS RIGHT. The expected tool; every argument equal to the expected one, where an argument
 passed at its default counts as absent; a call that binds to the tool's signature; and, on a
-server the servers file gives a `CHECKS` entry, one the server's own judge accepts. A line that
-does not parse is WRONG, never skipped. A tool PASSES only when every task on it is right in
-every run.
+server with a `CHECKS` entry, one the server's own judge accepts. A line that does not parse is
+WRONG, never skipped. A tool PASSES only when every task on it is right in every run.
 
 THE TASK FILE is {"tasks": [...]}, and a task is:
   id       unique; the model writes it at the head of its line
-  prompt   what is asked, in the words a caller would use
+  prompt   what is asked, in a caller's words
   tool     the expected tool, with `args`: name -> value, or {"any_of": [value, ...]} at any
            depth; `args` itself may be {"any_of": [{...}, {...}]}, equivalent whole calls
   allow    argument names that may carry any value
@@ -46,39 +43,35 @@ REFUSED BEFORE ANY MODEL IS ASKED, each naming what it found (INVALID, exit 3):
   - contamination: a task value (an expected argument, a hex literal in the prompt) that the
     tool's own description holds as a whole word, unless the task lists it under `grammar`;
   - a task naming a tool or an argument the server does not have;
-  - a task file that is malformed (an id, a key, a shape the list above does not take), or a
-    task whose own expected call the server's judge refuses.
+  - a malformed task file, or a task whose own expected call the server's judge refuses.
 
 OUTPUT. One line per tool, `PASS <server> <tool> N/N` or `FAIL <server> <tool> k/N (<task ids>)`,
-k being the runs in which every task on it was right; one summary line; and LAST, the directory
-under `ROOT/tmp/mcp_probe/` that holds the prompts, the raw answers and every per-task verdict.
+k being the runs in which every task on it was right; one summary line; and LAST, the run
+directory, which holds the prompts, the raw answers and every per-task verdict.
 
 EXIT: 0 every tool passes; 1 any FAIL; 2 usage; 3 INVALID: nothing to examine, a refusal above,
 a model call that failed or answered no line for any task, or the probe itself breaking.
 
-CHECK. `--check` runs only the refusals above, which cost nothing and need no network, and
-prints `OK <server>: <n> tasks cover <m> tools` or one `REFUSED <problem>` line each; it writes no
-directory. Exit 0 covered, 1 a refusal found, 2 usage (`--runs` beside it), 3 INVALID (it could
-not examine). A repository's pre-commit can run it, so a task set that no longer fits its servers
-cannot be committed. It cannot see a CHANGED description: running the probe is for that.
+CHECK. `--check` runs only the refusals above, which need no network, and prints
+`OK <server>: <n> tasks cover <m> tools` or one `REFUSED <problem>` line each; it writes no
+directory. Exit 0 covered, 1 a refusal found, 2 usage (`--runs` beside it), 3 INVALID. A
+pre-commit can run it. It cannot see a CHANGED description: running the probe is for that.
 
-THE MODEL RUN IS NOT A GATE. Every run costs money and needs the network, and at haiku a miss
-moves between tools from run to run, so a gate on it would block by chance: it is run by hand
-after a description changes.
+THE MODEL RUN IS NOT A GATE: at haiku a miss moves between tools from run to run, so a gate on
+it would block by chance. Run it by hand after a description changes.
 
 THE SEAM. `MCP_PROBE_ANSWERS=<dir>` replays `<server>-run<k>.txt` from that directory instead of
-calling `claude`. An output directory is such a directory, which is how the probe's own tests run
-free and offline; a real run is kept in the tree through CAPTURE, below.
+calling `claude`. An output directory is such a directory.
 
 CAPTURE. `<server> --capture <run directory> --ids <id>[,<id>...]` keeps the named tasks of a
 real run as `ROOT/tests/fixtures/mcp_probe/captured/<server>/<id>.json`, `{"task": <as its file
 writes it>, "runs": [{"lines": [<every line that answered it, the root's path as {root}>],
-"right": <the run's verdict>}]}`; the suite re-judges each one and names a task with none. It asks
-no model and makes no output directory. Exit 0 written; 2 usage (a server of `CAPTURED`,
-both options, no `--runs` or `--check`, no empty or repeated id); 3 INVALID: anything it cannot
-prove (a run on another surface, a task asked or judged otherwise now) writes nothing, and a write
-that fails part-way names the files it wrote. The store is `scry_core.probe_captures`; the
-algebra of an expected value, `scry_core.probe_any_of`.
+"right": <the run's verdict>}]}`. It asks no model and makes no output directory. Exit 0 written; 2
+usage (a server of `CAPTURED`, both options, no `--runs` or
+`--check`, no empty or repeated id); 3 INVALID: anything it cannot prove (a run on another
+surface, a task asked or judged otherwise now) writes nothing, and a write that fails part-way
+names the files it wrote. The store is `scry_core.probe_captures`; the algebra of an expected
+value, `scry_core.probe_any_of`.
 """
 
 from __future__ import annotations
@@ -117,40 +110,31 @@ from scry_core.verdict import EXIT_INVALID as EXIT_INVALID
 from scry_core.verdict import EXIT_PASS as EXIT_PASS
 from scry_core.verdict import Invalid as Invalid
 
-#: Where a run writes and where the captures live, under the repository's root: the contract
-#: `--help` states, so no option moves them.
 RUNS_UNDER_ROOT = Path("tmp") / "mcp_probe"
 CAPTURED_UNDER_ROOT = Path("tests") / "fixtures" / "mcp_probe" / "captured"
 ANSWERS_ENV = "MCP_PROBE_ANSWERS"
-#: Written in a task file where a path has to EXIST for the server's check (a reference image):
-#: it becomes the repository's root, so the file stays true in any clone.
+#: In a task file, stands for the repository root so a path stays true in any clone.
 ROOT_MARK = "{root}"
 CLAUDE_TIMEOUT_S = 600
 DEFAULT_RUNS = 3
 
-#: THE MODEL SEES WHAT THE PROMPT CARRIES AND NOTHING ELSE. `--setting-sources ""` is what keeps
-#: project instructions and hooks out (without it the child answers from instructions the prompt
-#: never carried),
-#: `--strict-mcp-config` with no config keeps every MCP server out, and `--tools ""` the built-ins.
+#: The model sees only the prompt: `--setting-sources ""` keeps project instructions and hooks out,
+#: `--strict-mcp-config` with no config every MCP server, `--tools ""` the built-ins.
 CLAUDE = ["claude", "--print", "--model", "haiku", "--effort", "low", "--max-budget-usd", "1",
           "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"]
-#: The one command the model is asked through: the above, with no tools and its answer as JSON.
 MODEL_COMMAND = [*CLAUDE, "--tools", "", "--output-format", "json"]
 
-#: How `--check` begins each line: a server covered, or one problem it refuses. A caller reading
-#: the check's output (a pre-commit) matches these, never its own spelling of them.
+#: How `--check` begins each line; a caller (a pre-commit) matches these.
 CHECK_OK, CHECK_REFUSED = "OK ", "REFUSED "
 CANNOT = "CANNOT"
 NO_LINE = "no answer line"
 
-#: A number this small is in every description as a count or a width, so finding it there says
-#: nothing about a copied example; contamination looks only at numbers from here up.
+#: Smaller numbers appear in every description as a count or width, so contamination skips them.
 SMALL_NUMBER = 16
 
 TASK_KEYS = frozenset({"id", "prompt", "tool", "args", "allow", "grammar", "expect", "about"})
 TASK_ID = re.compile(r"[A-Za-z][A-Za-z0-9_-]*")
-#: One answer line: an id, a colon, the rest. Markdown a model adds around it (a bullet, bold,
-#: backticks) is tolerated; anything else about the line is the rest's to parse.
+#: One answer line: an id, a colon, the rest; markdown a model adds around it is tolerated.
 ANSWER_LINE = re.compile(
     r"^[\s>*`-]*(?P<id>[A-Za-z][A-Za-z0-9_-]*)[`*]*\s*:[\s`]*(?P<rest>.*?)[\s`]*$")
 HEX_LITERAL = re.compile(r"\b0x[0-9A-Fa-f]+\b")
@@ -173,8 +157,8 @@ TASKS_HEAD = "=== TASKS ==="
 
 
 def broke(what: str, e: Exception) -> str:
-    """The INVALID line for an exception nobody expected: a traceback exits 1, which reads as a
-    FAIL, so every entry point catches the rest and says this instead."""
+    """The INVALID line for an unexpected exception (a traceback would exit 1, which reads as
+    FAIL)."""
     traceback.print_exc()
     return f"INVALID: the {what} broke, so nothing here is a verdict: {type(e).__name__}: {e}"
 
@@ -184,22 +168,19 @@ class Tool:
     name: str
     description: str
     schema: dict[str, Any]
-    #: The tool function's signature narrowed to what the schema offers a caller: a parameter the
-    #: SDK injects (`ctx`) is not the model's to pass.
+    #: Narrowed to what the schema offers: a parameter the SDK injects (`ctx`) is not the model's.
     signature: inspect.Signature
 
 
-#: The server's own pre-gate judge: (tool, the arguments given, the arguments with defaults).
+#: The server's pre-gate judge: (tool, arguments given, arguments with defaults).
 Check = Callable[[str, dict[str, Any], dict[str, Any]], None]
 
 
 @dataclass(frozen=True)
 class ProbeRepo:
-    """The one repository a probe reads, built by `configure` and taken by every engine function,
-    so everything a call reads is what it was handed. `modules` are the servers file's servers in
-    its order; `checks` each one's own pre-gate judge; `captured_servers` the ones whose real runs
-    the repository keeps. `configure` also puts the root on `sys.path`, since the repository's
-    modules import each other by name."""
+    """The one repository a probe reads, built by `configure`. `modules` are the servers in file
+    order; `checks` each one's pre-gate judge; `captured_servers` those whose runs are kept.
+    `configure` also puts the root on `sys.path`: the repository's modules import by name."""
 
     root: Path
     tasks_dir: Path
@@ -242,9 +223,7 @@ class Verdict:
 
 
 def configure(servers_file: Path, tasks_dir: Path) -> ProbeRepo:
-    """The repository a servers file and a tasks directory name, or `Invalid` when the file is not
-    one the probe can use. The servers are whatever `load()` hands back: a servers file that
-    imports its server by name hands the module the suite already holds."""
+    """The repository a servers file and a tasks directory name, or `Invalid` if unusable."""
     path = servers_file.resolve()
     spec = importlib.util.spec_from_file_location("mcp_probe_servers", path)
     if spec is None or spec.loader is None:
@@ -258,7 +237,6 @@ def configure(servers_file: Path, tasks_dir: Path) -> ProbeRepo:
     if not callable(load) or not isinstance(root, Path):
         raise Invalid(f"--servers {servers_file} defines no `load()` and `ROOT` (a Path): see "
                       "THE REPOSITORY IS NAMED in this module's help")
-    # The repository's own modules import each other by name, as they do run from its root.
     if str(root.resolve()) not in sys.path:
         sys.path.insert(0, str(root.resolve()))
     modules = load()
@@ -267,8 +245,7 @@ def configure(servers_file: Path, tasks_dir: Path) -> ProbeRepo:
     checks, captured = getattr(module, "CHECKS", {}), getattr(module, "CAPTURED", ())
     if not isinstance(checks, dict) or not isinstance(captured, tuple):
         raise Invalid(f"--servers {servers_file}: `CHECKS` is a dict and `CAPTURED` a tuple")
-    # A judge filed under a name no server answers to would leave that server judged by
-    # signature alone, in silence: a misspelt key is refused like a missing file.
+    # A misspelt key would leave that server judged by signature alone, in silence.
     if stray := sorted({*checks, *captured} - set(modules)):
         raise Invalid(f"--servers {servers_file} names {', '.join(stray)} in `CHECKS` or "
                       f"`CAPTURED`, and loads no such server ({', '.join(modules)})")
@@ -307,20 +284,18 @@ def resolve_root(repo: ProbeRepo, text: str) -> str:
 
 
 def mark_root(repo: ProbeRepo, text: str) -> str:
-    """The inverse of `resolve_root`: what a tracked file keeps, true in any clone."""
+    """The inverse of `resolve_root`."""
     return text.replace(str(repo.root), ROOT_MARK)
 
 
 def read_tasks(repo: ProbeRepo, path: Path, *, raw: bool = False) -> list[dict[str, Any]]:
-    """The tasks, with `{root}` resolved to the repository, or kept as written with `raw`, which is
-    how a capture stores the task it answered."""
+    """The tasks, `{root}` resolved, or as written with `raw` (how a capture stores them)."""
     try:
         text = path.read_text(encoding="utf-8")
         doc = json.loads(text if raw else resolve_root(repo, text))
     except (OSError, json.JSONDecodeError) as e:
         raise Invalid(f"{path}: {e}") from None
-    # THE SHAPE IS SAID, not only that nothing was found: each way a file can miss is a different
-    # edit, and "holds no tasks" for all of them sends the reader to count rows.
+    # Each way a file can miss is a different edit, so each is named.
     if not isinstance(doc, dict):
         raise Invalid(f'{path} holds {doc!r:.40}, not {{"tasks": [...]}}')
     if "tasks" not in doc:
@@ -337,17 +312,15 @@ def read_tasks(repo: ProbeRepo, path: Path, *, raw: bool = False) -> list[dict[s
 
 
 def on_tool(task: dict[str, Any]) -> str:
-    """The tool a task is judged under: the one it calls, or the one whose limit it probes."""
+    """The tool a task is judged under."""
     return str(task.get("tool") or task.get("about") or "")
 
 
 def task_problems(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
-    """A task file that names what the server does not have would judge nothing it claims to."""
     return [p for found in _problems_by_task(surface, tasks) for p in found]
 
 
 def _problems_by_task(surface: Surface, tasks: list[dict[str, Any]]) -> list[list[str]]:
-    """`task_problems`, one list per task in order, so a caller can keep the tasks with none."""
     out: list[list[str]] = []
     seen: set[str] = set()
     for i, task in enumerate(tasks):
@@ -355,7 +328,6 @@ def _problems_by_task(surface: Surface, tasks: list[dict[str, Any]]) -> list[lis
         out.append(found)
         tid = task.get("id") if isinstance(task, dict) else None
         where = f"{surface.server} task {tid or f'#{i}'}"
-        # A FILE'S ENTRY IS WHATEVER ITS JSON HELD, whatever the list is typed as.
         if not isinstance(cast(object, task), dict):
             found.append(f"{where}: is not a task, an object with an `id`; got {task!r:.60}")
             continue
@@ -416,8 +388,7 @@ def _call_problems(surface: Surface, tool: Tool, where: str, args: dict[str, Any
     required = {n for n, p in params.items() if p.default is inspect.Parameter.empty}
     if missing := sorted(required - set(args) - set(allow)):
         out.append(f"{where}: required {', '.join(missing)} neither expected nor allowed")
-    # The server's judge is asked only about a call the task fixes whole: a required argument
-    # left to `allow` has no value to judge.
+    # A required argument left to `allow` has no value for the judge.
     elif not bad and required <= set(args) and (
             refusal := _refusal(surface, tool, concrete(args))):
         out.append(f"{where}: its own expected call is refused: {refusal}")
@@ -425,8 +396,7 @@ def _call_problems(surface: Surface, tool: Tool, where: str, args: dict[str, Any
 
 
 def _refusal(surface: Surface, tool: Tool, args: dict[str, Any]) -> str:
-    """Why this call would be refused before it reached the machine, or "" if it would not.
-    Its arguments already bind: the caller has checked their names."""
+    """Why this call would be refused before reaching the machine, or ""; its names already bind."""
     bound = tool.signature.bind(**args)
     if surface.check is None:
         return ""
@@ -437,7 +407,6 @@ def _refusal(surface: Surface, tool: Tool, args: dict[str, Any]) -> str:
     except AssertionError as e:
         raise Invalid(f"{surface.server} check does not know {tool.name}: {e}") from None
     except ImportError as e:
-        # A judge that cannot be loaded refuses nothing: it is the probe that is broken.
         raise Invalid(f"{surface.server}'s check cannot be imported: {e}") from None
     except Exception as e:  # noqa: BLE001 -- any refusal of the server's own judge
         return f"the server's check refuses it: {e}"
@@ -445,8 +414,7 @@ def _refusal(surface: Surface, tool: Tool, args: dict[str, Any]) -> str:
 
 
 def coverage_holes(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
-    """Every tool probed, every argument it offers named by some task, and one refusal: an
-    argument no task uses is one nobody finds out a model cannot name."""
+    """Every tool probed, every argument it offers named by some task, and one CANNOT task."""
     out: list[str] = []
     for tool in surface.tools.values():
         mine = [t for t in tasks if on_tool(t) == tool.name]
@@ -475,13 +443,11 @@ def _spellings(value: Any) -> list[str]:
 
 
 def _folded(value: Any) -> Any:
-    """A grammar entry exempts what the search would find, and the search ignores case."""
     return value.casefold() if isinstance(value, str) else value
 
 
 def contamination(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
-    """A task value its tool's description already holds tests copying, not reading: the
-    answer is on the page."""
+    """Task values the tool's description already holds: they test copying, not reading."""
     out: list[str] = []
     for task in tasks:
         tool = surface.tools.get(on_tool(task))
@@ -506,8 +472,8 @@ def contamination(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
 
 
 def prompt_for(surface: Surface, tasks: list[dict[str, Any]]) -> str:
-    """The prompt one run asks: the surface's texts as `load_surface` cut them to what the client
-    delivers (the one place the cut is made), then the tasks."""
+    """The prompt one run asks: the surface's texts (cut once, in `load_surface`), then the
+    tasks."""
     parts = [PROMPT_HEAD.format(server=surface.server), "=== SERVER INSTRUCTIONS ===",
              surface.instructions, "", "=== TOOLS ==="]
     for tool in surface.tools.values():
@@ -519,12 +485,10 @@ def prompt_for(surface: Surface, tasks: list[dict[str, Any]]) -> str:
 
 
 def task_line(task: dict[str, Any]) -> str:
-    """How the prompt asks one task, under `TASKS_HEAD`."""
+
     return f"{task['id']}: {task['prompt']}"
 
 
-# The three files of a run directory a capture reads, named once: the run writes them and the seam
-# replays the answers from such a directory.
 def prompt_file(out: Path, server: str) -> Path:
     return out / f"{server}-prompt.txt"
 
@@ -553,7 +517,7 @@ def ask(server: str, prompt: str, run: int, out: Path) -> str:
 
 
 def _ask_model(prompt: str, saved: Path) -> str:
-    # A cwd of its own, outside the repository: no project instructions above it.
+    # A cwd outside the repository: no project instructions above it.
     with tempfile.TemporaryDirectory(prefix="mcp_probe-") as cwd:
         try:
             proc = subprocess.run(MODEL_COMMAND, input=prompt, capture_output=True, text=True,
@@ -582,7 +546,7 @@ def _ask_model(prompt: str, saved: Path) -> str:
 
 
 def answer_lines(text: str) -> Iterator[tuple[str, str, str]]:
-    """Each line of an answer that carries a task id: the id, the line whole, what follows it."""
+    """Each answer line carrying a task id: the id, the line, what follows it."""
     for line in text.splitlines():
         if m := ANSWER_LINE.match(line):
             yield m["id"], line, m["rest"]
@@ -616,7 +580,7 @@ def _answer(rests: list[str]) -> Answer:
 
 def _mismatch(tool: Tool, expected_args: dict[str, Any], allow: set[str],
               effective: dict[str, Any]) -> str:
-    """The first argument that differs from one expected call, or "" when none does."""
+    """The first argument differing from one expected call, or ""."""
     for name, param in tool.signature.parameters.items():
         if name in allow:
             continue
@@ -628,7 +592,7 @@ def _mismatch(tool: Tool, expected_args: dict[str, Any], allow: set[str],
 
 
 def _as_json(value: Any) -> Any:
-    """A value as JSON carries it: a default left in place compares with what a model writes."""
+    """A value as JSON carries it, so a default compares with what a model writes."""
     try:
         return json.loads(json.dumps(value))
     except (TypeError, ValueError):
@@ -718,9 +682,8 @@ def _save_verdicts(out: Path, server: str, verdicts: list[dict[str, Verdict]]) -
 
 
 def refusals(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
-    """Everything refused before a model is asked, for one server. The two later passes read a
-    task's `args`, `allow`, `grammar` and `id` as the shapes `task_problems` holds them to, so
-    they judge only the tasks it accepted: a malformed one is named once, never a traceback."""
+    """Everything refused before a model is asked. The later passes judge only the tasks
+    `task_problems` accepted, so a malformed one is named once, never a traceback."""
     found = _problems_by_task(surface, tasks)
     accepted = [t for t, problems in zip(tasks, found, strict=True) if not problems]
     return [*(p for problems in found for p in problems), *coverage_holes(surface, accepted),
@@ -728,7 +691,6 @@ def refusals(surface: Surface, tasks: list[dict[str, Any]]) -> list[str]:
 
 
 def check(repo: ProbeRepo, names: tuple[str, ...]) -> int:
-    """The refusals alone, for the commit path: no model, no network, no directory."""
     lines: list[str] = []
     rc = EXIT_PASS
     try:
@@ -761,7 +723,6 @@ def _positive(text: str) -> int:
 
 
 def _capture_ids(parser: argparse.ArgumentParser, opts: argparse.Namespace) -> list[str]:
-    """The ids `--capture` writes, once the call is one the writer can answer; else usage."""
     if opts.capture is None or opts.ids is None:
         parser.error("--capture and --ids go together: the run directory and the tasks to take")
     if opts.runs is not None or opts.check:
@@ -775,8 +736,8 @@ def _capture_ids(parser: argparse.ArgumentParser, opts: argparse.Namespace) -> l
 
 
 def new_run_dir(repo: ProbeRepo, now: dt.datetime) -> Path:
-    """A new directory under the repository's `out_dir` for one run, named by the UTC second of
-    `now` (aware). Two runs can share that second; `mkdtemp`'s random tail keeps them apart."""
+    """A new run directory under `out_dir`, named by the UTC second of `now` (aware); `mkdtemp`'s
+    tail separates runs sharing a second."""
     repo.out_dir.mkdir(parents=True, exist_ok=True)
     stamp = now.astimezone(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
     return Path(tempfile.mkdtemp(prefix=f"{stamp}-", dir=repo.out_dir))
@@ -803,8 +764,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--ids", default=None,
                         help="with --capture: the task ids to keep, comma-separated")
     opts = parser.parse_args(argv)
-    # USAGE FIRST, from the options alone: a wrong call is answered as one (exit 2) whatever the
-    # servers file holds, and before it is run.
+    # Usage first, from the options alone: exit 2 whatever the servers file holds.
     capturing = opts.capture is not None or opts.ids is not None
     ids = _capture_ids(parser, opts) if capturing else []
     if opts.check and opts.runs is not None:
@@ -824,8 +784,7 @@ def main(argv: list[str]) -> int:
         if opts.server not in repo.captured_servers:
             parser.error(f"{opts.server} has no capture: --capture takes one of "
                          f"{', '.join(repo.captured_servers) or 'none here'}")
-        # THE STORE IMPORTS THIS MODULE (the surface, the judge), so it is reached here, where
-        # `--capture` dispatches to it, and never at the top.
+        # The store imports this module, so it cannot be imported at the top.
         from scry_core import probe_captures
         return probe_captures.capture(repo, opts.server, opts.capture, ids)
     names = repo.servers if opts.server == "all" else (opts.server,)

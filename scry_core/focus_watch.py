@@ -1,48 +1,30 @@
 """Whether a run took the owner's focus: the frontmost application, sampled while the run goes.
 
-A live tier is only bearable beside somebody working if nothing it launches comes to the front,
-and nothing in the run can say that it did: an emulator activated behind the run's back answers
-every tool normally. So the question is put from outside, on a clock:
+An emulator activated behind a run's back answers every tool normally, so it is asked from outside:
 
     with focus_watch.FocusWatch(tsv) as watch:
         ...                                   # the run
     v = focus_watch.judge(watch.samples, {"dosbox-x"}, start_ms=t0, end_ms=t1)
 
-`v.status` is `CLEAN` (no sample had one of `names` in front, and no display's Space moved),
-`TOOK_FOCUS` (`v.sample` is the first that had one in front), `SPACE_CHANGED` (`v.sample` is the
-first whose displays' current Spaces differ from those of the first sample the window could
-take) or `INVALID`: the window holds no sample it could take, a stretch of it went unsampled for
-longer than `MAX_GAP_MS`, its samples change displays, or some carry a Space reading and others
-none. A sample the instrument could not take (a process exiting under it is the common
-one) is a stretch it did not see, so it counts as a gap and nothing more: one such sample among
-many is a short blindness, and only a gap past the bound makes the window INVALID. The focus
-taken, or a Space moved, is reported over a stretch unsampled or a later change of displays;
-short of one, an instrument that was blind for part of the run clears nothing. A stay in front
-shorter than one sampling period can fall between two samples, so this sees an emulator that
-took the focus and kept it, not a flicker; the same holds for a Space that moves and comes back
-inside one period. A Space move is not tied to any process: what a caller makes of that is
-`scry_core.focus_gate`'s to say. Each display's Space is keyed by the display's own identifier,
-so the same displays listed in another order are the same Spaces (`same_spaces`).
+`v.status` is `CLEAN`, `TOOK_FOCUS` (`v.sample` is the first such),
+`SPACE_CHANGED` (`v.sample` is the first whose Spaces differ from the first sample's) or
+`INVALID`: no sample the window could take, a stretch unsampled past `MAX_GAP_MS`, samples that
+change displays, or some with a Space reading and others none. A sample the instrument could
+not take counts as a gap. A focus taken or a Space moved is reported over a later gap or
+change of displays. A stay shorter than one period can be missed. Spaces are keyed by display
+identifier (`same_spaces`).
 
-THE INSTRUMENT IS SYSTEM EVENTS, asked through `osascript` on every sample, a separate process
-each time, rather than `NSWorkspace` inside this one, whose answer was observed to stay at
-whatever was in front when the process started. It needs the Automation permission for System
-Events, and without it every sample is an ERROR. Each sample also records the host pointer,
-for whoever reads a failed run's TSV, and never judges it: the owner's own hand moves it. And
-each records the current Space of every display (CoreGraphics' managed-display list, the one
-reading the system has of it), because a run can move the owner to another Space without
-anything of its own coming to the front; a reading that fails is an ERROR sample. The
-CoreGraphics symbols that list is read through are private, so they are bound with a guard: a
-host without them still gives samples, with no Space recorded, and says which symbol it lacks
-(`spaces_missing`).
+The instrument is System Events through `osascript`: `NSWorkspace` inside this process was
+observed to keep answering with whatever was in front at start. Without the Automation
+permission every sample is an ERROR. Each sample also records the host pointer (never judged:
+the owner's hand moves it) and each display's current Space, because a run can move the owner
+to another Space without coming to the front. The private CoreGraphics symbols for that are
+guarded: without them samples carry no Space and `spaces_missing` names the symbol. The flow and
+the Space actuator are `scry_core.focus_gate`'s.
 
-THE FLOW a live section takes the watch through (the control, the verdict) and the actuator that
-moves the owner's Space for it are `scry_core.focus_gate`'s: this module observes and judges.
-
-The samples go to a TSV as they are taken,
+Samples go to a TSV as they are taken, so a run that dies keeps its record:
 `epoch_ms<TAB>app<TAB>pid<TAB>x,y<TAB>display:space,display:space` or
-`epoch_ms<TAB>ERROR<TAB><why>`, so a run that dies keeps its record. macOS only: anywhere else
-every sample is an ERROR, so every verdict is INVALID.
+`epoch_ms<TAB>ERROR<TAB><why>`. macOS only: elsewhere every sample is an ERROR.
 """
 
 from __future__ import annotations
@@ -62,12 +44,9 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Literal, TextIO
 
-# The pause between samples; each one also spends an osascript call, so the period is longer.
 INTERVAL_S = 0.25
-# A System Events that has not answered in this long is a sample that failed, not a slow one.
 OSASCRIPT_TIMEOUT_S = 5.0
-# Longer than this between two samples, or between a window's edge and its nearest sample, and
-# the stretch was not watched: several periods, so a slow osascript call is not blindness.
+# Several periods, so a slow osascript call is not blindness.
 MAX_GAP_MS = 2500
 FRONT_SCRIPT = (
     'tell application "System Events" to set p to first process whose frontmost is true',
@@ -78,7 +57,7 @@ Status = Literal["CLEAN", "TOOK_FOCUS", "SPACE_CHANGED", "INVALID"]
 
 
 def _field(text: str) -> str:
-    """A TSV field: no tab, and nothing `splitlines` would break a record on."""
+    """A TSV field: no tab, nothing `splitlines` breaks on."""
     return _FIELD_BREAKS.sub(" ", text)
 
 
@@ -89,7 +68,6 @@ class Sample:
     pid: int | None = None
     pointer: tuple[int, int] | None = None
     error: str = ""
-    # The current Space of each display, by the display's identifier, in the system's order.
     spaces: tuple[tuple[str, int], ...] = ()
 
     def line(self) -> str:
@@ -102,14 +80,13 @@ class Sample:
 
 
 def _space(i: int, field: str) -> tuple[str, int]:
-    """One `display:space` of a record; the bare-number form keys the display `#<position>`."""
+    """One `display:space` of a record; a bare number keys the display `#<position>`."""
     display, _, n = field.rpartition(":")
     return (display or f"#{i}", int(n))
 
 
 def parse(line: str) -> Sample:
-    """One TSV line back into its sample, a record with no Spaces field included; a line in none
-    of those shapes is ValueError."""
+    """One TSV line back into its sample; a line in no sample shape is ValueError."""
     fields = line.rstrip("\n").split("\t")
     epoch_ms = int(fields[0])
     if len(fields) == 3 and fields[1] == "ERROR":
@@ -139,8 +116,7 @@ SPACE_SYMBOLS = ("CGSMainConnectionID", "CGSCopyManagedDisplaySpaces")
 
 
 def spaces_missing(cg: object | None = None) -> str:
-    """The first of `SPACE_SYMBOLS` this host's CoreGraphics lacks, "" when it has them all (or
-    has no CoreGraphics at all, which `spaces` answers by itself)."""
+    """The first of `SPACE_SYMBOLS` CoreGraphics lacks, or ""."""
     if cg is None:
         libs = _graphics()
         if libs is None:
@@ -151,7 +127,7 @@ def spaces_missing(cg: object | None = None) -> str:
 
 @functools.cache
 def _graphics() -> tuple[ctypes.CDLL, ctypes.CDLL] | None:
-    """CoreGraphics and CoreFoundation, typed once, or None where they are not there."""
+    """CoreGraphics and CoreFoundation, typed once, or None."""
     graphics = ctypes.util.find_library("CoreGraphics")
     foundation = ctypes.util.find_library("CoreFoundation")
     if graphics is None or foundation is None:
@@ -163,8 +139,6 @@ def _graphics() -> tuple[ctypes.CDLL, ctypes.CDLL] | None:
     cg.CGEventGetLocation.argtypes = [ctypes.c_void_p]
     cg.CGWindowListCopyWindowInfo.restype = ctypes.c_void_p
     cg.CGWindowListCopyWindowInfo.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
-    # THE PRIVATE HALF, guarded: a host whose CoreGraphics lacks these is one with no Spaces to
-    # read, said by `spaces_missing`, never an exception in the middle of a sample.
     if not spaces_missing(cg):
         cg.CGSMainConnectionID.restype = ctypes.c_int
         cg.CGSCopyManagedDisplaySpaces.restype = ctypes.c_void_p
@@ -181,7 +155,7 @@ def _graphics() -> tuple[ctypes.CDLL, ctypes.CDLL] | None:
 
 
 def _pointer() -> tuple[int, int] | None:
-    """The host pointer, read off a fresh event, or None where it cannot be asked."""
+    """The host pointer, or None where it cannot be asked."""
     libs = _graphics()
     if libs is None:
         return None
@@ -196,13 +170,11 @@ def _pointer() -> tuple[int, int] | None:
     return round(at.x), round(at.y)
 
 
-# CFPropertyListCreateData's format for a binary plist, which `plistlib` reads.
 _BINARY_PLIST = 200
 
 
 def plist_of(cf: ctypes.CDLL, ref: int) -> Any:
-    """A CoreFoundation property list, released here, as `plistlib` reads it; None when it
-    cannot be serialised or read. Serialised so no CoreFoundation type is walked by hand."""
+    """A CoreFoundation property list, released here, via `plistlib`; None when unreadable."""
     try:
         data = cf.CFPropertyListCreateData(None, ref, _BINARY_PLIST, 0, None)
         if not data:
@@ -220,8 +192,7 @@ def plist_of(cf: ctypes.CDLL, ref: int) -> Any:
 
 
 def windows() -> list[dict[str, Any]]:
-    """Every window the window server lists, on screen or not, as CoreGraphics describes them;
-    none where it cannot be asked."""
+    """Every window the window server lists, on screen or not; none if unaskable."""
     libs = _graphics()
     if libs is None:
         return []
@@ -232,9 +203,7 @@ def windows() -> list[dict[str, Any]]:
 
 
 def spaces() -> tuple[tuple[str, int], ...] | None:
-    """The current Space of every display, keyed by its `Display Identifier`, or None where it
-    cannot be read. The list is the window server's own (`CGSCopyManagedDisplaySpaces`, private
-    but the one reading there is)."""
+    """The current Space of each display, keyed by `Display Identifier`; None if unreadable."""
     listed = _managed()
     if listed is None:
         return None
@@ -246,7 +215,7 @@ def spaces() -> tuple[tuple[str, int], ...] | None:
 
 
 def _managed() -> list[Any] | None:
-    """The window server's list of displays and their Spaces, or None where it cannot be read."""
+    """The window server's displays and Spaces, or None."""
     libs = _graphics()
     if libs is None or spaces_missing(libs[0]):
         return None
@@ -257,7 +226,7 @@ def _managed() -> list[Any] | None:
 
 
 def space_counts() -> tuple[int, ...] | None:
-    """How many Spaces each display holds, or None where it cannot be read."""
+    """How many Spaces each display holds, or None."""
     listed = _managed()
     if listed is None:
         return None
@@ -268,13 +237,12 @@ def space_counts() -> tuple[int, ...] | None:
 
 
 def same_spaces(a: tuple[tuple[str, int], ...], b: tuple[tuple[str, int], ...]) -> bool:
-    """Whether two readings hold the same displays on the same Spaces, in whatever order."""
+    """Whether two readings hold the same displays on the same Spaces, in any order."""
     return dict(a) == dict(b)
 
 
 def osascript(*lines: str) -> subprocess.CompletedProcess[str] | str:
-    """One `osascript` run of `lines` (each an `-e`), or why it did not answer: every question this
-    instrument and the Space control put to System Events goes through here."""
+    """One `osascript` run of `lines` (each an `-e`), or why it did not answer."""
     args = [arg for line in lines for arg in ("-e", line)]
     try:
         return subprocess.run(["osascript", *args], capture_output=True, text=True,
@@ -285,20 +253,17 @@ def osascript(*lines: str) -> subprocess.CompletedProcess[str] | str:
 
 
 def now_ms() -> int:
-    """The epoch in milliseconds, the clock every sample and window here is stamped on."""
+    """The epoch in milliseconds."""
     return int(time.time() * 1000)
 
 
-#: Whether this host is macOS, read once into a name: a type checker narrows `sys.platform` and
-#: would call the macOS half unreachable on any other host.
+#: A name, because a type checker narrows `sys.platform` and calls the macOS half unreachable.
 _MACOS = sys.platform == "darwin"
 
 
 def sample_host() -> Sample:
-    """One sample of this host: who is in front, where the pointer is, and each display's Space
-    (none on a host without the Space symbols). STAMPED AT THE
-    MIDDLE of the System Events call, the instant its answer is closest to describing, so a
-    window's edge does not take a sample that saw the moment after it."""
+    """One sample of this host, stamped at the middle of the System Events call so a window's edge
+    does not take a later moment's sample."""
     if not _MACOS:
         return Sample(now_ms(), error=f"the frontmost application is read on macOS only, not "
                                        f"{sys.platform}")
@@ -320,11 +285,10 @@ def sample_host() -> Sample:
 
 
 class FocusWatch:
-    """Samples on a thread of its own from `__enter__` to `__exit__`, each one appended to
-    `samples` and written to `path` as it is taken. `sample` is the seam a test hands its own
-    sampler through. A sampler that RAISES is recorded as an ERROR sample and sampling goes
-    on, so the verdict says INVALID rather than judging the samples before it; a record that
-    cannot be written stops the thread and re-raises at `__exit__`."""
+    """Samples on a thread from `__enter__` to `__exit__`, into `samples` and `path` as taken.
+
+    `sample` is the test seam. A sampler that raises is recorded as an ERROR sample and sampling
+    goes on; a record that cannot be written stops the thread and re-raises at `__exit__`."""
 
     def __init__(self, path: Path, *, interval_s: float = INTERVAL_S,
                  sample: Callable[[], Sample] = sample_host) -> None:
@@ -354,8 +318,7 @@ class FocusWatch:
             self._failure = e
 
     def __enter__(self) -> FocusWatch:
-        # OPENED HERE, not on the thread: a path that cannot be written refuses the run
-        # before it starts.
+        # Opened here, not on the thread, so an unwritable path refuses before the run starts.
         self._out = self.path.open("w", encoding="utf-8")
         self._thread = threading.Thread(target=self._run, args=(self._out,),
                                         name="focus_watch", daemon=True)
@@ -376,15 +339,12 @@ class Verdict:
     status: Status
     examined: int
     reason: str
-    # The sample that decided: the first theft (TOOK_FOCUS), the first move (SPACE_CHANGED), the
-    # one the instrument could not take or whose displays changed (INVALID), or None.
     sample: Sample | None = None
     distinct_pointers: int = 0
 
 
 def _gap(seen: list[Sample], start_ms: int | None, end_ms: int | None) -> str:
-    """Where the judged window went unwatched for longer than `MAX_GAP_MS`, or "" if nowhere:
-    between the samples the instrument took, and from each edge to the nearest of them."""
+    """Where the window went unwatched longer than `MAX_GAP_MS`, or ""."""
     edges = sorted({s.epoch_ms for s in seen}
                    | ({start_ms} if start_ms is not None else set())
                    | ({end_ms} if end_ms is not None else set()))
@@ -396,9 +356,8 @@ def _gap(seen: list[Sample], start_ms: int | None, end_ms: int | None) -> str:
 
 def judge(samples: list[Sample], names: Collection[str], *, start_ms: int | None = None,
           end_ms: int | None = None) -> Verdict:
-    """Judge the samples inside `[start_ms, end_ms]`: was any application in `names` in front,
-    or did a Space move? `names` is a collection of names, never one string, and never empty:
-    either would match nothing and read as CLEAN (ValueError)."""
+    """Judge the samples inside `[start_ms, end_ms]`: was an application in `names` in front, or did
+    a Space move? A bare string or empty `names` would match nothing and read CLEAN (ValueError)."""
     if isinstance(names, str) or not names:
         raise ValueError(f"names is a non-empty collection of application names; got {names!r}")
     wanted = set(names)
@@ -422,7 +381,6 @@ def judge(samples: list[Sample], names: Collection[str], *, start_ms: int | None
 
     def shown(sample: Sample) -> list[int]:
         return [n for _, n in sample.spaces]
-    # A move between readings of the same displays, reported over any blindness after it.
     moved = next((s for s in read if dict(s.spaces).keys() == first.keys()
                   and not same_spaces(s.spaces, read[0].spaces)), None)
     if moved is not None:

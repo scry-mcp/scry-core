@@ -1,19 +1,9 @@
-"""THE SEQUENCE EXECUTOR: a list of a server's own operations run in order in one call, the rules
-`perform`, `drive`'s act and `start`'s plan hold on both servers, written once.
+"""The sequence executor behind `perform`, `drive`'s act and `start`'s plan, for both servers.
 
-The list was judged whole before this runs (`scry_core.steps` and each server's value checks), so
-a list with one bad step never released the machine at its first. A step that needs a stopped
-machine, after one that let it run, waits for the stop, since a console command sent to a running
-machine is swallowed; a step that answers INVALID, or a replayed one whose answer left its
-recording, ends the list where it is cheapest to read. THE TAIL: a list that ends with the machine
-running hands back the stop it was heading for, surveyed, and a list that waited for a stop earns
-a verdict, `TARGET` when every wait it made ended at one.
-
-WHAT DIFFERS IS THE MACHINE'S, handed in as a `SequenceMachine`: how a stop is waited for and
-proved, which steps answer on a running machine, what can stop one, how a step is kept in the
-account, and the survey at the stop. MAME's window of frames (`until_frame`) is a `Cycle` of its
-own, and a step whose own wait for what it was to see ran out (`SequenceMachine.missed`) ends the
-list as a run's wait does.
+The list was judged whole before this runs. A step that needs a stopped machine, after one that
+let it run, waits for the stop (a console command sent to a running machine is swallowed). The
+tail hands back the stop a running list was heading for; a list that waited earns a verdict,
+`TARGET` when every wait ended at a stop.
 """
 
 from __future__ import annotations
@@ -41,15 +31,12 @@ def none_failed() -> dict[str, Any]:
 
 
 def where_stopped(failed_at: object) -> str:
-    """Where a `drive` act stopped, counted from 1 as every message counts steps: at a step, or
-    after its last one when the tail's wait ended it (`failed_at` unavailable)."""
+    """Where a `drive` act stopped, counted from 1: at a step, or after its last one."""
     return f"at step {failed_at + 1}" if isinstance(failed_at, int) else "after its last step"
 
 
 def refused_text(refused: list[dict[str, Any]]) -> str:
-    """The message of a list refused before anything ran: every refusal, each by its step
-    (counted from 1, as every message counts steps) and its op (a step that is no mapping has
-    none to name, and its own message quotes it)."""
+    """The message of a list refused before anything ran: every refusal by step (from 1) and op."""
     def one(e: dict[str, Any]) -> str:
         op = f" ({e['op']!r})" if isinstance(e.get("op"), str) else ""
         return f"step {e['step'] + 1}{op} {e['message']}"
@@ -58,17 +45,13 @@ def refused_text(refused: list[dict[str, Any]]) -> str:
 
 
 def step_op(step: object) -> str | None:
-    """The operation a list's step names: its `op` as text, or None for a step that is no mapping
-    or names none."""
+    """The step's `op` as text, or None for a step that is no mapping or names none."""
     return str(step.get("op")) if isinstance(step, dict) and "op" in step else None
 
 
 def not_a_step(index: int, step: object, no_op: str) -> dict[str, Any]:
-    """The refusal of a step naming no operation of the server, `no_op` saying why there is none
-    to name when the step names none at all. THE VOCABULARY IS NAMED ONCE, in the refusal's own
-    `operations` (`vocabulary_named`), never inside this message: a message is repeated in
-    `errors` and in the joined refusal, and a list of every operation in each copy buries the one
-    step that failed."""
+    """The refusal of a step naming no operation of the server; `no_op` says why none is named.
+    The vocabulary stays out of the message (`vocabulary_named`): it is repeated per copy."""
     return {"step": index, "op": contract.or_unavailable(step_op(step), no_op),
             "code": "bad_argument",
             "message": f"is not a step ({step!r}): see `operations` for the server's own "
@@ -76,8 +59,7 @@ def not_a_step(index: int, step: object, no_op: str) -> dict[str, Any]:
 
 
 def vocabulary_named(refused: list[dict[str, Any]], ops: Ops) -> dict[str, Any]:
-    """What a list's refusal names beside its errors: the vocabulary, `operations`, when a step
-    named no operation of it, and nothing otherwise."""
+    """`operations`, when a step named no operation of the vocabulary; else nothing."""
     unknown = any(not isinstance(e["op"], str) or e["op"] not in ops for e in refused)
     return {"operations": sorted(ops)} if unknown else {}
 
@@ -89,63 +71,57 @@ NO_EXPECT: dict[str, Any] = {
 
 
 def act_told(ran: dict[str, Any]) -> dict[str, Any]:
-    """`drive`'s `act`: what the list said, minus the envelope's own fields, so an act reads as
-    `perform` does (`failed` only when a step failed; `failed_at` says so either way)."""
+    """`drive`'s `act`: what the list said, minus the envelope."""
     return {k: v for k, v in ran.items() if k not in ("status", "session")}
 
 
 def act_stopped(ran: dict[str, Any]) -> tuple[contract.Code, str]:
-    """The code and the message of an act that did not end `ok`: the list's own code (a step
-    that failed is `step_failed`; a list the executor ended says why), and where it stopped."""
+    """The code and message of an act that did not end `ok`, and where it stopped."""
     code: contract.Code = ran.get("code", "step_failed")
     return code, f"the act stopped {where_stopped(ran.get('failed_at'))}: {ran.get('message')}"
 
 
 def act_ran_out() -> dict[str, Any]:
-    """`drive`'s verify when the act's own wait ran out: nothing of the whole act to verify."""
+    """`drive`'s verify when the act's own wait ran out."""
     return {"checked": False, **contract.unavailable(
         "the act ran out its wait before it ended (`act.verdict` TIMEOUT), so there is no "
         "effect of the whole act to verify")}
 
 
 class SequenceMachine(ABC):
-    """A server's half of a sequence, made for one list: what its machine decides. The abstract
-    methods are the ones every server answers; the rest default to the plain answer."""
+    """A server's half of a sequence, made for one list."""
 
-    #: What can stop a running machine, as a sentence names it first.
     stoppers = "A breakpoint or a watch"
-    #: What a session with nothing declared to stop it lacks, in the tail's note.
     undeclared = "no breakpoint, no change watch"
 
     @abstractmethod
     def answers_running(self, op: str, args: dict[str, Any]) -> bool:
-        """Whether this step answers on a running machine, so it is sent without a stop."""
+        """Whether this step is sent without a stop."""
 
     @abstractmethod
     def running(self) -> bool:
-        """Whether the machine runs now, as the session says, with nothing typed to learn it."""
+        """Whether the machine runs now, as the session says."""
 
     def began_running(self) -> bool:
-        """Whether the list begins on a running machine, so its first step that needs a stop
-        waits for one."""
+        """Whether the list begins on a running machine."""
         return self.running()
 
     @abstractmethod
     def leaves_running(self, op: str, reply: dict[str, Any]) -> bool:
-        """Whether a step that needs a stopped machine left it running, read from its reply."""
+        """Whether a step that needs a stop left the machine running."""
 
     @abstractmethod
     def wait_for_stop(self, seconds: float, progress: mprogress.Progress,
                       tail: bool = False) -> Waited:
-        """The bounded wait for a stop; `tail` for the list's last, whose survey follows."""
+        """The bounded wait for a stop; `tail` for the list's last."""
 
     @abstractmethod
     def can_be_stopped(self) -> bool:
-        """Whether anything declared can stop the machine, so a wait for a stop can end."""
+        """Whether anything declared can stop the machine."""
 
     @abstractmethod
     def tail_stop(self) -> dict[str, Any]:
-        """The surveyed stop a list's tail waited for."""
+        """The surveyed stop the tail waited for."""
 
     @abstractmethod
     def account(self, ran: list[dict[str, Any]], keep_last: bool,
@@ -157,25 +133,22 @@ class SequenceMachine(ABC):
         return {"op": op, "reply": reply}
 
     def missed(self, op: str, reply: dict[str, Any]) -> bool:
-        """Whether the step's own wait for what it was to see ran out, which ends the list."""
+        """Whether the step's own wait ran out, which ends the list."""
         return False
 
     def rested(self, ran: list[dict[str, Any]]) -> dict[str, Any] | None:
-        """The stop the machine came to during the list's last step, which answered on a running
-        machine (a `stop`, a breakpoint met while a key went in), as the tail names it; None to
-        name none."""
+        """The stop reached during the last step, which answered on a running machine."""
         return None
 
     def noted(self, op: str, reply: dict[str, Any]) -> None:
-        """A step answered `ok`: what the server keeps of it besides the account."""
+        """A step answered `ok`: what the server keeps besides the account."""
         return None
 
 
 @dataclass(frozen=True)
 class Ended:
     """How a list ended: a refusal's `code` and `message` (None and "" for a list that ran to its
-    end, a verdict included), the reply's `fields`, and how many steps `held` to the answer a
-    recording kept for them."""
+    end), the reply's `fields`, and how many steps `held` to their recorded answer."""
     code: contract.Code | None
     message: str
     fields: dict[str, Any]
@@ -184,33 +157,29 @@ class Ended:
 
 @dataclass(frozen=True)
 class Stop:
-    """Why a cycle ends the list: a refusal's `code` and `message` (None and "" for an answer)
-    and the fields it adds; `run` puts the account and the count around them."""
+    """Why a cycle ends the list: `code` and `message` (None and "" for an answer) and its
+    fields."""
     code: contract.Code | None
     message: str
     fields: dict[str, Any] = field(default_factory=dict)
 
 
 class Cycle(ABC):
-    """A list repeated until the machine says it is done (MAME's `until_frame`): its bound in
-    steps, its clock, its judgement after each step, and the fields every ending carries. Its
-    steps report no progress line of their own: the cycle reports its own."""
+    """A list repeated until the machine says it is done (MAME's `until_frame`)."""
 
-    #: The most steps the cycle runs.
     limit = 0
 
     @abstractmethod
     def expired(self) -> bool:
-        """Whether the cycle's clock ran out, checked before each step."""
+        """Whether the clock ran out, checked before each step."""
 
     @abstractmethod
     def after(self, reply: dict[str, Any], steps_completed: int, step: str) -> Stop | bool:
-        """After a step that answered, `step` named as every message names it: why the list
-        ends, True when the cycle is done, False to go on."""
+        """After a step that answered: why the list ends, True when done, False to go on."""
 
     @abstractmethod
     def short(self, steps_completed: int) -> Stop | None:
-        """After the loop: why the list ends when the cycle never got done, else None."""
+        """After the loop: why the list ends if the cycle never got done, else None."""
 
     @abstractmethod
     def fields(self) -> dict[str, Any]:
@@ -225,10 +194,10 @@ class _Run:
     ran: list[dict[str, Any]] = field(default_factory=list)
     held: int = 0
     running: bool = False
-    released_last: bool = False   # the LAST step is the one that let the machine run
-    released: bool = False        # SOME step let the machine run: the list is heading for a stop
-    came_to_rest: bool = False    # the LAST step answered on a running machine and found it stopped
-    waited: bool = False          # a wait for a stop was asked for and made: a verdict is earned
+    released_last: bool = False   # the last step let the machine run
+    released: bool = False        # some step let the machine run
+    came_to_rest: bool = False    # the last step found the machine stopped
+    waited: bool = False          # a wait was made: a verdict is earned
 
     def ended(self, code: contract.Code | None, message: str, *, keep_last: bool,
               also: list[dict[str, Any]] | None = None, **fields: Any) -> Ended:
@@ -245,13 +214,10 @@ class _Run:
 def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_seconds: float,
         progress: mprogress.Progress = mprogress.no_progress, name: str = "perform",
         tail_wait: bool = True, cycle: Cycle | None = None) -> Ended:
-    """The list run, every step already judged: how it ended (`Ended`). `settle_seconds` bounds
-    each wait for a stop (0: none); `tail_wait` False when the caller waits for the list's effect
-    its own way; `cycle` repeats the list (`Cycle`)."""
-    # A LIST BEGUN ON A RUNNING MACHINE (after a `resume`) waits for its stop before its first
-    # step that needs one, as one that released the machine itself does.
+    """The list run, every step already judged. `settle_seconds` bounds each wait for a stop (0:
+    none); `tail_wait` False when the caller waits for the list's effect its own way."""
     r = _Run(machine, cycle, running=machine.began_running(), waited=cycle is not None)
-    began = time.monotonic()            # the list's line rises from here
+    began = time.monotonic()
     i = 0
     while i < (cycle.limit if cycle is not None else len(steps)):
         if cycle is not None and cycle.expired():
@@ -263,9 +229,7 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
             try:
                 state = machine.wait_for_stop(settle_seconds, progress)
             except contract.Invalid as e:
-                # THE CHANNEL FAILED WHILE THE LIST WAITED (a terminal that overflowed, a stub
-                # that hung up): the steps already sent are the caller's to know, so the list
-                # ends with them, the failure as its end.
+                # The channel failed mid-wait: the steps already sent are the caller's to know.
                 return r.ended(e.code, f"while the list waited for a stop before "
                                f"{_named(i, op, len(steps), cycle)}: {e}", keep_last=True,
                                **{**_own(e), "failed_at": i})
@@ -278,19 +242,17 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
                        f"step, so the console step {op!r} cannot be sent (it would be "
                        f"swallowed). {machine.stoppers} has to stop it first")
                 if not settle_seconds:
-                    # NO WAIT WAS ASKED, so nothing ran out: the step could not be sent at all.
+                    # No wait was asked, so nothing ran out.
                     return r.ended("not_stopped", why, keep_last=True, failed_at=i)
-                # THE WAIT RAN OUT: a verdict, and the list ends here with what it completed.
                 return r.ended(None, "", keep_last=True, failed_at=none_failed(),
                                verdict=contract.TIMEOUT,
                                note=f"{why}; it and the steps after it were not sent")
-            # A wait with `settle_seconds` 0 was not asked for, even when the stop had already
-            # landed: it earns no verdict.
+            # settle_seconds 0 asked for no wait, even if the stop had landed: no verdict.
             r.waited = r.waited or settle_seconds > 0
         if cycle is None:
             with mprogress.within(progress, f"{name} step {i + 1} of {len(steps)} ({op})",
                                   began):
-                reply = ops[op](**args)  # the list was judged whole: every op is the server's
+                reply = ops[op](**args)
         else:
             reply = ops[op](**args)
         if reply.get("status") != "ok":
@@ -305,9 +267,7 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
         r.ran.append(machine.entry(op, reply))
         machine.noted(op, reply)
         if machine.missed(op, reply):
-            # A STEP'S OWN WAIT FOR WHAT IT WAS TO SEE RAN OUT: what the rest of the list was
-            # built on did not happen, so it ends here with the verdict, as a wait of the list's
-            # own does.
+            # What the rest of the list was built on did not happen.
             return r.ended(None, "", keep_last=True, failed_at=none_failed(),
                            verdict=contract.TIMEOUT,
                            note=f"{_named(i, op, len(steps), cycle)} waited for what it was to "
@@ -317,9 +277,7 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
             r.running = r.released_last = machine.leaves_running(op, reply)
             r.released = r.released or r.released_last
         else:
-            # A STEP THAT ANSWERS ON A RUNNING MACHINE DOES NOT RELEASE IT, and whether it
-            # stopped it is the session's to say, never the op's name: a `stop`, or a breakpoint
-            # met while a key went in, did.
+            # Whether such a step stopped the machine is the session's to say, never the op's name.
             r.came_to_rest = r.running and not machine.running()
             r.running = r.running and not r.came_to_rest
             r.released_last = False
@@ -337,14 +295,12 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
 
 
 def _own(e: contract.Invalid) -> dict[str, Any]:
-    """What a refusal that ended the list carries of its own, past what the list's ending
-    states itself (where it failed, what it keeps)."""
+    """What a refusal carries beyond what the list's ending states itself."""
     return {k: v for k, v in e.fields.items() if k not in ("failed_at", "keep_last", "also")}
 
 
 def _named(i: int, op: str, length: int, cycle: Cycle | None) -> str:
-    """Step `i` as the caller counts it, from 1 as the progress line does, and inside its pass
-    when a cycle repeats the list."""
+    """Step `i` counted from 1, inside its pass when a cycle repeats the list."""
     if cycle is None:
         return f"step {i + 1} ({op!r})"
     return f"step {i % length + 1} ({op!r}) of pass {i // length + 1}"
@@ -352,7 +308,7 @@ def _named(i: int, op: str, length: int, cycle: Cycle | None) -> str:
 
 def _tail(r: _Run, settle_seconds: float, progress: mprogress.Progress,
           tail_wait: bool) -> Ended:
-    """The list's ending once its steps are done (THE TAIL, in the module docstring)."""
+    """The list's ending once its steps are done."""
     m = r.machine
     final: dict[str, Any] = {}
     if r.running and not tail_wait:
@@ -364,9 +320,8 @@ def _tail(r: _Run, settle_seconds: float, progress: mprogress.Progress,
                  "note": "settle_seconds=0: the sequence ended with the machine running and no "
                          "stop was waited for"}
     elif r.running and not r.released_last and not m.can_be_stopped():
-        # THE LAST STEP ANSWERED ON A RUNNING MACHINE AND NOTHING DECLARED CAN STOP IT: a list
-        # ending in a key sent after a `resume`, with no breakpoint, wants the machine left
-        # running, where a wait would sit out its whole bound for a stop nothing can produce.
+        # A key sent after a `resume` with nothing to stop it wants the machine left running; a
+        # wait would sit out its whole bound.
         final = {"still_running": True,
                  "note": f"the sequence ended with the machine running after a step that "
                          f"answers on a running machine, and nothing declared can stop it "
@@ -375,9 +330,7 @@ def _tail(r: _Run, settle_seconds: float, progress: mprogress.Progress,
     elif r.came_to_rest and (rested := m.rested(r.ran)) is not None:
         final = {"stopped": rested}
     elif r.running and not r.released:
-        # A LIST BEGUN ON A RUNNING MACHINE THAT RELEASED NOTHING is not heading for a stop (keys
-        # sent to a running program): it hands the machine back running, where a wait would sit
-        # out its bound for a stop the list never asked for.
+        # Keys sent to a running program are not heading for a stop.
         final = {"still_running": True,
                  "note": "the list began with the machine running and no step of it released it, "
                          "so no stop was waited for"}

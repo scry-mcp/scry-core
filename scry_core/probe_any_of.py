@@ -1,8 +1,5 @@
-"""The ALGEBRA of a probe task's expected values: JSON equality that keeps a bool from passing
-for a number, and `{"any_of": [...]}`, a set of alternatives accepted at any depth of an
-expected call. The probe judges an answer with it (`scry_core.probe`) and a capture is compared
-with its task through it (`scry_core.probe_captures`).
-"""
+"""Expected-value algebra for probe tasks: strict JSON equality and `{"any_of": [...]}`
+alternatives."""
 
 from __future__ import annotations
 
@@ -11,12 +8,12 @@ from typing import Any
 
 
 def is_any_of(value: Any) -> bool:
-    """Whether `value` is `{"any_of": [...]}`, a set of alternatives a task accepts."""
+    """Whether `value` is an `{"any_of": [...]}` node."""
     return isinstance(value, dict) and set(value) == {"any_of"}
 
 
 def same(a: Any, b: Any) -> bool:
-    """JSON equality that does not let `True` pass for `1`, and does let `5` pass for `5.0`."""
+    """JSON equality: `True` is not `1`, `5` is `5.0`."""
     if isinstance(a, bool) or isinstance(b, bool):
         return type(a) is type(b) and a == b
     if isinstance(a, int | float) and isinstance(b, int | float):
@@ -41,7 +38,7 @@ def matches(expected: Any, got: Any) -> bool:
 
 
 def concrete(expected: Any) -> Any:
-    """The expected value with each `any_of` taken at its first alternative: a call to test."""
+    """The expected value with each `any_of` replaced by its first alternative."""
     if is_any_of(expected):
         return concrete(expected["any_of"][0])
     if isinstance(expected, dict):
@@ -52,12 +49,12 @@ def concrete(expected: Any) -> Any:
 
 
 def calls(args: Any) -> list[Any]:
-    """The whole calls a task accepts: one, or each of an `any_of` of calls."""
+    """The whole calls a task accepts."""
     return list(args["any_of"]) if is_any_of(args) else [args]
 
 
 def leaves(value: Any) -> Iterator[Any]:
-    """Every scalar of `value`, through dicts, lists and each alternative of an `any_of`."""
+    """Every scalar of `value`, through every alternative of an `any_of`."""
     if isinstance(value, dict):
         for v in (value["any_of"] if is_any_of(value) else value.values()):
             yield from leaves(v)
@@ -69,7 +66,7 @@ def leaves(value: Any) -> Iterator[Any]:
 
 
 def has_empty_any_of(value: Any) -> bool:
-    """Whether an `any_of` anywhere in `value` is not a list of at least one alternative."""
+    """Whether any `any_of` in `value` is not a non-empty list."""
     if is_any_of(value):
         held = value["any_of"]
         return not isinstance(held, list) or not held or any(has_empty_any_of(v) for v in held)

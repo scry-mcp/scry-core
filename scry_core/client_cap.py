@@ -1,12 +1,4 @@
-"""The prefix of a server's texts that the MCP client delivers: every `instructions` and tool
-description has to fit it, or the model never reads what is past the cut.
-
-The client compares a JavaScript `.length`, so the unit is the UTF-16 code unit, not the
-character or the byte. This is the one place the cap's value lives: each server's suite fails on
-any line `over_the_cap` returns for its servers (through `probe_checks.over_cap`) and prints the
-`margins` of the texts nearest it on every run, and the probe shows its model only what
-`delivered` keeps.
-"""
+"""The prefix of a server's texts the MCP client delivers, in UTF-16 code units."""
 
 from __future__ import annotations
 
@@ -15,15 +7,13 @@ from typing import Any
 
 from scry_core.verdict import Invalid
 
-#: Claude Code's MCP docs, *Tool search for MCP server authors*: 4,096 characters for
-#: `instructions` and a tool loaded upfront, 16,384 through search, which matches only the first
-#: 4,096. The strictest of those is the cap.
+#: Claude Code's MCP docs, *Tool search for MCP server authors*.
 CLIENT_TEXT_CAP = 4096
 PAST_THE_CUT_SHOWN = 60
 
 
 def _utf16(text: str) -> bytes:
-    # A lone surrogate is one unit to the client's `.length`, so it is encoded, never refused.
+    # A lone surrogate is one unit to the client's `.length`: encode, never refuse.
     return text.encode("utf-16-le", errors="surrogatepass")
 
 
@@ -32,27 +22,20 @@ def utf16_units(text: str) -> int:
 
 
 def delivered(text: str) -> str:
-    """The text as the client delivers it: its first `CLIENT_TEXT_CAP` units. A character outside
-    the BMP that straddles the cut is dropped whole, since half a surrogate pair is no character
-    a model could read. The probe shows the model this, so what it measures is what is delivered."""
+    """The first `CLIENT_TEXT_CAP` units; a character straddling the cut is dropped."""
     return _utf16(text)[:2 * CLIENT_TEXT_CAP].decode("utf-16-le", errors="ignore")
 
 
 def _lost(text: str) -> str:
-    """Everything past the cap, measured in the client's unit."""
     return _utf16(text)[2 * CLIENT_TEXT_CAP:].decode("utf-16-le", errors="replace")
 
 
 def past_the_cut(text: str) -> str:
-    """What the model loses, from its first word past the cap, folded onto one line so each
-    offending text stays one line of the report."""
     return " ".join(_lost(text).split())[:PAST_THE_CUT_SHOWN]
 
 
 def _texts(server: str, mcp: Any) -> list[tuple[str, str]]:
-    """Every text of `mcp` (an MCP server object) the client delivers, by name. A server that
-    declares no instructions or lists no tools is `Invalid`: a load that examined nothing is not
-    a pass, since an empty server has no text over any cap."""
+    """Every (name, text) of `mcp`; `Invalid` when there is nothing to measure."""
     instructions = mcp.instructions or ""
     tools = list(asyncio.run(mcp.list_tools()))
     if not instructions:
@@ -63,17 +46,14 @@ def _texts(server: str, mcp: Any) -> list[tuple[str, str]]:
 
 
 def over_the_cap(server: str, mcp: Any) -> list[str]:
-    """One line per text of `mcp` over the cap, naming it and what the client drops (the start
-    of what is lost, never the start of the text)."""
+    """One line per text over the cap."""
     return [f"{server} {name} {utf16_units(text)} > {CLIENT_TEXT_CAP}, the client drops: "
             + (f'"{past_the_cut(text)}"' if _lost(text).strip() else "whitespace only")
             for name, text in _texts(server, mcp) if utf16_units(text) > CLIENT_TEXT_CAP]
 
 
 def margins(server: str, mcp: Any, shown: int | None = None) -> list[str]:
-    """One line per text of `mcp`, its length and the units left under the cap, nearest the cap
-    first (a text over it has a negative margin); the first `shown`, or every one. A text one
-    sentence under the cap breaks on the next edit, which a list of breaches alone never says."""
+    """One line per text, nearest the cap first; the first `shown`."""
     rows = sorted((CLIENT_TEXT_CAP - utf16_units(text), name) for name, text in _texts(server, mcp))
     return [f"{server} {name} {CLIENT_TEXT_CAP - left} units, margin {left}"
             for left, name in rows[:shown]]

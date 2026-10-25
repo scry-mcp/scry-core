@@ -1,8 +1,7 @@
-"""The AVI main header, read once for every server: the frames it declares and their size.
+"""The AVI main header: the frames it declares and their size.
 
-The fixture is a real DOSBox-X capture of 12 frames (ZMBV, 720x400, finished), where the `00dc`
-tag appears 26 times, because the index a finished capture ends with names every frame again: a
-count of that tag is about twice the frames, and `avih` is the one number the writer stands by.
+The fixture is a finished 12-frame capture whose `00dc` tag appears 26 times (the index names every
+frame again), so `avih` is the one trustworthy count.
 """
 from __future__ import annotations
 
@@ -24,7 +23,6 @@ def test_a_finished_capture_declares_its_own_frames_and_size() -> None:
 
 
 def test_a_file_with_no_main_header_answers_none(tmp_path: Path) -> None:
-    # A capture still being written carries zeros where the header will go.
     unfinished = tmp_path / "running.avi"
     unfinished.write_bytes(bytes(2048) + b"00dc" * 3)
     assert avi.header(unfinished) is None
@@ -69,8 +67,7 @@ def test_size_answers_width_and_height() -> None:
     assert avi.size("source", ZMBV_12) == (720, 400)
 
 
-#: The first 60194 bytes of a DOSBox-X capture taken while it was still recording: its header
-#: says 0 frames and it has no index yet; nine frame chunks begin in this much of it.
+#: A capture cut while recording: header says 0 frames, no index yet.
 RUNNING = Path(__file__).parent / "fixtures" / "avi" / "dosbox-x-zmbv-running.avi"
 
 

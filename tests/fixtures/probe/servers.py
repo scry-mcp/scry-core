@@ -1,10 +1,5 @@
-"""The servers the probe's own suite is pointed at: real tools of the two emulator servers, frozen
-in `surfaces.json` as the client delivered them (instructions, description, input schema) beside
-each tool's signature, so the engine is judged against true texts with no server installed.
-
-A frozen tool is read and never called; the servers' own pre-gate judges are not frozen, so a
-case that needs one hands the surface a judge of its own.
-"""
+"""Frozen tools of the two emulator servers (`surfaces.json`), read by the probe and never
+called."""
 
 from __future__ import annotations
 

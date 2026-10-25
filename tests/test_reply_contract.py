@@ -1,7 +1,3 @@
-"""The reply contract as a class and a checker, judged on their own: a code outside the table, a
-malformed refusal and a refusal the source scan cannot read are each refused where they are
-written. Each server's suite walks its own tools through the contract on top of this."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,18 +9,14 @@ from scry_core import reply_contract as contract
 
 
 def test_the_class_refuses_what_the_contract_forbids() -> None:
-    """The contract is the CLASS, not a convention: a code outside the table, an empty
-    message and a reserved field are refused where they are written, as a programmer's error
-    and never as a reply."""
+    """A bad code, an empty message and a reserved field are programmer errors, not replies."""
     with pytest.raises(TypeError, match="not a code"):
         contract.Invalid("nonsense", "x")  # type: ignore[arg-type]
     with pytest.raises(TypeError, match="message"):
         contract.Invalid("bad_argument", "  ")
-    # `code` and `message` cannot even be passed twice: they are the class's own parameters.
     for word in ("summary", "status", "session", "verdict", "why", "reason"):
         with pytest.raises(TypeError, match="reserved"):
             contract.Invalid("bad_argument", "x", **{word: "x"})
-    # A refusal that met a stop carries the stop's `cause` as it carries the rest of it.
     assert contract.Invalid("bad_argument", "x", cause="target irq").fields == {
         "cause": "target irq"}
     got = contract.Invalid("bad_argument", "x", left_armed=["0x4a0"])
@@ -47,8 +39,7 @@ _GOOD = {"summary": "x: INVALID (bad_argument), y", "status": "INVALID", "code":
     ({**_GOOD, "summary": "x: INVALID, y"}, "summary"),
 ])
 def test_the_contracts_own_checker_refuses_each_defect(broken: dict[str, Any], names: str) -> None:
-    """The checker the two suites share is itself checked: a reply broken in each of the ways
-    the contract forbids is refused, naming the defect, and the good one passes."""
+    """Each forbidden defect is refused by name and the good reply passes."""
     contract.check_refusal("x", _GOOD, "bad_argument")
     with pytest.raises(AssertionError, match=names):
         contract.check_refusal("x", broken)
@@ -57,8 +48,7 @@ def test_the_contracts_own_checker_refuses_each_defect(broken: dict[str, Any], n
 
 
 def test_the_source_scan_refuses_a_refusal_it_cannot_read(tmp_path: Path) -> None:
-    """A refusal with no code, one whose code is computed, and a `code=` that is not a literal
-    are each refused naming the line; a readable one is listed with its code."""
+    """An unreadable refusal is refused naming the file; a readable one is listed with its code."""
     cases = {
         "none.py": "Invalid()\n",
         "computed.py": 'Invalid("bad_" + "argument", "x")\n',
@@ -75,9 +65,7 @@ def test_the_source_scan_refuses_a_refusal_it_cannot_read(tmp_path: Path) -> Non
 
 
 def test_the_source_scan_reads_a_keyword_code_and_leaves_other_calls_alone(tmp_path: Path) -> None:
-    """Three shapes the walk meets in a real module and no case held: a call whose callee is
-    itself a call, a keyword on a call that is no refusal, and a refusal written with `code=`
-    and no positional argument."""
+    """A call-valued callee, a non-refusal keyword and a `code=`-only refusal are all handled."""
     src = tmp_path / "m.py"
     src.write_text("f()()\nfoo(x=1)\ninvalid(code='no_session', message='m')\n")
     assert contract.codes_written_in([src]) == [("m.py", 3, "no_session")]
@@ -109,8 +97,7 @@ def test_the_envelope_passes_a_well_formed_reply_and_a_refusal_keeps_its_order()
 
 
 def test_an_unavailable_datum_is_one_shape_and_says_why() -> None:
-    """The one spelling of a datum that could not be read or does not apply, and a blank
-    reason is a programmer's error, refused as the contract refuses its other ones."""
+    """An unavailable datum has one shape, and a blank reason is refused."""
     assert contract.unavailable("no counter") == {"available": False, "why": "no counter"}
     assert contract.or_unavailable(None, "none given") == {"available": False,
                                                             "why": "none given"}
@@ -123,8 +110,7 @@ def test_an_unavailable_datum_is_one_shape_and_says_why() -> None:
 
 
 def test_a_verdict_is_one_word_of_the_measurements() -> None:
-    """`verdict` is a measurement's word, and the four are the table's: a reply carrying
-    another at its top is refused where it is built, as a refusal's code is."""
+    """Only the table's four words are a verdict."""
     assert frozenset({"TARGET", "TIMEOUT", "OTHER_STOP", "ELAPSED"}) == contract.VERDICTS
     assert (contract.TARGET, contract.TIMEOUT, contract.OTHER_STOP, contract.ELAPSED) == (
         "TARGET", "TIMEOUT", "OTHER_STOP", "ELAPSED")

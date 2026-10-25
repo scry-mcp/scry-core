@@ -1,28 +1,19 @@
 """What a recording says, measured on the host from the WAV: whether it sounded, how loud, when,
-whether it clipped, and how close two recordings are. Sound never reaches the model as content:
-it reaches it as these numbers and the file's path.
+whether it clipped, and how close two recordings are. Sound reaches the model as these numbers and
+the file's path.
 
-THE MEASURES are the ones a tracker's own audio gates use, so a server's answer and a project's
-gate agree: a peak and an RMS in dBFS; silence as an RMS under `SILENT_RMS` of full scale; spans
-of silence at `SILENCE_DBFS` lasting `SILENCE_MIN_S` or more; the onset as the first sample over
-`ONSET_FRACTION` of the peak; clipping as the longest run of flat samples near the peak (a
-clipped top is flat at any level, so its signature is the plateau, not the full-scale value);
-and between two recordings, channel by channel with the worst grading, the signal-to-error
-ratio, sorted into `exact`, `inaudible`, `audible` and `different`, beside the correlation of
-their energy envelopes, which gives away a change of shape that leaves the global level where it
-was. Two lengths more than a tenth of a second apart are `different` whatever the overlap says,
-as in the gate. A channel is compared with its twin, never through a mixdown: a channel in
-antiphase would cancel to silence and two swapped channels would average to one sound.
+The measures are the ones a tracker's audio gates use, so the two agree. Clipping is the longest run
+of flat samples near the peak (a clipped top is flat at any
+level). A comparison grades each channel against its twin, never a mixdown (antiphase channels
+would cancel, swapped ones average to one sound), takes the worst grade, and reports the
+envelope correlation beside it. Two lengths more than a tenth of a second apart are `different`.
 
-An emulated chip at rest sits at a steady level rather than at zero, and a steady level is no
-sound. The RMS, the plateau and every comparison read the window less its mean, so the level a
-chip rests at is never the top it was clipped against, while a clipped top stays flat (and a plateau
-cannot tell it from a square wave's); the silences read it through a DC blocker; the onset reads
-how far it moves from the level it starts at (a window opened mid-sound starts at its first
-change). A silent window has no onset and no plateau. The peak reads the samples as written: the
-headroom left. 8- and 16-bit PCM are read (8-bit is unsigned, centred on 128), the extensible
-header's PCM subformat included; any other WAV is refused by what it is. A comparison of two
-recordings that are both silent compares nothing, so it is `control_silent`, never a match.
+A resting chip's steady level is no sound: the RMS, the plateau and every
+comparison read the window less its mean; the silences, a DC blocker; the onset, the move from
+the level the window starts at. The peak reads the samples as written. 8-bit (unsigned) and 16-bit
+PCM are read, the extensible header's PCM subformat
+included; any other WAV is refused by what it is. Two silent recordings compare nothing:
+`control_silent`.
 """
 
 from __future__ import annotations
@@ -45,27 +36,25 @@ SILENT_RMS = 0.005
 SILENCE_DBFS = -60.0
 SILENCE_MIN_S = 0.050
 ONSET_FRACTION = 0.02
-#: The plateau detector's constants: two samples within `FLAT_EPS` 16-bit steps are flat; only a
-#: plateau at `PEAK_FRACTION` of the peak or above counts; a run past `CLIP_RUN_MAX` is clipping.
+#: Plateau detector: samples within `FLAT_EPS` 16-bit steps are flat; a run past `CLIP_RUN_MAX`
+#: clips.
 FLAT_EPS = 2
 PEAK_FRACTION = 0.95
 CLIP_RUN_MAX = 8
 ENVELOPE_WINDOWS = 64
 SNR_INAUDIBLE_DB, SNR_AUDIBLE_DB = 60.0, 30.0
-#: Two lengths more than a tenth of a second apart are different recordings, the tracker's rule.
+#: The tracker's rule: lengths a tenth of a second apart differ.
 LENGTH_TENTHS = 10
-#: An envelope whose deviation is under this fraction of full scale has no shape to correlate.
+#: An envelope deviating less than this fraction of full scale has no shape.
 FLAT_ENVELOPE = 1e-6
-#: The DC blocker's corner: under any pitch a chip plays, over the drift of a resting level.
+#: Under any pitch a chip plays, over the drift of a resting level.
 DC_CORNER_HZ = 5.0
-#: The sample widths read, in bytes, with their full scale.
 FULL_SCALE = {1: 128, 2: 32768}
 
 
 @dataclass(frozen=True)
 class Recording:
-    """A WAV as read: its rate, its channels' samples signed around zero, its full scale, and
-    the raw frames the samples came from."""
+    """A WAV as read: samples signed around zero per channel, plus the raw frames."""
 
     path: Path
     rate: int
@@ -79,18 +68,15 @@ class Recording:
         return len(self.channels[0])
 
 
-# THE EXTENSIBLE HEADER'S PCM subformat: the stdlib reads it only from 3.12 on, so a PCM file that
-# carries it is handed over as the plain PCM it is, the one tag rewritten. The fmt chunk's layout:
-# its tag first, the subformat GUID after the 24 bytes of fields before it.
+# The stdlib reads the extensible PCM subformat only from 3.12 on.
+# fmt chunk: the tag first, the GUID after 24 bytes of fields.
 _TAG_PCM, _TAG_EXTENSIBLE = 1, 0xFFFE
 _SUBFORMAT = slice(24, 40)
 _PCM_SUBFORMAT = bytes.fromhex("0100000000001000800000aa00389b71")
 
 
 def _as_plain_pcm(path: Path) -> str | io.BytesIO:
-    """`path`, or its bytes with an extensible PCM tag rewritten as plain PCM. Anything else
-    (another subformat, a header this cannot walk) goes to the stdlib as it is, which refuses it
-    by what it is."""
+    """`path`, or its bytes with an extensible PCM tag rewritten as plain PCM."""
     with path.open("rb") as f:
         head = f.read(12)
         if head[:4] != b"RIFF" or head[8:12] != b"WAVE":
@@ -104,9 +90,7 @@ def _as_plain_pcm(path: Path) -> str | io.BytesIO:
             if (len(fmt) < _SUBFORMAT.stop or struct.unpack_from("<H", fmt)[0] != _TAG_EXTENSIBLE
                     or fmt[_SUBFORMAT] != _PCM_SUBFORMAT):
                 return str(path)
-            # ONE COPY: the buffer is grown to the file's size and the file read straight into
-            # it, then the tag rewritten in place; a `bytearray(f.read())` and a `BytesIO` of it
-            # would each copy the whole recording again.
+                    # One copy: read straight into a presized buffer.
             size = f.seek(0, io.SEEK_END)
             f.seek(0)
             whole = io.BytesIO()
@@ -115,8 +99,7 @@ def _as_plain_pcm(path: Path) -> str | io.BytesIO:
             with whole.getbuffer() as view:
                 got = f.readinto(view)
                 view[fmt_at:fmt_at + 2] = struct.pack("<H", _TAG_PCM)
-            # A file that shrank since its size was read ends where it ends, never padded
-            # with a silence nobody recorded.
+            # A file that shrank since its size was read is not padded with silence.
             whole.truncate(got)
             whole.seek(0)
             return whole
@@ -139,8 +122,7 @@ def read(name: str, value: object) -> Recording:
     if width not in FULL_SCALE:
         raise Invalid("bad_argument", f"{name}: {path} is {8 * width}-bit PCM; this reads 8- and "
                       "16-bit only")
-    # A file cut inside a frame (a run killed mid-write) is read to its last whole frame, so
-    # every channel holds as many samples as the others.
+    # A file cut mid-frame is read to its last whole frame.
     raw = raw[:len(raw) // (width * count) * (width * count)]
     if width == 1:
         flat = array("h", (b - 128 for b in raw))
@@ -154,12 +136,10 @@ def read(name: str, value: object) -> Recording:
 
 
 def span(recording: Recording, window: Sequence[float] | None) -> tuple[int, int]:
-    """The sample range `window` (`[from_s, to_s]`, seconds) names, judged inside the file."""
+    """The sample range `window` (`[from_s, to_s]`) names, judged inside the file."""
     seconds = judges.window("window", window)
     if seconds is None:
         return 0, recording.length
-    # Judged on the samples it rounds to, which is what is read: a time half a sample past the
-    # last one rounds either way.
     start, end = (round(t * recording.rate) for t in seconds)
     if end > recording.length:
         raise Invalid("bad_argument", f"window {list(seconds)} is not inside "
@@ -181,7 +161,7 @@ def _rms(samples: Sequence[float]) -> float:
 
 
 def onset(samples: Sequence[float]) -> int | None:
-    """The index of the first sample over `ONSET_FRACTION` of the peak; None for silence."""
+    """Index of the first sample over `ONSET_FRACTION` of the peak; None for silence."""
     peak = max((abs(x) for x in samples), default=0)
     if not peak:
         return None
@@ -190,7 +170,7 @@ def onset(samples: Sequence[float]) -> int | None:
 
 
 def plateau(samples: Sequence[float], full: int) -> int:
-    """The longest run of flat samples at `PEAK_FRACTION` of the peak or above."""
+    """The longest run of flat samples at `PEAK_FRACTION` of the peak or more."""
     peak = max((abs(x) for x in samples), default=0)
     if not peak:
         return 0
@@ -207,8 +187,8 @@ def plateau(samples: Sequence[float], full: int) -> int:
 
 def silences(samples: Sequence[float], rate: int, full: int,
              offset: int) -> list[list[float]]:
-    """Every span quieter than `SILENCE_DBFS` lasting `SILENCE_MIN_S` or more, as `[from_s,
-    to_s]` from the file's start (`offset` is the window's first sample)."""
+    """Spans quieter than `SILENCE_DBFS` for `SILENCE_MIN_S`+, as `[from_s, to_s]` from the file's
+    start (`offset` is the window's first sample)."""
     floor = full * 10 ** (SILENCE_DBFS / 20)
     least = round(SILENCE_MIN_S * rate)
     out: list[list[float]] = []
@@ -225,24 +205,21 @@ def silences(samples: Sequence[float], rate: int, full: int,
 
 
 def centred(samples: Sequence[int]) -> list[float]:
-    """`samples` less their mean: the part that is heard, which a level and a comparison read."""
+    """`samples` less their mean: the part that is heard."""
     mean = math.fsum(samples) / len(samples) if len(samples) else 0.0
     return [x - mean for x in samples]
 
 
 def from_rest(samples: Sequence[int]) -> list[int]:
-    """`samples` less the level the window starts at, where a sound's onset is read: the first
-    sample over `ONSET_FRACTION` of how far the window moves from that level."""
+    """`samples` less the level the window starts at, where the onset is read."""
     rest = samples[0] if len(samples) else 0
     return [x - rest for x in samples]
 
 
 def dc_blocked(samples: Sequence[int], rate: int) -> list[float]:
-    """`samples` through a one-pole DC blocker (`y[n] = x[n] - x[n-1] + R y[n-1]`, its corner at
-    `DC_CORNER_HZ`), primed as if the window's first sample had always been there: a steady
-    level is zeros from the first sample, and a change of level is the click it is heard as.
-    Where a sound falls quiet is read here, so a chip resting away from zero, or settling from one
-    resting level to another, is quiet."""
+    """`samples` through a one-pole DC blocker at `DC_CORNER_HZ`, primed as if the first sample
+    had always been there: a steady level is zeros, a change of level is the click it is heard
+    as."""
     pole = 1 - 2 * math.pi * DC_CORNER_HZ / rate
     out: list[float] = []
     prev_x, prev_y = (samples[0] if len(samples) else 0), 0.0
@@ -255,7 +232,7 @@ def dc_blocked(samples: Sequence[int], rate: int) -> list[float]:
 
 def measure(recording: Recording, window: Sequence[float] | None,
             channel: int | None) -> dict[str, Any]:
-    """The measures of each channel (or of `channel`) over `window`, and the window's PCM hash."""
+    """The measures of each channel (or `channel`) over `window`, and its PCM hash."""
     start, end = span(recording, window)
     count = len(recording.channels)
     if channel is not None and not judges.whole(channel, 0, count - 1):
@@ -270,8 +247,7 @@ def measure(recording: Recording, window: Sequence[float] | None,
         silent = _quiet(rms, recording.full)
         quiet = silences(heard, recording.rate, recording.full, start)
         first = None if silent else onset(from_rest(raw))
-        # The plateau reads the window less its mean, where a clipped top is still flat and the
-        # level a chip rests at is near zero, not a top; a silent window has no top to clip.
+        # Less its mean, a resting level is near zero rather than a top; silence has no top.
         run = 0 if silent else plateau(centred(raw), recording.full)
         out.append({"channel": c, "peak_dbfs": _dbfs(peak, recording.full),
                     "rms_dbfs": _dbfs(rms, recording.full),
@@ -295,9 +271,7 @@ def envelope(samples: Sequence[float]) -> list[float]:
 
 
 def correlation(a: Sequence[float], b: Sequence[float], full: int) -> float:
-    """Pearson's correlation of two equal-length envelopes in samples of `full` scale. An
-    envelope flat to `FLAT_ENVELOPE` of full scale has no shape: two of them correlate 1, and
-    one against a shaped one 0."""
+    """Pearson's correlation of two envelopes; two flat ones (no shape) give 1, one flat gives 0."""
     n = min(len(a), len(b))
     ma, mb = math.fsum(a[:n]) / n, math.fsum(b[:n]) / n
     num = math.fsum((a[i] - ma) * (b[i] - mb) for i in range(n))
@@ -310,8 +284,7 @@ def correlation(a: Sequence[float], b: Sequence[float], full: int) -> float:
 
 
 def _channel(pa: Sequence[float], pb: Sequence[float], full: int) -> tuple[float | None, float]:
-    """One channel pair, already aligned: the SNR (None when equal) and the envelopes'
-    correlation."""
+    """One aligned channel pair: the SNR (None when equal) and the envelopes' correlation."""
     n = min(len(pa), len(pb))
     signal = math.fsum(x * x for x in pb[:n])
     error = math.fsum((pa[i] - pb[i]) ** 2 for i in range(n))
@@ -320,8 +293,7 @@ def _channel(pa: Sequence[float], pb: Sequence[float], full: int) -> tuple[float
 
 
 def _quiet(rms: float, full: int) -> bool:
-    """THE ONE SILENCE: an RMS under `SILENT_RMS` of full scale, the word `measure` says and
-    the control `compare` keys on."""
+    """The one silence, shared by `measure` and the control `compare` keys on."""
     return rms / full < SILENT_RMS
 
 
@@ -332,16 +304,14 @@ def _sounding(recording: Recording, start: int, end: int) -> list[Sequence[int]]
 
 
 def _first_onset(recording: Recording, start: int, end: int) -> int | None:
-    """The earliest onset of any sounding channel over `start`..`end`, read as `measure` reads
-    each channel's."""
+    """The earliest onset of any sounding channel over `start`..`end`."""
     return min((o for cut in _sounding(recording, start, end)
                 if (o := onset(from_rest(cut))) is not None), default=None)
 
 
 def compare(a: Recording, b: Recording, window: Sequence[float] | None,
             align: bool) -> dict[str, Any]:
-    """`a` against `b`, the reference, over `window` of each, `b` shifted so the onsets meet when
-    `align`; the module docstring says what is answered."""
+    """`a` against reference `b` over `window`, `b` shifted so the onsets meet when `align`."""
     if (a.rate, len(a.channels), a.width) != (b.rate, len(b.channels), b.width):
         raise Invalid("bad_argument", f"the recordings are {a.rate} Hz x {len(a.channels)} "
                       f"x {8 * a.width}-bit and {b.rate} Hz x {len(b.channels)} x "

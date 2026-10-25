@@ -1,8 +1,4 @@
-"""The argument judges the media layer shares: whole numbers, rectangles, shifts, paths and the
-picture a path names. Each refuses `bad_argument` in a sentence naming the argument, so a server
-tool and a file tool reject one mistake in one voice. Beside them, the two servers' shared
-listing bounds (`HITS_MAX`, `HITS_DEFAULT`) and a value written at its width (`hex_at_width`).
-"""
+"""Argument judges shared by the media layer; each refuses `bad_argument` naming the argument."""
 
 from __future__ import annotations
 
@@ -17,18 +13,15 @@ from scry_core.reply_contract import Invalid
 
 Rect = tuple[int, int, int, int]
 
-#: The annotation of a number a caller may also spell in hex: a JSON integer or a `0x` string,
-#: so the schema a client reads offers both and `number` decides.
+#: A JSON integer or a `0x` string, so the schema offers both and `number` decides.
 NumberArg = int | str
-#: A hex spelling of a number: `0x` and its digits, whatever their case.
 HEX = re.compile(r"0[xX][0-9a-fA-F]+")
 
 
 def number(name: str, value: object, bits: int, holder: str) -> int:
-    """`value` as the integer it is or spells in hex (`0x`), or the refusal naming `name`:
-    empty text, decimal text (bare digits read either way), a bool, a float, a sign written
-    before `0x`, and anything wider than `bits`, the widest number `holder` holds. A negative
-    integer is an integer: the tool's own range is judged after this, on the integer."""
+    """`value` as an integer or `0x` hex string, or the refusal naming `name`: empty or decimal
+    text (bare digits read either way), a bool, a float, a sign before `0x`, or more than `bits`
+    bits (`holder`'s width). A negative integer passes: the tool judges its own range."""
     if isinstance(value, bool) or not isinstance(value, int | str):
         raise Invalid("bad_argument",
                       f"{name} is an integer or a `0x` hex string; got {value!r}")
@@ -51,26 +44,22 @@ def number(name: str, value: object, bits: int, holder: str) -> int:
 
 
 def hex_at_width(value: int, bits: int) -> str:
-    """`value` as a reply shows a value the machine holds, written the way `number` takes it
-    back: `0x` and its digits at the holder's width, a width that is not a multiple of four
-    rounded up to the next whole digit, since a value cannot be shown in a fraction of one."""
+    """`value` as `0x` digits at `bits` width, rounded up to a whole digit."""
     return f"{value:#0{2 + (bits + 3) // 4}x}"
 
 
-#: A list of hits a call answers (a value scan's survivors): the most it shows, and how many when
-#: the caller names none; what a server shows past the most is its own to say.
+#: Hits a call lists (a scan's survivors): the most shown, and the default when none is named.
 HITS_MAX, HITS_DEFAULT = 400, 40
 
 
 def whole(value: object, lo: int = 0, hi: int | None = None) -> TypeGuard[int]:
-    """`value` is an int in `lo..hi`. A JSON `true` is a Python int and is never one here."""
+    """`value` is an int in `lo..hi`; a bool is not."""
     return (isinstance(value, int) and not isinstance(value, bool) and value >= lo
             and (hi is None or value <= hi))
 
 
 def rect(name: str, value: object) -> Rect:
-    """`value` as `[x, y, width, height]`, x and y at or above zero, width and height above it,
-    or the refusal naming `name`."""
+    """`value` as `[x, y, width, height]`, x and y at least 0, width and height at least 1."""
     if not (isinstance(value, list | tuple) and len(value) == 4
             and all(whole(v) for v in value[:2]) and all(whole(v, 1) for v in value[2:])):
         raise Invalid("bad_argument", f"{name}={value!r} is [x, y, width, height]: x and y at or "
@@ -80,7 +69,7 @@ def rect(name: str, value: object) -> Rect:
 
 
 def shift(value: object) -> tuple[int, int]:
-    """`value` as `[dx, dy]`, two whole numbers of any sign, or the refusal."""
+    """`value` as `[dx, dy]`, two integers of any sign."""
     if not (isinstance(value, list | tuple) and len(value) == 2
             and all(isinstance(v, int) and not isinstance(v, bool) for v in value)):
         raise Invalid("bad_argument", f"shift={value!r} is [dx, dy], two whole numbers")
@@ -88,12 +77,9 @@ def shift(value: object) -> tuple[int, int]:
 
 
 def absolute(name: str, value: object, **fields: Any) -> Path:
-    """THE ONE JUDGE OF A PATH ARGUMENT, on both servers: a string naming an absolute path, or
-    one led by `~`, expanded here as the shell would (`~` is what a person types, and no shell
-    stands between a client and this argument), or the refusal naming `name`; `fields` ride on
-    it. A relative path is refused because it would be judged in one directory and used in
-    another (the server's, the emulator's); a NUL and a lone surrogate because no file name can
-    hold either."""
+    """The one judge of a path argument on both servers: an absolute path, or one led by `~`
+    (expanded here, since no shell stands between client and argument), or the refusal; `fields`
+    ride on it. A relative path would be judged in one directory and used in another."""
     if not isinstance(value, str):
         raise Invalid("bad_argument", f"{name}={value!r} is not a path", **fields)
     if not value:
@@ -124,9 +110,8 @@ def absolute(name: str, value: object, **fields: Any) -> Path:
 
 
 def writable_file(name: str, value: object, **fields: Any) -> Path:
-    """A file a tool is about to write, which may be there: `absolute`, and its directory is
-    one, or the refusal naming `name`. A path the filesystem will not look at is refused the
-    same way, never raised: before Python 3.14 `exists` and `is_dir` raise on EACCES."""
+    """A file a tool is about to write, which may exist: `absolute`, in an existing directory.
+    An unreadable path is refused, never raised: before Python 3.14 `is_dir` raises on EACCES."""
     path = absolute(name, value, **fields)
     try:
         there = path.parent.is_dir()
@@ -140,8 +125,8 @@ def writable_file(name: str, value: object, **fields: Any) -> Path:
 
 
 def fresh_file(name: str, value: object, **fields: Any) -> Path:
-    """A file a tool is about to create: `writable_file`, and nothing at it yet, a link that
-    points nowhere included (it is something there, and a writer would follow it)."""
+    """A file a tool is about to create: `writable_file`, with nothing there, a dangling link
+    included (a writer would follow it)."""
     path = writable_file(name, value, **fields)
     try:
         taken = path.exists() or path.is_symlink()
@@ -155,9 +140,7 @@ def fresh_file(name: str, value: object, **fields: Any) -> Path:
 
 
 def expanded(value: str) -> str:
-    """`value` with a leading `~` expanded as `absolute` expands it, for a server that hands the
-    text on (to an emulator's command line, or a list it splits); anything else, a `~user` this
-    host cannot find included, as given, for `absolute` to judge."""
+    """`value` with a leading `~` expanded as `absolute` does; anything else as given."""
     if not value.startswith("~"):
         return value
     try:
@@ -167,8 +150,7 @@ def expanded(value: str) -> str:
 
 
 def window(name: str, value: object) -> tuple[float, float] | None:
-    """A span of seconds `[from_s, to_s]`: two finite numbers at or above zero, the first before
-    the second; None for none given."""
+    """A span `[from_s, to_s]` of finite seconds at least 0, in order; None if absent."""
     if value is None:
         return None
     if not (isinstance(value, list | tuple) and len(value) == 2 and all(
@@ -180,8 +162,7 @@ def window(name: str, value: object) -> tuple[float, float] | None:
 
 
 def existing_file(name: str, value: object) -> Path:
-    """`absolute`, and a file is there. A path the filesystem will not look at is refused the
-    same way, never raised, as in `writable_file`."""
+    """`absolute`, and a file is there."""
     path = absolute(name, value)
     try:
         there = path.is_file()
@@ -193,9 +174,8 @@ def existing_file(name: str, value: object) -> Path:
 
 
 def picture_file(name: str, path: Path, sha256: str | None = None) -> tuple[png.Raster, str]:
-    """The picture in the PNG at `path` and the sha256 of the bytes it was decoded from, read
-    ONCE so the two describe one file. With `sha256`, a file that no longer matches it is
-    refused: it is not the frame its manifest describes."""
+    """The PNG picture at `path` and the sha256 of the bytes decoded, from one read. A file not
+    matching `sha256` is refused."""
     try:
         data = path.read_bytes()
     except (OSError, ValueError) as e:
@@ -211,7 +191,6 @@ def picture_file(name: str, path: Path, sha256: str | None = None) -> tuple[png.
 
 
 def file_facts(path: Path) -> dict[str, Any]:
-    """A file a tool wrote, as every reply names one: `path`, `bytes` and `sha256`, the size and
-    the hash taken off ONE read of the file."""
+    """`path`, `bytes` and `sha256` of a file a tool wrote, from one read."""
     data = path.read_bytes()
     return {"path": str(path), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}

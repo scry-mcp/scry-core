@@ -1,5 +1,4 @@
-"""The client's cap, measured in the client's unit at the boundary: each server's suite runs
-`over_the_cap` on its own servers, so the measure itself is held here, on known answers."""
+"""The cap measure held on known answers; each server's suite runs it on its own servers."""
 
 from types import SimpleNamespace
 from typing import Any
@@ -17,8 +16,7 @@ def _server(instructions: str, *descriptions: str) -> Any:
 
 
 def test_the_measure_is_the_clients_at_the_boundary() -> None:
-    """The known answers: the cap itself fits, one unit past it does not, and a character outside
-    the BMP counts two units, so a text of cap characters can be over the cap."""
+    """The cap fits, one unit past does not, and a non-BMP character counts two units."""
     assert over_the_cap("s", _server("i", "x" * CLIENT_TEXT_CAP)) == []
     over = over_the_cap("s", _server("i", "x" * CLIENT_TEXT_CAP + "cut"))
     drops = f"> {CLIENT_TEXT_CAP}, the client drops:"
@@ -38,9 +36,7 @@ def test_the_measure_is_the_clients_at_the_boundary() -> None:
 
 
 def test_what_the_client_delivers_is_the_prefix_up_to_the_cap_in_its_unit() -> None:
-    """The cut the client makes, at the boundary: a text that fits comes back whole, one past it
-    loses exactly the excess, and a character outside the BMP that straddles the cut is dropped
-    whole rather than left as half a surrogate pair."""
+    """A straddling non-BMP character is dropped whole, never left as half a surrogate pair."""
     from scry_core.client_cap import delivered, utf16_units
 
     fits = "x" * CLIENT_TEXT_CAP
@@ -60,8 +56,7 @@ def test_a_lone_surrogate_counts_one_unit_as_the_client_counts_it() -> None:
 
 
 def test_an_empty_server_is_refused_as_the_instruments_refuse_not_by_an_assert() -> None:
-    """`python -O` strips an `assert`, so an empty server would read as one with nothing over
-    the cap: the refusal is the package's own `Invalid`, which survives it."""
+    """`python -O` strips an `assert`, so the refusal is `Invalid`."""
     for server in (_server("i"), _server("", "d")):
         with pytest.raises(Invalid):
             over_the_cap("s", server)
@@ -70,9 +65,7 @@ def test_an_empty_server_is_refused_as_the_instruments_refuse_not_by_an_assert()
 
 
 def test_the_margins_name_the_texts_nearest_the_cap_first_on_every_run() -> None:
-    """A text one unit under the cap breaks on the next sentence, so the margins are listed
-    whether or not anything is over: nearest first, a text over it with a negative margin, and
-    no more than `shown` lines."""
+    """Margins are listed nearest first, whether or not anything is over."""
     server = _server("i" * 10, "x" * CLIENT_TEXT_CAP, "y" * (CLIENT_TEXT_CAP - 7),
                      "z" * (CLIENT_TEXT_CAP + 2))
     assert margins("s", server, shown=3) == [

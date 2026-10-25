@@ -1,31 +1,20 @@
-"""How a watched value is TYPED, in three grammars that serve one question: the FORMAT of its
-bytes (`parse`, below), the `types` file that names a format per symbol (`read_types`), and the
-pointer REF that reads through one (`parse_pointer`: `[ref]+off` or `base->field`, the field
-found in the base's format). They live together because each of the other two is read through
-the first.
-
-THE FORMAT: a scalar, an array of scalars, a string or a struct. A symbol table gives
-addresses, not types, so a watch declares how its bytes read, and the grammar names the shape,
-so a struct reads as its fields and a name as text:
+"""Value types in three grammars: the FORMAT of a value's bytes (`parse`), the `types` file
+naming a format per symbol (`read_types`), and the pointer REF that reads through one
+(`parse_pointer`: `[ref]+off` or `base->field`).
 
     u16              one scalar; a `length` that is a whole number of them reads a list
-    u16[8]           an array, eight of them, the width implied
+    u16[8]           an array, eight of them
     char[16]         a string of up to 16 bytes, cut at the first NUL
     {x:i16,y:i16,flags:u8,name:char[8]}   a struct, fields in declaration order
     ptr32            a pointer, 4 bytes (ptr16: 2), read as the number it holds
-    ptr32{x:i16,y:i16}   a pointer AND what it points at, so `base->field` knows the
-                     field's offset and format; the pointer's width is part of the type
-    ptr16@CODE{...}  a pointer whose TARGET lives in a named class: on a board relocated
-                     by class (a linker map with `bases`) the pointer's value is an offset
-                     in that class's segment, and the class decides the base it is placed
-                     under; without it the base symbol's own class does. A server with no
-                     classes reads the type and applies nothing.
+    ptr32{x:i16,y:i16}   a pointer AND its target, so `base->field` knows the field's
+                     offset and format
+    ptr16@CODE{...}  a pointer whose target lives in a named class (an offset in that
+                     class's segment); without it the base symbol's class applies.
+                     A server with no classes ignores it.
 
-A format that names its own size (an array, a string, a struct) needs no `length`, and a
-bare scalar with none reads as one value; `length` is TOTAL bytes, a whole number of the
-scalar, and more than one of them reads as a list. A float that is NaN or infinite reads as
-the text `nan`, `inf` or `-inf`, which JSON can carry. The
-byte order is the target's, which the session knows and this module does not.
+A sized format needs no `length`; `length` is TOTAL bytes. A NaN or infinite float reads as
+the text `nan`, `inf` or `-inf`. Byte order is the session's, not this module's.
 """
 
 from __future__ import annotations
@@ -35,7 +24,7 @@ import re
 import struct
 from dataclasses import dataclass
 
-# The grammar's version, bumped when it changes: a consumer can assert the grammar it reads.
+# Bumped when the grammar changes, so a consumer can assert what it reads.
 FORMAT_VERSION = 4
 
 SCALARS: dict[str, tuple[str, int]] = {
@@ -44,8 +33,7 @@ SCALARS: dict[str, tuple[str, int]] = {
 }
 Value = int | float | str | list["Value"] | dict[str, "Value"]
 
-# THE SCALAR NAMES ARE `SCALARS`' KEYS AND NOWHERE ELSE: the array's element is read by shape
-# and then looked up there, so a scalar added to the table parses everywhere a scalar may sit.
+# Scalar names live only in `SCALARS`; the array element is matched by shape, then looked up.
 _ARRAY = re.compile(r"^([a-z][a-z0-9]*)\[(\d+)\]$")
 _FIELD = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*):(.+)$")
 _POINTER = re.compile(r"^ptr(16|32)(@[^{]*)?(.*)$", re.S)
@@ -53,14 +41,13 @@ _CLASS = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class FormatError(ValueError):
-    """A format spec this grammar does not read; the message names what was expected."""
+    """A format spec this grammar does not read."""
 
 
 @dataclass(frozen=True)
 class Format:
-    """One parsed format: its `spec`, its `size` in bytes (None for a bare scalar, whose
-    size is the caller's `length`) and the shape it decodes to. A scalar WITH a size is a
-    struct field: one value, sliced by the struct's decoder."""
+    """One parsed format; `size` is None for a bare scalar (the caller's `length` decides).
+    A scalar WITH a size is a struct field."""
 
     spec: str
     kind: str                       # scalar | array | string | struct | pointer
@@ -72,9 +59,8 @@ class Format:
     target_class: str | None = None  # the class the pointer's target lives in, when named
 
     def width_for(self, width: int) -> int:
-        """The bytes this format reads for the caller's `width`: its own size when it
-        has one (a width given must agree), else one scalar with no width, and otherwise
-        the width, a whole number of scalars."""
+        """The bytes to read for the caller's `width`; a width given must agree with its own
+        size."""
         if self.size is not None:
             if width not in (0, self.size):
                 raise FormatError(f"{self.spec} is {self.size} bytes; length={width} does not "
@@ -116,9 +102,7 @@ class Format:
 
 
 def _json_number(v: int | float) -> Value:
-    """A decoded number as a reply carries it: NaN and the infinities are no JSON number, so they
-    are the text `nan`, `inf` or `-inf`, which says what the bytes hold and keeps the reply valid
-    JSON; every other value stays a number."""
+    """NaN and the infinities are no JSON number, so they become text."""
     if isinstance(v, float) and not math.isfinite(v):
         return "nan" if math.isnan(v) else ("inf" if v > 0 else "-inf")
     return v
@@ -139,7 +123,7 @@ def parse(spec: str) -> Format:
                 raise FormatError(f"{spec}: the class after `@` is a name like CODE or DATA "
                                   f"(a letter or underscore, then letters, digits, underscore); "
                                   f"got {klass!r}")
-            klass = klass.upper()      # classes are keyed upper-case
+            klass = klass.upper()
         if rest.startswith("@"):
             raise FormatError(f"{spec}: the class goes right after the width, `ptr{bits}@CODE`")
         target = parse(rest) if rest else None
@@ -185,8 +169,7 @@ def parse(spec: str) -> Format:
 
 
 def _fields_of(spec: str) -> list[str]:
-    """A struct spec's body cut at its top-level commas: a comma inside a pointed-at struct
-    (`{a:ptr32{x:u8,y:u8}}`) is that struct's. Braces that do not balance are refused."""
+    """A struct body cut at its top-level commas (not those of a pointed-at struct)."""
     parts: list[str] = []
     depth, start = 0, 1
     for i, ch in enumerate(spec[1:-1], start=1):
@@ -210,9 +193,7 @@ def size_of(spec: str) -> int | None:
 
 
 def field_offset(struct: Format, name: str) -> tuple[int, str]:
-    """Where `name` sits inside a struct format, and the field's own spec: fields lie in
-    declaration order with no padding, as `decode` reads them. A pointer type names what it
-    points at, so `base->field` reads the field's offset and format from here."""
+    """Where `name` sits in a struct format, and its spec; fields have no padding."""
     if struct.kind != "struct":
         raise FormatError(f"{struct.spec} is not a struct, so it has no field {name!r}")
     at = 0
@@ -226,10 +207,7 @@ def field_offset(struct: Format, name: str) -> tuple[int, str]:
 
 
 def read_types(text: str, where: str = "types") -> dict[str, str]:
-    """A `types` file's text: one `name: format` per line (`#` comments and blank lines
-    skipped), each format checked against the grammar and refused by line when it is not
-    one; names are upper-cased, as the tables are keyed. An empty file is refused:
-    a parameter that types nothing would be honoured by nothing."""
+    """A `types` file: one `name: format` per line; an empty file is refused."""
     out: dict[str, str] = {}
     for lineno, line in enumerate(text.splitlines(), 1):
         stripped = line.strip()
@@ -249,18 +227,13 @@ def read_types(text: str, where: str = "types") -> dict[str, str]:
     return out
 
 
-# --------------------------------------------------------------- a place through a pointer
-
 _DEREF = re.compile(r"^\[\s*([^\[\]\s]+)\s*\]\s*(?:([+-])\s*(0[xX][0-9a-fA-F]+|[0-9a-fA-F]+))?$")
 _ARROW = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*->\s*([A-Za-z_][A-Za-z0-9_]*)$")
 
 
 @dataclass(frozen=True)
 class PointerRef:
-    """A pointer ref taken apart: the global holding the pointer, the byte offset past
-    where it points (signed, hex in the ref; a field's offset when named), and the field,
-    when `->`. The grammar is `[base]`, `[base]+0x28`, `[base]-0x4` or `base->field`, with
-    `base` a symbol or an address in the server's own spelling; one shape on both."""
+    """A pointer ref taken apart: `[base]`, `[base]+0x28`, `[base]-0x4` or `base->field`."""
 
     base: str
     offset: int
@@ -268,8 +241,7 @@ class PointerRef:
 
 
 def parse_pointer(ref: str) -> PointerRef | None:
-    """The pointer ref in `ref`, or None for any other shape (a symbol, an address), so the
-    shape decides how a declaration is made, as it does for those two."""
+    """The pointer ref in `ref`, or None for any other shape (a symbol, an address)."""
     text = ref.strip()
     m = _DEREF.match(text)
     if m:
@@ -283,10 +255,8 @@ def parse_pointer(ref: str) -> PointerRef | None:
 
 
 def pointer_field_fmt(ref: str, types: dict[str, str]) -> str | None:
-    """The format a pointer ref reads with when the caller names none: a `base->field`'s
-    field, from the base's pointer type in `types` (keyed upper-case, as the tables
-    are), or the whole target for a bare `[base]`; None when the ref is not that
-    shape or the type does not say."""
+    """The format a pointer ref reads with when the caller names none, from `types`
+    (keyed upper-case); None when the ref or the type does not say."""
     pr = parse_pointer(ref)
     if pr is None:
         return None
@@ -297,9 +267,7 @@ def pointer_field_fmt(ref: str, types: dict[str, str]) -> str | None:
     if fmt.kind != "pointer" or fmt.target is None:
         return None
     if pr.field is None:
-        # A bare deref of a typed pointer reads what it points at, whole, when nothing
-        # else is asked: the type already names the shape. With an offset, the caller
-        # names the format, since the type says nothing about what sits past the struct.
+        # With an offset the type says nothing about what sits there, so the caller names it.
         return fmt.target.spec if pr.offset == 0 else None
     if fmt.target.kind != "struct":
         return None

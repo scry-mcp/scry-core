@@ -1,12 +1,7 @@
-"""An AVI's main header (`avih`), read once for every server: how many frames the file declares
-and their size.
+"""An AVI's main header (`avih`): the frame count and size a file declares.
 
-WHY THE HEADER AND NOT THE CHUNKS. A video frame's chunk is tagged `00dc`, and a finished AVI
-ends with an index (`idx1`) that names every frame again, so counting the tag reads about twice
-the frames a finished capture holds. `avih` is written by the recorder when it closes the file,
-and its fifth DWORD is the total it stands by. A capture still being written carries the header
-with that total at 0 and no index yet, so there each `00dc` is one frame: `count` reads a file by
-whichever of the two it is.
+A finished capture's `idx1` names every frame again, so counting `00dc` doubles it; one still
+being written has total 0 and no index, so there each `00dc` is a frame.
 """
 
 from __future__ import annotations
@@ -18,24 +13,19 @@ from typing import NamedTuple
 from scry_core.reply_contract import Invalid
 
 TAG = b"avih"
-#: Where the total frames, the width and the height lie among the header's fourteen DWORDs.
 FRAMES_DWORD, WIDTH_DWORD = 4, 8
 DWORDS = 14
-#: How far into the file the header is looked for: it is the first chunk of `hdrl`.
 WITHIN = 4096
 
 
 class Header(NamedTuple):
-    """What a finished AVI's main header declares."""
-
     frames: int
     width: int
     height: int
 
 
 def parse(head: bytes) -> Header | None:
-    """The main header in `head`, a file's first `WITHIN` bytes, or None when they are no RIFF
-    AVI or carry no whole `avih`."""
+    """The main header in a file's first `WITHIN` bytes, or None."""
     head = head[:WITHIN]
     at = head.find(TAG)
     body = head[at + 8:at + 8 + DWORDS * 4] if at >= 0 else b""
@@ -47,7 +37,6 @@ def parse(head: bytes) -> Header | None:
 
 
 def header(path: Path) -> Header | None:
-    """`parse` of the file at `path`, or None when it cannot be read."""
     try:
         with path.open("rb") as f:
             return parse(f.read(WITHIN))
@@ -56,13 +45,12 @@ def header(path: Path) -> Header | None:
 
 
 def finished(data: bytes) -> bool:
-    """Whether a whole AVI was closed by its writer: the index (`idx1`) is written last."""
+    """Whether the writer closed the file (`idx1` is written last)."""
     return b"idx1" in data
 
 
 def count(data: bytes) -> int:
-    """The frames a whole AVI holds: its header's total once it is `finished`, and its `00dc`
-    chunks while it is still being written (the module docstring says why)."""
+    """The frames a whole AVI holds: the header total once finished, else its `00dc` chunks."""
     found = parse(data)
     if found is not None and finished(data):
         return found.frames
@@ -70,8 +58,7 @@ def count(data: bytes) -> int:
 
 
 def size(name: str, path: Path) -> tuple[int, int]:
-    """The frame size `path`'s header declares, or the refusal naming `name` and what is
-    missing."""
+    """The frame size `path`'s header declares, or a refusal naming `name`."""
     try:
         with path.open("rb") as f:
             found = parse(f.read(WITHIN))

@@ -1,49 +1,30 @@
-"""A demo: one server started by its command over stdio, the calls a prompt asks a model to make,
-each answer checked, and a transcript a README can carry without drifting from the server.
+"""Runs a demo: one server started over stdio, the calls a prompt asks a model to make, each
+answer checked, and a transcript a README can carry without drifting from the server.
 
-A server repository keeps each demo as `demos/<name>/demo.py`, which declares a `Demo` (its
-steps and checks) and hands it to `main`:
+A server repository declares a `Demo` in `demos/<name>/demo.py` and hands it to `main`
+(`--binary`, `--transcript`, `--update-readme`, plus `--rompath` and `--shared` where the demo
+`offers` them). Options reach the step declared `options=True`, or only those a frozenset names;
+an option left out is absent, so the server's own default decides.
 
-    uv run python demos/<name>/demo.py [--binary PATH] [--transcript PATH] [--update-readme]
+stdout is `OK <step>: <summary>` or `FAIL <step>: <why>` per step run, then
+`DEMO <name>: <n> steps, <k> OK` and the paths of the whole transcript and the NORMALISED one,
+which is what a README carries and `readme_drift` compares.
 
-plus `--rompath DIR` and `--shared` where the demo `offers` them. The options given reach the
-step declared `options=True` under their own names, or only those it names when it declares a
-set of them (`options=frozenset({"binary"})`, for a server whose `start` takes no `shared`, the
-demo then reading `run.options` itself); an option left out is absent, so the server's own
-default decides.
+Exit codes: 0 every step OK; 1 a step failed (later ones are not run); 2 a usage error; 3
+INVALID, nothing was demonstrated (zero steps, options nothing takes, a `precheck` reason, a
+server that did not start, a check raising `Invalid`, README markers not exactly once, a capture
+the run did not write). `execute` is the run without its command line. The run ends with the
+cleanup call unless its last step made it, so no emulator outlives it.
 
-stdout is one line per step that ran, `OK <step>: <summary>` or `FAIL <step>: <why>`, then
-`DEMO <name>: <n> steps, <k> OK` and the paths of the two transcripts: the whole one, every call
-and its whole reply as markdown (`--transcript`, default `tmp/demos/<name>/transcript.md` under
-the repository; the run's other files go beside it), and the NORMALISED one, which is what a
-README carries and what `readme_drift` compares.
+`--update-readme` rewrites the README block, the capture and the `Demo.front` flow only after a
+run whose every step was OK.
 
-Exit codes: 0 every step OK; 1 a step failed (the steps after it are not run); 2 a usage error,
-an unknown option included; 3 INVALID, nothing was demonstrated: zero steps, options given and
-no step to take them, a `precheck` reason (such as a ROM that is not there), a server that did
-not start, a step whose check found that nothing could be demonstrated (it raises `Invalid`), a
-README whose markers are not there exactly once, a capture the run did not write, or anything
-else that stopped the run before its verdict. `execute` is the run without its command line,
-for a runner of another shape (`scry_core.replay`). Whatever happens, the run ends with
-the cleanup call unless its last step already made it, so no emulator outlives it.
-
-THE README BLOCK IS GENERATED, never typed. `--update-readme` rewrites what sits between
-`<!-- demo-transcript:begin -->` and `<!-- demo-transcript:end -->` with the normalised
-transcript and copies the capture this run wrote to `screen.png` beside the README, only after
-a run whose every step was OK: a README showing a failed run would be a README that lies. The
-same run rewrites the server's front door (`Demo.front`) between `<!-- demo-flow:begin <name> -->`
-and its end marker with the steps declared `shown`, each as its call and its reply, both
-abridged to their shape (`abridged`), so the examples a stranger reads first are a real run too.
-
-NORMALISATION hides what differs between two honest runs and nothing else: `$HOME` becomes `~`
-and the repository root `.`, wherever either begins a path; in a REPLY the value of every key in
-`VOLATILE`, in the demo's `volatile` and in the step's own becomes `<volatile>`; and in the
-ARGUMENTS of a call the value of every key a demo declares in `host_args` (a window's placement,
-say) becomes `<host>`. Hiding is by key, so a reply that echoes a host argument needs that key in
-`volatile` too, and a summary must not quote one. A value the demo SHOWS (a score, a register, an
-address it found) is never on that list: if it differs between two runs the demo is wrong, and
-hiding it would make the freshness check pass by not looking. A step's summary is the demo's own
-text and is never searched for volatile values, so a summary quotes only what the demo shows.
+Normalisation hides what differs between two honest runs and nothing else: `$HOME` as `~`, the
+repository root as `.`, the values of `VOLATILE` keys (and the demo's and step's own) in a reply
+as `<volatile>`, and of `host_args` keys in a call's arguments as `<host>`. Hiding is by key, so
+a reply echoing a host argument needs that key in `volatile` too. A value the demo shows is never
+hidden: if it differs between runs the demo is wrong. A step's summary is never searched for
+volatile values, so it quotes only what the demo shows.
 """
 
 from __future__ import annotations
@@ -72,8 +53,6 @@ BEGIN = "<!-- demo-transcript:begin -->"
 END = "<!-- demo-transcript:end -->"
 VOLATILE_MARK = "<volatile>"
 
-#: How much of a long list (then `... N more`) and of a long string a flow or an example keeps:
-#: enough to show the reply's shape; the whole reply stays in the transcript.
 ABRIDGED_ITEMS = 6
 ABRIDGED_CHARS = 240
 HOST_MARK = "<host>"
@@ -81,8 +60,7 @@ HOST_MARK = "<host>"
 #: The tool every Scry server ends a session with.
 CLEANUP_TOOL = "close"
 
-#: The bound on one call's answer. Every Scry tool bounds its own waits at 600 s, so a call
-#: still unanswered well past that is a server that will not answer, not a slow one.
+#: Every Scry tool bounds its own waits at 600 s, so past this a server will not answer.
 CALL_TIMEOUT_S = 900
 
 #: The options a demo can offer beyond `--binary`, as its server's `start` spells them.
@@ -112,8 +90,7 @@ class StepFailed(Exception):
 
 @dataclass(frozen=True)
 class Reply(Mapping[str, Any]):
-    """One tool's answer: its structured document, else the JSON of its first text part, read
-    as a mapping, and the media type of each part that is not text."""
+    """One tool's answer as a mapping, plus the media type of each non-text part."""
 
     data: dict[str, Any]
     attachments: tuple[str, ...] = ()
@@ -130,8 +107,7 @@ class Reply(Mapping[str, Any]):
 
 @dataclass
 class Run:
-    """What a step's arguments and checks read: the options given, the directory this run
-    writes into, and every reply so far by step name (the current step's included)."""
+    """What a step's arguments and checks read: options, output directory, replies by step name."""
 
     dir: Path
     options: dict[str, Any] = field(default_factory=dict)
@@ -143,16 +119,12 @@ Args = Mapping[str, Any] | Callable[[Run], Mapping[str, Any]]
 
 @dataclass(frozen=True)
 class Step:
-    """One call: `tool` with `args`, or a function of the run giving them. `check` returns the
-    summary printed beside OK; it raises `StepFailed` to say why not, and any other exception in
-    the step is that step's FAIL too, named by its type. A reply whose `status` is not `ok`
-    fails before `check` is asked. `options` marks the step the command line's options are
-    merged into, which is the server's `start`: `True` for all of them, or the set it takes.
-    `volatile` adds reply keys hidden in this step alone, each with its reason: a value that
-    varies here (a register at a stop the clock chose) and is shown, stable, in another step.
-    `failure` words the FAIL of a reply that is not `ok`, where the reply's own summary would not
-    say what the run needs said. A check that raises `Invalid` ends the run INVALID: what it found
-    means nothing was demonstrated."""
+    """One call: `tool` with `args` (or a function of the run giving them). `check` returns the
+    summary printed beside OK and raises `StepFailed` to say why not; a reply whose `status` is
+    not `ok` fails before `check`. `options` marks the step the command line's options merge
+    into (the server's `start`): `True` for all, or the set it takes. `volatile` hides reply keys
+    in this step alone. `failure` words the FAIL of a non-`ok` reply. A check raising `Invalid`
+    ends the run INVALID."""
 
     name: str
     tool: str
@@ -161,28 +133,19 @@ class Step:
     options: bool | frozenset[str] = False
     volatile: Mapping[str, str] = field(default_factory=dict)
     failure: Callable[[Reply, Run], str] | None = None
-    #: An exception in the CALL itself (a timeout, a server gone mid-call) is this step's
-    #: INVALID rather than its FAIL: what a runner sets where only a step that failed in the
-    #: server's own words is a verdict.
+    #: An exception in the call itself (timeout, server gone) is INVALID rather than FAIL.
     broken_is_invalid: bool = False
-    #: The step is one of the calls the front door shows (`Demo.front`), its reply abridged:
-    #: whole, or only the fields named, in their order, the ones that make the step's point. A
-    #: field named that the reply lacks fails the step, so the front door never shows a stale
-    #: shape.
+    #: A call the front door shows (`Demo.front`), reply abridged to the fields named. A named
+    #: field the reply lacks fails the step, so the front door never shows a stale shape.
     shown: bool | tuple[str, ...] = False
 
 
 @dataclass(frozen=True)
 class Demo:
-    """A demo as its `demo.py` declares it. `server` is the command that starts the server and
-    `root` the repository it runs in. `offers` names the options of `OFFERABLE` the demo accepts,
-    and `reads` those it reads from `run.options` itself rather than a step merging them. `readme`
-    is the README whose block `--update-readme` rewrites and `capture` the image it copies, a file
-    in `run.dir` that one step writes; a runner of another shape has neither. `precheck` answers why
-    the demo cannot run at all, or an empty string. `volatile` adds reply keys to `VOLATILE`, each
-    with its reason; `host_args` names the argument keys whose values are the host's own rather than
-    the demo's, each with its reason. `verdict` words the last line from the steps declared and
-    those OK, `DEMO <name>: <n> steps, <k> OK` unless given."""
+    """A demo as declared. `offers` names the `OFFERABLE` options it accepts,
+    `reads` those it reads from `run.options` itself. `capture` is the image one step writes in
+    `run.dir`. `precheck` answers why the demo cannot run, or empty. `host_args` maps argument
+    keys that are the host's own to their reasons. `verdict` words the last line."""
 
     name: str
     root: Path
@@ -196,12 +159,7 @@ class Demo:
     host_args: Mapping[str, str] = field(default_factory=dict)
     reads: frozenset[str] = frozenset()
     verdict: Callable[[int, int], str] | None = None
-    #: The server's front-door README, whose `flow_begin(name)` block `--update-readme` rewrites
-    #: with the steps declared `shown`.
     front: Path | None = None
-
-
-# ======================================================================== the README block
 
 
 def flow_begin(name: str) -> str:
@@ -213,8 +171,7 @@ def flow_end(name: str) -> str:
 
 
 def block_span(text: str, begin: str = BEGIN, end: str = END) -> tuple[int, int]:
-    """Where a generated block sits in `text`: just after `begin`, and at `end` (the transcript's
-    markers unless named). Markers absent, repeated or out of order raise `Invalid`."""
+    """Where the block between `begin` and `end` sits in `text`; bad markers raise `Invalid`."""
     if text.count(begin) != 1 or text.count(end) != 1:
         raise Invalid(f"the README must hold {begin} and {end} exactly once each "
                       f"(found {text.count(begin)} and {text.count(end)})")
@@ -225,7 +182,7 @@ def block_span(text: str, begin: str = BEGIN, end: str = END) -> tuple[int, int]
 
 
 def block_of(text: str, begin: str = BEGIN, end: str = END) -> str:
-    """A generated block of a README's `text`, without the newlines that frame it."""
+    """The generated block of `text`, without its framing newlines."""
     start, stop = block_span(text, begin, end)
     return text[start:stop].strip("\n")
 
@@ -238,8 +195,7 @@ def with_block(text: str, block: str, begin: str = BEGIN, end: str = END) -> str
 
 def first_difference(want: str, got: str, sides: tuple[str, str] = ("the README", "the run")
                      ) -> str:
-    """The first line where `got` departs from `want`, by number, or empty when they agree;
-    `sides` names where each came from."""
+    """The first line where `got` departs from `want`, or empty; `sides` names each."""
     a, b = want.splitlines(), got.splitlines()
     for i, (x, y) in enumerate(zip(a, b, strict=False), start=1):
         if x != y:
@@ -250,45 +206,37 @@ def first_difference(want: str, got: str, sides: tuple[str, str] = ("the README"
 
 
 def readme_drift(readme: Path, normalised: Path) -> str:
-    """How a run's normalised transcript departs from the block its README carries, or empty:
-    the comparison a server's freshness test makes."""
+    """How a run's normalised transcript departs from the README block, or empty."""
     return first_difference(block_of(readme.read_text(encoding="utf-8")),
                             normalised.read_text(encoding="utf-8").strip("\n"))
 
 
 def flow_drift(front: Path, name: str, flow: Path) -> str:
-    """How a run's flow departs from the block demo `name` holds in the front door, or empty."""
+    """How a run's flow departs from demo `name`'s front-door block, or empty."""
     return first_difference(block_of(front.read_text(encoding="utf-8"), flow_begin(name),
                                      flow_end(name)),
                             flow.read_text(encoding="utf-8").strip("\n"))
 
 
-# ===================================================================== normalisation
-
-
 def _literally(text: str) -> Callable[[re.Match[str]], str]:
-    """A substitution that writes `text` as given, never read as a template (`\\1`, `\\d`)."""
+    """A substitution writing `text` as given."""
     return lambda _match: text
 
 
 @dataclass(frozen=True)
 class Normaliser:
-    """The host's paths, a reply's volatile values and the arguments that are the host's own,
-    spelled for any host."""
+    """Spells the host's paths, volatile reply values and host arguments for any host."""
 
     root: Path
     home: Path
     volatile: Mapping[str, str]
     host: Mapping[str, str] = field(default_factory=dict)
-    #: Further prefixes the run chose, each with its mark (a live run's scratch as `$TMPDIR`):
-    #: spelled first, longest first, since one may lie inside another, the root or the home.
+    #: Further prefixes with their marks, longest first: one may lie inside the root or home.
     marks: Mapping[str, str] = field(default_factory=dict)
 
     def text(self, text: str) -> str:
-        """`text` with the root as `.` and the home as `~` wherever one BEGINS a path: followed
-        by a separator or the end, never inside a longer name (`/Users/mx` is not under
-        `/Users/m`). The root goes first, since it usually lies inside the home and the longer
-        prefix has to win. A prefix of `/` is left alone: it would rewrite every separator."""
+        """`text` with the root as `.` and the home as `~` where one begins a path, never inside a
+        longer name (`/Users/mx` is not under `/Users/m`). A prefix of `/` is left alone."""
         marks = sorted(self.marks.items(), key=lambda pm: -len(pm[0]))
         for prefix, mark in (*marks, (str(self.root), "."), (str(self.home), "~")):
             prefix = prefix.rstrip(os.sep)
@@ -298,13 +246,11 @@ class Normaliser:
         return text
 
     def reply(self, value: Any, also: Mapping[str, str] | None = None) -> Any:
-        """A reply with its paths spelled by `text` and every volatile key's value hidden, those
-        of `also` (one step's own) included."""
+        """A reply with paths spelled and volatile keys' values hidden, `also` included."""
         return self._value(value, {**self.volatile, **(also or {})}, VOLATILE_MARK)
 
     def arguments(self, value: Any) -> Any:
-        """The demo's arguments with their paths spelled by `text` and the host's own hidden;
-        every other value is the demo's choice and is shown."""
+        """The demo's arguments with paths spelled and host-owned keys hidden."""
         return self._value(value, self.host, HOST_MARK)
 
     def _value(self, value: Any, hidden: Mapping[str, str], mark: str) -> Any:
@@ -318,18 +264,14 @@ class Normaliser:
         return value
 
 
-# ======================================================================== the transcript
-
-
 def placeholder(root: Path) -> str:
-    """The repository as an example a reader copies spells it: absolute, as every path a tool
-    takes is, never `.`."""
+    """The repository as a reader copies it: absolute, as tool paths are."""
     return f"/path/to/{root.name}"
 
 
 def abridged(value: Any) -> Any:
-    """`value` cut to its shape: a long list's first items then the string `... N more` in its
-    place (so a list of numbers ends in a string), a long string's first characters."""
+    """`value` cut to its shape: a long list's first items then `... N more`, a long string's
+    head."""
     if isinstance(value, dict):
         return {k: abridged(v) for k, v in value.items()}
     if isinstance(value, list | tuple):
@@ -343,8 +285,7 @@ def abridged(value: Any) -> Any:
 
 def _shown(tool: str, args: Mapping[str, Any], reply: Reply | None,
            fields: tuple[str, ...] | None) -> str:
-    """One step as the front door shows it: the call whole, as a reader would type it, and the
-    reply (its `fields` alone when named) abridged to its shape."""
+    """One step as the front door shows it: the call, and the reply abridged."""
     call = f"{tool}(" + ", ".join(f"{k}={json.dumps(v, ensure_ascii=False)}"
                                   for k, v in args.items()) + ")"
     data = None if reply is None else (
@@ -355,13 +296,12 @@ def _shown(tool: str, args: Mapping[str, Any], reply: Reply | None,
 
 
 def fenced(value: Any) -> str:
-    """`value` as a JSON code block, as a transcript and a reference page show it."""
+    """`value` as a JSON code block."""
     return "```json\n" + json.dumps(value, indent=2, ensure_ascii=False) + "\n```"
 
 
 def _entry(n: int, tool: str, args: Mapping[str, Any], reply: Reply | None, line: str) -> str:
-    """One step of a transcript: its verdict line, then the call and the whole answer folded
-    under it."""
+    """One transcript step: verdict line, then call and reply folded."""
     parts = [f"**{n}. `{tool}`**: {line}", "", "<details><summary>call and reply</summary>",
              "", fenced(dict(args))]
     if reply is not None:
@@ -374,11 +314,9 @@ def _entry(n: int, tool: str, args: Mapping[str, Any], reply: Reply | None, line
 
 @dataclass
 class Transcripts:
-    """The two transcripts of one run, kept in step: every entry goes to both, the normalised
-    one through the run's `Normaliser`."""
+    """The run's transcripts; every entry goes to each, normalised through `Normaliser`."""
 
     norm: Normaliser
-    #: How the front door's flow spells the host: the repository as `placeholder`, not `.`.
     flow_norm: Normaliser | None = None
     whole: list[str] = field(default_factory=list)
     normalised: list[str] = field(default_factory=list)
@@ -400,13 +338,8 @@ class Transcripts:
                                     shown if isinstance(shown, tuple) else None))
 
 
-# ========================================================================= running
-
-
 def _reply(result: CallToolResult) -> Reply:
-    """A `CallToolResult` as a `Reply`: its structured document, else its first text part read
-    as JSON; a part that is not text is named by its media type, since the text only repeats
-    the document. A result the library flags as an error carries no `ok` status."""
+    """A `CallToolResult` as a `Reply`; one flagged as an error carries no `ok` status."""
     structured = result.structured_content
     data: dict[str, Any] | None = structured if isinstance(structured, dict) else None
     attachments: list[str] = []
@@ -422,7 +355,7 @@ def _reply(result: CallToolResult) -> Reply:
 
 
 def _document(text: str) -> dict[str, Any]:
-    """`text` as a JSON document, or the text itself under `text` when it is not one."""
+    """`text` as a JSON document, else itself under `text`."""
     try:
         loaded = json.loads(text)
     except json.JSONDecodeError:
@@ -431,8 +364,7 @@ def _document(text: str) -> dict[str, Any]:
 
 
 def _why(e: BaseException) -> str:
-    """An exception as one line: a group as its first leaf, a `StepFailed` as its message, any
-    other as its type and message, since an empty message would leave a FAIL with no reason."""
+    """An exception as one line; the type is named so an empty message still gives a reason."""
     while isinstance(e, BaseExceptionGroup) and e.exceptions:
         e = e.exceptions[0]
     text = " ".join(str(e).split())
@@ -452,7 +384,7 @@ def _refused(reply: Reply, tool: str) -> str:
 
 @dataclass
 class Outcome:
-    """What a run did: its stdout lines, its transcripts, and its exit code."""
+    """A run's stdout lines, transcripts and exit code."""
 
     lines: list[str]
     transcripts: Transcripts
@@ -464,8 +396,6 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
     out = Outcome([], Transcripts(norm, Normaliser(
         root, norm.home, norm.volatile, norm.host,
         marks={**norm.marks, str(root): placeholder(root)})))
-    # The WHOLE environment, not the library's short default list: the server's own ladder
-    # (`MAME_BINARY`, its state directories) reads variables the caller set.
     params = StdioServerParameters(command=demo.server[0], args=list(demo.server[1:]),
                                    cwd=str(demo.root), env=dict(os.environ))
     passed, started = 0, False
@@ -487,7 +417,7 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                     passed += 1
                 if not closed:
                     await _cleanup(client, out)
-        except Exception as e:  # anything the session itself raised, outside a step
+        except Exception as e:  # outside a step
             out.code = EXIT_FAIL if started else EXIT_INVALID
             out.lines.append(
                 f"FAIL {demo.name}: the session with the server ended in an error ({_why(e)}); "
@@ -503,7 +433,7 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
 
 async def _step(client: Client, step: Step, run: Run
                 ) -> tuple[bool, str, Mapping[str, Any], Reply | None]:
-    """Run one step: its verdict, its line, the arguments it sent and the reply it got."""
+    """Run one step: ok, its line, the arguments sent and the reply."""
     args: Mapping[str, Any] = {}
     reply: Reply | None = None
     try:
@@ -511,8 +441,6 @@ async def _step(client: Client, step: Step, run: Run
         if step.options:
             built.update({k: v for k, v in run.options.items()
                           if step.options is True or k in step.options})
-        # Through JSON once, so what is sent is exactly what the transcript shows (a `Path`
-        # becomes its text) and a value JSON cannot carry fails here, as this step.
         args = json.loads(json.dumps(built, default=str))
         reply = _reply(await client.call_tool(step.tool, dict(args)))
         run.replies[step.name] = reply
@@ -526,18 +454,17 @@ async def _step(client: Client, step: Step, run: Run
                                                            if k not in reply]):
             raise StepFailed(f"the front door shows {lacking}, which the reply does not carry")
         return True, f"OK {step.name}: {_one_line(summary)}", args, reply
-    except Invalid as e:  # the step found that nothing could be demonstrated
+    except Invalid as e:
         return False, f"INVALID {step.name}: {_one_line(str(e))}", args, reply
-    except StepFailed as e:  # the reply was not the one asked for
+    except StepFailed as e:
         return False, f"FAIL {step.name}: {_why(e)}", args, reply
-    except Exception as e:  # every other failure inside a step is that step's FAIL
+    except Exception as e:
         kind = "INVALID" if step.broken_is_invalid and reply is None else "FAIL"
         return False, f"{kind} {step.name}: {_why(e)}", args, reply
 
 
 async def _cleanup(client: Client, out: Outcome) -> None:
-    """The cleanup call, when the run did not end with it: its answer goes to the whole
-    transcript only and never changes the verdict."""
+    """The cleanup call: its answer goes to the whole transcript only, never the verdict."""
     try:
         reply = _reply(await client.call_tool(CLEANUP_TOOL, {}))
         out.transcripts.whole.append(f"Cleanup `{CLEANUP_TOOL}`:\n\n" + fenced(reply.data))
@@ -550,8 +477,7 @@ KNOWN_OPTIONS = OFFERABLE | {"binary"}
 
 
 def _declared(demo: Demo) -> None:
-    """Refuse a demo whose declarations name an option the runner does not know, or a step whose
-    `options` is neither a bool nor a set: a typo there would take nothing, in silence."""
+    """Refuse unknown option names and malformed declarations."""
     for step in demo.steps:
         if not isinstance(step.volatile, Mapping):
             raise ValueError(f"step {step.name}: `volatile` is {step.volatile!r}, not a mapping "
@@ -573,7 +499,7 @@ def _declared(demo: Demo) -> None:
 
 
 def _taken(demo: Demo) -> set[str]:
-    """The options something in the demo takes: a step merging them, or the demo reading them."""
+    """The options a step merges or the demo reads."""
     taken = set(demo.reads)
     for step in demo.steps:
         taken |= KNOWN_OPTIONS if step.options is True else set(step.options or ())
@@ -599,7 +525,7 @@ def _parser(demo: Demo) -> argparse.ArgumentParser:
 
 
 def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
-    """Run `demo` as its command line asks, print the verdict lines, answer the exit code."""
+    """Run `demo` as its command line asks; answer the exit code."""
     _declared(demo)
     ns = _parser(demo).parse_args(argv)
     transcript: Path = (ns.transcript or demo.root / "tmp" / "demos" / demo.name
@@ -612,7 +538,7 @@ def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
     except Invalid as e:
         print(f"INVALID: {e}")
         code = EXIT_INVALID
-    except Exception as e:  # anything else before a verdict: INVALID, never a traceback
+    except Exception as e:  # INVALID, never a traceback
         print(f"INVALID: {_why(e)}")
         code = EXIT_INVALID
     sys.stdout.flush()
@@ -620,8 +546,8 @@ def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
 
 
 def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False) -> int:
-    """Run `demo` with `run`'s options, write its transcripts at `transcript`, print its lines,
-    answer the exit code; `Invalid` for what stops it before a verdict (`main` prints it)."""
+    """Run `demo`, write its transcripts at `transcript`, answer the exit code; `Invalid` stops
+    it before a verdict."""
     if not demo.steps:
         raise Invalid(f"the demo {demo.name} declares zero steps, so it demonstrates nothing")
     untaken = set(run.options) - _taken(demo)
@@ -641,11 +567,11 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
     run.dir.mkdir(parents=True, exist_ok=True)
     capture = demo.capture(run) if demo.capture is not None else None
     if capture is not None:
-        capture.unlink(missing_ok=True)  # only a picture THIS run wrote may reach the README
+        capture.unlink(missing_ok=True)  # only this run's picture may reach the README
     norm = Normaliser(demo.root.resolve(), Path.home().resolve(),
                       {**VOLATILE, **demo.volatile}, demo.host_args)
     normalised, flow = _beside(transcript)
-    flow.unlink(missing_ok=True)  # only a flow THIS run wrote may reach the front door
+    flow.unlink(missing_ok=True)  # only this run's flow may reach the front door
     out = asyncio.run(_drive(demo, run, run.dir / "server.stderr", norm))
     if out.transcripts.whole:
         transcript.write_text("\n\n".join(out.transcripts.whole) + "\n", encoding="utf-8")
@@ -663,8 +589,7 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
 
 
 def load(demo_file: Path) -> Demo:
-    """The `Demo` a demo's file declares as `DEMO`, imported without running its command line:
-    what a live freshness check hands `stale`."""
+    """The `DEMO` a demo file declares, imported without running its command line."""
     spec = importlib.util.spec_from_file_location(f"demo_{demo_file.parent.name}", demo_file)
     if spec is None or spec.loader is None:
         raise TypeError(f"{demo_file} cannot be imported")
@@ -683,9 +608,8 @@ def _beside(transcript: Path) -> tuple[Path, Path]:
 
 
 def stale(demo: Demo, run_dir: Path) -> list[str]:
-    """How `demo`'s committed files depart from the run that wrote `run_dir` with the default
-    transcript name: its README's block, the front door's flow and its picture, one line each, or
-    empty. What a server's live freshness check asserts."""
+    """How the committed README block, flow and picture depart from the run in `run_dir`, one
+    line each, or empty."""
     normalised, flow = _beside(run_dir / "transcript.md")
     found = []
     if demo.readme is not None and (drift := readme_drift(demo.readme, normalised)):
@@ -706,9 +630,8 @@ def _no_readme(demo: Demo) -> Invalid:
 
 def _update_readmes(demo: Demo, readme: Path, capture: Path, normalised: Path, flow: Path
                     ) -> None:
-    """The README's block, its picture and the front door's flow, every text built before the
-    first file is written, so a README that cannot take its block leaves all of them as they
-    were."""
+    """Rewrite the README block, picture and flow; every text is built before any file is
+    written, so a failure leaves all as they were."""
     if not capture.is_file():
         raise Invalid(f"the capture {capture} was not written by this run, so the README was "
                       "left as it was")

@@ -1,30 +1,20 @@
 """The reply contract of the two emulator servers, and the class that makes it hold.
 
-ONE FILE, IN THE PACKAGE BOTH SERVERS PIN: each server is published on its own, and a contract
-held by two copies is two contracts the day one of them is edited alone.
+One file in the package both servers pin, so there is one contract.
 
-THE CONTRACT. Every reply carries `status`: `ok`, or `INVALID` when the tool examined nothing
-or cannot vouch for what it examined. An INVALID carries `code` (one word from the table
-below, for a program) and `message` (the prose, for a person), flat, with whatever context
-the refusal has beside them (`last_stop`, `posted`, `route`, `control_hits`...). `verdict`
-is a MEASUREMENT's word (`VERDICTS`) and never a refusal's,
-and `why` is a row's or a field's reason, never a refusal's prose, so a refusal carries neither
-at its top level; `reason` and `cause`, the spellings `message` replaced, are refused there
-too, so a reader cannot be handed two dialects. NO REPLY CARRIES A NULL: a datum that could
-not be read, or does not apply, is `unavailable(why)` in its place, so a reader finds the reason
-where it looked for the value.
+Every reply carries `status`: `ok`, or `INVALID` when the tool examined nothing or cannot vouch
+for what it examined. An INVALID carries `code` (a word of the table, for a program) and
+`message` (prose, for a person), flat, with the context beside them. `verdict` is a
+measurement's word (`VERDICTS`) and `why` a row's or field's reason, so a refusal carries
+neither, nor `reason`. No reply carries a null: a datum that could not be read is
+`unavailable(why)` in its place.
 
-WHY A CLASS. A convention lives in the reader's memory and a grep; the class refuses a code
-outside the table, an empty message and a reserved field WHERE THEY ARE WRITTEN, as a
-programmer's error that escapes as an execution failure, so a malformed refusal can never
-reach a caller looking like a verdict. `check_envelope` is the same guard on the built reply,
-called by each server's envelope function, and it refuses an `ok` reply whose `verdict` is not
-one of the measurements' words.
+`Invalid` refuses a code outside the table, an empty message and a reserved field where they
+are written, so a malformed refusal never looks like a verdict. `check_envelope` guards the
+built reply.
 
-THE TABLE, one word per concept. What separates a refusal from its neighbour is what the
-CALLER does next: an observation about the guest (`wait_expired`, `control_silent`) is a
-measurement to report; a broken instrument (`session_broken`, `host_failed`,
-`unexpected_answer`) is one to fix before reporting anything.
+The table splits by what the caller does next: an observation about the guest (`wait_expired`)
+is a measurement to report; a broken instrument (`session_broken`) is one to fix first.
 """
 
 from __future__ import annotations
@@ -35,49 +25,41 @@ from pathlib import Path
 from typing import Any, Literal, TypeVar, get_args
 
 Code = Literal[
-    "no_session",         # no live machine: `start` first
-    "session_live",       # `start` over a live session: `close` it first
-    "not_stopped",        # the machine runs and this needs it stopped
-    "not_running",        # the machine is stopped and this needs it running: a key or a
-                          # mouse move into a running DOS guest (MAME's `input` needs a STOP)
-    "no_stop",            # no stop yet in this session to answer from
-    "bad_argument",       # an argument's shape, range or path
-    "needs_call",         # another call has to come first (no scan open, no manifest loaded):
-                          # the message names it, where `bad_argument` asks for another value
-    "unknown_ref",        # a name or ref that resolves to nothing, or matches no declaration
-    "ambiguous_ref",      # a name with several matches, or one already declared another way
-    "no_channel",         # the channel asked for does not exist: no log, table, route, window
-    "wait_stopped",       # a wait that cannot end because the machine stopped
-    "wait_expired",       # the bound expired with nothing matched
-    "control_silent",     # the control never fired, so the target's silence means nothing
-    "cut_by_other_stop",  # another stop cut the run before the control had its chance
-    "not_settled",        # no proof the machine came to rest after a run: it may be running
-    "frames_went_backwards",  # the frame counter read lower after the run than before it
-    "no_progress",        # the frame counter did not move: nothing was emulated
-    "readback_refused",   # what was read back does not show what was asked
-    "session_broken",     # the emulator is gone, or its channel died mid-call
-    "unexpected_answer",  # the console answered something not of the shape expected
-    "reader_died",        # the console's reader died before answering: not evaluated, or not yet
-    "console_rerun",      # the console ran the call's own chunk again: it acted twice
-    "host_failed",        # a helper of the host failed: a program, a file, the window server
-    "step_failed",        # a step of a sequence failed; `failed` carries the step's own code
-    "diverged",           # a replayed step's reply does not hold to what the session recorded
-    "no_recording",       # nothing to export: no `start` recorded, or no step a replay takes
+    "no_session",
+    "session_live",
+    "not_stopped",
+    "not_running",
+    "no_stop",
+    "bad_argument",
+    "needs_call",
+    "unknown_ref",
+    "ambiguous_ref",
+    "no_channel",
+    "wait_stopped",
+    "wait_expired",
+    "control_silent",
+    "cut_by_other_stop",
+    "not_settled",
+    "frames_went_backwards",
+    "no_progress",
+    "readback_refused",
+    "session_broken",
+    "unexpected_answer",
+    "reader_died",
+    "console_rerun",
+    "host_failed",
+    "step_failed",
+    "diverged",
+    "no_recording",
 ]
 CODES: frozenset[str] = frozenset(get_args(Code))
 
-# What a refusal may not carry beside the three fields: the envelope's own names, the words
-# other parts of a reply own (a measurement's `verdict`, a row's or a field's `why`), and the
-# spelling `message` replaced. `cause` is a stop's own field, which a refusal that met a stop
-# carries like the rest of it.
+# `cause` is absent on purpose: it is a stop's own field, carried by a refusal that met a stop.
 NOT_A_REFUSALS_WORDS: frozenset[str] = frozenset({"verdict", "why", "reason"})
 RESERVED: frozenset[str] = frozenset({"summary", "status", "code", "message", "session"}
                                      | NOT_A_REFUSALS_WORDS)
 
 
-# A MEASUREMENT'S WORDS: what a wait waited for came (`TARGET`), its bound ran out (`TIMEOUT`), a
-# stop it did not ask for ended it (`OTHER_STOP`), a run by time ran its course (`ELAPSED`). The
-# servers spell them through these names, so a typo is a name error rather than a fifth word.
 Verdict = Literal["TARGET", "TIMEOUT", "OTHER_STOP", "ELAPSED"]
 VERDICTS: frozenset[str] = frozenset(get_args(Verdict))
 TARGET: Verdict = "TARGET"
@@ -89,9 +71,8 @@ _T = TypeVar("_T")
 
 
 class _OmitEmpty:
-    """`Annotated[T, OmitEmpty]` on a reply-model field: the envelope leaves the field out when
-    its value is empty (`is_empty`), as GitHub's MCP server marks its minimal types `omitempty`.
-    For diagnostics and accounting only: an answer whose zero is the finding is never marked."""
+    """`Annotated[T, OmitEmpty]`: the envelope omits the field when empty. Never for an answer
+    whose zero is the finding."""
 
     def __repr__(self) -> str:
         return "OmitEmpty"
@@ -107,8 +88,7 @@ def is_empty(value: Any) -> bool:
 
 
 def unavailable(why: str) -> dict[str, Any]:
-    """A datum that could not be read, or does not apply, in place of its value: never a null
-    beside a sibling key, so a reader finds the reason where it looked for the value."""
+    """A datum that could not be read, in place of its value."""
     if not isinstance(why, str) or not why.strip():
         raise TypeError(f"an unread datum says why; got {why!r}")
     return {"available": False, "why": why}
@@ -120,13 +100,7 @@ def or_unavailable(value: _T | None, why: str) -> _T | dict[str, Any]:
 
 
 class Invalid(Exception):
-    """A refusal: the tool examined nothing, or cannot vouch for what it examined.
-
-    Distinct from an honest negative ("the pattern matched no line" is an answer, "there was
-    no log to match against" is not) and from a bug (which escapes as an execution failure).
-    `code` is one word of the table, checked here and by the type; `fields` is the context
-    the reply carries beside the message.
-    """
+    """A refusal, distinct from an honest negative ("the pattern matched no line") and a bug."""
 
     def __init__(self, code: Code, message: str, **fields: Any) -> None:
         if code not in CODES:
@@ -143,22 +117,18 @@ class Invalid(Exception):
         self.fields = fields
 
     def reply(self, **more: Any) -> dict[str, Any]:
-        """The refusal's own fields in the contract's order: `status`, `code`, `message`, then
-        the context, `more` last (what the catching layer adds: `last_stop`, the roster)."""
+        """The refusal's fields in the contract's order; `more` is what the catching layer adds."""
         return {"status": "INVALID", "code": self.code, "message": str(self),
                 **self.fields, **more}
 
 
 def refusal(code: Code, message: str, **fields: Any) -> dict[str, Any]:
-    """A refusal's fields without raising, for a tool that answers INVALID as its reply: the
-    same class judges it, so nothing reaches an envelope that the class would have refused."""
+    """A refusal's fields without raising; the same class judges it."""
     return Invalid(code, message, **fields).reply()
 
 
 def check_envelope(reply: dict[str, Any]) -> dict[str, Any]:
-    """The guard every built reply passes: `status` is `ok` or `INVALID`; an INVALID carries a
-    code of the table and a message and none of the words that are not a refusal's; an `ok`
-    carries neither `code` nor `message`. Returns the reply so it can be wrapped in place."""
+    """The guard every built reply passes; returns the reply."""
     status = reply.get("status")
     if status not in ("ok", "INVALID"):
         raise TypeError(f"status is `ok` or `INVALID`; got {status!r}")
@@ -177,18 +147,10 @@ def check_envelope(reply: dict[str, Any]) -> dict[str, Any]:
     return reply
 
 
-# ------------------------------------------------------------- the contract's own audit
-#
-# Checks every server's suite runs, kept HERE so the suites cannot drift apart in what they hold
-# a reply to: a refusal's shape and the codes written in a tree (a reply's nulls are the shape
-# guard's, which walks every reply a suite builds).
 
 
 def check_refusal(name: str, reply: dict[str, Any], code: str | None = None) -> None:
-    """A tool's refusal as the caller receives it: `summary`, `status`, `code`, `message`
-    first, `session` last, a code of the table (`code` when one is expected), prose in the
-    message, and none of the words that are not a refusal's. Raises AssertionError naming
-    the tool, so a suite can walk every tool through one gate and read one failure."""
+    """Assert a tool's refusal has the contract's shape; names the tool on failure."""
     if reply.get("status") != "INVALID":
         raise AssertionError(f"{name}: not a refusal: {reply}")
     if reply.get("code") not in CODES:
@@ -210,9 +172,7 @@ def check_refusal(name: str, reply: dict[str, Any], code: str | None = None) -> 
 
 
 def _code_literals(node: ast.expr) -> list[str]:
-    """The code(s) an expression can hold. A bare NAME, or an attribute `x.code`, is
-    accepted: both are typed `Code`, and mypy's strict pass holds that a value of that type
-    carries one word of the table; the placeholder returned for them is in the table."""
+    """The code(s) an expression can hold; a name or `x.code` is typed `Code`, so mypy holds it."""
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return [node.value]
     if isinstance(node, ast.IfExp):
@@ -223,11 +183,8 @@ def _code_literals(node: ast.expr) -> list[str]:
 
 
 def codes_written_in(sources: Iterable[Path]) -> list[tuple[str, int, str]]:
-    """Every code written in the sources: the first argument of an `Invalid(...)`,
-    `invalid(...)` or `refusal(...)` call, and the value of any `code=` keyword. The class
-    checks at RUNTIME; this reads the text so a code typed wrong in a branch no test reaches
-    is caught, and a code cannot be computed from a string. A refusal with no code, or one
-    that is not a literal of the table's shape, raises AssertionError naming the line."""
+    """Every code written in the sources (refusal-call first argument, any `code=`), read from
+    the text so a branch no test reaches is covered; a missing or non-literal code raises."""
     seen: list[tuple[str, int, str]] = []
     for path in sources:
         for node in ast.walk(ast.parse(path.read_text())):

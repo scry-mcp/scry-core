@@ -1,5 +1,4 @@
-"""README's table of modules is the package's index: every module is a row, and every row a module,
-so a module added or removed without its row is a failure here rather than a stale index."""
+"""The README table lists exactly the package's modules."""
 
 from __future__ import annotations
 
