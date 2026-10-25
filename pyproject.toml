@@ -1,6 +1,6 @@
 [project]
 name = "scry-core"
-version = "0.57.0"
+version = "0.58.0"
 description = "What the Scry emulator MCP servers share: the reply contract, the probe, the live bench and the pre-commit"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -75,7 +75,7 @@ omit = ["scry_core/reply_shapes.py"]
 # `--cov` run. The number is the total the run that fixed it measured, raised by hand from a run.
 # It counts lines EXECUTED, not asserted: what proves a test bites is having seen it red.
 fail_under = 99.44
-# A branch only Windows runs: the floor is judged on macOS, where no such line can execute.
-exclude_also = ['if sys\.platform == "win32":']
+# A branch or a test only Windows runs: the floor is judged on macOS, where neither can execute.
+exclude_also = ['if sys\.platform == "win32":', '@WINDOWS_ONLY']
 precision = 2
 show_missing = true

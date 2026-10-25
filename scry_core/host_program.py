@@ -1,11 +1,15 @@
-"""A test double as this host runs one: Python behind its launcher."""
+"""Test doubles and paths as this host runs and spells them."""
 
 from __future__ import annotations
 
 import contextlib
 import os
 import sys
+import tempfile
 from pathlib import Path
+
+#: Itself the process it runs: a venv's `python.exe` on Windows is a launcher.
+INTERPRETER = getattr(sys, "_base_executable", sys.executable)
 
 
 def write(path: Path, body: str) -> Path:
@@ -15,7 +19,7 @@ def write(path: Path, body: str) -> Path:
         # no `#!`, no mode bit; cmd.exe re-reads args
         path.write_text(body, encoding="utf-8")
         launcher = path.with_name(path.name + ".cmd")
-        launcher.write_text(f'@"{sys.executable}" "{path}" %*\r\n', encoding="utf-8")
+        launcher.write_text(f'@"{INTERPRETER}" "{path}" %*\r\n', encoding="utf-8")
         return launcher
     else:
         path.write_text(f"#!{sys.executable}\n{body}", encoding="utf-8")
@@ -24,9 +28,11 @@ def write(path: Path, body: str) -> Path:
 
 
 def absolute(*parts: str) -> str:
-    """An absolute path as this host spells one."""
     return str(Path(Path.cwd().anchor, *parts))
 
+
+def temporary(name: str) -> str:
+    return str(Path(tempfile.gettempdir(), name))
 
 def fifo(path: Path) -> None:
     """A FIFO at `path`, or the test skipped where there is none."""

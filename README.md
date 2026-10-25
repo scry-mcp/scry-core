@@ -40,7 +40,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.binaries` | which emulator a session runs: the caller's `binary`, else the server's variable, else the PATH's, and what the build says it is |
 | `scry_core.placement` | where an emulator's window goes: the host's helper (`WINDOW_APP`) asked for an app, watched or not and on which display, its flags one argv token a line, or why there are none; and which display a watched start reports |
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, the probe's tasks, the prose ceiling, and the tree typed as Windows sees it |
-| `scry_core.host_program` | a test double's program as the host runs one: Python behind a `#!` line on POSIX and a `.cmd` on Windows; and a FIFO, or the test skipped where there is none |
+| `scry_core.host_program` | a test double's program as the host runs one (Python behind a `#!` line on POSIX, a `.cmd` on Windows), the interpreter that is itself the process it runs, absolute and temporary paths as the host spells them, and a FIFO or the test skipped where there is none |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, the README block they generate, and the flow of the steps it shows in the server's front door |
 | `scry_core.recording` | a session as a bench: what a server did, recorded from its `start` through its call boundary, and exported as `perform`'s own document (`perform_export`); the check a replayed step holds to |
 | `scry_core.comment_file` | the comment file both servers read and write (version 1): its header, columns, text and stamp rules, parse and render, each server's `ref` and `cpu` columns handed in as a `Policy` |
@@ -48,7 +48,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.focus_watch` | whether a live run took the owner's focus or moved their Space: the frontmost application and each display's Space, keyed by the display, sampled from outside the run (macOS), and the judge of a window of samples |
 | `scry_core.focus_gate` | the flow a live section takes the watch through: the control (a start in front, one behind, the owner's Space moved and put back), the verdict after it, each in `live_pool`'s words |
 | `scry_core.presence` | the presence indicator: a session's state (held, acting), the one look both emulators draw, the writer that delivers the latest state off the call's path, what a server keeps of it (`Shown`), and the check that holds a server's declaration of which tools drive against its registry |
-| `scry_core.guardian` | the process beside every emulator that kills it when its server dies or its session's wall-clock bound passes (POSIX) |
+| `scry_core.guardian` | what ends an emulator with its server: on POSIX a watcher process that also keeps its session's wall-clock bound, on Windows a job object the server holds, which the OS closes however the server ends |
 | `scry_core.window_capture` | what the host shows of an emulator's window, for a live tier: the window found by its owner's pid, captured by the host (macOS, a refusal raised as `Blocked`), two captures compared by where they differ, and whether that difference is the presence edge |
 | `scry_core.process_name` | the name a server's process, and its guardians', go by in the host's process list |
 | `scry_core.narrowing` | a reply that answers less than everything and says so: `omitted` and `how`, and the `sections` list a caller narrows by |
@@ -165,6 +165,12 @@ web UI for anything that spans calls. `--cli` exits 0 on a refusal: an `INVALID`
 result, `isError: false`, so read its `status`. A non-zero exit is the call itself failing,
 such as an unknown tool.
 
+## Platforms
+
+macOS and Windows, as a library: every module imports on both, and what only one of them has is
+chosen by `sys.platform` (a guardian is a watcher process on POSIX and a job object on Windows).
+Linux is not supported: nothing here has run on it.
+
 ## Developing
 
 ```sh
@@ -174,6 +180,9 @@ uv run mypy --strict .
 uv run mypy --strict --platform win32 .
 uv run pytest -q
 ```
+
+On Windows the same, with `uv run pytest -q --no-cov`: the coverage floor is judged on macOS,
+since Windows skips by design the cases that need what it lacks (a FIFO, a mode bit).
 
 Licence: MIT.
 

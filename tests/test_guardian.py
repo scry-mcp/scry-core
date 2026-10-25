@@ -1,6 +1,6 @@
 """`scry_core.guardian` against REAL processes: whether a child outlives its parent, or its
 deadline, is a property of processes. Its "emulator" is `sleep`, and its "server" an interpreter
-these cases SIGKILL, the ending that runs no `finally`."""
+these cases kill outright (SIGKILL, or `TerminateProcess`), the ending that runs no `finally`."""
 
 from __future__ import annotations
 
@@ -14,7 +14,9 @@ import pytest
 
 from scry_core import guardian
 
-POSIX = pytest.mark.skipif(not guardian.SUPPORTED, reason="the guardian is POSIX only")
+POSIX = pytest.mark.skipif(not guardian.WATCHER, reason="the watcher process is POSIX's")
+#: The job's own cases; coverage, judged on macOS, leaves them out by this name.
+WINDOWS_ONLY = pytest.mark.skipif(guardian.WATCHER, reason="the job is Windows'")
 
 # The server stand-in: spawns the "emulator" and its guardian as a server does (unless told not
 # to, for the control), prints both pids, and waits to be killed.
@@ -24,7 +26,7 @@ from scry_core import guardian
 child = subprocess.Popen(["sleep", "60"])
 guard = (guardian.spawn(child, "scry-test", float(sys.argv[2]))
          if sys.argv[1] == "guarded" else None)
-print(child.pid, guard.pid if guard else 0, flush=True)
+print(child.pid, getattr(guard, "pid", 0), flush=True)
 time.sleep(60)
 """
 
@@ -32,9 +34,14 @@ WITHIN_S = 5 * guardian.POLL_S
 
 
 def _alive(pid: int) -> bool:
-    stat = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True,
-                          text=True, check=False).stdout.strip()
-    return bool(stat) and not stat.startswith("Z")
+    if sys.platform == "win32":         # `os.kill(pid, 0)` would end it there
+        listed = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH", "/FO", "CSV"],
+                                capture_output=True, text=True, check=False).stdout
+        return f'"{pid}"' in listed
+    else:
+        stat = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True,
+                              text=True, check=False).stdout.strip()
+        return bool(stat) and not stat.startswith("Z")
 
 
 def _gone_within(pid: int, seconds: float) -> bool:
@@ -61,19 +68,17 @@ def _reap(*pids: int) -> None:
             os.kill(pid, guardian.KILL)
 
 
-@POSIX
 def test_a_sigkilled_server_takes_its_emulator_with_it() -> None:
     proc, child, guard = _server()
     try:
         proc.kill()
         proc.wait()
         assert _gone_within(child, WITHIN_S), "the emulator outlived its server"
-        assert _gone_within(guard, WITHIN_S), "the guardian lingered"
+        assert not guard or _gone_within(guard, WITHIN_S), "the guardian lingered"  # 0: a job
     finally:
         _reap(child, guard)
 
 
-@POSIX
 def test_without_a_guardian_the_emulator_outlives_its_server() -> None:
     """THE CONTROL: the same ending with no guardian leaves the child running under init, so
     the case above is the guardian's doing and not the child dying with its parent."""
@@ -118,7 +123,7 @@ def test_the_guardian_leaves_when_its_emulator_does_and_goes_by_its_name() -> No
     child = subprocess.Popen(["sleep", "60"])
     guard = guardian.spawn(child, "scry-test")
     try:
-        assert guard is not None
+        assert isinstance(guard, subprocess.Popen)
         deadline = time.monotonic() + 5
         shown = ""
         while time.monotonic() < deadline and shown.strip() != "scry-test-guardian":
@@ -143,14 +148,19 @@ def test_no_guardian_for_a_process_this_server_did_not_spawn() -> None:
     assert guardian.spawn(Double(), "x") is None
 
 
-def test_no_guardian_where_the_host_has_none(monkeypatch: pytest.MonkeyPatch) -> None:
+@WINDOWS_ONLY
+def test_on_windows_the_job_ends_what_it_still_holds_when_it_closes() -> None:
+    """`stop` comes once the emulator is reaped, so closing the job ends nothing then."""
     child = subprocess.Popen(["sleep", "60"])
+    guard = guardian.spawn(child, "scry-test")
     try:
-        monkeypatch.setattr(guardian, "SUPPORTED", False)
-        assert guardian.spawn(child, "x") is None
+        assert isinstance(guard, guardian.Job) and guard.poll() is None
+        assert _alive(child.pid), "the control: the job left it running"
+        guardian.stop(guard)
+        assert guard.poll() == 0 and _gone_within(child.pid, WITHIN_S)
+        guardian.stop(guard)
     finally:
-        child.kill()
-        child.wait()
+        _reap(child.pid)
 
 
 @POSIX
@@ -216,9 +226,26 @@ def test_set_title_hands_the_title_to_setproctitle(monkeypatch: pytest.MonkeyPat
     assert seen == ["scry-x"]
 
 
-def test_only_windows_has_no_guardian() -> None:
-    posix = sys.platform != "win32"
-    assert posix == guardian.SUPPORTED
+
+def test_a_job_is_ended_once_and_answers_as_a_stopped_guard_after(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    closed: list[int] = []
+    # never a real CloseHandle: 7 is some live handle of this very process on Windows
+    monkeypatch.setattr(guardian, "_close_handle", closed.append)
+    job = guardian.Job(7)
+    assert job.poll() is None
+    job.kill()
+    job.kill()
+    assert (job.poll(), job.wait(1.0), job.handle, closed) == (0, 0, None, [7])
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="this host makes them")
+def test_a_job_is_asked_of_windows_alone() -> None:
+    with pytest.raises(OSError, match="Windows'"):
+        guardian._job(1)
+
+def test_the_watcher_is_posix_s_and_the_job_windows() -> None:
+    assert guardian.WATCHER is (sys.platform != "win32")
 
 
 @POSIX
