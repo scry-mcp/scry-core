@@ -358,7 +358,7 @@ def test_the_example_picked_is_the_first_ok_reply_of_an_ok_cell_else_the_first_r
         _record("poke", "OK", {"exception": "boom"}, "raised"),
         _record("poke", "OK", {"status": "INVALID", "code": "not_stopped"}, "running"),
         _record("gone", "OK", {"status": "ok"}),
-        {"tool": "poke", "verdict": "OK", "cell": "late", "reply": {"status": "INVALID"}},
+        {"tool": "poke", "verdict": "OK", "label": "late", "reply": {"status": "INVALID"}},
     ]
     picked = reference.examples_from(records, {"peek", "poke"}, norm)
     assert picked["peek"] == {"from": "[A] fixture: read", "call": {"addr": "0x10"},
@@ -366,6 +366,8 @@ def test_the_example_picked_is_the_first_ok_reply_of_an_ok_cell_else_the_first_r
     assert picked["poke"]["from"] == "[A] fixture: running" and "gone" not in picked
     alone = reference.examples_from(records[-1:], {"poke"}, norm)["poke"]
     assert alone["from"] == ": late" and alone["call"] == {}, alone
+    old = {"tool": "poke", "verdict": "OK", "cell": "late", "reply": {"status": "INVALID"}}
+    assert reference.examples_from([old], {"poke"}, norm)["poke"]["from"] == ": "
 
 
 def test_an_example_keeps_the_shape_of_a_long_reply_and_spells_the_host_s_paths(
@@ -692,3 +694,12 @@ def test_a_failure_while_comparing_is_invalid_not_drift(
     monkeypatch.setattr(reference, "drift", broken)
     assert _main(tmp_path, monkeypatch) == 3
     assert "INVALID: UnicodeDecodeError" in capsys.readouterr().out
+
+
+def test_a_module_that_raises_while_it_is_built_is_invalid_not_usage(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    (tmp_path / "unbuilt_registry.py").write_text('raise ValueError("a tool has no reply model")\n')
+    monkeypatch.syspath_prepend(str(tmp_path))
+    assert reference.main(["unbuilt_registry:REGISTRY"]) == 3
+    assert "a tool has no reply model" in capsys.readouterr().out

@@ -424,7 +424,7 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
         if (name in tools and rec.get("verdict") == "OK" and isinstance(reply, dict)
                 and "status" in reply):
             (ok if reply["status"] == "ok" else refused).setdefault(str(name), rec)
-    return {name: {"from": f"{rec.get('section', '')}: {rec.get('label', rec.get('cell', ''))}",
+    return {name: {"from": f"{rec.get('section', '')}: {rec.get('label', '')}",
                    "call": norm.reply(dict(rec.get("args") or {})),
                    "reply": demo.abridged(norm.reply(
                        {k: v for k, v in rec["reply"].items() if k not in LEFT_OUT}))}
@@ -443,17 +443,21 @@ def _records(paths: Sequence[Path]) -> list[dict[str, Any]]:
 # ======================================================================== the command
 
 
+class _BadSpec(ValueError):
+    """A spec naming no Registry: usage, unlike a module that raises while it is built."""
+
+
 def _loaded(spec: str) -> Registry:
-    """The `Registry` `spec` names, else a `ValueError`."""
+    """The `Registry` `spec` names, else a `_BadSpec`."""
     module, _, attribute = spec.partition(":")
     if not attribute:
-        raise ValueError(f"{spec!r} is not <module>:<attribute>")
+        raise _BadSpec(f"{spec!r} is not <module>:<attribute>")
     try:
         found = getattr(importlib.import_module(module), attribute)
     except (ImportError, AttributeError) as e:
-        raise ValueError(f"{spec} names nothing: {e}") from e
+        raise _BadSpec(f"{spec} names nothing: {e}") from e
     if not isinstance(found, Registry):
-        raise ValueError(f"{spec} is a {type(found).__name__}, not a Registry")
+        raise _BadSpec(f"{spec} is a {type(found).__name__}, not a Registry")
     return found
 
 
@@ -481,7 +485,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         p.error("--mark spells the examples' paths, so it needs --examples")
     try:
         reg = _loaded(ns.registry)
-    except ValueError as e:
+    except _BadSpec as e:
         p.error(str(e))
     except Exception as e:  # a module that cannot be built compared nothing: INVALID, not drift
         print(f"INVALID: {ns.registry} could not be loaded: {type(e).__name__}: {e}")

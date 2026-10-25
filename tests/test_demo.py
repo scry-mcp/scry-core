@@ -401,6 +401,7 @@ def test_first_difference_names_the_line() -> None:
     assert d.first_difference("a", "a\nb") == "line 2: the README has 1, the run 2"
 
 
+START_SHOWN = ("value", "binary", "pid", "where")
 FRONT = "# The server\n\nWhy.\n\n{begin}\nold flow\n{end}\n\nMore why.\n"
 
 
@@ -413,7 +414,7 @@ def _front(tmp_path: Path) -> Path:
 def _shown_demo(tmp_path: Path) -> d.Demo:
     steps = [
         d.Step("boot", "start", {"value": 7}, _said("value"), options=True),
-        d.Step("look", "read", {}, _said("value"), shown=True),
+        d.Step("look", "read", {}, _said("value"), shown=("value",)),
         d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
                lambda reply, run: "a picture"),
         d.Step("end", "close", {}, lambda reply, run: "closed"),
@@ -461,7 +462,7 @@ def test_a_long_value_in_a_flow_is_abridged_to_its_shape() -> None:
 
 def _flow_of(tmp_path: Path, start: dict[str, Any]) -> str:
     """The flow a run writes when its `start` step, with `start` as its arguments, is shown."""
-    steps = [d.Step("boot", "start", start, _said("value"), options=True, shown=True),
+    steps = [d.Step("boot", "start", start, _said("value"), options=True, shown=START_SHOWN),
              d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
                     lambda reply, run: "a picture")]
     demo = _demo(tmp_path, steps, front=_front(tmp_path))
@@ -519,7 +520,7 @@ def test_a_shown_step_s_flow_is_the_normalised_reply(tmp_path: Path, log: Path) 
 
 
 def test_a_step_shown_with_no_front_door_is_a_declaration_error(tmp_path: Path) -> None:
-    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True, shown=True)]
+    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True, shown=START_SHOWN)]
     with pytest.raises(ValueError, match="no front door"):
         _run(_demo(tmp_path, steps), tmp_path)
 
@@ -532,7 +533,7 @@ def test_a_front_door_whose_markers_go_mid_run_leaves_both_readmes_as_they_were(
         front.write_text("# no markers now\n")
         return "markers gone"
 
-    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True, shown=True),
+    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True, shown=START_SHOWN),
              d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"}, vanish)]
     demo = _demo(tmp_path, steps, front=front)
     before = _readme(demo).read_text()
@@ -548,7 +549,7 @@ def test_a_run_that_writes_no_flow_leaves_no_earlier_flow_behind(
     failing = _demo(tmp_path, [d.Step("no", "refuse", {}, lambda reply, run: "")],
                     front=_front(tmp_path))
     failing = d.Demo(**{**failing.__dict__, "steps": [
-        d.Step("no", "refuse", {}, lambda reply, run: "", shown=True)]})
+        d.Step("no", "refuse", {}, lambda reply, run: "", shown=("status",))]})
     _run(failing, tmp_path)
     assert not (tmp_path / "out" / "transcript.flow.md").exists()
 

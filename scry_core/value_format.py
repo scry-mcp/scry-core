@@ -35,6 +35,8 @@ Value = int | float | str | list["Value"] | dict[str, "Value"]
 
 # Scalar names live only in `SCALARS`; the array element is matched by shape, then looked up.
 _ARRAY = re.compile(r"^([a-z][a-z0-9]*)\[(\d+)\]$")
+# `int()` refuses past 4300 digits with a plain ValueError, which no caller catches
+_COUNT_DIGITS_MAX = 12
 _FIELD = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*):(.+)$")
 _POINTER = re.compile(r"^ptr(16|32)(@[^{]*)?(.*)$", re.S)
 _CLASS = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -133,6 +135,9 @@ def parse(spec: str) -> Format:
                       target_class=klass)
     m = _ARRAY.match(spec)
     if m and (m.group(1) in SCALARS or m.group(1) == "char"):
+        if len(m.group(2)) > _COUNT_DIGITS_MAX:
+            raise FormatError(f"{spec[:40]}...: a count of {len(m.group(2))} digits is past any "
+                              f"memory this reads")
         elem, count = m.group(1), int(m.group(2))
         if count <= 0:
             raise FormatError(f"{spec}: an array or a string needs a count above zero")

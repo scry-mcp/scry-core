@@ -137,7 +137,7 @@ class Step:
     broken_is_invalid: bool = False
     #: A call the front door shows (`Demo.front`), reply abridged to the fields named. A named
     #: field the reply lacks fails the step, so the front door never shows a stale shape.
-    shown: bool | tuple[str, ...] = False
+    shown: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -284,12 +284,11 @@ def abridged(value: Any) -> Any:
 
 
 def _shown(tool: str, args: Mapping[str, Any], reply: Reply | None,
-           fields: tuple[str, ...] | None) -> str:
+           fields: tuple[str, ...]) -> str:
     """One step as the front door shows it: the call, and the reply abridged."""
     call = f"{tool}(" + ", ".join(f"{k}={json.dumps(v, ensure_ascii=False)}"
                                   for k, v in args.items()) + ")"
-    data = None if reply is None else (
-        reply.data if fields is None else {k: reply.data[k] for k in fields})
+    data = None if reply is None else {k: reply.data[k] for k in fields}
     answer = "(no reply)" if data is None else json.dumps(
         abridged(data), indent=2, ensure_ascii=False)
     return f"```\n{call}\n-> {answer}\n```"
@@ -324,7 +323,7 @@ class Transcripts:
 
     def add(self, n: int, tool: str, args: Mapping[str, Any], reply: Reply | None,
             line: str, volatile: Mapping[str, str] | None = None,
-            shown: bool | tuple[str, ...] = False) -> None:
+            shown: tuple[str, ...] = ()) -> None:
         self.whole.append(_entry(n, tool, args, reply, line))
         normal = None if reply is None else Reply(self.norm.reply(reply.data, volatile),
                                                   reply.attachments)
@@ -335,7 +334,7 @@ class Transcripts:
             flow_reply = None if reply is None else Reply(spell.reply(reply.data, volatile),
                                                           reply.attachments)
             self.flow.append(_shown(tool, spell.arguments(dict(args)), flow_reply,
-                                    shown if isinstance(shown, tuple) else None))
+                                    shown))
 
 
 def _reply(result: CallToolResult) -> Reply:
@@ -409,7 +408,7 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                     ok, line, args, reply = await _step(client, step, run)
                     out.lines.append(norm.text(line))
                     out.transcripts.add(n, step.tool, args, reply, line, step.volatile,
-                                        step.shown if ok else False)
+                                        step.shown if ok else ())
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
@@ -450,8 +449,7 @@ async def _step(client: Client, step: Step, run: Run
         summary = step.check(reply, run)
         if not isinstance(summary, str):
             raise StepFailed(f"the check returned {summary!r}, not a summary")
-        if isinstance(step.shown, tuple) and (lacking := [k for k in step.shown
-                                                           if k not in reply]):
+        if lacking := [k for k in step.shown if k not in reply]:
             raise StepFailed(f"the front door shows {lacking}, which the reply does not carry")
         return True, f"OK {step.name}: {_one_line(summary)}", args, reply
     except Invalid as e:

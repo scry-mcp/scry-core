@@ -187,3 +187,8 @@ def test_a_float_that_json_cannot_carry_is_rendered_as_its_text(
     got = vf.parse(spec).decode(raw, "little")
     assert got == want
     json.dumps(got, allow_nan=False)
+
+
+def test_a_count_past_the_integer_limit_is_a_format_error() -> None:
+    with pytest.raises(vf.FormatError, match="count"):
+        vf.parse("u8[" + "9" * 5000 + "]")
