@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from scry_core import judges
+from scry_core.prose import counted
 from scry_core.reply_contract import Invalid, unavailable
 
 SILENT_RMS = 0.005
@@ -237,7 +238,7 @@ def measure(recording: Recording, window: Sequence[float] | None,
     count = len(recording.channels)
     if channel is not None and not judges.whole(channel, 0, count - 1):
         raise Invalid("bad_argument", f"channel={channel!r}: {recording.path.name} has "
-                      f"{count} channel(s), numbered from 0")
+                      f"{counted(count, 'channel')}, numbered from 0")
     chosen = range(count) if channel is None else [channel]
     out = []
     for c in chosen:

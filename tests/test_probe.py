@@ -95,7 +95,7 @@ def test_captured_answers_pass_and_the_path_is_last(
     rc, lines = _run([server], capsys)
     assert rc == probe.EXIT_PASS, lines
     assert lines[:2] == [f"PASS {server} {tool} 3/3",
-                         "SUMMARY 1 tools over 3 run(s): 1 PASS, 0 FAIL"]
+                         "SUMMARY 1 tool over 3 runs: 1 PASS, 0 FAIL"]
     out = Path(lines[-1])
     assert len(lines) == 3 and out.parent == probe_env / "out" and out.is_dir()
     assert (out / "report.txt").read_text().splitlines() == lines
@@ -111,7 +111,7 @@ def test_one_wrong_run_fails_the_tool_and_names_the_task(
     rc, lines = _run(["mame"], capsys)
     assert rc == probe.EXIT_FAIL
     assert lines[:2] == ["FAIL mame read_memory 2/3 (M1)",
-                         "SUMMARY 1 tools over 3 run(s): 0 PASS, 1 FAIL"]
+                         "SUMMARY 1 tool over 3 runs: 0 PASS, 1 FAIL"]
     verdict = json.loads((Path(lines[-1]) / "mame-verdicts.json").read_text())[1]["M1"]
     assert verdict["right"] is False and verdict["why"] == "length=16, expected 6"
 
@@ -712,7 +712,7 @@ def test_small_numbers_and_booleans_are_not_contamination() -> None:
      "task D1: `about` names no tool of this server"),
     ({"id": "D1", "prompt": "p", "expect": "CANNOT", "about": "step", "tool": "step"},
      "task D1: a CANNOT task carries no `tool` or `args`"),
-    ({"id": "D1", "prompt": "p", "tool": "step", "note": "x"}, "task D1: unknown key(s) note"),
+    ({"id": "D1", "prompt": "p", "tool": "step", "note": "x"}, "task D1: unknown key note"),
 ])
 def test_a_task_the_server_cannot_hold_is_refused(task: dict[str, Any], problem: str) -> None:
     assert probe.task_problems(_narrowed("dosbox-x"), [task]) == [f"dosbox-x {problem}"]
@@ -820,7 +820,7 @@ def test_all_runs_every_server_and_sums_them(
     rc, lines = _run(["all"], capsys)
     assert (rc, lines[:-1]) == (probe.EXIT_FAIL, [
         "PASS mame read_memory 3/3", "FAIL dosbox-x step 2/3 (D1)",
-        "SUMMARY 2 tools over 3 run(s): 1 PASS, 1 FAIL"])
+        "SUMMARY 2 tools over 3 runs: 1 PASS, 1 FAIL"])
 
 
 def test_a_probe_that_breaks_is_invalid_not_a_fail(

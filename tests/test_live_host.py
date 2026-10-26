@@ -165,7 +165,7 @@ def test_every_emulator_left_alive_is_killed_and_counted(
     gone = ledger.reap()
     assert first.wait(5) == second.wait(5) == -signal.SIGTERM
     assert gone == host.Leftovers(2, 2)
-    assert gone.line().startswith("FAIL  2 emulator(s) outlived the run")
+    assert gone.line().startswith("FAIL  2 emulators outlived the run")
 
 
 def test_an_emulators_whole_group_goes_with_it(

@@ -148,7 +148,7 @@ def test_what_is_not_a_reply_is_skipped_and_counted(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("lines, said", [
     ((), "hold no reply"),
-    ((_line("(board)", {"exception": "no boot"}),), r"1 line\(s\) skipped"),
+    ((_line("(board)", {"exception": "no boot"}),), r"1 line skipped"),
     (("{not json",), "is not JSON"),
 ])
 def test_a_transcript_with_no_reply_is_invalid(tmp_path: Path, lines: tuple[str, ...],

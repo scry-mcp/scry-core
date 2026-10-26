@@ -104,6 +104,7 @@ from scry_core.probe_any_of import (
     leaves,
     matches,
 )
+from scry_core.prose import counted
 from scry_core.reply_contract import Invalid as Refusal
 
 # Re-exported: callers spell these `probe.<name>`.
@@ -346,7 +347,8 @@ def _problems_by_task(surface: Surface, tasks: list[dict[str, Any]]) -> list[lis
             found.append(f"{where}: the id is used twice")
         seen.add(tid)
         if unknown := sorted(set(task) - TASK_KEYS):
-            found.append(f"{where}: unknown key(s) {', '.join(unknown)}")
+            noun = "keys" if len(unknown) > 1 else "key"
+            found.append(f"{where}: unknown {noun} {', '.join(unknown)}")
         if not isinstance(task.get("prompt"), str) or not task["prompt"].strip():
             found.append(f"{where}: needs a `prompt`")
         grammar, allow = task.get("grammar", []), task.get("allow", [])
@@ -827,8 +829,8 @@ def main(argv: list[str]) -> int:
             passed = sum(o.passed for o in outcomes)
             failed = sum(o.failed for o in outcomes)
             report += [line for o in outcomes for line in o.lines]
-            report.append(f"SUMMARY {passed + failed} tools over {runs} run(s): "
-                          f"{passed} PASS, {failed} FAIL")
+            report.append(f"SUMMARY {counted(passed + failed, 'tool')} over "
+                          f"{counted(runs, 'run')}: {passed} PASS, {failed} FAIL")
             rc = EXIT_FAIL if failed else EXIT_PASS
     except Invalid as e:
         report.append(f"INVALID: {e}")

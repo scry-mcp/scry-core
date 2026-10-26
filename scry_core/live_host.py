@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import IO, cast
 
 from scry_core.guardian import KILL
+from scry_core.prose import counted
 
 #: SDL hint that keeps a newly launched app from taking focus (macOS makes it frontmost).
 BACKGROUND_VAR = "SDL_MAC_BACKGROUND_APP"
@@ -171,8 +172,8 @@ class Leftovers:
         if not self.found:
             return ""
         stuck = ", ".join(f"pid {p} state {s}" for p, s in self.survived)
-        return (f"FAIL  {self.found} emulator(s) outlived the run that launched them and were "
-                f"killed" + (f"; still alive after SIGKILL: {stuck}" if stuck else ""))
+        return (f"FAIL  {counted(self.found, 'emulator')} outlived the run that launched them "
+                f"and were killed" + (f"; still alive after SIGKILL: {stuck}" if stuck else ""))
 
 
 class EmulatorLedger:

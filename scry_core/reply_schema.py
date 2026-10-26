@@ -16,6 +16,7 @@ from pydantic import ConfigDict, TypeAdapter
 from typing_extensions import TypedDict
 
 from scry_core import reply_contract as contract
+from scry_core.prose import counted
 from scry_core.strict_arguments import registered
 
 
@@ -215,7 +216,7 @@ def stop_fields_lacking(tools: Iterable[Any], models: Mapping[str, type],
     fields = reply_sentence_names("Reply: " + stop_fields.split(":", 1)[1])
     quoting = [t for t in tools if stop_fields in (t.description or "")]
     if len(fields) < 2 or not quoting:
-        raise ValueError(f"the stop's text names {fields} and {len(quoting)} tool(s) quote it: "
-                         "nothing would be examined")
+        raise ValueError(f"the stop's text names {fields} and "
+                         f"{counted(len(quoting), 'tool')} quote it: nothing would be examined")
     return {t.name: lacks for t in quoting
             if (lacks := sorted(set(fields) - set(own_fields(models[t.name]))))}

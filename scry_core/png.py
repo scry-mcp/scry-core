@@ -16,6 +16,8 @@ import struct
 import zlib
 from dataclasses import dataclass
 
+from scry_core.prose import counted
+
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 PLTE_MAX = 256
 INDEXED, RGB = 3, 2            # PNG colour types
@@ -45,8 +47,8 @@ class Raster:
             raise ValueError(f"a raster is at least 1x1; got {self.width}x{self.height}")
         need = self.width * self.height * self.depth
         if len(self.pixels) != need:
-            raise ValueError(f"{self.width}x{self.height} at {self.depth} byte(s) a pixel is "
-                             f"{need} bytes; got {len(self.pixels)}")
+            raise ValueError(f"{self.width}x{self.height} at {counted(self.depth, 'byte')} a "
+                             f"pixel is {need} bytes; got {len(self.pixels)}")
         if self.palette is not None:
             if not 1 <= len(self.palette) <= PLTE_MAX:
                 raise ValueError(f"a PLTE holds 1..{PLTE_MAX} entries; got {len(self.palette)}")

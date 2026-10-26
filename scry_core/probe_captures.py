@@ -12,6 +12,7 @@ from typing import Any
 
 from scry_core import probe
 from scry_core.probe_any_of import same
+from scry_core.prose import counted
 from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
 
 
@@ -117,7 +118,7 @@ def capture(repo: probe.ProbeRepo, server: str, run_dir: Path, ids: list[str]) -
     except Exception as e:  # noqa: BLE001 -- see `broke`
         print(probe.broke("capture", e))
         return EXIT_INVALID
-    print(f"SUMMARY {len(docs)} task(s) of {server} captured from {run_dir}")
+    print(f"SUMMARY {counted(len(docs), 'task')} of {server} captured from {run_dir}")
     return EXIT_PASS
 
 

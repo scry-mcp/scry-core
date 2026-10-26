@@ -58,6 +58,7 @@ from scry_core.client_cap import CLIENT_TEXT_CAP, utf16_units
 from scry_core.judges import whole
 from scry_core.picture import tiles, unattached_below
 from scry_core.probe import EXIT_INVALID, Invalid, broke, configure
+from scry_core.prose import counted
 
 EXIT_TABLE = 0
 TABLE_FORMAT = "scry-traffic/1"
@@ -140,7 +141,7 @@ def read_transcripts(paths: Iterable[Path]) -> Calls:
                 raise Invalid(f"{path}:{n}: {e}") from None
     if not units:
         raise Invalid("the transcripts hold no reply, so there is nothing to measure "
-                      f"({skipped} line(s) skipped)")
+                      f"({counted(skipped, 'line')} skipped)")
     return Calls(units, tokens, skipped)
 
 
