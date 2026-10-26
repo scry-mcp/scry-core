@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import codecs
 import hashlib
 import math
 import re
@@ -179,17 +180,21 @@ def existing_file(name: str, value: object, thing: str = "file", **fields: Any) 
 
 
 def read_text(name: str, value: object, thing: str, **fields: Any) -> str:
-    """A caller's text file, whole, as UTF-8; `utf-8-sig` drops a byte-order mark an editor
-    put first, which would otherwise garble the first name."""
+    """A caller's text file, whole, as UTF-8, less a byte-order mark an editor put first, which
+    would otherwise garble the first name; a bad byte is counted from the file's start."""
     path = existing_file(name, value, thing, **fields)
     try:
-        return path.read_text(encoding="utf-8-sig")
-    except UnicodeDecodeError as e:
-        raise Invalid("bad_argument",
-            f"{name}: {path} is not UTF-8 text: byte {e.start} "
-            f"({e.object[e.start:e.start + 1]!r}) {e.reason}", **fields) from None
+        data = path.read_bytes()
     except OSError as e:
         raise Invalid("bad_argument", f"{name}: {path} cannot be read: {e}", **fields) from None
+    skip = len(codecs.BOM_UTF8) if data.startswith(codecs.BOM_UTF8) else 0
+    try:
+        text = data[skip:].decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise Invalid("bad_argument",
+            f"{name}: {path} is not UTF-8 text: byte {skip + e.start} "
+            f"({e.object[e.start:e.start + 1]!r}) {e.reason}", **fields) from None
+    return text.replace("\r\n", "\n").replace("\r", "\n")    # as text mode reads it
 
 
 def picture_file(name: str, path: Path, sha256: str | None = None) -> tuple[png.Raster, str]:

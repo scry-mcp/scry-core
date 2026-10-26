@@ -67,14 +67,15 @@ def test_a_link_target_is_named_without_the_windows_long_path_prefix(
                     "not a state"), said
 
 
-@pytest.mark.parametrize("name", ["a", "Level_2-b", "9lives", "x" * state_files.STATE_NAME_MAX])
+@pytest.mark.parametrize("name", ["a", "Level_2-b", "9lives", "_boot",
+                                  "x" * state_files.STATE_NAME_MAX])
 def test_a_state_name_of_the_alphabet_within_the_bound_is_taken(name: str) -> None:
     assert state_files.check_state_name(name, "a file") == name
 
 
-@pytest.mark.parametrize("name", ["", "-x", "_x", "a b", "a/b", "a.sta", "x\n",
+@pytest.mark.parametrize("name", ["", "-x", "a b", "a/b", "a.sta", "x\n",
                                   "x" * (state_files.STATE_NAME_MAX + 1), 7],
-                         ids=["empty", "a leading dash", "a leading underscore", "a space",
+                         ids=["empty", "a leading dash", "a space",
                               "a slash", "a dot", "a newline", "one past the bound", "no string"])
 def test_any_other_state_name_is_refused_saying_what_it_becomes(name: object) -> None:
     with pytest.raises(Invalid, match="It becomes a file name") as e:

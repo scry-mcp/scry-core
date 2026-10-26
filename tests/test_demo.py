@@ -323,7 +323,7 @@ def test_a_volatile_key_is_hidden_and_a_shown_value_is_not(tmp_path: Path, log: 
     assert norm.count('"value": 7') == 3, "a shown value was normalised away (one argument, " \
         "two replies)"
     assert '"where": "."' in norm and str(tmp_path) not in norm
-    dest = json.dumps(os.path.join(".", "out", "shot.png"))
+    dest = json.dumps("./out/shot.png")
     assert f'"dest": {dest}' in norm, "a Path argument was not sent as its text"
 
 
@@ -364,7 +364,7 @@ def test_a_host_argument_is_hidden_and_the_demos_own_are_not(tmp_path: Path, log
     assert "display=1" in (tmp_path / "out" / "transcript.md").read_text()
     n = d.Normaliser(tmp_path / "r", tmp_path / "h", {}, {"binary": "x"})
     assert n.arguments({"a": [{"binary": "p"}], "binary": "q", "c": str(tmp_path / "r" / "f")}) \
-        == {"a": [{"binary": "<host>"}], "binary": "<host>", "c": os.path.join(".", "f")}
+        == {"a": [{"binary": "<host>"}], "binary": "<host>", "c": "./f"}
 
 
 def test_the_normaliser_matches_whole_path_prefixes_only() -> None:
@@ -373,8 +373,8 @@ def test_the_normaliser_matches_whole_path_prefixes_only() -> None:
     got = n.reply({"a": [f"{m}{sep}repo{sep}x", f"{m}{sep}y", 3, (m,)],
                    f"{m}{sep}k": {"pid": 9, "b": f"{m}x{sep}f {m}{sep}repo-notes{sep}a"},
                    "c": f"at {m}: here"})
-    assert got == {"a": [f".{sep}x", f"~{sep}y", 3, ["~"]],
-                   f"~{sep}k": {"pid": "<volatile>", "b": f"{m}x{sep}f ~{sep}repo-notes{sep}a"},
+    assert got == {"a": ["./x", "~/y", 3, ["~"]],
+                   "~/k": {"pid": "<volatile>", "b": f"{m}x{sep}f ~/repo-notes/a"},
                    "c": "at ~: here"}
     assert d.Normaliser(Path("/"), Path("/"), {}).text("/a/b") == "/a/b"
 
@@ -601,8 +601,8 @@ def test_load_answers_the_demo_a_file_declares_without_running_it(tmp_path: Path
 def test_a_flow_spells_the_repository_as_an_absolute_placeholder(
         tmp_path: Path, log: Path) -> None:
     flow = _flow_of(tmp_path, {"value": 7, "binary": str(tmp_path / "bin" / "x")})
-    placed = json.dumps(f"/path/to/{tmp_path.name}{os.sep}bin{os.sep}x")
-    assert placed in flow and json.dumps(os.path.join(".", "bin", "x")) not in flow, flow
+    placed = json.dumps(f"/path/to/{tmp_path.name}/bin/x")
+    assert placed in flow and json.dumps("./bin/x") not in flow, flow
 
 
 @pytest.mark.parametrize("shown", ["value", True, ("value", 3)])
@@ -615,10 +615,16 @@ def test_a_shown_that_is_not_a_tuple_of_field_names_is_refused_before_a_call(
 
 def test_a_windows_path_under_the_root_is_spelt_with_forward_slashes() -> None:
     """A block regenerated on Windows reads as the one regenerated on macOS."""
-    norm = d.Normaliser(root=Path(r"C:\Users\optim\Code\scry"), home=Path(r"C:\Users\optim"),
+    norm = d.Normaliser(root=Path(r"C:\Users\ann\Code\scry"), home=Path(r"C:\Users\ann"),
                            volatile={})
-    assert norm.text(r"path=C:\Users\optim\Code\scry\demos\bricks\bricks.sym, ok") == (
+    assert norm.text(r"path=C:\Users\ann\Code\scry\demos\bricks\bricks.sym, ok") == (
         "path=./demos/bricks/bricks.sym, ok")
-    assert norm.text(r"C:\Users\optim\notes.txt") == "~/notes.txt"
-    assert norm.text(r"C:\Users\optimist\x") == r"C:\Users\optimist\x", (
+    assert norm.text(r"C:\Users\ann\notes.txt") == "~/notes.txt"
+    assert norm.text(r"C:\Users\annette\x") == r"C:\Users\annette\x", (
         "a longer name is not under it")
+
+
+def test_two_paths_joined_by_a_colon_are_each_spelt_from_the_root() -> None:
+    norm = d.Normaliser(root=Path("/Users/m/proj"), home=Path("/Users/m"), volatile={})
+    assert norm.text("/Users/m/a:/Users/m/b") == "~/a:~/b"
+    assert norm.text(r"C:\x=/Users/m/proj/c&/Users/m/d") == r"C:\x=./c&~/d"

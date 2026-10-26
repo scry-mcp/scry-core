@@ -73,6 +73,24 @@ def test_a_held_lock_is_waited_for_only_so_long(handlers: None) -> None:
         holder.join()
 
 
+def test_a_tool_holding_the_lock_finishes_before_the_close(handlers: None) -> None:
+    closes: list[str] = []
+    end, left, gone = _end(closes)
+    held = threading.Event()
+
+    def hold() -> None:
+        with LOCK:
+            held.set()
+            time.sleep(0.3)
+            closes.append("tool done")
+    holder = threading.Thread(target=hold)
+    holder.start()
+    held.wait(5.0)
+    end.on_signal(signal.SIGTERM, None)
+    assert gone.wait(5.0) and closes == ["tool done", "closed", "clean"], closes
+    holder.join()
+
+
 def test_a_close_that_fails_is_said_and_the_end_still_cleans_and_leaves(
         capfd: pytest.CaptureFixture[str]) -> None:
     closes: list[str] = []

@@ -4,7 +4,6 @@ and its examples picked from a live run's transcript."""
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 import types
@@ -381,7 +380,7 @@ def test_an_example_keeps_the_shape_of_a_long_reply_and_spells_the_host_s_paths(
     assert rows[:demo.ABRIDGED_ITEMS] == list(range(demo.ABRIDGED_ITEMS))
     assert rows[-1] == f"... {20 - demo.ABRIDGED_ITEMS} more", rows
     assert shown["reply"]["text"] == "x" * demo.ABRIDGED_CHARS + " ... (1000 characters)"
-    assert shown["reply"]["path"] == f".{os.sep}out.png"
+    assert shown["reply"]["path"] == "./out.png"
     assert shown["reply"]["pid"] == 4242, "only a demo hides by key; an example shows the run"
 
 

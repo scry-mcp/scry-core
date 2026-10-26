@@ -115,8 +115,8 @@ def duplication(root: Path, scratch: Path) -> str:
     if new > 0:
         # jscpd keys a clone by its content, so one that shrank under an edit reads as new.
         raise Refused(
-            f"{said}\n{counted(new, 'new clone')}, {lines} new duplicated lines, over a baseline "
-            f"of accepted duplication, in {sources} files (rc={rc}).\n"
+            f"{said}\n{counted(new, 'new clone')}, {counted(lines, 'new duplicated line')}, "
+            f"over a baseline of accepted duplication, in {sources} files (rc={rc}).\n"
             "A clone that shrank or split under your edit is counted as new even when the "
             "duplication went DOWN. Compare the duplicated lines with HEAD's first, from the "
             "repository's root:\n"

@@ -175,3 +175,16 @@ def test_a_value_is_shown_at_its_holders_width_in_the_spelling_number_takes_back
     assert hex_at_width(0, 1) == "0x0"
     assert hex_at_width(0x1F, 5) == "0x1f"
     assert number("v", hex_at_width(0xBEEF, 32), 32, "a register") == 0xBEEF
+
+
+def test_a_byte_order_mark_counts_in_the_byte_a_decode_error_names(tmp_path: Path) -> None:
+    f = tmp_path / "t.txt"
+    f.write_bytes(b"\xef\xbb\xbfab\xff")
+    with pytest.raises(Invalid, match=r"byte 5 \(b'\\xff'\)"):
+        judges.read_text("types", str(f), "types file")
+
+
+def test_a_caller_s_text_reads_its_line_ends_as_text_mode_does(tmp_path: Path) -> None:
+    f = tmp_path / "t.txt"
+    f.write_bytes(b"\xef\xbb\xbfa\r\nb\rc\n")
+    assert judges.read_text("types", str(f), "types file") == "a\nb\nc\n"

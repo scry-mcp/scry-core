@@ -243,7 +243,7 @@ class Normaliser:
             if prefix:
                 # The rest of the path keeps its words and loses Windows' separators.
                 text = re.sub(r"(?<![\w.-])" + re.escape(prefix)
-                              + r"(?P<rest>[\\/][^\s\"'`,;)\]}]*|(?![\w.-]))",
+                              + r"(?P<rest>[\\/][^\s\"'`,;:=&|)\]}]*|(?![\w.-]))",
                               _marked(mark), text)
         return text
 

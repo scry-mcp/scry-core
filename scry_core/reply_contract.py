@@ -72,7 +72,8 @@ _T = TypeVar("_T")
 
 class _OmitEmpty:
     """`Annotated[T, OmitEmpty]`: the envelope omits the field when empty. Never for an answer
-    whose zero is the finding."""
+    whose zero is the finding, nor for whether a list or a text came back whole (`truncated`,
+    `clipped`), which a reader must never infer from an absence."""
 
     def __repr__(self) -> str:
         return "OmitEmpty"

@@ -31,6 +31,8 @@ class RunningGate:
     def __post_init__(self) -> None:
         if stray := sorted(set(self.methods) - self.ops):
             raise ValueError(f"methods for {', '.join(stray)}, which is not among the ops")
+        if empty := sorted(op for op, ok in self.methods.items() if not ok):
+            raise ValueError(f"{', '.join(empty)} names no method, so it answers nothing")
 
     def answers(self, op: str, args: dict[str, Any]) -> bool:
         if op == "registers" and args.get("from_last_stop") is True:
@@ -42,19 +44,25 @@ class RunningGate:
         stop = self.needs_stop.get(op)
         return not (stop is not None and stop(args))
 
-    def listed(self) -> set[str]:
-        return by_method(self.ops, self.methods)
+    def listed(self, folds: Mapping[str, Iterable[str]] | None = None) -> set[str]:
+        """`by_method`'s names; a fold naming every one of its `folds` methods is listed whole."""
+        every = {op for op, has in (folds or {}).items()
+                 if op in self.methods and set(self.methods[op]) >= set(has)}
+        return by_method(self.ops, {op: ok for op, ok in self.methods.items() if op not in every})
 
     def check_folds(self, folds: Mapping[str, Iterable[str]]) -> None:
         """Refuse a fold among `ops` with no methods named, which would answer running whole,
-        and a method a fold lacks; `folds` is each fold's own method names."""
+        a method a fold lacks, and methods for an op that is no fold; `folds` is each fold's
+        own method names."""
+        if stray := sorted(set(self.methods) - set(folds)):
+            raise ValueError(f"methods for {', '.join(stray)}, which is no fold")
         for op, has in folds.items():
             if op in self.ops and op not in self.methods:
                 raise ValueError(f"{op} answers a running machine with no methods named: "
                                  "every method of it would, the ones that need a stop too")
-            for name in self.methods.get(op, ()):
-                if name not in set(has):
-                    raise ValueError(f"{op} names `{name}`, which it lacks")
+            lacks = [name for name in self.methods.get(op, ()) if name not in set(has)]
+            if lacks:
+                raise ValueError(f"{op} names `{lacks[0]}`, which it lacks")
 
 
 def answers_while_running(running_ok: Iterable[str], not_steps: Iterable[str],

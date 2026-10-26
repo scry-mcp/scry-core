@@ -77,3 +77,18 @@ def test_a_fold_that_answers_running_with_no_methods_named_is_refused() -> None:
                            methods={"comment_write": ("sav",)}).check_folds(folds)
     with pytest.raises(ValueError, match="methods for scan, which is not among the ops"):
         roster.RunningGate(ops=frozenset(), methods={"scan": ("clear",)})
+
+
+def test_a_fold_naming_every_method_it_has_is_listed_whole() -> None:
+    gate = roster.RunningGate(ops=frozenset({"status", "state_write", "scan"}),
+                              methods={"state_write": ("save", "load"), "scan": ("clear",)})
+    folds = {"state_write": ("load", "save"), "scan": ("start", "clear")}
+    assert gate.listed(folds) == {"status", "state_write", "scan(method=clear)"}
+    assert gate.listed() == {"status", "state_write(method=save|load)", "scan(method=clear)"}
+
+
+def test_methods_for_no_fold_or_naming_none_are_refused() -> None:
+    with pytest.raises(ValueError, match="methods for status, which is no fold"):
+        roster.RunningGate(ops=frozenset({"status"}), methods={"status": ("x",)}).check_folds({})
+    with pytest.raises(ValueError, match="scan names no method"):
+        roster.RunningGate(ops=frozenset({"scan"}), methods={"scan": ()})
