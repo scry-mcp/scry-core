@@ -14,6 +14,10 @@ the level the window starts at. The peak reads the samples as written. 8-bit (un
 PCM are read, the extensible header's PCM subformat
 included; any other WAV is refused by what it is. Two silent recordings compare nothing:
 `control_silent`.
+
+A recorder's own file is checked before its path is handed back (`header`, `levels`): both
+emulators write the 44-byte PCM header and fill its two sizes only at close, so a file still
+open reads 0 there whatever it holds.
 """
 
 from __future__ import annotations
@@ -22,12 +26,13 @@ import hashlib
 import io
 import math
 import struct
+import sys
 import wave
 from array import array
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from scry_core import judges
 from scry_core.prose import counted
@@ -74,6 +79,73 @@ class Recording:
 _TAG_PCM, _TAG_EXTENSIBLE = 1, 0xFFFE
 _SUBFORMAT = slice(24, 40)
 _PCM_SUBFORMAT = bytes.fromhex("0100000000001000800000aa00389b71")
+
+HEADER_BYTES = 44
+_HEADER = struct.Struct("<4sI4s4sIHHIIHH4sI")
+CHUNK_BYTES = 1 << 20
+
+
+class Header(NamedTuple):
+    """A finished 16-bit PCM WAV's header; `samples` is frames per channel."""
+    channels: int
+    sample_rate: int
+    data_bytes: int
+    samples: int
+
+
+def _header_fields(path: Path) -> tuple[int, tuple[Any, ...]] | None:
+    """The file's size and its unpacked 44-byte header, or None."""
+    try:
+        size = path.stat().st_size
+        with open(path, "rb") as fh:
+            head = fh.read(HEADER_BYTES)
+    except OSError:
+        return None
+    return (size, _HEADER.unpack(head)) if len(head) == HEADER_BYTES else None
+
+
+def header(path: Path) -> Header | None:
+    """The header of a finished 16-bit PCM WAV whose sizes agree with the file, or None."""
+    got = _header_fields(path)
+    if got is None:
+        return None
+    size, (riff, riff_size, wave_, fmt, fmt_size, fmt_tag, channels, rate, byte_rate, align,
+           bits, data, data_size) = got
+    if (riff, wave_, fmt, data) != (b"RIFF", b"WAVE", b"fmt ", b"data"):
+        return None
+    if fmt_size != 16 or fmt_tag != _TAG_PCM or bits != 16 or channels < 1 or rate <= 0:
+        return None
+    if align != 2 * channels or byte_rate != rate * align:
+        return None
+    if riff_size != size - 8 or data_size != size - HEADER_BYTES or data_size % align:
+        return None
+    return Header(channels, rate, data_size, data_size // align)
+
+
+def without_channel(path: Path) -> bool:
+    """A WAV header naming zero channels: what a mixer with no speaker writes."""
+    got = _header_fields(path)
+    if got is None:
+        return False
+    riff, _, wave_, _, _, _, channels, *_ = got[1]
+    return (riff, wave_, channels) == (b"RIFF", b"WAVE", 0)
+
+
+def levels(path: Path) -> tuple[int, int]:
+    """The lowest and highest sample over every channel: equal is one constant level, silence."""
+    lo = hi = None
+    with open(path, "rb") as fh:
+        fh.seek(HEADER_BYTES)
+        while chunk := fh.read(CHUNK_BYTES):
+            samples = array("h")
+            samples.frombytes(chunk[: len(chunk) // 2 * 2])
+            if sys.byteorder == "big":
+                samples.byteswap()
+            if samples:
+                lo = min(samples) if lo is None else min(lo, min(samples))
+                hi = max(samples) if hi is None else max(hi, max(samples))
+    return (lo or 0, hi or 0)
+
 
 
 def _as_plain_pcm(path: Path) -> str | io.BytesIO:

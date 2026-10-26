@@ -8,6 +8,7 @@ import math
 import struct
 import sys
 import wave
+from array import array
 from pathlib import Path
 from typing import Any
 
@@ -480,3 +481,86 @@ def test_an_extensible_header_of_another_subformat_is_refused_by_what_it_is(
     path = _extensible(tmp_path / "f.wav", [0, 1, 2], guid=_FLOAT_GUID)
     with pytest.raises(Invalid, match="is not a PCM WAV this reads"):
         wav.read("p", path)
+
+
+# ------------------------------------------------------------------- a recorder's own file
+
+def _stereo(path: Path, n: int = 64) -> Path:
+    """A finished 16-bit stereo file at 48000 Hz, as both emulators' recorders write one."""
+    _write(path, [_sine(n, freq=1000.0), _sine(n, amp=AMP // 2, freq=1000.0)], rate=48000)
+    return path
+
+
+def _edit(data: bytes, at: int, fmt: str, value: int) -> bytes:
+    out = bytearray(data)
+    struct.pack_into(fmt, out, at, value)
+    return bytes(out)
+
+
+def _with_sizes(data: bytes) -> bytes:
+    out = bytearray(data)
+    struct.pack_into("<I", out, 4, len(out) - 8)
+    struct.pack_into("<I", out, 40, len(out) - wav.HEADER_BYTES)
+    return bytes(out)
+
+
+def test_the_header_agrees_with_stdlib_wave_and_the_levels_with_the_samples(
+        tmp_path: Path) -> None:
+    path = _stereo(tmp_path / "s.wav")
+    got = wav.header(path)
+    with wave.open(str(path)) as w:
+        want = (w.getnchannels(), w.getframerate(), w.getnframes())
+        every = array("h", w.readframes(w.getnframes()))
+    assert got is not None and (got.channels, got.sample_rate, got.samples) == want
+    assert got.data_bytes == path.stat().st_size - wav.HEADER_BYTES
+    assert wav.levels(path) == (min(every), max(every))
+
+
+def test_the_levels_are_the_whole_file_s_across_chunks(monkeypatch: pytest.MonkeyPatch,
+                                                        tmp_path: Path) -> None:
+    path = _stereo(tmp_path / "s.wav", 300)
+    whole = wav.levels(path)
+    monkeypatch.setattr(wav, "CHUNK_BYTES", 6)
+    assert wav.levels(path) == whole
+
+
+def _refused(base: bytes) -> dict[str, bytes]:
+    return {
+        "RIFF magic": b"RIFX" + base[4:],
+        "WAVE magic": base[:8] + b"WAVX" + base[12:],
+        "fmt tag": base[:12] + b"fmtX" + base[16:],
+        "fmt size 18": _edit(base, 16, "<I", 18),
+        "not PCM": _edit(base, 20, "<H", 3),
+        "rate zero": _edit(_edit(base, 24, "<I", 0), 28, "<I", 0),
+        "byte rate": _edit(base, 28, "<I", 1),
+        "block align": _edit(base, 32, "<H", 2),
+        "8 bits": _edit(base, 34, "<H", 8),
+        "data tag": base[:36] + b"LIST" + base[40:],
+        "RIFF size": _edit(base, 4, "<I", len(base)),
+        "data size": _edit(base, 40, "<I", len(base) - wav.HEADER_BYTES - 4),
+        "unfinished: both sizes 0": _edit(_edit(base, 4, "<I", 0), 40, "<I", 0),
+        "half a stereo frame": _with_sizes(base + b"\x00\x00"),
+        "short header": base[:43],
+    }
+
+
+def test_a_header_that_disagrees_with_itself_or_the_file_is_no_header(tmp_path: Path) -> None:
+    base = _stereo(tmp_path / "s.wav").read_bytes()
+    path = tmp_path / "x.wav"
+    for why, data in _refused(base).items():
+        path.write_bytes(data)
+        assert wav.header(path) is None, why
+    assert wav.header(tmp_path / "never.wav") is None
+
+
+def test_a_header_naming_no_channel_is_told_apart_from_a_file_that_is_no_wav(
+        tmp_path: Path) -> None:
+    base = _stereo(tmp_path / "s.wav").read_bytes()
+    path = tmp_path / "x.wav"
+    path.write_bytes(_edit(_edit(_edit(base, 22, "<H", 0), 28, "<I", 0), 32, "<H", 0))
+    assert wav.header(path) is None and wav.without_channel(path)
+    path.write_bytes(bytes(wav.HEADER_BYTES))
+    assert not wav.without_channel(path)
+    path.write_bytes(base)
+    assert not wav.without_channel(path)
+    assert not wav.without_channel(tmp_path / "never.wav")
