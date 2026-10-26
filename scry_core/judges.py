@@ -161,16 +161,32 @@ def window(name: str, value: object) -> tuple[float, float] | None:
     return float(value[0]), float(value[1])
 
 
-def existing_file(name: str, value: object) -> Path:
-    """`absolute`, and a file is there."""
-    path = absolute(name, value)
+def existing_file(name: str, value: object, thing: str = "file", **fields: Any) -> Path:
+    """`absolute`, and a regular file is there (`exists()` would take a directory); a path the
+    filesystem will not look at is refused, never raised. `fields` ride on the refusal."""
+    path = absolute(name, value, **fields)
     try:
         there = path.is_file()
-    except OSError as e:
-        raise Invalid("bad_argument", f"{name}: {path} cannot be looked at: {e}") from None
+    except (OSError, ValueError) as e:
+        raise Invalid("bad_argument", f"{name}: {path} cannot be looked at: {e}",
+                      **fields) from None
     if not there:
-        raise Invalid("bad_argument", f"{name}: {path} is not a file")
+        raise Invalid("bad_argument", f"{name}: no {thing} at {path}", **fields)
     return path
+
+
+def read_text(name: str, value: object, thing: str, **fields: Any) -> str:
+    """A caller's text file, whole, as UTF-8; `utf-8-sig` drops a byte-order mark an editor
+    put first, which would otherwise garble the first name."""
+    path = existing_file(name, value, thing, **fields)
+    try:
+        return path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as e:
+        raise Invalid("bad_argument",
+            f"{name}: {path} is not UTF-8 text: byte {e.start} "
+            f"({e.object[e.start:e.start + 1]!r}) {e.reason}", **fields) from None
+    except OSError as e:
+        raise Invalid("bad_argument", f"{name}: {path} cannot be read: {e}", **fields) from None
 
 
 def picture_file(name: str, path: Path, sha256: str | None = None) -> tuple[png.Raster, str]:

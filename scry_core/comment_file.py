@@ -18,6 +18,19 @@ from scry_core import prose
 HEADER = "# comments v1: ref\tcpu\tcreated_at\ttext"
 # What one line of MAME's `comlist` holds unbroken (250 - 1 - 12 prefix); bytes, not characters.
 TEXT_MAX_BYTES = 237
+#: What a tool's description fills from here (`scry_core.docs.filled`), as both servers say it.
+DOC_VALUES = {
+    "COMMENT_TEXT_MAX": str(TEXT_MAX_BYTES),
+    "COMMENT_SAVE": ("`save`: every comment to `dest`, an absolute or `~`-led path, replacing a "
+                     "comment file\n    there (rows only it held in `dropped_comments`); any other "
+                     "file is refused; answers on a\n    running machine. Reply: `path`, "
+                     "`comments_total`, `dropped_comments`, `dropped_total`,\n    `truncated`, "
+                     "`note`."),
+    "COMMENT_LOAD": ("`load`: the comment file at `path`, all or nothing, the file winning. "
+                     "Reply: `path`,\n    `parsed`, `added`, `replaced_comments`, "
+                     "`replaced_total`, `truncated`, `unchanged`,\n    `comments_total`, "
+                     "`declarations`, `note`."),
+}
 _BOM = "\ufeff"
 
 

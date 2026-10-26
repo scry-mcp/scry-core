@@ -6,7 +6,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta, timezone
 
+import pytest
+
 from scry_core import declaration_rows as rows
+from scry_core.reply_contract import Invalid
 
 NOW = datetime(2026, 1, 1, 0, 1, 40, 900000, tzinfo=UTC)
 
@@ -60,3 +63,10 @@ def test_the_lists_of_several_kinds_merge_with_their_foreign_rows_kept_apart() -
     refused = {"status": "INVALID", "code": "no_channel", "message": "m"}
     assert merged({"breakpoints": {"status": "ok", "breakpoints": []},
                    "watches": refused}) is refused
+
+
+def test_the_kinds_listed_are_the_one_named_or_every_one_and_no_other() -> None:
+    assert rows.chosen_kinds("watch", ("breakpoint", "watch")) == ("watch",)
+    assert rows.chosen_kinds("", ("breakpoint", "watch")) == ("breakpoint", "watch")
+    with pytest.raises(Invalid, match="kind is one of"):
+        rows.chosen_kinds("comment", ("breakpoint", "watch"))

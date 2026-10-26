@@ -46,6 +46,7 @@ from pathlib import Path
 
 from scry_core.probe import CHECK_OK, CHECK_REFUSED
 from scry_core.probe_checks import SERVERS_FILE, TASKS_DIR
+from scry_core.prose import counted
 from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 BASELINE = ".jscpd-baseline.json"
@@ -114,8 +115,8 @@ def duplication(root: Path, scratch: Path) -> str:
     if new > 0:
         # jscpd keys a clone by its content, so one that shrank under an edit reads as new.
         raise Refused(
-            f"{said}\n{new} new clone(s), {lines} new duplicated lines, over a baseline of "
-            f"accepted duplication, in {sources} files (rc={rc}).\n"
+            f"{said}\n{counted(new, 'new clone')}, {lines} new duplicated lines, over a baseline "
+            f"of accepted duplication, in {sources} files (rc={rc}).\n"
             "A clone that shrank or split under your edit is counted as new even when the "
             "duplication went DOWN. Compare the duplicated lines with HEAD's first, from the "
             "repository's root:\n"

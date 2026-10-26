@@ -104,6 +104,7 @@ from scry_core.probe_any_of import (
     leaves,
     matches,
 )
+from scry_core.reply_contract import Invalid as Refusal
 
 # Re-exported: callers spell these `probe.<name>`.
 from scry_core.verdict import EXIT_FAIL as EXIT_FAIL
@@ -415,8 +416,11 @@ def _refusal(surface: Surface, tool: Tool, args: dict[str, Any]) -> str:
         raise Invalid(f"{surface.server} check does not know {tool.name}: {e}") from None
     except ImportError as e:
         raise Invalid(f"{surface.server}'s check cannot be imported: {e}") from None
-    except Exception as e:  # noqa: BLE001 -- any refusal of the server's own judge
+    except Refusal as e:
         return f"the server's check refuses it: {e}"
+    except Exception as e:  # noqa: BLE001 -- a judge that broke judged nothing
+        raise Invalid(f"{surface.server}'s check broke on {tool.name}: {type(e).__name__}: "
+                      f"{e}") from None
     return ""
 
 

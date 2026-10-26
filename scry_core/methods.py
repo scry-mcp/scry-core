@@ -17,6 +17,10 @@ from scry_core.reply_contract import Invalid
 Summary = Callable[[dict[str, Any], dict[str, Any]], str]
 
 
+def no_check(**_: Any) -> None:
+    """The pre-gate judge of a method that takes nothing to judge."""
+
+
 @dataclass(frozen=True)
 class Method:
     """One `method` of a fold: its body, its pre-gate judge and its summary line."""

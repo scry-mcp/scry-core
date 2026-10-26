@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass, field
+from typing import Any
 
 
 def listed(names: Iterable[str]) -> str:
@@ -15,6 +16,45 @@ def by_method(running_ok: Iterable[str], methods: Mapping[str, Iterable[str]]) -
     """Names a running machine answers; a fold answering by some methods names them."""
     return ({op for op in running_ok if op not in methods}
             | {f"{op}(method={'|'.join(ok)})" for op, ok in methods.items()})
+
+
+@dataclass(frozen=True)
+class RunningGate:
+    """What a sequence step may run on a running machine: `ops` whole, a fold by its `methods`,
+    and a gesture `needs_stop` says needs a stop. The last stop's registers answer on any server,
+    since they read no cpu."""
+
+    ops: frozenset[str]
+    methods: Mapping[str, tuple[str, ...]]
+    needs_stop: Mapping[str, Callable[[dict[str, Any]], bool]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if stray := sorted(set(self.methods) - self.ops):
+            raise ValueError(f"methods for {', '.join(stray)}, which is not among the ops")
+
+    def answers(self, op: str, args: dict[str, Any]) -> bool:
+        if op == "registers" and args.get("from_last_stop") is True:
+            return True
+        if op not in self.ops:
+            return False
+        if op in self.methods and args.get("method") not in self.methods[op]:
+            return False
+        stop = self.needs_stop.get(op)
+        return not (stop is not None and stop(args))
+
+    def listed(self) -> set[str]:
+        return by_method(self.ops, self.methods)
+
+    def check_folds(self, folds: Mapping[str, Iterable[str]]) -> None:
+        """Refuse a fold among `ops` with no methods named, which would answer running whole,
+        and a method a fold lacks; `folds` is each fold's own method names."""
+        for op, has in folds.items():
+            if op in self.ops and op not in self.methods:
+                raise ValueError(f"{op} answers a running machine with no methods named: "
+                                 "every method of it would, the ones that need a stop too")
+            for name in self.methods.get(op, ()):
+                if name not in set(has):
+                    raise ValueError(f"{op} names `{name}`, which it lacks")
 
 
 def answers_while_running(running_ok: Iterable[str], not_steps: Iterable[str],

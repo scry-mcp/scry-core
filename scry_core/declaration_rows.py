@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
+from scry_core import vocabulary as vocab
 from scry_core.reply_contract import or_unavailable
 
 UNDATED_WHY = "the row carries no date with an offset"
 NO_ORIGIN_WHY = ("the row names no session it was declared in: clear it by its ref, or declare it "
                  "again to adopt it")
+
+
+def chosen_kinds(kind: str, kinds: Sequence[str]) -> tuple[str, ...]:
+    """The kinds `declaration_list` reads: `kind`, or every one when it is empty."""
+    vocab.one_of("kind", kind, ("", *kinds))
+    return (kind,) if kind else tuple(kinds)
 
 
 def age_s(stamp: str | None, now: datetime) -> int | None:

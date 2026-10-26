@@ -24,6 +24,7 @@ import pytest
 
 from scry_core import host_program, probe, probe_captures, probe_checks
 from scry_core import probe_any_of as any_of
+from scry_core.reply_contract import Invalid as Refusal
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "probe"
 SERVERS_FILE = FIXTURES / "servers.py"
@@ -585,6 +586,16 @@ def test_a_check_that_does_not_know_the_tool_is_invalid() -> None:
 
 def _unknown_tool_check(tool: str, given: dict[str, Any], effective: dict[str, Any]) -> None:
     raise AssertionError(f"no such tool for a pre-gate check: {tool!r}")
+
+
+def test_a_check_that_breaks_is_invalid_never_a_refusal() -> None:
+    """A bug in the server's own judge would read as the model's call refused."""
+    def broken(tool: str, given: dict[str, Any], effective: dict[str, Any]) -> None:
+        raise KeyError("mode")
+    surface = dataclasses.replace(_narrowed("mame"), check=broken)
+    line = 'M1: {"tool": "read_memory", "args": {"ref": "PlayerX", "length": 6}}'
+    with pytest.raises(probe.Invalid, match="mame's check broke on read_memory: KeyError"):
+        probe.judge(surface, _tasks("mame")[0], probe.parse(line, ["M1"])["M1"])
 
 
 # ---- what is refused before a model is asked ------------------------------------------------
@@ -1180,9 +1191,10 @@ def test_a_judge_the_servers_file_gives_judges_the_call(tmp_path: Path) -> None:
         f"spec = importlib.util.spec_from_file_location('frozen', {str(SERVERS_FILE)!r})\n"
         f"frozen = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(frozen)\n"
         f"ROOT = frozen.ROOT\nload = frozen.load\n"
+        f"from scry_core.reply_contract import Invalid\n"
         f"def _step(tool, given, effective):\n"
         f"    if effective['e9'] not in ('none', 'log'):\n"
-        f"        raise ValueError(f\"e9={{effective['e9']!r}} is not a route\")\n"
+        f"        raise Invalid('bad_argument', f\"e9={{effective['e9']!r}} is not a route\")\n"
         f"CHECKS = {{'dosbox-x': _step}}\n")
     surface = probe.load_surface(probe.configure(servers, FIXTURES / "tasks"), "dosbox-x")
     task = next(t for t in _tasks("dosbox-x") if t["id"] == "D1")
@@ -1202,7 +1214,7 @@ def _recording(calls: list[tuple[str, dict[str, Any], dict[str, Any]]],
     def judge(tool: str, given: dict[str, Any], effective: dict[str, Any]) -> None:
         calls.append((tool, dict(given), dict(effective)))
         if refuse and effective.get("count") == 0:
-            raise ValueError(refuse)
+            raise Refusal("bad_argument", refuse)
     return judge
 
 

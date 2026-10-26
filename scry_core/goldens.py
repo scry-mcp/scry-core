@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from scry_core.prose import counted
 from scry_core.reply_contract import Invalid
 
 CHECKSUM_LINE = re.compile(r"([0-9a-fA-F]{64}) [ *](.+)")
@@ -51,9 +52,9 @@ def compare(files: dict[str, Path], sums: dict[str, str]) -> dict[str, Any]:
     `extra` (no golden)."""
     examined = sorted(files.keys() & sums.keys())
     if not examined:
-        raise Invalid("control_silent", f"none of the {len(files)} file(s) has a line in the "
-                      f"checksums and none of the {len(sums)} line(s) has a file: nothing was "
-                      "compared, which is no verdict")
+        raise Invalid("control_silent", f"none of the {counted(len(files), 'file')} has a line "
+                      f"in the checksums and none of the {counted(len(sums), 'line')} has a file: "
+                      "nothing was compared, which is no verdict")
     differing = []
     for n in examined:
         try:

@@ -1,5 +1,6 @@
 """What holds no state under a state's name is named, never opened: a dangling link, a directory,
-a link to one, a FIFO; a regular file and nothing at all are not refused here."""
+a link to one, a FIFO; a regular file and nothing at all are not refused here. And the name
+itself: the alphabet and the bound both servers take."""
 
 from __future__ import annotations
 
@@ -8,7 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from scry_core import host_program
+from scry_core import host_program, state_files
+from scry_core.reply_contract import Invalid
 from scry_core.state_files import not_a_state, refused_load
 
 
@@ -63,3 +65,18 @@ def test_a_link_target_is_named_without_the_windows_long_path_prefix(
     said = not_a_state(tmp_path / "l.sav")
     assert said == ("the file is a link to C:\\states\\d.sav, which is a directory, "
                     "not a state"), said
+
+
+@pytest.mark.parametrize("name", ["a", "Level_2-b", "9lives", "x" * state_files.STATE_NAME_MAX])
+def test_a_state_name_of_the_alphabet_within_the_bound_is_taken(name: str) -> None:
+    assert state_files.check_state_name(name, "a file") == name
+
+
+@pytest.mark.parametrize("name", ["", "-x", "_x", "a b", "a/b", "a.sta", "x\n",
+                                  "x" * (state_files.STATE_NAME_MAX + 1), 7],
+                         ids=["empty", "a leading dash", "a leading underscore", "a space",
+                              "a slash", "a dot", "a newline", "one past the bound", "no string"])
+def test_any_other_state_name_is_refused_saying_what_it_becomes(name: object) -> None:
+    with pytest.raises(Invalid, match="It becomes a file name") as e:
+        state_files.check_state_name(name, "a file name")
+    assert e.value.code == "bad_argument"

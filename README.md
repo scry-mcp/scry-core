@@ -23,9 +23,11 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.strict_arguments` | the schema as part of a tool's contract: what it does not declare is refused |
 | `scry_core.methods` | a tool whose operation is a `method` argument: the method dispatched, an argument it does not take refused naming it, and the fold's pre-gate judge and summary line |
 | `scry_core.prose` | how a count is said in a summary, a note or a refusal: the one plural rule, and the verb that agrees with it; and the one summary line every tool answers for a refusal |
+| `scry_core.declaration_file` | the file both servers keep their declarations in: read whole, a key's rows judged by shape, one key written atomically |
 | `scry_core.declaration_rows` | the identity every listed declaration carries on both servers: ref, how declared, cpu, when and in which session, whether that session is this one, and its age |
 | `scry_core.log_marks` | the argument `log` and `log_wait` take to read what came after a mark: its description and the `mark` of `state_write(method="load")`, its schema bound, and the refusals of a position that names none |
-| `scry_core.state_files` | what sits under a saved state's name and holds no state (a dangling link, a directory, a FIFO), said instead of opened, and the load's refusal of it |
+| `scry_core.signalled_end` | how a server ends on SIGTERM, SIGHUP or Ctrl-C: the emulator closed under the lock or past its wait, the scratch removed, the process left |
+| `scry_core.state_files` | a saved state's name (its alphabet and its bound), what sits under it and holds no state (a dangling link, a directory, a FIFO), said instead of opened, and the load's refusal of it |
 | `scry_core.value_format` | how a watched value is typed: the format of its bytes (scalars, arrays, strings, structs, pointers; a NaN or infinite float read as the text `nan`, `inf` or `-inf`), the `types` file naming one per symbol, and the pointer ref read through one |
 | `scry_core.reply_shapes` | the pytest plugin running the test-time guard (`reply_shapes_guard`) that holds one word to one shape in every reply |
 | `scry_core.reply_shapes_guard` | what that plugin runs: every key of a reply in the one shape the table gives it, no null anywhere, and the reply held to its tool's declared model (`reply_schema.check`) |

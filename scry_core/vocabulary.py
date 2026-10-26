@@ -55,6 +55,19 @@ def check_bool(name: str, value: object) -> None:
         raise Invalid("bad_argument", f"{name} is true or false; got {value!r}")
 
 
+def check_clear_scope(ref: str, all_: bool, kind: str) -> None:
+    """A clear names one `ref` or `all=True`: never both, and a blank `ref` is neither one nor
+    every declaration, whichever side of `all` it is on."""
+    clear_all = f'`declaration_clear(kind="{kind}", all=True)`'
+    if all_ and ref:
+        raise Invalid("bad_argument", f"`all` clears every declaration of this kind and takes no "
+                      f"`ref`; got ref={ref!r}: {clear_all} alone")
+    if not all_ and not ref.strip():
+        raise Invalid("bad_argument", f"ref={ref!r} names nothing, and an empty ref never means "
+                      f"every declaration: the `ref` its declaring reply carried, or all=True to "
+                      f"clear every one ({clear_all})")
+
+
 def one_of(name: str, value: object, options: Words, tail: str = "") -> None:
     """Hold a scalar to a closed vocabulary; a bool is refused since `True == 1`."""
     if isinstance(value, bool) or value not in options:

@@ -209,7 +209,7 @@ def test_new_clones_block_even_when_jscpd_exits_0(
         repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _jscpd(repo / "jscpd", 3, 2, 0)
     rc, said = _hook(capsys)
-    assert rc == verdict.EXIT_FAIL and "2 new clone(s)" in said
+    assert rc == verdict.EXIT_FAIL and "2 new clones" in said
 
 
 def test_a_git_that_cannot_be_run_is_invalid(

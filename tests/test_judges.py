@@ -63,7 +63,7 @@ def test_a_picture_is_read_once_with_its_digest(tmp_path: Path) -> None:
         judges.picture_file("p", path)
     with pytest.raises(Invalid, match="cannot be read"):
         judges.picture_file("p", tmp_path / "absent.png")
-    with pytest.raises(Invalid, match="is not a file"):
+    with pytest.raises(Invalid, match="no file at"):
         judges.existing_file("p", str(tmp_path))
 
 
@@ -113,6 +113,23 @@ def test_a_path_the_filesystem_will_not_look_at_is_refused_not_raised(
     with pytest.raises(Invalid, match="cannot be looked at: .*Permission denied") as e:
         judge("dest", str(tmp_path / "x.png"))
     assert e.value.code == "bad_argument"
+
+
+def test_a_callers_text_file_is_read_whole_without_its_byte_order_mark(tmp_path: Path) -> None:
+    path = tmp_path / "types"
+    path.write_bytes(b"\xef\xbb\xbf_g_ticks u32\n")
+    assert judges.read_text("types", str(path), "types file") == "_g_ticks u32\n"
+
+
+def test_a_callers_text_file_that_is_not_utf8_or_not_there_is_refused_with_its_fields(
+        tmp_path: Path) -> None:
+    path = tmp_path / "types"
+    path.write_bytes(b"_g\xe9 u8\n")
+    with pytest.raises(Invalid, match="is not UTF-8 text: byte 2") as e:
+        judges.read_text("types", str(path), "types file", hint="h")
+    assert e.value.code == "bad_argument" and e.value.fields == {"hint": "h"}
+    with pytest.raises(Invalid, match="types: no types file at"):
+        judges.read_text("types", str(tmp_path / "absent"), "types file")
 
 
 def test_a_file_the_filesystem_will_not_look_at_is_refused_not_raised(

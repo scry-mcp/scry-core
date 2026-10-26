@@ -227,7 +227,7 @@ def test_a_manifest_of_another_shape_is_refused(tmp_path: Path, doc: object, sai
         series.read_manifest("manifest", str(path))
     with pytest.raises(Invalid, match="must be an absolute path"):
         series.read_manifest("manifest", "m.json")
-    with pytest.raises(Invalid, match="is not a file"):
+    with pytest.raises(Invalid, match="no file at"):
         series.read_manifest("manifest", str(tmp_path / "absent.json"))
 
 
