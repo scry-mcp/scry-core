@@ -12,6 +12,9 @@ from scry_core.reply_contract import or_unavailable
 UNDATED_WHY = "the row carries no date with an offset"
 NO_ORIGIN_WHY = ("the row names no session it was declared in: clear it by its ref, or declare it "
                  "again to adopt it")
+#: A comment is adopted by commenting it again, never by declaring it.
+NO_ORIGIN_COMMENT_WHY = ("the row names no session it was commented in: delete it by its ref, or "
+                         "comment it again here to adopt it")
 
 
 def chosen_kinds(kind: str, kinds: Sequence[str]) -> tuple[str, ...]:
@@ -31,13 +34,14 @@ def age_s(stamp: str | None, now: datetime) -> int | None:
     return int((now - then).total_seconds() // 1)
 
 
-def row(*, ref: str, by: str, cpu: str | None, cpu_why: str, created_at: str | None,
+def row(*, kind: str, ref: str, by: str, cpu: str | None, cpu_why: str, created_at: str | None,
         origin: str | None, own_origin: str | None, now: datetime) -> dict[str, Any]:
     """A list row's identity. `inherited` is needed because no reply names this session's own
     origin."""
     return {"ref": ref, "by": by, "cpu": or_unavailable(cpu, cpu_why),
             "created_at": or_unavailable(created_at, UNDATED_WHY),
-            "origin": or_unavailable(origin, NO_ORIGIN_WHY),
+            "origin": or_unavailable(origin, NO_ORIGIN_COMMENT_WHY if kind == "comment"
+                                     else NO_ORIGIN_WHY),
             "inherited": origin != own_origin,
             "age_s": or_unavailable(age_s(created_at, now), UNDATED_WHY)}
 

@@ -11,6 +11,8 @@ import pytest
 
 from scry_core import signalled_end
 
+LOCK = threading.RLock()
+
 
 def _end(closes: list[str], fails: bool = False) -> tuple[signalled_end.SignalledEnd, list[int],
                                                           threading.Event]:
@@ -22,8 +24,7 @@ def _end(closes: list[str], fails: bool = False) -> tuple[signalled_end.Signalle
         if fails:
             raise OSError("not reaped")
 
-    end = signalled_end.SignalledEnd(threading.RLock(), close, lambda: closes.append("clean"),
-                                     "test server")
+    end = signalled_end.SignalledEnd(LOCK, close, lambda: closes.append("clean"), "test server")
 
     def leave(code: int) -> None:
         left.append(code)
@@ -57,7 +58,7 @@ def test_a_held_lock_is_waited_for_only_so_long(handlers: None) -> None:
     held, release = threading.Event(), threading.Event()
 
     def hold() -> None:
-        with end.lock:
+        with LOCK:
             held.set()
             release.wait(10.0)
     holder = threading.Thread(target=hold)

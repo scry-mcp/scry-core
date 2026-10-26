@@ -64,17 +64,17 @@ _ANY_SIDE = 1 << 62
 Layer = Literal["session", "file"]
 
 #: What a tool's description fills from here (`scry_core.docs.filled`): the methods and the tool
-#: both servers describe in the same words, their continuation lines at a docstring's indent.
+#: both servers describe in the same words, filled after the docstring is dedented.
 DOC_VALUES = {
     "MAP_SUFFIX": SUFFIX,
     "MAP_LOAD": (f"`load`: `path` (`<application>{SUFFIX}`, absolute or `~`-led) as the file "
-                 "layer. Reply:\n    `path`, `application`, `screens`, `controls`."),
+                 "layer. Reply:\n`path`, `application`, `screens`, `controls`."),
     "MAP_SAVE": ("`save`: both layers as one map to `dest`, refused there without `overwrite`, "
-                 "made the file\n    layer. Reply: `path`, `application`, `screens`, `controls`, "
+                 "made the file\nlayer. Reply: `path`, `application`, `screens`, `controls`, "
                  "`promoted`."),
     "MAP_FIND": ("Which mapped screen the machine shows. Reply: `matched`; matched, `screen`, "
-                 "`layer`, `kind`,\n    `size`, `controls` (`name`, `rect`, `centre`); else "
-                 "`screens_mapped`, `screens_tried`. None\n    mapped: `needs_call`."),
+                 "`layer`, `kind`,\n`size`, `controls` (`name`, `rect`, `centre`); else "
+                 "`screens_mapped`, `screens_tried`. None\nmapped: `needs_call`."),
 }
 
 

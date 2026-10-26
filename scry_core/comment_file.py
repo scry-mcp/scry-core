@@ -22,13 +22,13 @@ TEXT_MAX_BYTES = 237
 DOC_VALUES = {
     "COMMENT_TEXT_MAX": str(TEXT_MAX_BYTES),
     "COMMENT_SAVE": ("`save`: every comment to `dest`, an absolute or `~`-led path, replacing a "
-                     "comment file\n    there (rows only it held in `dropped_comments`); any other "
-                     "file is refused; answers on a\n    running machine. Reply: `path`, "
-                     "`comments_total`, `dropped_comments`, `dropped_total`,\n    `truncated`, "
+                     "comment file\nthere (rows only it held in `dropped_comments`); any other "
+                     "file is refused; answers on a\nrunning machine. Reply: `path`, "
+                     "`comments_total`, `dropped_comments`, `dropped_total`,\n`truncated`, "
                      "`note`."),
     "COMMENT_LOAD": ("`load`: the comment file at `path`, all or nothing, the file winning. "
-                     "Reply: `path`,\n    `parsed`, `added`, `replaced_comments`, "
-                     "`replaced_total`, `truncated`, `unchanged`,\n    `comments_total`, "
+                     "Reply: `path`,\n`parsed`, `added`, `replaced_comments`, "
+                     "`replaced_total`, `truncated`, `unchanged`,\n`comments_total`, "
                      "`declarations`, `note`."),
 }
 _BOM = "\ufeff"

@@ -65,14 +65,9 @@ def test_the_bind_refusal_names_the_op_the_step_named() -> None:
     assert refused is not None and "`takes` names `run_for`'s" in refused["message"], refused
 
 
-def test_a_servers_conversion_reaches_the_type_judge_and_the_value_checks() -> None:
-    def integral(params: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
-        return {n: int(v) if isinstance(v, float) and v.is_integer() else v
-                for n, v in args.items()}
-    refusal, args = steps.judge(tool, {"op": "tool", "count": 6.0}, prepare=integral)
-    assert refusal is None and args == {"count": 6}
-    unconverted, _ = steps.judge(tool, {"op": "tool", "count": 6.0})
-    assert unconverted is not None and "count is an integer" in unconverted["message"]
+def test_an_integral_float_is_no_integer_as_a_direct_calls_schema_says() -> None:
+    refused, _ = steps.judge(tool, {"op": "tool", "count": 6.0})
+    assert refused is not None and "count is an integer; got 6.0" in refused["message"], refused
 
 
 def test_the_step_ops_are_the_registered_tools_but_the_ones_named_out() -> None:

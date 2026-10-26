@@ -32,8 +32,9 @@ def test_a_stamp_ahead_of_the_clock_is_negative_never_clamped() -> None:
 
 
 def _row(origin: str | None, cpu: str | None = ":maincpu",
-         created_at: str | None = "2026-01-01T00:00:00+00:00") -> dict[str, object]:
-    return rows.row(ref="0x10", by="address", cpu=cpu, cpu_why="no cpu here",
+         created_at: str | None = "2026-01-01T00:00:00+00:00",
+         kind: str = "breakpoint") -> dict[str, object]:
+    return rows.row(kind=kind, ref="0x10", by="address", cpu=cpu, cpu_why="no cpu here",
                     created_at=created_at, origin=origin, own_origin="mine", now=NOW)
 
 
@@ -50,6 +51,8 @@ def test_what_a_row_lacks_is_unavailable_with_its_reason() -> None:
     assert bare["created_at"] == bare["age_s"] == {"available": False, "why": rows.UNDATED_WHY}
     assert bare["origin"] == {"available": False, "why": rows.NO_ORIGIN_WHY}
     assert bare["inherited"] is True
+    comment = _row(None, kind="comment")
+    assert comment["origin"] == {"available": False, "why": rows.NO_ORIGIN_COMMENT_WHY}
 
 
 def test_the_lists_of_several_kinds_merge_with_their_foreign_rows_kept_apart() -> None:

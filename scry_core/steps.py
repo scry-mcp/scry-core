@@ -75,16 +75,9 @@ def wrong_type(fn: Callable[..., Any], args: dict[str, Any]) -> str | None:
     return None
 
 
-def _as_given(params: dict[str, inspect.Parameter], args: dict[str, Any]) -> dict[str, Any]:
-    """Arguments taken as given."""
-    return args
-
-
-def judge(fn: Callable[..., Any], step: dict[str, Any], *,
-          prepare: Callable[[dict[str, inspect.Parameter], dict[str, Any]], dict[str, Any]]
-          = _as_given) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    """`step` against `fn`, the tool its `op` names: the refusal or None, and the arguments after
-    `prepare`.
+def judge(fn: Callable[..., Any], step: dict[str, Any]
+          ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """`step` against `fn`, the tool its `op` names: the refusal or None, and the arguments.
 
     The bind is against the real signature, so a TypeError raised inside a tool later escapes
     as the bug it is.
@@ -103,7 +96,6 @@ def judge(fn: Callable[..., Any], step: dict[str, Any], *,
         takes = [n for n in params if n != "ctx"]
         said = f"has bad arguments: {e}; `takes` names `{step.get('op')}`'s"
         return {"code": "bad_argument", "message": said, "takes": takes}, args
-    args = prepare(params, args)
     if (wrong := wrong_type(fn, args)) is not None:
         return {"code": "bad_argument", "message": wrong}, args
     return None, args

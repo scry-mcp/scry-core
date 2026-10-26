@@ -146,6 +146,17 @@ def timeout_note(pattern: str, ended: Ended, where: str, writer: str) -> str:
             f"was nothing to match against'.{silent} The machine is still running")
 
 
+def stopped_message(pattern: str, arrived: int, waited_s: float, *, parked: bool,
+                    at_bound: bool) -> str:
+    """The refusal of a wait the machine stopped under: `parked` when it was already stopped."""
+    reason = ("the machine is STOPPED at the debugger" if parked else
+              "the machine STOPPED as the bound expired" if at_bound else
+              "the machine STOPPED during the wait")
+    return (f"{reason}: a stopped machine logs nothing, so the wait for /{pattern}/ cannot end. "
+            f"{prose.counted(arrived, 'line')} arrived during {waited_s} s of it and none "
+            "matched: `resume` lets it run, then `log_wait` again")
+
+
 def gone_message(pattern: str, ended: Ended, seconds: float) -> str:
     """The refusal of a wait whose emulator went away."""
     return (f"the emulator is GONE, {ended.waited_s} s into a {seconds:g} s wait for /{pattern}/, "

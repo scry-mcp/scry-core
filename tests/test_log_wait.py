@@ -133,3 +133,13 @@ def test_a_mark_inside_a_line_leaves_that_lines_rest_out(tmp_path: Path) -> None
     lines, nxt = log_wait.lines_since(log, mark)
     assert lines == ["after"] and nxt == log.stat().st_size, (lines, nxt)
     assert log_wait.lines_since(log, 4)[0] == ["half done", "after"], "a mark on a line's start"
+
+
+@pytest.mark.parametrize(("parked", "at_bound", "said"), [
+    (True, False, "is STOPPED at the debugger"), (False, True, "STOPPED as the bound expired"),
+    (False, False, "STOPPED during the wait")])
+def test_a_wait_the_machine_stopped_under_says_when_and_what_arrived(
+        parked: bool, at_bound: bool, said: str) -> None:
+    got = log_wait.stopped_message("BOOT", 1, 2.5, parked=parked, at_bound=at_bound)
+    assert got.startswith(f"the machine {said}: a stopped machine logs nothing"), got
+    assert "1 line arrived during 2.5 s" in got and "/BOOT/" in got

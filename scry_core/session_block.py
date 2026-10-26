@@ -9,6 +9,10 @@ from scry_core import client_cap, narrowing
 
 WHOLE_ON = frozenset({"start", "status"})
 HOW = "call `status`"
+#: What `close` and `status` say with no session, on both servers.
+NO_SESSION_CLOSE = "close: no session"
+NO_SESSION_CLOSE_NOTE = "there was no session to close"
+NO_SESSION_STATUS = "status: no session"
 
 
 def block(alarms: dict[str, Any], fixed: dict[str, Any], whole: bool) -> dict[str, Any]:

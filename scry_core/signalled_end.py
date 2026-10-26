@@ -8,16 +8,15 @@ import signal
 import sys
 import threading
 from collections.abc import Callable
-from contextlib import AbstractContextManager
 from typing import Protocol
 
 EXIT_SIGNALS: tuple[signal.Signals, ...] = tuple(
     getattr(signal, name) for name in ("SIGTERM", "SIGHUP", "SIGINT") if hasattr(signal, name))
-#: The wait for a tool to let go before the emulator is closed without it.
+#: How long a tool may hold the machine before the emulator is closed anyway.
 LOCK_WAIT_S = 10.0
 
 
-class Lock(AbstractContextManager[bool], Protocol):
+class Lock(Protocol):
     def acquire(self, blocking: bool = ..., timeout: float = ...) -> bool: ...
     def release(self) -> None: ...
 
@@ -26,7 +25,7 @@ class SignalledEnd:
     """`close` under `lock` (or past `lock_wait_s`), `cleanup`, then `leave` at once: the
     transport's reader is blocked on a stdin nobody closed."""
 
-    def __init__(self, lock: Lock, close: Callable[[], None], cleanup: Callable[[], None],
+    def __init__(self, lock: Lock, close: Callable[[], object], cleanup: Callable[[], object],
                  name: str) -> None:
         self.lock, self.close, self.cleanup, self.name = lock, close, cleanup, name
         self.lock_wait_s = LOCK_WAIT_S
@@ -49,7 +48,7 @@ class SignalledEnd:
             took = self.lock.acquire(timeout=self.lock_wait_s)
             try:
                 self.close()
-            except Exception as e:  # noqa: BLE001 -- said, and the end goes on
+            except Exception as e:  # noqa: BLE001
                 print(f"{self.name}: the session could not be closed on the way out ({e!r})",
                       file=sys.stderr, flush=True)
             finally:
