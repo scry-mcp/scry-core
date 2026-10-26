@@ -625,6 +625,7 @@ def test_a_windows_path_under_the_root_is_spelt_with_forward_slashes() -> None:
 
 
 def test_two_paths_joined_by_a_colon_are_each_spelt_from_the_root() -> None:
-    norm = d.Normaliser(root=Path("/Users/m/proj"), home=Path("/Users/m"), volatile={})
-    assert norm.text("/Users/m/a:/Users/m/b") == "~/a:~/b"
-    assert norm.text(r"C:\x=/Users/m/proj/c&/Users/m/d") == r"C:\x=./c&~/d"
+    m, sep = str(Path(Path.cwd().anchor, "Users", "m")), os.sep
+    norm = d.Normaliser(root=Path(m, "proj"), home=Path(m), volatile={})
+    assert norm.text(f"{m}{sep}a:{m}{sep}b") == "~/a:~/b"
+    assert norm.text(f"x={m}{sep}proj{sep}c&{m}{sep}d|{m}{sep}e") == "x=./c&~/d|~/e"
