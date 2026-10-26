@@ -218,9 +218,9 @@ def flow_drift(front: Path, name: str, flow: Path) -> str:
                             flow.read_text(encoding="utf-8").strip("\n"))
 
 
-def _literally(text: str) -> Callable[[re.Match[str]], str]:
-    """A substitution writing `text` as given."""
-    return lambda _match: text
+def _marked(mark: str) -> Callable[[re.Match[str]], str]:
+    """A substitution writing `mark`, then the path's `rest` with forward slashes."""
+    return lambda m: mark + m["rest"].replace("\\", "/")
 
 
 @dataclass(frozen=True)
@@ -239,10 +239,12 @@ class Normaliser:
         longer name (`/Users/mx` is not under `/Users/m`). A prefix of `/` is left alone."""
         marks = sorted(self.marks.items(), key=lambda pm: -len(pm[0]))
         for prefix, mark in (*marks, (str(self.root), "."), (str(self.home), "~")):
-            prefix = prefix.rstrip(os.sep + (os.altsep or ""))
+            prefix = prefix.rstrip("/\\")
             if prefix:
-                text = re.sub(r"(?<![\w.-])" + re.escape(prefix) + r"(?=/|$|[^\w.-])",
-                              _literally(mark), text)
+                # The rest of the path keeps its words and loses Windows' separators.
+                text = re.sub(r"(?<![\w.-])" + re.escape(prefix)
+                              + r"(?P<rest>[\\/][^\s\"'`,;)\]}]*|(?![\w.-]))",
+                              _marked(mark), text)
         return text
 
     def reply(self, value: Any, also: Mapping[str, str] | None = None) -> Any:

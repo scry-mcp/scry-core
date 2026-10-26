@@ -611,3 +611,14 @@ def test_a_shown_that_is_not_a_tuple_of_field_names_is_refused_before_a_call(
     with pytest.raises(ValueError, match="`shown` is"):
         d.main(_demo(tmp_path, [d.Step("s", "start", {}, _said("value"),
                                        shown=shown)]), [])  # type: ignore[arg-type]
+
+
+def test_a_windows_path_under_the_root_is_spelt_with_forward_slashes() -> None:
+    """A block regenerated on Windows reads as the one regenerated on macOS."""
+    norm = d.Normaliser(root=Path(r"C:\Users\optim\Code\scry"), home=Path(r"C:\Users\optim"),
+                           volatile={})
+    assert norm.text(r"path=C:\Users\optim\Code\scry\demos\bricks\bricks.sym, ok") == (
+        "path=./demos/bricks/bricks.sym, ok")
+    assert norm.text(r"C:\Users\optim\notes.txt") == "~/notes.txt"
+    assert norm.text(r"C:\Users\optimist\x") == r"C:\Users\optimist\x", (
+        "a longer name is not under it")
