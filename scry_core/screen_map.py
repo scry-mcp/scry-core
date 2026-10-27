@@ -12,7 +12,11 @@ the program in the application's own repository:
 
 in the screen's own units: cells in a text mode, pixels in a graphics one, as `screen_view`
 counts them. A screen MATCHES when its `kind` and `size` are the screen's and every `match`
-signature is `scry-sig/1` (`raster.signature`) over its crop. The key is a set of declared
+signature is `scry-sig/1` (`raster.signature`) over its crop. A pixel screen may say
+`"cells": "index"`: its signatures are then of the palette indices drawn, not of the colours shown,
+so one map knows a program on two machines whose palettes resolve the same index to different
+colours (an arcade board's 5-bit DAC, a VGA's 6-bit one). A screen that says nothing is signed in
+colour, and is saved saying nothing. The key is a set of declared
 stable regions, never the whole screen, because a whole-screen hash changes with a cursor or a
 ball. Names are unique in the file (screens) and in their screen (controls), every rectangle
 lies inside its screen, and a file that breaks any of it is refused whole, naming the first
@@ -37,12 +41,12 @@ cannot be read at the moment a pointer moves.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, Literal, Protocol, cast
 
 from scry_core import fresh, judges, prose, raster
 from scry_core import vocabulary as vocab
@@ -51,6 +55,8 @@ from scry_core.reply_contract import Invalid, or_unavailable
 FORMAT = "scry-map/1"
 SUFFIX = ".scry-map.json"
 KINDS = ("text", "pixel")
+#: What a pixel screen's regions are signed over: the colours shown, or the palette indices drawn.
+CELLS = ("rgb", "index")
 #: How much one map holds: screens in a file, regions a screen is matched by, controls on one.
 SCREENS_MAX, MATCH_MAX, CONTROLS_MAX = 200, 16, 100
 #: The largest map file read: far past the most screens it can hold, so a file past it is not one.
@@ -72,6 +78,8 @@ DOC_VALUES = {
     "MAP_SAVE": ("`save`: both layers as one map to `dest`, refused there without `overwrite`, "
                  "made the file\nlayer. Reply: `path`, `application`, `screens`, `controls`, "
                  "`promoted`."),
+    "MAP_CELLS": ("`cells` `index` signs the palette\nindices drawn instead of the colours "
+                  "shown: one map for a program two palettes show."),
     "MAP_FIND": ("Which mapped screen the machine shows. Reply: `matched`; matched, `screen`, "
                  "`layer`, `kind`,\n`size`, `controls` (`name`, `rect`, `centre`); else "
                  "`screens_mapped`, `screens_tried`. None\nmapped: `needs_call`."),
@@ -80,17 +88,22 @@ DOC_VALUES = {
 
 @dataclass(frozen=True)
 class Grid:
-    """One read of the screen: its kind, its size in its own units, and its resolved cells as
-    `raster.signature` takes them."""
+    """One read of the screen: its kind, its size in its own units, its resolved cells as
+    `raster.signature` takes them, and its palette indices (`index` cells) when asked for and
+    the screen has them."""
 
     kind: raster.Kind
     width: int
     height: int
     cells: bytes
+    indices: bytes | None = None
 
 
-#: How a server reads its screen once, at a stopped machine.
-Read = Callable[[], Grid]
+class Read(Protocol):
+    """How a server reads its screen once, at a stopped machine; `indices` asks for the palette
+    indices as well, which only a screen signed by index needs and some machines pay for."""
+
+    def __call__(self, indices: bool = False) -> Grid: ...
 
 
 @dataclass(frozen=True)
@@ -113,9 +126,11 @@ class Screen:
     size: tuple[int, int]
     match: tuple[tuple[judges.Rect, str], ...]
     controls: tuple[Control, ...]
+    cells: str = "rgb"
 
     def doc(self) -> dict[str, Any]:
         return {"name": self.name, "kind": self.kind, "size": list(self.size),
+                **({"cells": self.cells} if self.cells != "rgb" else {}),
                 "match": [{"crop": list(c), "signature": s} for c, s in self.match],
                 "controls": [c.doc() for c in self.controls]}
 
@@ -176,23 +191,24 @@ class Maps:
         return {"path": str(path), "application": application, "screens": len(screens),
                 "controls": sum(len(s.controls) for s in screens.values())}
 
-    def add(self, name: object, match: object, controls: object, read: Read) -> dict[str, Any]:
+    def add(self, name: object, match: object, controls: object, read: Read,
+            cells: object = "rgb") -> dict[str, Any]:
         """A screen written from the screen in front of the caller: each `match` crop signed
-        off one read, kept in the session layer."""
+        off one read, in `cells`, kept in the session layer."""
         if not (isinstance(match, list) and match):
             raise Invalid("bad_argument", "match is a list of at least one crop [x, y, width, "
                           "height]: the stable regions the screen is known by")
-        grid = read()
+        _cells(cells, "cells")
+        grid = read(indices=cells == "index")
         if grid.width < 1 or grid.height < 1:
             raise Invalid("unexpected_answer", f"the screen read is {grid.width}x{grid.height}: "
                           "there is nothing to map on it")
         doc = {"name": name, "kind": grid.kind, "size": [grid.width, grid.height],
-               "match": [{"crop": c, "signature": "0" * 16} for c in match],
+               "cells": cells, "match": [{"crop": c, "signature": "0" * 16} for c in match],
                "controls": controls if controls is not None else []}
         screen = _screen(doc, "the screen", 0, "match")
-        signed = tuple((crop, raster.signature(grid.kind, grid.width, grid.height, grid.cells,
-                                               crop)) for crop, _ in screen.match)
-        screen = Screen(screen.name, screen.kind, screen.size, signed, screen.controls)
+        screen = dataclasses.replace(screen, match=tuple(
+            (crop, _signed({}, grid, crop, screen.cells)) for crop, _ in screen.match))
         replaced = screen.name in self.session
         if len(self.session.keys() | self.file.keys() | {screen.name}) > SCREENS_MAX:
             raise Invalid("bad_argument", f"the map holds {SCREENS_MAX} screens, the most one "
@@ -201,6 +217,7 @@ class Maps:
         if self.found is not None and self.found.screen.name == screen.name:
             self.found = None          # its controls are another screen's now: identify again
         return {"screen": screen.name, "kind": screen.kind, "size": list(screen.size),
+                "cells": screen.cells,
                 "match": [{"crop": list(c), "signature": s} for c, s in screen.match],
                 "controls": len(screen.controls), "replaced": replaced,
                 "shadows_file": screen.name in self.file}
@@ -217,14 +234,15 @@ class Maps:
         # FORGOTTEN BEFORE THE READ: a read that fails is no identification, and acting on the
         # screen the last one found would act on a screen nobody has seen since.
         self.found = None
-        grid = read()
-        signed: dict[judges.Rect, str] = {}
+        grid = read(indices=any(s.cells == "index" for _, s in candidates))
+        signed: dict[tuple[judges.Rect, str], str] = {}
         tried = 0
         for layer, screen in candidates:
             if screen.kind != grid.kind or screen.size != (grid.width, grid.height):
                 continue
             tried += 1
-            if all(_signed(signed, grid, crop) == want for crop, want in screen.match):
+            if all(_signed(signed, grid, crop, screen.cells) == want
+                   for crop, want in screen.match):
                 self.found = Found(screen, layer, stop)
                 return {"matched": True, "screen": screen.name, "layer": layer,
                         "kind": screen.kind, "size": list(screen.size),
@@ -280,10 +298,27 @@ class Maps:
                       f"control; its controls: {names}")
 
 
-def _signed(signed: dict[judges.Rect, str], grid: Grid, crop: judges.Rect) -> str:
-    if crop not in signed:
-        signed[crop] = raster.signature(grid.kind, grid.width, grid.height, grid.cells, crop)
-    return signed[crop]
+def _signed(signed: dict[tuple[judges.Rect, str], str], grid: Grid, crop: judges.Rect,
+            cells: str) -> str:
+    """The signature of `crop` in `cells`, each signed once per read."""
+    if (crop, cells) not in signed:
+        if cells == "rgb":
+            signed[crop, cells] = raster.signature(grid.kind, grid.width, grid.height,
+                                                   grid.cells, crop)
+        elif grid.indices is None:
+            raise Invalid("no_channel", "the screen was read without palette indices, so a "
+                          "screen signed by index cannot be matched or signed on it: the mode "
+                          "shows colours with no palette")
+        else:
+            signed[crop, cells] = raster.signature("index", grid.width, grid.height,
+                                                   grid.indices, crop)
+    return signed[crop, cells]
+
+
+def _cells(value: object, at: str) -> str:
+    if value not in CELLS:
+        raise Invalid("bad_argument", f"{at}: `cells` is `rgb` or `index`, got {value!r}")
+    return value
 
 
 def _map_path(name: str, value: object) -> Path:
@@ -341,7 +376,7 @@ def _screen(s: object, where: str, i: int, crop_name: str = "crop") -> Screen:
     at = f"{where}: screen {i}"
     if not isinstance(s, dict):
         raise Invalid("bad_argument", f"{at} is not an object")
-    _keys(s, {"name", "kind", "size", "match", "controls"}, at)
+    _keys(s, {"name", "kind", "size", "cells", "match", "controls"}, at)
     name = s.get("name")
     if not _name(name):
         raise Invalid("bad_argument", f"{at}: `name` is a name of 1..{_NAME_MAX} characters")
@@ -349,6 +384,10 @@ def _screen(s: object, where: str, i: int, crop_name: str = "crop") -> Screen:
     kind = s.get("kind")
     if kind not in KINDS:
         raise Invalid("bad_argument", f"{at}: `kind` is `text` or `pixel`, got {kind!r}")
+    cells = _cells(s.get("cells", "rgb"), at)
+    if cells == "index" and kind != "pixel":
+        raise Invalid("bad_argument", f"{at}: `cells` index is a pixel screen's; a text screen "
+                      "is signed by its cells")
     size = s.get("size")
     if not (isinstance(size, list) and len(size) == 2 and all(judges.whole(v, 1) for v in size)):
         raise Invalid("bad_argument", f"{at}: `size` is [width, height], each above zero")
@@ -388,7 +427,7 @@ def _screen(s: object, where: str, i: int, crop_name: str = "crop") -> Screen:
                              f"control {cname!r} rect")
         kept.append(Control(cast(str, cname), rect))
     return Screen(cast(str, name), cast(str, kind), (width, height), tuple(regions),
-                  tuple(kept))
+                  tuple(kept), cells)
 
 
 def _given(obj: dict[str, Any], key: str, at: str) -> Any:
@@ -444,7 +483,8 @@ def check_path(name: str, value: object) -> None:
     _map_path(name, value)
 
 
-def check_add(screen: object, match: object, controls: object = None) -> None:
+def check_add(screen: object, match: object, controls: object = None,
+              cells: object = "rgb") -> None:
     """The `add` method's machine-independent half, everything but whether its rectangles lie on the
     screen, which only a read can say: the name, the crops' shapes, the controls' shapes, keys
     and names. A fault found here costs no read."""
@@ -460,7 +500,7 @@ def check_add(screen: object, match: object, controls: object = None) -> None:
                                      and len(controls) <= CONTROLS_MAX):
         raise Invalid("bad_argument", f"controls is a list of at most {CONTROLS_MAX} "
                       "{\"name\", \"rect\"}")
-    _screen({"name": screen, "kind": "pixel", "size": [_ANY_SIDE, _ANY_SIDE],
+    _screen({"name": screen, "kind": "pixel", "size": [_ANY_SIDE, _ANY_SIDE], "cells": cells,
              "match": [{"crop": c, "signature": "0" * 16} for c in match],
              "controls": controls if controls is not None else []}, "the screen", 0, "match")
 

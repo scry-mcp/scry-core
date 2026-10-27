@@ -28,13 +28,15 @@ def _grid(lit: set[tuple[int, int]] = frozenset(), kind: raster.Kind = "pixel", 
 
 
 class Reads:
-    """A screen reader that counts its reads: the instrument of the one-read rule."""
+    """A screen reader that counts its reads, the instrument of the one-read rule, and records
+    whether each asked for the palette's indices."""
 
     def __init__(self, grid: Grid) -> None:
-        self.grid, self.count = grid, 0
+        self.grid, self.count, self.asked = grid, 0, list[bool]()
 
-    def __call__(self) -> Grid:
+    def __call__(self, indices: bool = False) -> Grid:
         self.count += 1
+        self.asked.append(indices)
         return self.grid
 
 
@@ -135,7 +137,7 @@ def test_the_session_layer_is_tried_first_and_shadows_the_file(tmp_path: Path) -
     maps.load(_file(tmp_path, _doc()))
     added = maps.add("title", [[6, 2, 2, 2]], [{"name": "go", "rect": [0, 0, 1, 1]}],
                      Reads(PLAY))
-    assert added == {"screen": "title", "kind": "pixel", "size": [W, H],
+    assert added == {"screen": "title", "kind": "pixel", "size": [W, H], "cells": "rgb",
                      "match": [{"crop": [6, 2, 2, 2], "signature": _sig(PLAY, [6, 2, 2, 2])}],
                      "controls": 1, "replaced": False, "shadows_file": True}
     got = maps.find(Reads(PLAY), stop=3)
@@ -503,6 +505,69 @@ def test_a_text_screen_is_matched_by_its_cells() -> None:
     assert maps.find(Reads(Grid("text", 80, 25, bytes(7 * 80 * 25))), stop=2)["matched"] is False
 
 
+def _indexed(pens: list[int], colour: bytes) -> Grid:
+    """A 2 x 1 pixel screen drawn with `pens`, every pen shown as `colour`: two machines drawing
+    the same pens through palettes of their own."""
+    return Grid("pixel", 2, 1, colour * 2, raster.index_cells(pens))
+
+
+ARCADE = _indexed([4, 9], b"\x21\x21\x21")    # a 5-bit DAC: 4 is 0x21
+PC = _indexed([4, 9], b"\x20\x20\x20")        # a 6-bit DAC: the same colour is 0x20
+
+
+def test_an_index_screen_matches_the_same_pens_through_another_palette(tmp_path: Path) -> None:
+    maps = Maps()
+    added = maps.add("board", [[0, 0, 2, 1]], [], Reads(ARCADE), cells="index")
+    assert added["cells"] == "index"
+    reads = Reads(PC)
+    assert maps.find(reads, stop=1)["screen"] == "board"
+    assert reads.asked == [True]
+    assert maps.find(Reads(_indexed([4, 8], b"\x21\x21\x21")), stop=2)["matched"] is False
+    path = tmp_path / "demo.scry-map.json"
+    maps.save(str(path), False)
+    assert json.loads(path.read_text())["screens"][0]["cells"] == "index"
+    again = Maps()
+    again.load(str(path))
+    assert again.find(Reads(PC), stop=3)["screen"] == "board"
+
+
+def test_an_rgb_screen_tells_the_two_palettes_apart_and_asks_for_no_indices() -> None:
+    maps = Maps()
+    assert maps.add("board", [[0, 0, 2, 1]], [], Reads(ARCADE))["cells"] == "rgb"
+    reads = Reads(PC)
+    assert maps.find(reads, stop=1)["matched"] is False
+    assert reads.asked == [False]
+
+
+def test_a_map_that_declares_no_cells_is_saved_without_them(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    out = tmp_path / "out" / "demo.scry-map.json"
+    out.parent.mkdir()
+    maps.save(str(out), False)
+    assert all("cells" not in s for s in json.loads(out.read_text())["screens"])
+
+
+def test_an_index_screen_on_a_read_without_indices_is_the_machines_answer() -> None:
+    with pytest.raises(Invalid, match="indices") as e:
+        Maps().add("board", [[0, 0, 2, 1]], [], Reads(_grid()), cells="index")
+    assert e.value.code == "no_channel"
+
+
+@pytest.mark.parametrize(("screen", "said"), [
+    ({"cells": "palette"}, "`cells` is"),
+    ({"kind": "text", "cells": "index"}, "a text screen"),
+])
+def test_cells_a_map_cannot_mean_are_refused(tmp_path: Path, screen: dict[str, Any],
+                                              said: str) -> None:
+    doc = _doc()
+    doc["screens"][0].update(screen)
+    with pytest.raises(Invalid, match=said):
+        Maps().load(_file(tmp_path, doc))
+    with pytest.raises(Invalid, match="`cells` is"):
+        screen_map.check_add("a", [[0, 0, 1, 1]], None, "palette")
+
+
 def test_the_save_line_with_none_or_many_promoted() -> None:
     for n in (0, 2):
         line = screen_map.save_line({}, {"screens": 3, "path": "/x/a.scry-map.json",
@@ -522,7 +587,7 @@ def test_a_find_whose_read_fails_forgets_the_last_screen(tmp_path: Path) -> None
     maps.load(_file(tmp_path, _doc()))
     maps.find(Reads(PLAY), stop=1)
 
-    def fails() -> Grid:
+    def fails(indices: bool = False) -> Grid:
         raise Invalid("no_channel", "the screen could not be read")
     with pytest.raises(Invalid, match="could not be read"):
         maps.find(fails, stop=2)

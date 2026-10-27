@@ -49,6 +49,16 @@ def test_one_palette_entry_moves_the_signature_and_an_index_alone_does_not() -> 
     assert raster.picture_signature(as_rgb) == raster.picture_signature(INDEXED)
 
 
+def test_an_index_cell_is_three_bytes_little_endian_and_a_wider_index_is_refused() -> None:
+    assert raster.index_cells([1, 0x0203, 0xFFFFFF]) == bytes([1, 0, 0, 3, 2, 0, 255, 255, 255])
+    want = hashlib.blake2b(b"scry-sig/1|index|1x1|" + bytes([4, 0, 0]),
+                           digest_size=8).hexdigest()
+    assert raster.signature("index", 1, 1, raster.index_cells([4])) == want
+    with pytest.raises(Invalid, match="past 2\\^24") as e:
+        raster.index_cells([1 << 24])
+    assert e.value.code == "unexpected_answer"
+
+
 def test_a_text_cell_signature_hashes_its_seven_bytes_and_its_kind() -> None:
     cells = bytes([0x41, 255, 255, 255, 0, 0, 170])
     want = hashlib.blake2b(b"scry-sig/1|text|1x1|" + cells, digest_size=8).hexdigest()

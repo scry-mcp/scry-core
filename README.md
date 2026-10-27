@@ -44,6 +44,8 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, the probe's tasks, the prose ceiling, and the tree typed as Windows sees it |
 | `scry_core.host_program` | a test double's program as the host runs one (Python behind a `#!` line on POSIX, a `.cmd` on Windows), the interpreter that is itself the process it runs, absolute and temporary paths as the host spells them, a FIFO or the test skipped where there is none, and the markers that skip a case only POSIX can hold (a mode bit, a file name Windows refuses, a task file of POSIX paths) |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, the README block they generate, and the flow of the steps it shows in the server's front door |
+| `scry_core.game_demo` | one game's demo written once for both servers: the `Binding` that holds only what a platform cannot say the same way (how it starts, which input fires each of the game's actions, the screen's refresh, the recording its sound is held to) and the steps a script builds from it |
+| `scry_core.games` | the scripts of the games both servers run, one module per game with its one screen map |
 | `scry_core.recording` | a session as a bench: what a server did, recorded from its `start` through its call boundary, and exported as `perform`'s own document (`perform_export`); the check a replayed step holds to |
 | `scry_core.comment_file` | the comment file both servers read and write (version 1): its header, columns, text and stamp rules, parse and render, each server's `ref` and `cpu` columns handed in as a `Policy` |
 | `scry_core.replay` | the runner of that document: the server over stdio, its steps in one `perform`, with no model |
@@ -128,7 +130,10 @@ Each server keeps its demos in `demos/<name>/`: a README with the prompt to give
 `demo.py` making the same calls and checking each answer, and the transcript and `screen.png` that
 `demo.py --update-readme` writes from a run where every step passed, so what the README shows is
 what the server answered. `scry_core.demo` is the runner both servers share, and its module
-docstring is the contract.
+docstring is the contract. A game that exists on both platforms is one script in `scry_core.games`,
+run by each server's `demos/<game>/` through a short `Binding` (`scry_core.game_demo`): the same
+calls, symbols, screen map and checks on both, which is what proves the two servers answer one
+surface.
 
 ## Trying a server by hand
 

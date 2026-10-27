@@ -3,8 +3,10 @@
 The signature is shared by both servers: BLAKE2b with an 8-byte digest, 16 lowercase hex
 characters (a string, because a JSON integer past 2^53 loses digits in JavaScript), over
 `scry-sig/1|<kind>|<w>x<h>|` and then the crop's cells row by row, `w` and `h` being the crop's.
-A cell is its resolved colour, never an index (a text cell: its CP437 byte plus foreground and
-background RGB), so a palette change changes the signature.
+A cell is its resolved colour (a text cell: its CP437 byte plus foreground and background RGB),
+so a palette change changes the signature. An `index` cell is a pixel's palette index instead,
+three bytes little-endian (`index_cells`): a screen known by what the program drew, whatever
+palette shows it.
 
 A crop is `[x, y, width, height]` inside the picture, width and height at least one; one that
 leaves the picture is refused, never padded.
@@ -13,16 +15,16 @@ leaves the picture is refused, never padded.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import Any, Literal
 
 from scry_core.judges import Rect, rect
 from scry_core.png import Raster
 from scry_core.reply_contract import Invalid, unavailable
 
-Kind = Literal["pixel", "text"]
-#: Bytes per cell: RGB; a CP437 byte and two RGB.
-CELL_BYTES: dict[str, int] = {"pixel": 3, "text": 7}
+Kind = Literal["pixel", "text", "index"]
+#: Bytes per cell: RGB; a CP437 byte and two RGB; a palette index.
+CELL_BYTES: dict[str, int] = {"pixel": 3, "text": 7, "index": 3}
 SIGNATURE_TAG = b"scry-sig/1"
 SIGNATURE_BYTES = 8
 
@@ -44,6 +46,15 @@ def rgb(raster: Raster) -> bytes:
         return raster.pixels
     lut = [bytes(c) for c in raster.palette]
     return b"".join(lut[i] for i in raster.pixels)
+
+
+def index_cells(indices: Iterable[int]) -> bytes:
+    """Palette indices as `index` cells; an index past three bytes is refused, never wrapped."""
+    try:
+        return b"".join(i.to_bytes(3, "little") for i in indices)
+    except OverflowError:
+        raise Invalid("unexpected_answer", "a palette index past 2^24 cannot be an `index` "
+                      "cell") from None
 
 
 def cells_of(cells: bytes, width: int, cell: int, area: Rect) -> bytes:
