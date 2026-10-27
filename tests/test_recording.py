@@ -41,13 +41,15 @@ class _Machine:
         self.bare = False          # a server whose stops carry no fields (dosbox-x's are counted)
         self.up = False            # a session is live, which a second start is refused over
         self.start_raises = False  # a start whose body fails, ending with no reply
+        self.counts_frames = False  # a server that hands its recorder the stop's frame
 
     def read(self) -> recording.Machine:
         if self.unreadable:
             raise OSError("the console did not answer")
         stop = ({} if self.running or self.bare else
                 {"pc": f"0x{self.seq:x}", "frame": self.frame})
-        return recording.Machine(self.running, self.seq, stop)
+        frame = self.frame if self.counts_frames and not self.running else None
+        return recording.Machine(self.running, self.seq, stop, frame=frame)
 
     def stop_at(self, frame: int | None) -> None:
         self.running, self.frame, self.seq = False, frame, self.seq + 1
@@ -696,6 +698,24 @@ def test_a_check_of_a_dropped_series_by_its_manifest_is_dropped(names: str) -> N
     doc, out = s.document()
     assert doc["steps"] == [] and out.checks == 0
     assert "files a dropped call wrote" in out.dropped[-1]["why"], out.dropped
+
+
+def test_a_cut_run_is_sized_in_frames_on_a_server_that_counts_them() -> None:
+    """The release's `why` names the frames up to the stop that ended it; a wall run's, its own."""
+    s = _Server()
+    s.m.counts_frames = True
+    s.start(system="board")
+    s.resume()
+    s.stop(frames_then=50)
+    _, out = s.document()
+    assert out.cut["why"] == (recording.RELEASED + "; it ran from frame 100 into frame 150, and "
+                              "`run_for` with `frames: 50` replays it up to that frame's start")
+    walled = _Server()
+    walled.m.counts_frames = True
+    walled.start(system="board")
+    walled.resume(seconds=1.0)
+    _, out = walled.document()
+    assert out.cut["why"].startswith(recording.RUN_STOPPED_INSIDE + "; it ran from frame 100 "), out
 
 
 def test_a_release_ends_the_document_on_a_server_whose_stops_carry_no_fields() -> None:

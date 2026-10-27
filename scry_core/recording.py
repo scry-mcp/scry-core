@@ -73,12 +73,14 @@ class States:
 @dataclass(frozen=True)
 class Machine:
     """The machine around a call. `seq` is the stop's sequence number; `seq` with `stop` (in
-    `stop_fields`) says whether a call moved the machine; `known` is False when unreadable."""
+    `stop_fields`) says whether a call moved the machine; `known` is False when unreadable;
+    `frame`, a stopped machine's frame on a server that counts them, sizes a cut run."""
 
     running: bool
     seq: int | None
     stop: Mapping[str, Any] = field(default_factory=dict)
     known: bool = True
+    frame: int | None = None
 
 
 UNREAD = Machine(running=True, seq=None, known=False)
@@ -331,7 +333,7 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
                        "so where it left the machine is not recorded")
             break
         if call.after.running:             # refused or not: a release is a release
-            out.cut_at(n, call.op, RELEASED)
+            out.cut_at(n, call.op, RELEASED + _frames_run(call.before, _next_stop(recording, n)))
             break
         if call.status != "ok":
             if _moved(call):
@@ -346,7 +348,7 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
             unwritten.update(call.wrote)
             continue
         if (declared.export_as == "wall" or call.walled) and _moved(call):
-            out.cut_at(n, call.op, RUN_STOPPED_INSIDE)
+            out.cut_at(n, call.op, RUN_STOPPED_INSIDE + _frames_run(call.before, call.after))
             break
         if isinstance(call.args.get("dest"), str) and call.args["dest"]:
             out.cut_at(n, call.op, f"it writes {call.args['dest']}, a file the session named, "
@@ -380,6 +382,23 @@ def _reads_any(args: Mapping[str, Any], files: set[str]) -> bool:
     named = [Path(v) for v in args.values() if isinstance(v, str) and v]
     return any(Path(f) == n or n in Path(f).parents or Path(f) in n.parents
                for f in files for n in named)
+
+
+def _next_stop(recording: Recording, n: int) -> Machine | None:
+    """The first stopped machine a call after call `n` (counted from 1) came back to."""
+    return next((c.after for c in recording.calls[n:] if c.after.known and not c.after.running),
+                None)
+
+
+def _frames_run(began: Machine, ended: Machine | None) -> str:
+    """What a cut run did in frames, for its `why`, when both ends read one."""
+    if ended is None or began.frame is None or ended.frame is None:
+        return ""
+    ran = ended.frame - began.frame
+    if ran <= 0:
+        return f"; it stopped inside frame {ended.frame}, the one it began in"
+    return (f"; it ran from frame {began.frame} into frame {ended.frame}, and `run_for` with "
+            f"`frames: {ran}` replays it up to that frame's start")
 
 
 def _moved(call: Call) -> bool:
