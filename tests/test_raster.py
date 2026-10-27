@@ -54,9 +54,10 @@ def test_an_index_cell_is_three_bytes_little_endian_and_a_wider_index_is_refused
     want = hashlib.blake2b(b"scry-sig/1|index|1x1|" + bytes([4, 0, 0]),
                            digest_size=8).hexdigest()
     assert raster.signature("index", 1, 1, raster.index_cells([4])) == want
-    with pytest.raises(Invalid, match="past 2\\^24") as e:
-        raster.index_cells([1 << 24])
-    assert e.value.code == "unexpected_answer"
+    for wide in (1 << 24, -1):
+        with pytest.raises(Invalid, match=r"outside 0\.\.2\^24-1") as e:
+            raster.index_cells([wide])
+        assert e.value.code == "unexpected_answer"
 
 
 def test_a_text_cell_signature_hashes_its_seven_bytes_and_its_kind() -> None:

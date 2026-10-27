@@ -118,7 +118,7 @@ def test_the_sound_records_into_the_run_then_holds_it_to_the_reference(tmp_path:
     assert diff == {"method": "diff", "a": tmp_path / "music.wav", "b": reference,
                     "align": False}
     assert steps[0].check(Reply({"verdict": "ELAPSED"}), run) == (
-        "100 frames recorded, 2000 ms")
+        "100 frames recorded, the first whole frames past 2000 ms")
     with pytest.raises(StepFailed, match="verdict TIMEOUT"):
         steps[0].check(Reply({"verdict": "TIMEOUT"}), run)
 

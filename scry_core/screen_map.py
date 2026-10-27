@@ -3,24 +3,25 @@ caller names a control instead of a coordinate and a screen is recognised withou
 crossing the conversation. No emulator here: a server hands in one read of its screen.
 
 THE FILE is JSON, `"format": "scry-map/1"`, named `<application>.scry-map.json` and kept beside
-the program in the application's own repository:
+the program in the application's own repository (a game both servers run keeps one, beside its
+script in `scry_core.games`):
 
     {"format": "scry-map/1", "application": "bricks",
      "screens": [{"name": "play", "kind": "pixel", "size": [320, 200],
                   "match": [{"crop": [0, 0, 320, 8], "signature": "<16 hex>"}],
                   "controls": [{"name": "paddle", "rect": [140, 180, 40, 8]}]}]}
 
-in the screen's own units: cells in a text mode, pixels in a graphics one, as `screen_view`
-counts them. A screen MATCHES when its `kind` and `size` are the screen's and every `match`
-signature is `scry-sig/1` (`raster.signature`) over its crop. A pixel screen may say
-`"cells": "index"`: its signatures are then of the palette indices drawn, not of the colours shown,
-so one map knows a program on two machines whose palettes resolve the same index to different
-colours (an arcade board's 5-bit DAC, a VGA's 6-bit one). A screen that says nothing is signed in
-colour, and is saved saying nothing. The key is a set of declared
-stable regions, never the whole screen, because a whole-screen hash changes with a cursor or a
-ball. Names are unique in the file (screens) and in their screen (controls), every rectangle
-lies inside its screen, and a file that breaks any of it is refused whole, naming the first
-fault: a map half believed would match a screen it does not describe.
+Every rectangle is in the screen's own units: cells in a text mode, pixels in a graphics one, as
+`screen_view` counts them. A screen MATCHES when its `kind` and `size` are the screen's and every
+`match` signature is `scry-sig/1` (`raster.signature`) over its crop. A pixel screen may say
+`"cells": "index"`: its regions are then signed by the palette indices drawn, not the colours
+shown, so one map knows a program on two machines whose palettes show one index in different
+colours (an arcade board's 5-bit palette, a VGA's 6-bit DAC); a screen that says nothing is signed
+in colour, and saved saying nothing. A screen is known by declared stable regions, never the whole
+screen, because a whole-screen hash changes with a cursor or a ball. Names are unique in the file
+(screens) and in their screen (controls), every rectangle lies inside its screen, and a file that
+breaks any of it is refused whole, naming the first fault: a map half believed would match a
+screen it does not describe.
 
 TWO LAYERS, both living for the server's session: the FILE layer (`load`) and the SESSION layer
 (`add`, written from the screen in front of the caller), the session's screens tried first and
@@ -57,6 +58,8 @@ SUFFIX = ".scry-map.json"
 KINDS = ("text", "pixel")
 #: What a pixel screen's regions are signed over: the colours shown, or the palette indices drawn.
 CELLS = ("rgb", "index")
+#: `cells` as a tool takes it, empty meaning not given (`rgb`).
+CELLS_WORDS = ("", *CELLS)
 #: How much one map holds: screens in a file, regions a screen is matched by, controls on one.
 SCREENS_MAX, MATCH_MAX, CONTROLS_MAX = 200, 16, 100
 #: The largest map file read: far past the most screens it can hold, so a file past it is not one.
@@ -78,11 +81,13 @@ DOC_VALUES = {
     "MAP_SAVE": ("`save`: both layers as one map to `dest`, refused there without `overwrite`, "
                  "made the file\nlayer. Reply: `path`, `application`, `screens`, `controls`, "
                  "`promoted`."),
-    "MAP_CELLS": ("`cells` `index` signs the palette\nindices drawn instead of the colours "
-                  "shown: one map for a program two palettes show."),
+    "MAP_CELLS": ("`cells` `index` (a pixel screen; default\n`rgb`) signs the palette indices "
+                  "drawn, not the colours shown, so one map knows a program\nshown through two "
+                  "palettes; a screen with no palette refuses it (`no_channel`)."),
     "MAP_FIND": ("Which mapped screen the machine shows. Reply: `matched`; matched, `screen`, "
                  "`layer`, `kind`,\n`size`, `controls` (`name`, `rect`, `centre`); else "
-                 "`screens_mapped`, `screens_tried`. None\nmapped: `needs_call`."),
+                 "`screens_mapped`, `screens_tried`,\n`screens_unjudged` (signed by index on a "
+                 "screen with no palette). None mapped: `needs_call`."),
 }
 
 
@@ -236,9 +241,12 @@ class Maps:
         self.found = None
         grid = read(indices=any(s.cells == "index" for _, s in candidates))
         signed: dict[tuple[judges.Rect, str], str] = {}
-        tried = 0
+        tried = unjudged = 0
         for layer, screen in candidates:
             if screen.kind != grid.kind or screen.size != (grid.width, grid.height):
+                continue
+            if screen.cells == "index" and grid.indices is None:
+                unjudged += 1       # a screen with no palette is no screen drawn by index
                 continue
             tried += 1
             if all(_signed(signed, grid, crop, screen.cells) == want
@@ -250,7 +258,8 @@ class Maps:
                                       "centre": c.centre()} for c in screen.controls]}
         self.found = None
         return {"matched": False, "kind": grid.kind, "size": [grid.width, grid.height],
-                "screens_tried": tried, "screens_mapped": len(candidates)}
+                "screens_tried": tried, "screens_unjudged": unjudged,
+                "screens_mapped": len(candidates)}
 
     def save(self, dest: object, overwrite: bool) -> dict[str, Any]:
         """The file layer and the session layer written as one map to `dest`, the session
@@ -468,9 +477,12 @@ def find_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
         return (f"map_find: {reply['screen']} ({reply['layer']}), "
                 f"{prose.counted(len(reply['controls']), 'control')}")
     w, h = reply["size"]
+    unjudged = reply.get("screens_unjudged", 0)
     return (f"map_find: no screen matched the {reply['kind']} {w}x{h} screen "
             f"({prose.counted(reply['screens_mapped'], 'screen')} mapped, "
-            f"{reply['screens_tried']} of that kind and size)")
+            f"{reply['screens_tried']} of that kind and size"
+            + (f", {unjudged} signed by index on a screen with no palette" if unjudged else "")
+            + ")")
 
 
 def save_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
@@ -484,7 +496,7 @@ def check_path(name: str, value: object) -> None:
 
 
 def check_add(screen: object, match: object, controls: object = None,
-              cells: object = "rgb") -> None:
+              cells: object = "") -> None:
     """The `add` method's machine-independent half, everything but whether its rectangles lie on the
     screen, which only a read can say: the name, the crops' shapes, the controls' shapes, keys
     and names. A fault found here costs no read."""
@@ -500,7 +512,8 @@ def check_add(screen: object, match: object, controls: object = None,
                                      and len(controls) <= CONTROLS_MAX):
         raise Invalid("bad_argument", f"controls is a list of at most {CONTROLS_MAX} "
                       "{\"name\", \"rect\"}")
-    _screen({"name": screen, "kind": "pixel", "size": [_ANY_SIDE, _ANY_SIDE], "cells": cells,
+    _screen({"name": screen, "kind": "pixel", "size": [_ANY_SIDE, _ANY_SIDE],
+             "cells": cells or "rgb",
              "match": [{"crop": c, "signature": "0" * 16} for c in match],
              "controls": controls if controls is not None else []}, "the screen", 0, "match")
 

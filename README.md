@@ -132,7 +132,7 @@ Each server keeps its demos in `demos/<name>/`: a README with the prompt to give
 what the server answered. `scry_core.demo` is the runner both servers share, and its module
 docstring is the contract. A game that exists on both platforms is one script in `scry_core.games`,
 run by each server's `demos/<game>/` through a short `Binding` (`scry_core.game_demo`): the same
-calls, symbols, screen map and checks on both, which is what proves the two servers answer one
+steps, symbols, screen map and checks on both, which is what proves the two servers answer one
 surface.
 
 ## Trying a server by hand

@@ -44,6 +44,9 @@ def test_the_script_checks_only_screens_its_map_holds_and_the_map_signs_indices(
     steps = lineup.steps(_binding())
     asked = {s.name.removeprefix("is ") for s in steps if s.tool == "map_find"}
     assert asked == set(screens)
+    order = list(screens)
+    assert order.index("insert") < order.index("hiscores"), (
+        "insert is the high-score table plus a banner, so it must be tried first")
     run = Run(dir=Path("/unused"))
     for step in (s for s in steps if s.tool == "map_find"):
         name = step.name.removeprefix("is ")

@@ -114,7 +114,7 @@ def test_a_screen_of_another_kind_or_size_is_never_hashed(tmp_path: Path,
     monkeypatch.setattr(raster, "signature", counting)
     got = maps.find(Reads(_grid(width=9)), stop=1)
     assert got == {"matched": False, "kind": "pixel", "size": [9, H], "screens_tried": 0,
-                   "screens_mapped": 2} and "screen" not in got
+                   "screens_unjudged": 0, "screens_mapped": 2} and "screen" not in got
     assert signed == []
     assert maps.find(Reads(_grid(kind="text")), stop=1)["screens_tried"] == 0
     maps.find(Reads(PLAY), stop=1)
@@ -546,6 +546,22 @@ def test_a_map_that_declares_no_cells_is_saved_without_them(tmp_path: Path) -> N
     out.parent.mkdir()
     maps.save(str(out), False)
     assert all("cells" not in s for s in json.loads(out.read_text())["screens"])
+
+
+def test_a_screen_with_no_palette_is_still_matched_by_the_maps_colour_screens() -> None:
+    """A map that holds both kinds asks for indices; a screen that has none is judged by its
+    colour screens and says how many it could not judge."""
+    no_palette = Grid("pixel", 2, 1, b"\x21\x21\x21" * 2)
+    maps = Maps()
+    maps.add("board", [[0, 0, 2, 1]], [], Reads(ARCADE), cells="index")
+    maps.add("menu", [[0, 0, 2, 1]], [], Reads(no_palette))
+    reads = Reads(no_palette)
+    found = maps.find(reads, stop=1)
+    assert (found["matched"], found["screen"], reads.asked) == (True, "menu", [True])
+    maps.session.pop("menu")
+    missed = maps.find(Reads(no_palette), stop=2)
+    assert missed["matched"] is False
+    assert (missed["screens_tried"], missed["screens_unjudged"]) == (0, 1)
 
 
 def test_an_index_screen_on_a_read_without_indices_is_the_machines_answer() -> None:

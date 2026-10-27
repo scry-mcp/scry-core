@@ -49,12 +49,12 @@ def rgb(raster: Raster) -> bytes:
 
 
 def index_cells(indices: Iterable[int]) -> bytes:
-    """Palette indices as `index` cells; an index past three bytes is refused, never wrapped."""
+    """Palette indices as `index` cells; one outside three bytes is refused, never wrapped."""
     try:
         return b"".join(i.to_bytes(3, "little") for i in indices)
     except OverflowError:
-        raise Invalid("unexpected_answer", "a palette index past 2^24 cannot be an `index` "
-                      "cell") from None
+        raise Invalid("unexpected_answer", "a palette index outside 0..2^24-1 cannot be an "
+                      "`index` cell") from None
 
 
 def cells_of(cells: bytes, width: int, cell: int, area: Rect) -> bytes:

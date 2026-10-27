@@ -2,7 +2,7 @@
 
 A game on both platforms shares its source, so its symbols, screens and variables. Its script
 (`scry_core.games.<game>`) is built against a `Binding`, which holds ONLY what a platform cannot
-say the same way; anything else a script needs from one platform is an incoherence between the
+do the same way; anything else a script needs from one platform is an incoherence between the
 servers, never a second branch in the script. Time is milliseconds, never frames: the two screens
 refresh at different rates.
 """
@@ -31,7 +31,9 @@ class Press:
 @dataclass(frozen=True)
 class Binding:
     """What one platform answers for a script: `boot` leaves the machine stopped with the game's
-    symbols loaded, `sound` is the recording the script's sound is held to."""
+    symbols loaded, `inputs` fires each of the game's actions, `rate_hz` is the screen's refresh,
+    `sound` the recording the script's sound is held to, `volatile` what its input replies vary
+    in between two honest runs."""
 
     platform: str
     boot: Sequence[Step]
@@ -112,7 +114,8 @@ def map_load(name: str, shared: Path) -> Step:
 def recorded(binding: Binding, milliseconds: int) -> Callable[[Reply, Run], str]:
     def check(reply: Reply, run: Run) -> str:
         expect(reply["verdict"] == "ELAPSED", f"verdict {reply['verdict']}")
-        return f"{binding.frames(milliseconds)} frames recorded, {milliseconds} ms"
+        return (f"{binding.frames(milliseconds)} frames recorded, the first whole frames past "
+                f"{milliseconds} ms")
     return check
 
 
