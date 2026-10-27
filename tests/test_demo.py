@@ -207,7 +207,8 @@ def test_a_session_that_ends_in_an_error_after_its_steps_fails(
         "DEMO x: 1 step, 1 OK"]
 
 
-@pytest.mark.parametrize("argv", [["--bogus"], ["--update"], ["--rompath", "/x"], ["--shared"]])
+@pytest.mark.parametrize("argv", [["--bogus"], ["--update"], ["--rompath", "/x"], ["--shared"],
+                                  ["--cwd", "/x"]])
 def test_an_unknown_or_abbreviated_option_exits_2(tmp_path: Path, argv: list[str]) -> None:
     with pytest.raises(SystemExit) as exc:
         d.main(_demo(tmp_path), argv)
@@ -216,7 +217,7 @@ def test_an_unknown_or_abbreviated_option_exits_2(tmp_path: Path, argv: list[str
 
 def test_offered_options_reach_the_options_step_only_when_given(
         tmp_path: Path, log: Path) -> None:
-    demo = _demo(tmp_path, offers=frozenset({"rompath", "shared"}), steps=[
+    demo = _demo(tmp_path, offers=frozenset({"cwd", "rompath", "shared"}), steps=[
         d.Step("boot", "start", {"binary": "default"}, _said("binary"), options=True),
         d.Step("again", "start", {"binary": "default"}, _said("binary"))])
     assert _run(demo, tmp_path) == verdict.EXIT_PASS
@@ -227,6 +228,8 @@ def test_offered_options_reach_the_options_step_only_when_given(
     assert '"binary": "/b"' in normalised and '"rompath"' not in normalised
     assert _run(demo, tmp_path, "--rompath", "/r", "--shared") == verdict.EXIT_PASS
     assert '"rompath": "/r",\n  "shared": true' in _norm(tmp_path)
+    assert _run(demo, tmp_path, "--cwd", "/c") == verdict.EXIT_PASS
+    assert '"cwd": "/c"' in _norm(tmp_path)
 
 
 def test_a_step_takes_only_the_options_it_names(tmp_path: Path, log: Path) -> None:

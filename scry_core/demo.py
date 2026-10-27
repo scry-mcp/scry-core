@@ -2,9 +2,9 @@
 answer checked, and a transcript a README can carry without drifting from the server.
 
 A server repository declares a `Demo` in `demos/<name>/demo.py` and hands it to `main`
-(`--binary`, `--transcript`, `--update-readme`, plus `--rompath` and `--shared` where the demo
-`offers` them). Options reach the step declared `options=True`, or only those a frozenset names;
-an option left out is absent, so the server's own default decides.
+(`--binary`, `--transcript`, `--update-readme`, plus `--cwd`, `--rompath` and `--shared` where
+the demo `offers` them). Options reach the step declared `options=True`, or only those a
+frozenset names; an option left out is absent, so the server's own default decides.
 
 stdout is `OK <step>: <summary>` or `FAIL <step>: <why>` per step run, then
 `DEMO <name>: <n> steps, <k> OK` and the paths of the whole transcript and the NORMALISED one,
@@ -64,7 +64,7 @@ CLEANUP_TOOL = "close"
 CALL_TIMEOUT_S = 900
 
 #: The options a demo can offer beyond `--binary`, as its server's `start` spells them.
-OFFERABLE = frozenset({"rompath", "shared"})
+OFFERABLE = frozenset({"cwd", "rompath", "shared"})
 
 #: Reply keys whose values differ between two honest runs, each with the reason. A demo adds
 #: its own through `Demo.volatile`, and a step those that vary in it alone through
@@ -515,6 +515,9 @@ def _parser(demo: Demo) -> argparse.ArgumentParser:
                                 epilog="Exit codes: 0 every step OK, 1 a step failed, 2 a usage "
                                        "error, 3 nothing was demonstrated.")
     p.add_argument("--binary", help="the emulator to start; left out, the server's own ladder")
+    if "cwd" in demo.offers:
+        p.add_argument("--cwd", help="the directory the emulator runs from, absolute or ~-led: "
+                                     "your own copy of the program")
     if "rompath" in demo.offers:
         p.add_argument("--rompath", help="the directory holding the set's zip")
     if "shared" in demo.offers:
@@ -533,7 +536,8 @@ def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
     ns = _parser(demo).parse_args(argv)
     transcript: Path = (ns.transcript or demo.root / "tmp" / "demos" / demo.name
                         / "transcript.md").resolve()
-    given = {"binary": ns.binary, "rompath": getattr(ns, "rompath", None),
+    given = {"binary": ns.binary, "cwd": getattr(ns, "cwd", None),
+             "rompath": getattr(ns, "rompath", None),
              "shared": getattr(ns, "shared", None)}
     run = Run(dir=transcript.parent, options={k: v for k, v in given.items() if v is not None})
     try:
