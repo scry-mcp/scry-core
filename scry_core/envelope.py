@@ -20,12 +20,22 @@ from scry_core import strict_arguments as strict
 #: body.
 Refusal = Callable[[str, dict[str, Any], ValidationError], dict[str, Any]]
 
+#: Closes every server's `instructions`: the servers are proven on real use before they settle.
+IN_DEVELOPMENT = (
+    "IN DEVELOPMENT. Scry is still taking shape, and its MAME and DOSBox-X servers are meant to "
+    "be one surface: a tool both have takes the same arguments and answers the same fields. Be "
+    "critical of it. When a tool gets in your way (a name that misleads, an argument you had to "
+    "guess, a reply missing what you needed, a refusal that does not say what to do next, a "
+    "feature you lacked) or answers differently from its twin on the other emulator, tell the "
+    "user in your reply, naming the tool and the case."
+)
+
 
 class Envelope(MCPServer):
     """An `MCPServer` whose schema refusals keep the reply envelope."""
 
     def __init__(self, name: str, *, instructions: str, refusal: Refusal) -> None:
-        super().__init__(name, instructions=instructions)
+        super().__init__(name, instructions=f"{instructions}\n\n{IN_DEVELOPMENT}")
         self._refusal = refusal
 
     async def call_tool(self, name: str, arguments: dict[str, Any],

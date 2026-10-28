@@ -19,7 +19,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.session_block` | the `session` block that closes every reply: the alarms on every one, the fixed half on `start` and `status`, the short block naming what it left out, or the half itself where naming it would cost more; what `close` and `status` say with no session |
 | `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, the outermost-only end of a cancelled call and its record, a cancel met as the body returns, the recording it feeds, the listener that hears each outermost call begin and end, and the reply every path closes with, its summary line first and its `session` block last; the server's vocabulary handed in as hooks; and `ServerLock`, the lock whose last release wakes a writer waiting for it to be free |
 | `scry_core.ends_table` | a server reference's table of how a cancelled call ends, held against what its tools declare |
-| `scry_core.envelope` | the MCP boundary's server object: the schema's refusal given the server's envelope, off the event loop, a tool's picture attached, and a reply whose text JSON cannot take (a NaN, an infinity) refused naming the tool |
+| `scry_core.envelope` | the MCP boundary's server object: its `instructions` closed by the notice that the servers are in development and want the model's criticism, the schema's refusal given the server's envelope, off the event loop, a tool's picture attached, and a reply whose text JSON cannot take (a NaN, an infinity) refused naming the tool |
 | `scry_core.progress` | the progress line of a bounded wait: one a second, one short line, never backwards, none once the call is cancelled, bridged from the tool's worker thread to the request |
 | `scry_core.cancel` | a cancelled call: the poll every bounded wait makes, the shield its end runs under, how each tool declares it ends, and the record the next reply carries |
 | `scry_core.strict_arguments` | the schema as part of a tool's contract: what it does not declare is refused |
@@ -181,7 +181,8 @@ such as an unknown tool.
 
 macOS and Windows, as a library: every module imports on both, and what only one of them has is
 chosen by `sys.platform` (a guardian is a watcher process on POSIX and a job object on Windows).
-Linux runs the unit tests (`.github/workflows/ci.yml`); the servers' live tiers have not run there.
+Linux runs the unit tests (`.github/workflows/ci.yml`, started by hand until the repositories are
+public); the servers' live tiers run on macOS and Windows.
 
 ## Developing
 

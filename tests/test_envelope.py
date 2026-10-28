@@ -13,7 +13,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from pydantic import ValidationError
 
-from scry_core.envelope import Envelope
+from scry_core.envelope import IN_DEVELOPMENT, Envelope
 
 
 class _Server:
@@ -42,6 +42,12 @@ class _Server:
             self.loop_thread = threading.get_ident()
             return await self.mcp.call_tool("count", arguments)
         return asyncio.run(on_the_loop())
+
+
+def test_every_server_tells_the_model_it_is_in_development_after_its_own_instructions() -> None:
+    got = _Server().mcp.instructions or ""
+    assert got == "i\n\n" + IN_DEVELOPMENT
+    assert "tell the user" in IN_DEVELOPMENT and "DOSBox-X" in IN_DEVELOPMENT
 
 
 def test_a_call_the_schema_refuses_is_the_servers_envelope_built_off_the_loop() -> None:
