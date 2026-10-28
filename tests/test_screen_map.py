@@ -436,7 +436,10 @@ def test_a_file_that_is_not_a_plain_json_map_is_refused_not_raised(tmp_path: Pat
     for name, text in cases.items():
         path = tmp_path / f"{name}.scry-map.json"
         path.write_text(text)
-        with pytest.raises(Invalid, match="is not a JSON map") as e:
+        # How deep a nesting the JSON parser reaches depends on the host's C stack: where it
+        # parses, the list is refused as no map instead.
+        said = "is not a (JSON|scry-map/1) map" if name == "deep" else "is not a JSON map"
+        with pytest.raises(Invalid, match=said) as e:
             Maps().load(str(path))
         assert e.value.code == "bad_argument", name
     big = tmp_path / "big.scry-map.json"
