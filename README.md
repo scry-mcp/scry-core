@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/scry-logo.png" alt="Scry" width="480"></p>
+
 # scry-core
 
 What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry-mame) and
