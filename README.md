@@ -181,8 +181,7 @@ such as an unknown tool.
 
 macOS and Windows, as a library: every module imports on both, and what only one of them has is
 chosen by `sys.platform` (a guardian is a watcher process on POSIX and a job object on Windows).
-Linux runs the unit tests (`.github/workflows/ci.yml`, started by hand until the repositories are
-public); the servers' live tiers run on macOS and Windows.
+Linux runs the unit tests (`.github/workflows/ci.yml`); the servers support macOS and Windows only.
 
 ## Developing
 

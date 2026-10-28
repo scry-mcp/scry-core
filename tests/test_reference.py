@@ -605,6 +605,15 @@ def test_a_fence_and_a_nested_list_keep_their_shape_and_spans_stay_spans() -> No
     assert "- outer\n  - inner" in block, block
 
 
+@pytest.mark.parametrize(("text", "shown"), [
+    ("Use `` for it.\n\nSee ``x <y>`` here.", "Use `` for it.\n\nSee ``x <y>`` here."),
+    ("`a`     b", "`a`     b"),
+])
+def test_a_stray_backtick_never_spans_a_paragraph_and_flush_left_starts_only_a_line(
+        text: str, shown: str) -> None:
+    assert reference._markdown_text(text) == shown
+
+
 def test_a_page_titled_the_old_way_is_drift_and_a_rewrite_retitles_it(tmp_path: Path) -> None:
     reg = _written(_registry(tmp_path))
     page = tmp_path / "docs/reference/read.md"

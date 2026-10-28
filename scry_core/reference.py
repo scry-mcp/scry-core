@@ -152,15 +152,17 @@ def _in_cell(text: str) -> str:
 def _markdown_text(text: str) -> str:
     """A description as markdown shows it: `<` outside code is text, and indentation is flush."""
     parts = _CODE.split(text)
-    return "".join(p if i % 2 else _CODE_BLOCK_INDENT.sub("", p).replace("<", "&lt;")
-                   for i, p in enumerate(parts))
+    # A text piece after a span starts mid-line: only its later lines may be flushed.
+    return "".join(p if i % 2 else (_CODE_BLOCK_INDENT if i else _FIRST_INDENT).sub("", p)
+                   .replace("<", "&lt;") for i, p in enumerate(parts))
 
 
 #: What markdown shows as typed: a fenced block, a double-backtick span, a single one; a span may
 #: wrap a line, never a paragraph.
-_CODE = re.compile(r"(```.*?```|``.+?``|`(?:[^`\n]|\n(?!\n))+`)", re.DOTALL)
+_CODE = re.compile(r"(```.*?```|``(?:[^\n]|\n(?!\n))+?``|`(?:[^`\n]|\n(?!\n))+`)", re.DOTALL)
 #: Four spaces open a markdown code block; a list nests with fewer, and keeps them.
-_CODE_BLOCK_INDENT = re.compile(r"^ {4,}", re.MULTILINE)
+_CODE_BLOCK_INDENT = re.compile(r"(?<=\n) {4,}")
+_FIRST_INDENT = re.compile(r"^ {4,}", re.MULTILINE)
 
 
 def _signature(tool: Tool) -> str:

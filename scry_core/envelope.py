@@ -22,19 +22,24 @@ Refusal = Callable[[str, dict[str, Any], ValidationError], dict[str, Any]]
 
 #: Closes every server's `instructions`: the servers are proven on real use before they settle.
 IN_DEVELOPMENT = (
-    "IN DEVELOPMENT. Scry is still taking shape, and its MAME and DOSBox-X servers are meant to "
-    "be one surface: a tool both have takes the same arguments and answers the same fields. Be "
-    "critical of it. When a tool gets in your way (a name that misleads, an argument you had to "
-    "guess, a reply missing what you needed, a refusal that does not say what to do next, a "
-    "feature you lacked) or answers differently from its twin on the other emulator, tell the "
-    "user in your reply, naming the tool and the case."
+    "IN DEVELOPMENT. This server is half of Scry, MCP servers for MAME and DOSBox-X still taking "
+    "shape, which aim at one surface: a tool both have means the same and answers the same, "
+    "beyond what the emulators themselves make different. Judge the server, not the program you "
+    "investigate. When one of its tools got in your way (a misleading name, an argument you had "
+    "to guess, a reply missing what you needed, a refusal that did not say what to do next, a "
+    "capability you lacked) or, with both servers connected, the two answered one name "
+    "differently, tell the user once, at the end of the task, naming the server, the tool and "
+    "the case. With nothing to report, say nothing."
 )
 
 
 class Envelope(MCPServer):
-    """An `MCPServer` whose schema refusals keep the reply envelope."""
+    """An `MCPServer` whose schema refusals keep the reply envelope, and whose `instructions`
+    end with `IN_DEVELOPMENT`; an empty one is refused."""
 
     def __init__(self, name: str, *, instructions: str, refusal: Refusal) -> None:
+        if not instructions.strip():
+            raise ValueError(f"{name} declares no instructions of its own")
         super().__init__(name, instructions=f"{instructions}\n\n{IN_DEVELOPMENT}")
         self._refusal = refusal
 

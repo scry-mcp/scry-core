@@ -47,7 +47,11 @@ class _Server:
 def test_every_server_tells_the_model_it_is_in_development_after_its_own_instructions() -> None:
     got = _Server().mcp.instructions or ""
     assert got == "i\n\n" + IN_DEVELOPMENT
-    assert "tell the user" in IN_DEVELOPMENT and "DOSBox-X" in IN_DEVELOPMENT
+
+
+def test_a_server_with_no_instructions_of_its_own_is_refused() -> None:
+    with pytest.raises(ValueError, match="instructions"):
+        Envelope("t", instructions=" \n", refusal=_Server().refusal)
 
 
 def test_a_call_the_schema_refuses_is_the_servers_envelope_built_off_the_loop() -> None:
