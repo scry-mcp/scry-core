@@ -156,8 +156,9 @@ def _markdown_text(text: str) -> str:
                    for i, p in enumerate(parts))
 
 
-#: What markdown shows as typed: a fenced block, a double-backtick span, a single one.
-_CODE = re.compile(r"(```.*?```|``.+?``|`[^`\n]+`)", re.DOTALL)
+#: What markdown shows as typed: a fenced block, a double-backtick span, a single one; a span may
+#: wrap a line, never a paragraph.
+_CODE = re.compile(r"(```.*?```|``.+?``|`(?:[^`\n]|\n(?!\n))+`)", re.DOTALL)
 #: Four spaces open a markdown code block; a list nests with fewer, and keeps them.
 _CODE_BLOCK_INDENT = re.compile(r"^ {4,}", re.MULTILINE)
 

@@ -589,7 +589,8 @@ def test_a_fence_and_a_nested_list_keep_their_shape_and_spans_stay_spans() -> No
         x  <y>
             indented
         ```
-        A <ref> and `y<z` and ``a`b <c>``.
+        A <ref> and `y<z` and ``a`b <c>``. A span `{"by":
+        "<who>"}` wraps a line.
 
         - outer
           - inner
@@ -600,6 +601,7 @@ def test_a_fence_and_a_nested_list_keep_their_shape_and_spans_stay_spans() -> No
     block = reference.tool_block(registered(server)[0], PokeReply, FixtureEnvelope, None)
     assert "```\nx  <y>\n    indented\n```" in block, block
     assert "A &lt;ref> and `y<z` and ``a`b <c>``." in block, block
+    assert 'A span `{"by":\n"<who>"}` wraps a line.' in block, block
     assert "- outer\n  - inner" in block, block
 
 
