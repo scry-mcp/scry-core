@@ -4,6 +4,7 @@ these cases kill outright (SIGKILL, or `TerminateProcess`), the ending that runs
 
 from __future__ import annotations
 
+import functools
 import os
 import subprocess
 import sys
@@ -320,6 +321,9 @@ def test_a_host_where_ps_cannot_be_asked_still_kills_by_the_pid(
     def no_ps(*_a: object, **_k: object) -> None:
         raise FileNotFoundError("ps")
     monkeypatch.setattr(subprocess, "run", no_ps)
+    # A host with no /proc (macOS), where `ps` is the only way to a start time.
+    no_proc = functools.partial(guardian.started, proc="/nonexistent")
+    monkeypatch.setattr(guardian, "started", no_proc)
     assert guardian.started(1) is None
     killed: list[int] = []
 
