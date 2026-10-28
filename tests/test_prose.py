@@ -21,3 +21,10 @@ def test_a_refusal_is_cut_at_a_word_and_says_its_code() -> None:
     line = prose.refusal("screen_map_find",
                          {"status": "INVALID", "code": "needs_call", "message": "x"})
     assert line == "screen_map_find: INVALID (needs_call), x"
+
+
+def test_a_reads_bytes_are_shown_whole_up_to_the_ceiling_then_counted() -> None:
+    assert prose.hex_clipped("0300") == "0300"
+    whole = "ab" * prose.HEX_BYTES_SHOWN
+    assert prose.hex_clipped(whole) == whole
+    assert prose.hex_clipped(whole + "cdef") == whole + "... (2 more bytes in `hex`)"

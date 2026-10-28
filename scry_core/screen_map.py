@@ -94,9 +94,10 @@ Layer = Literal["session", "file"]
 DOC_VALUES = {
     "MAP_SUFFIX": SUFFIX,
     "MAP_LOAD": (f"`load`: `path` (`<application>{SUFFIX}`, absolute or `~`-led) as the file "
-                 "layer, written into\nthe session's state, not to a file. `scale` (1..8) and "
-                 "`margin` [x, y] say how the\nprogram's picture sits on this machine's screen. "
-                 "Reply: `path`, `application`, `mode`,\n`screens`, `controls`."),
+                 "layer, held by the\nserver; nothing is written to disk. `scale` (1..8) and "
+                 "`margin` [x, y] (machine pixels on\neach side) say how the program's picture "
+                 "sits on this machine's screen; maps and `add`'s\ncrops are in the program's "
+                 "units. Reply: `path`, `application`, `mode`, `screens`, `controls`."),
     "MAP_SAVE": ("`save`: both layers as one map to `dest`, refused there without `overwrite`, "
                  "made the file\nlayer, in the loaded map's `mode` (`verified` when none was "
                  "loaded). Reply: `path`,\n`application`, `mode`, `screens`, `controls`, "
@@ -105,13 +106,15 @@ DOC_VALUES = {
                   "drawn, not the colours shown, so one map knows a program\nshown through two "
                   "palettes; a screen with no palette refuses it (`no_channel`)."),
     "MAP_FIND": ("Which mapped screen the machine shows. Reply: `matched`; matched, `screen`, "
-                 "`layer`, `kind`,\n`size`, `controls` (`name`, `rect`, `centre`, in the "
-                 "program's units); else `screens_mapped`,\n`screens_tried`, `screens_unjudged` "
-                 "(signed by index on a screen with no palette). None\nmapped: `needs_call`."),
-    "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref`, run to its `anchor`; a "
-                   "`verified` map\njudges it there (`stale_map` when it no longer holds), a "
-                   "`consolidated` one takes it as shown.\nReply: `screen` (`screen`, `layer`, "
-                   "`mode`, `judged`)."),
+                 "`layer`, `kind`,\n`size`, `controls` (`name`, `rect`, `centre`), in the "
+                 "program's units; else the machine's\n`kind` and `size`, `screens_mapped`, "
+                 "`screens_tried`, `screens_unjudged` (signed by index on a\nscreen with no "
+                 "palette), or `view_fits: false`. None mapped: `needs_call`."),
+    "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref` (exactly one), run to "
+                   "its `anchor`, the\n`control` still required; a `verified` map judges it "
+                   "there (`stale_map` when it no longer\nholds), a `consolidated` one takes it "
+                   "as shown. Reply: `screen` (`screen`, `layer`, `mode`,\n`judged`). Refused: "
+                   "an unmapped screen (`unknown_ref`), one with no `anchor` (`needs_call`)."),
 }
 
 
@@ -354,6 +357,9 @@ class Maps:
                         "controls": [{"name": c.name, "rect": list(c.rect),
                                       "centre": c.centre()} for c in screen.controls]}
         self.found = None
+        if not fits:
+            return {"matched": False, "kind": shown.kind, "size": [shown.width, shown.height],
+                    "view_fits": False, "screens_mapped": len(candidates)}
         return {"matched": False, "kind": shown.kind, "size": [shown.width, shown.height],
                 "screens_tried": tried, "screens_unjudged": unjudged,
                 "screens_mapped": len(candidates)}
@@ -441,6 +447,20 @@ class Maps:
         names = ", ".join(c.name for c in screen.controls) or "none"
         raise Invalid("unknown_ref", f"target={control!r}: screen {screen.name!r} has no such "
                       f"control; its controls: {names}")
+
+
+def at_anchor(maps: Maps, screen: str, reply: dict[str, Any], read: Read,
+              stop: int | None) -> dict[str, Any]:
+    """`run_to(screen=)`'s reply: an arrival judged as the map's mode says, carried as `screen`;
+    a map gone stale refused with the stop kept; any other end forgets the last screen."""
+    if reply.get("status") != "ok" or reply.get("verdict") != "TARGET":
+        maps.found = None
+        return reply
+    try:
+        return {**reply, "screen": maps.arrived(screen, read, stop)}
+    except Invalid as e:
+        kept = {k: v for k, v in reply.items() if k not in ("verdict", "summary", "status")}
+        return e.reply(**kept)
 
 
 def _signed(signed: dict[tuple[judges.Rect, str], str], grid: Grid, crop: judges.Rect,
@@ -631,6 +651,9 @@ def find_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
         return (f"screen_map_find: {reply['screen']} ({reply['layer']}), "
                 f"{prose.counted(len(reply['controls']), 'control')}")
     w, h = reply["size"]
+    if reply.get("view_fits") is False:
+        return (f"screen_map_find: the {reply['kind']} {w}x{h} screen does not fit the view the "
+                "map was loaded through (`scale`, `margin`)")
     unjudged = reply.get("screens_unjudged", 0)
     return (f"screen_map_find: no screen matched the {reply['kind']} {w}x{h} screen "
             f"({prose.counted(reply['screens_mapped'], 'screen')} mapped, "
@@ -677,3 +700,25 @@ def check_save(dest: object, overwrite: object) -> None:
     _map_path("dest", dest)
     vocab.check_bool("overwrite", overwrite)
 
+
+
+def check_run_to(ref: object, screen: object) -> None:
+    """`run_to`'s target: a `ref` or a mapped `screen`, exactly one."""
+    named = [k for k, v in (("ref", ref), ("screen", screen)) if isinstance(v, str) and v.strip()]
+    if len(named) != 1:
+        raise Invalid("bad_argument", "run_to needs a `ref` (a symbol or an address) or a "
+                      "`screen` (a mapped screen, run to its anchor), exactly one; got "
+                      f"{' and '.join(named) or 'neither'}")
+    if named == ["screen"] and not _name(screen):
+        raise Invalid("bad_argument", f"screen={screen!r} is a name of 1..{_NAME_MAX} "
+                      "characters")
+
+
+def run_to_named(args: dict[str, Any], reply: dict[str, Any]) -> str:
+    """What a `run_to` summary names: its `ref`, or the screen and how its arrival was taken."""
+    if args.get("ref"):
+        return str(args["ref"])
+    arrived = reply.get("screen")
+    how = ("" if not isinstance(arrived, dict) else
+           " (judged)" if arrived.get("judged") else " (taken as shown)")
+    return f"screen {args.get('screen', '')}{how}"

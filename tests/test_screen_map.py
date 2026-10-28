@@ -293,6 +293,14 @@ def test_a_program_shown_doubled_with_a_margin_is_found_in_its_own_units(tmp_pat
     assert added["match"][0]["signature"] == _sig(PLAY, [6, 2, 2, 2])
 
 
+def test_a_screen_the_view_does_not_fit_is_said_so_not_unmatched(tmp_path: Path) -> None:
+    pc = Maps()
+    pc.load(_file(tmp_path, _doc()), scale=2, margin=[0, 1])
+    got = pc.find(Reads(_grid(width=2 * W, height=2 * H + 1)), stop=1)
+    assert got["matched"] is False and got["view_fits"] is False
+    assert "does not fit the view" in screen_map.find_line({}, got)
+
+
 @pytest.mark.parametrize("scale, margin, said", [
     (0, [0, 0], "`scale` is a whole number 1..8"),
     (9, [0, 0], "`scale` is a whole number 1..8"),
@@ -807,3 +815,41 @@ def test_a_save_names_the_file_it_writes_dest_in_its_refusals(
         screen_map.check_save(str(tmp_path / "x.json"), False)
     with pytest.raises(Invalid, match=r"^dest: .* is not named"):
         Maps().save(str(tmp_path / "x.json"), False)
+
+
+def test_a_run_to_a_screen_carries_its_arrival_or_refuses_a_stale_one(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _anchored("verified")))
+    arrived = {"status": "ok", "verdict": "TARGET", "pc": "0x10", "summary": "s"}
+    got = screen_map.at_anchor(maps, "play", arrived, Reads(PLAY), 3)
+    assert got["screen"] == {"screen": "play", "layer": "file", "mode": "verified",
+                             "judged": True} and got["pc"] == "0x10"
+    stale = screen_map.at_anchor(maps, "play", arrived, Reads(TITLE), 4)
+    assert (stale["status"], stale["code"], stale["pc"]) == ("INVALID", "stale_map", "0x10")
+    assert "verdict" not in stale and "summary" not in stale
+    maps.arrived("play", Reads(PLAY), 5)
+    timed_out = {"status": "ok", "verdict": "TIMEOUT"}
+    assert screen_map.at_anchor(maps, "play", timed_out, Reads(PLAY), 6) is timed_out
+    assert maps.found is None, "a run that did not arrive leaves no screen identified"
+
+
+@pytest.mark.parametrize("ref, screen, said", [
+    ("", "", "got neither"),
+    ("Main", "play", "got ref and screen"),
+    ("", " play", "is a name"),
+])
+def test_a_run_to_names_a_ref_or_a_screen_exactly_once(ref: str, screen: str, said: str) -> None:
+    with pytest.raises(Invalid, match=said) as e:
+        screen_map.check_run_to(ref, screen)
+    assert e.value.code == "bad_argument"
+    screen_map.check_run_to("Main", "")
+    screen_map.check_run_to("", "play")
+
+
+def test_a_run_to_summary_names_its_ref_or_its_screen_and_how_it_was_taken() -> None:
+    assert screen_map.run_to_named({"ref": "Main"}, {}) == "Main"
+    assert screen_map.run_to_named({"ref": "", "screen": "play"},
+                                   {"screen": {"judged": True}}) == "screen play (judged)"
+    assert screen_map.run_to_named({"screen": "play"},
+                                   {"screen": {"judged": False}}) == "screen play (taken as shown)"
+    assert screen_map.run_to_named({"screen": "play"}, {}) == "screen play"
