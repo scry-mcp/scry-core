@@ -271,6 +271,22 @@ def test_check_classified_names_every_tool_off_its_one_side() -> None:
         "a: declared both driving and still"]
 
 
+#: The INT 33h driver's default pointer, as DOSBox-X's driver holds it: a pixel is drawn where
+#: the screen mask bit is clear, white where the cursor bit is set, else black.
+SCREEN_MASK = (0x3FFF, 0x1FFF, 0x0FFF, 0x07FF, 0x03FF, 0x01FF, 0x00FF, 0x007F,
+               0x003F, 0x001F, 0x01FF, 0x00FF, 0x30FF, 0xF87F, 0xF87F, 0xFCFF)
+CURSOR_MASK = (0x0000, 0x4000, 0x6000, 0x7000, 0x7800, 0x7C00, 0x7E00, 0x7F00,
+               0x7F80, 0x7C00, 0x6C00, 0x4600, 0x0600, 0x0300, 0x0300, 0x0000)
+
+
+def test_the_arrow_is_the_dos_drivers_own_pointer() -> None:
+    rows = ["".join("." if s >> b & 1 else "o" if c >> b & 1 else "X" for b in range(15, -1, -1))
+            for s, c in zip(SCREEN_MASK, CURSOR_MASK, strict=True)]
+    width = len(presence.LOOK.pointer[0])
+    assert all(r[width:] == "." * (16 - width) for r in rows)
+    assert presence.LOOK.pointer == tuple(r[:width] for r in rows)
+
+
 def test_held_is_a_share_of_acting_whatever_acting_is() -> None:
     assert presence.Look(acting_alpha=0.6).held_alpha == pytest.approx(0.2)
     assert presence.LOOK.held_alpha == pytest.approx(presence.LOOK.acting_alpha / 3)

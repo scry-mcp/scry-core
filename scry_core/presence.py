@@ -18,27 +18,26 @@ from scry_core.reply_contract import unavailable
 
 State = Literal["held", "acting"]
 
-#: The guest pointer's arrow, hot spot top-left: `X` outline, `o` fill, `.` untouched.
+#: The guest pointer's arrow, hot spot top-left: `X` outline, `o` fill, `.` untouched. It is the
+#: INT 33h driver's default pointer, drawn one cell per guest pixel, so it stands beside a DOS
+#: program's own pointer at that pointer's size.
 ARROW = (
-    "X...........",
-    "XX..........",
-    "XoX.........",
-    "XooX........",
-    "XoooX.......",
-    "XooooX......",
-    "XoooooX.....",
-    "XooooooX....",
-    "XoooooooX...",
-    "XooooooooX..",
-    "XoooooooooX.",
-    "XooooooXXXXX",
-    "XoooXooX....",
-    "XooX.XooX...",
-    "XoX..XooX...",
-    "XX....XooX..",
-    "X.....XooX..",
-    ".......XooX.",
-    ".......XX...",
+    "XX.........",
+    "XoX........",
+    "XooX.......",
+    "XoooX......",
+    "XooooX.....",
+    "XoooooX....",
+    "XooooooX...",
+    "XoooooooX..",
+    "XooooooooX.",
+    "XoooooXXXXX",
+    "XooXooX....",
+    "XoXXXooX...",
+    "XX..XooX...",
+    ".....XooX..",
+    ".....XooX..",
+    "......XX...",
 )
 
 
@@ -54,8 +53,8 @@ class Look:
     fade_s: float = 2.5
     pointer: tuple[str, ...] = ARROW
     pointer_outline_rgb: int = 0x2A1400
-    pointer_size: float = 0.06
-    pointer_glide_s: float = 0.2
+    #: Short enough to land before the button the move is posted with acts.
+    pointer_glide_s: float = 0.1
 
     @property
     def held_alpha(self) -> float:
