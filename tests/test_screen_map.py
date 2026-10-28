@@ -50,7 +50,7 @@ def _sig(grid: Grid, crop: list[int]) -> str:
 
 def _doc(**over: Any) -> dict[str, Any]:
     doc: dict[str, Any] = {
-        "format": "scry-map/1", "application": "demo",
+        "format": "scry-screen-map/1", "application": "demo", "mode": "verified",
         "screens": [
             {"name": "title", "kind": "pixel", "size": [W, H],
              "match": [{"crop": [0, 0, 2, 2], "signature": _sig(TITLE, [0, 0, 2, 2])}],
@@ -65,7 +65,7 @@ def _doc(**over: Any) -> dict[str, Any]:
     return doc
 
 
-def _file(tmp_path: Path, doc: object, name: str = "demo.scry-map.json") -> str:
+def _file(tmp_path: Path, doc: object, name: str = "demo.screen-map.json") -> str:
     path = tmp_path / name
     path.write_text(json.dumps(doc), encoding="utf-8")
     return str(path)
@@ -74,8 +74,8 @@ def _file(tmp_path: Path, doc: object, name: str = "demo.scry-map.json") -> str:
 def test_a_loaded_map_finds_the_screen_shown_with_its_controls(tmp_path: Path) -> None:
     maps = Maps()
     got = maps.load(_file(tmp_path, _doc()))
-    assert got == {"path": str(tmp_path / "demo.scry-map.json"), "application": "demo",
-                   "screens": 2, "controls": 3}
+    assert got == {"path": str(tmp_path / "demo.screen-map.json"), "application": "demo",
+                   "mode": "verified", "screens": 2, "controls": 3}
     found = maps.find(Reads(PLAY), stop=7)
     assert found == {"matched": True, "screen": "play", "layer": "file", "kind": "pixel",
                      "size": [W, H],
@@ -173,7 +173,7 @@ def test_find_with_nothing_mapped_asks_for_a_map() -> None:
 def test_a_control_is_named_against_the_identification_it_came_from(tmp_path: Path) -> None:
     maps = Maps()
     maps.load(_file(tmp_path, _doc()))
-    with pytest.raises(Invalid, match="map_find` at a stop first") as e:
+    with pytest.raises(Invalid, match="screen_map_find` at a stop first") as e:
         maps.target("paddle")
     assert e.value.code == "needs_call"
     maps.find(Reads(PLAY), stop=12)
@@ -187,16 +187,143 @@ def test_a_control_is_named_against_the_identification_it_came_from(tmp_path: Pa
     assert e.value.code == "unknown_ref"
 
 
+def _anchored(mode: str) -> dict[str, Any]:
+    doc = _doc(mode=mode)
+    doc["screens"][0]["anchor"] = "DrawTitle"
+    doc["screens"][1]["anchor"] = "DrawPlay"
+    return doc
+
+
+def test_a_consolidated_screen_is_entered_by_its_anchor_with_no_read(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _anchored("consolidated")))
+    assert maps.anchor("play") == "DrawPlay"
+    reads = Reads(TITLE)
+    assert maps.arrived("play", reads, stop=4) == {"screen": "play", "layer": "file",
+                                                   "mode": "consolidated", "judged": False}
+    assert reads.count == 0, "a consolidated screen is taken as shown"
+    assert maps.target("paddle")["identified_at_stop"] == 4
+    assert maps.find(Reads(TITLE), stop=5)["screen"] == "title", "the hash, when asked for"
+
+
+def test_a_verified_screen_is_judged_when_its_anchor_is_reached(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _anchored("verified")))
+    reads = Reads(PLAY)
+    assert maps.arrived("play", reads, stop=4)["judged"] is True and reads.count == 1
+    assert maps.target("quit")["screen"] == "play"
+    with pytest.raises(Invalid, match="no longer holds") as e:
+        maps.arrived("play", Reads(TITLE), stop=5)
+    assert e.value.code == "stale_map"
+    with pytest.raises(Invalid, match="no screen is identified"):
+        maps.target("quit")
+
+
+def test_the_anchor_of_an_unknown_or_unanchored_screen_is_refused(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    with pytest.raises(Invalid, match="no screen 'menu'; mapped: title, play") as e:
+        maps.anchor("menu")
+    assert e.value.code == "unknown_ref"
+    with pytest.raises(Invalid, match="screen 'play' names no `anchor`") as e:
+        maps.anchor("play")
+    assert e.value.code == "needs_call"
+
+
+def test_a_session_screen_shadows_the_files_anchor_too(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _anchored("consolidated")))
+    maps.add("play", [[6, 2, 2, 2]], [], Reads(PLAY))
+    with pytest.raises(Invalid, match="screen 'play' names no `anchor`"):
+        maps.anchor("play")
+    assert maps.anchor("title") == "DrawTitle"
+
+
+def test_save_keeps_the_maps_mode_and_a_map_begun_here_is_verified(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _anchored("consolidated")))
+    out = tmp_path / "out" / "demo.screen-map.json"
+    out.parent.mkdir()
+    maps.save(str(out), False)
+    doc = json.loads(out.read_text())
+    assert doc["mode"] == "consolidated" and doc["screens"][1]["anchor"] == "DrawPlay"
+    fresh = Maps()
+    fresh.add("a", [[0, 0, 1, 1]], [], Reads(TITLE))
+    mine = tmp_path / "mine.screen-map.json"
+    fresh.save(str(mine), False)
+    assert json.loads(mine.read_text())["mode"] == "verified"
+    assert "anchor" not in json.loads(mine.read_text())["screens"][0]
+
+
+def _doubled(grid: Grid, margin_y: int) -> Grid:
+    """`grid` drawn twice as large with `margin_y` black rows above and below: a PC port's
+    640x480 screen showing the arcade's 320x200 picture."""
+    width, height = grid.width * 2, grid.height * 2 + 2 * margin_y
+    out, idx = bytearray(3 * width * height), bytearray(width * height)
+    for y in range(height):
+        for x in range(width):
+            sy = (y - margin_y) // 2
+            if 0 <= sy < grid.height:
+                src = sy * grid.width + x // 2
+                out[(y * width + x) * 3:(y * width + x) * 3 + 3] = grid.cells[src * 3:src * 3 + 3]
+                idx[y * width + x] = 0 if grid.indices is None else grid.indices[src]
+    return Grid("pixel", width, height, bytes(out),
+                None if grid.indices is None else bytes(idx))
+
+
+def test_a_program_shown_doubled_with_a_margin_is_found_in_its_own_units(tmp_path: Path) -> None:
+    """Speed Fight's PC port shows the arcade's picture doubled into 640x480, 40 rows of margin
+    above and below: one map in the program's units knows both, and aims in the machine's."""
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    pc = Maps()
+    assert pc.load(_file(tmp_path, _doc()), scale=2, margin=[0, 1])["screens"] == 2
+    shown = _doubled(PLAY, 1)
+    assert (shown.width, shown.height) == (2 * W, 2 * H + 2)
+    got = pc.find(Reads(shown), stop=3)
+    assert got["screen"] == "play" and got["size"] == [W, H], "the program's units"
+    assert maps.find(Reads(PLAY), stop=3)["screen"] == "play"
+    # paddle [0, 3, 3, 1]: centre (1, 3) in the program; on the doubled screen its block is
+    # x 2..3 and y 7..8 (a row of margin), aimed at the block's lower-right middle
+    assert pc.target("paddle")["centre"] == [3, 8]
+    assert pc.target("paddle")["size"] == (2 * W, 2 * H + 2)
+    assert pc.find(Reads(PLAY), stop=4)["matched"] is False, "the undoubled screen is another"
+    added = pc.add("again", [[6, 2, 2, 2]], [], Reads(shown))
+    assert added["size"] == [W, H]
+    assert added["match"][0]["signature"] == _sig(PLAY, [6, 2, 2, 2])
+
+
+@pytest.mark.parametrize("scale, margin, said", [
+    (0, [0, 0], "`scale` is a whole number 1..8"),
+    (9, [0, 0], "`scale` is a whole number 1..8"),
+    (2, [-1, 0], "`margin` is [x, y]"),
+    (2, [0], "`margin` is [x, y]"),
+])
+def test_a_view_a_map_cannot_be_seen_through_is_refused(tmp_path: Path, scale: int,
+                                                        margin: Any, said: str) -> None:
+    with pytest.raises(Invalid, match=_re(said)) as e:
+        Maps().load(_file(tmp_path, _doc()), scale=scale, margin=margin)
+    assert e.value.code == "bad_argument"
+
+
+def test_a_screen_added_through_a_view_it_does_not_fit_is_the_machines_answer() -> None:
+    maps = Maps()
+    maps.view = screen_map.View(2, (0, 1))
+    with pytest.raises(Invalid, match="does not fit") as e:
+        maps.add("odd", [[0, 0, 1, 1]], [], Reads(_grid(width=7, height=4)))
+    assert e.value.code == "unexpected_answer"
+
+
 def test_save_promotes_the_session_over_the_file_and_becomes_the_file_layer(
         tmp_path: Path) -> None:
     maps = Maps()
     maps.load(_file(tmp_path, _doc()))
     maps.add("title", [[6, 2, 2, 2]], [], Reads(PLAY))
     maps.add("over", [[0, 0, 1, 1]], [{"name": "x", "rect": [0, 0, 8, 4]}], Reads(TITLE))
-    out = tmp_path / "game.scry-map.json"
+    out = tmp_path / "game.screen-map.json"
     got = maps.save(str(out), False)
-    assert got == {"path": str(out), "application": "game", "screens": 3, "controls": 3,
-                   "promoted": ["over", "title"]}
+    assert got == {"path": str(out), "application": "game", "mode": "verified", "screens": 3,
+                   "controls": 3, "promoted": ["over", "title"]}
     doc = json.loads(out.read_text())
     assert [s["name"] for s in doc["screens"]] == ["title", "play", "over"]
     assert doc["screens"][0]["match"][0]["crop"] == [6, 2, 2, 2]
@@ -210,7 +337,7 @@ def test_save_refuses_a_file_already_there_unless_told_and_then_replaces_it(
         tmp_path: Path) -> None:
     maps = Maps()
     maps.add("a", [[0, 0, 1, 1]], [], Reads(TITLE))
-    out = tmp_path / "demo.scry-map.json"
+    out = tmp_path / "demo.screen-map.json"
     out.write_text("keep")
     with pytest.raises(Invalid, match="already there") as e:
         maps.save(str(out), False)
@@ -223,13 +350,13 @@ def test_save_refuses_a_file_already_there_unless_told_and_then_replaces_it(
 
 def test_save_with_nothing_mapped_asks_for_a_screen(tmp_path: Path) -> None:
     with pytest.raises(Invalid, match="no screen is mapped") as e:
-        Maps().save(str(tmp_path / "x.scry-map.json"), False)
+        Maps().save(str(tmp_path / "x.screen-map.json"), False)
     assert e.value.code == "needs_call"
-    assert not (tmp_path / "x.scry-map.json").exists()
+    assert not (tmp_path / "x.screen-map.json").exists()
 
 
-@pytest.mark.parametrize("name", ["demo.json", "x/../demo.map", ".scry-map.json",
-                                  "rel.scry-map.json"])
+@pytest.mark.parametrize("name", ["demo.json", "x/../demo.map", ".screen-map.json",
+                                  "rel.screen-map.json"])
 def test_a_map_path_is_absolute_and_named_by_its_application(tmp_path: Path, name: str) -> None:
     value = name if name.startswith("rel") else str(tmp_path / name)
     with pytest.raises(Invalid) as e:
@@ -241,13 +368,13 @@ def test_a_map_path_from_home_is_expanded(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     _file(tmp_path, _doc())
-    assert Maps().load("~/demo.scry-map.json")["screens"] == 2
+    assert Maps().load("~/demo.screen-map.json")["screens"] == 2
 
 
 def test_a_missing_or_unreadable_file_is_refused_naming_it(tmp_path: Path) -> None:
     with pytest.raises(Invalid, match="no map file at"):
-        Maps().load(str(tmp_path / "none.scry-map.json"))
-    bad = tmp_path / "bad.scry-map.json"
+        Maps().load(str(tmp_path / "none.screen-map.json"))
+    bad = tmp_path / "bad.screen-map.json"
     bad.write_text("{not json")
     with pytest.raises(Invalid, match="is not a JSON map"):
         Maps().load(str(bad))
@@ -266,7 +393,7 @@ def _broken(path: list[Any], value: Any) -> Any:
 
 
 @pytest.mark.parametrize("path, value, said", [
-    (["format"], "scry-map/2", "is not a scry-map/1 map"),
+    (["format"], "scry-screen-map/2", "is not a scry-screen-map/1 map"),
     (["application"], "", "`application` is a name"),
     (["extra"], 1, "carries ['extra']"),
     (["screens"], [], "`screens` is a list of at least one"),
@@ -283,6 +410,10 @@ def _broken(path: list[Any], value: Any) -> Any:
     (["screens", 1, "controls", 1, "name"], "paddle", "control 'paddle' is named twice"),
     (["screens", 0, "controls"], "start", "`controls` is a list"),
     (["screens", 0, "size"], KeyError, "`size` is [width, height]"),
+    (["mode"], "draft", "`mode` is `verified` or `consolidated`"),
+    (["mode"], KeyError, "`mode` is `verified` or `consolidated`"),
+    (["screens", 0, "anchor"], "", "`anchor` is a symbol's name"),
+    (["mode"], "consolidated", "screen 'title' has no `anchor`"),
 ])
 def test_a_broken_map_is_refused_whole_naming_its_first_fault(
         tmp_path: Path, path: list[Any], value: Any, said: str) -> None:
@@ -332,17 +463,17 @@ def test_the_summary_lines() -> None:
     assert screen_map.load_line({}, {"screens": 1, "controls": 2, "application": "demo"}) == \
         "1 screen, 2 controls of demo"
     assert screen_map.find_line({}, {"matched": True, "screen": "play", "layer": "file",
-                                     "controls": [{}]}) == "map_find: play (file), 1 control"
+                                     "controls": [{}]}) == "screen_map_find: play (file), 1 control"
     assert screen_map.find_line({}, {"matched": False, "kind": "text", "size": [80, 25],
                                      "screens_tried": 0, "screens_mapped": 3}) == (
-        "map_find: no screen matched the text 80x25 screen (3 screens mapped, 0 of that kind "
-        "and size)")
+        "screen_map_find: no screen matched the text 80x25 screen (3 screens mapped, 0 of that "
+        "kind and size)")
     assert screen_map.add_line({}, {"screen": "a", "kind": "pixel", "size": [8, 4],
                                     "match": [{}], "controls": 0, "shadows_file": True}) == (
         "a (pixel 8x4), 1 region, 0 controls, shadowing the file's")
-    assert screen_map.save_line({}, {"screens": 2, "path": "/x/demo.scry-map.json",
+    assert screen_map.save_line({}, {"screens": 2, "path": "/x/demo.screen-map.json",
                                      "promoted": ["a"]}) == (
-        "2 screens to demo.scry-map.json, 1 promoted from the session")
+        "2 screens to demo.screen-map.json, 1 promoted from the session")
 
 
 def test_the_odd_shapes_of_a_map_file_are_refused_by_name(tmp_path: Path) -> None:
@@ -353,7 +484,7 @@ def test_the_odd_shapes_of_a_map_file_are_refused_by_name(tmp_path: Path) -> Non
     ]:
         with pytest.raises(Invalid, match=_re(said)):
             Maps().load(_file(tmp_path, broken))
-    folder = tmp_path / "dir.scry-map.json"
+    folder = tmp_path / "dir.screen-map.json"
     folder.mkdir()
     with pytest.raises(Invalid, match="no map file at"):
         Maps().load(str(folder))
@@ -365,8 +496,8 @@ def test_map_add_and_save_refuse_what_their_arguments_cannot_be(tmp_path: Path) 
         maps.add("a", "0,0,1,1", [], Reads(TITLE))
     maps.add("a", [[0, 0, 1, 1]], [], Reads(TITLE))
     with pytest.raises(Invalid, match="overwrite is true or false; got 'yes'"):
-        maps.save(str(tmp_path / "x.scry-map.json"), "yes")  # type: ignore[arg-type]
-    taken = tmp_path / "dir.scry-map.json"
+        maps.save(str(tmp_path / "x.screen-map.json"), "yes")  # type: ignore[arg-type]
+    taken = tmp_path / "dir.screen-map.json"
     taken.mkdir()
     with pytest.raises(Invalid, match="is a directory"):
         maps.save(str(taken), True)
@@ -376,7 +507,7 @@ def test_a_save_over_a_file_that_fails_leaves_no_temporary(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     maps = Maps()
     maps.add("a", [[0, 0, 1, 1]], [], Reads(TITLE))
-    out = tmp_path / "demo.scry-map.json"
+    out = tmp_path / "demo.screen-map.json"
     out.write_text("keep")
 
     def refuse(*_a: Any) -> None:
@@ -398,7 +529,7 @@ def test_map_add_stops_at_the_most_screens_a_map_holds(monkeypatch: pytest.Monke
 
 
 def test_the_shape_checks_a_server_runs_before_the_machine(tmp_path: Path) -> None:
-    screen_map.check_path("path", str(tmp_path / "demo.scry-map.json"))
+    screen_map.check_path("path", str(tmp_path / "demo.screen-map.json"))
     with pytest.raises(Invalid, match="is not named"):
         screen_map.check_path("path", str(tmp_path / "demo.json"))
     screen_map.check_add("a", [[0, 0, 1, 1]], [{"name": "x", "rect": [0, 0, 1, 1]}])
@@ -419,30 +550,30 @@ def test_a_region_or_a_control_without_its_rectangle_is_never_the_whole_screen(
 
 def test_a_map_is_named_by_the_application_it_maps(tmp_path: Path) -> None:
     with pytest.raises(Invalid, match="names application 'bricks' and the file says 'demo'"):
-        Maps().load(_file(tmp_path, _doc(), "bricks.scry-map.json"))
+        Maps().load(_file(tmp_path, _doc(), "bricks.screen-map.json"))
     maps = Maps()
     maps.add("a", [[0, 0, 1, 1]], [], Reads(TITLE))
-    for bad in ("x" * 65 + ".scry-map.json", " x.scry-map.json", ".scry-map.json"):
+    for bad in ("x" * 65 + ".screen-map.json", " x.screen-map.json", ".screen-map.json"):
         with pytest.raises(Invalid, match="is not named"):
             maps.save(str(tmp_path / bad), False)
-    assert [p.name for p in tmp_path.iterdir()] == ["bricks.scry-map.json"]
-    maps.save(str(tmp_path / ("x" * 64 + ".scry-map.json")), False)
+    assert [p.name for p in tmp_path.iterdir()] == ["bricks.screen-map.json"]
+    maps.save(str(tmp_path / ("x" * 64 + ".screen-map.json")), False)
 
 
 def test_a_file_that_is_not_a_plain_json_map_is_refused_not_raised(tmp_path: Path) -> None:
-    cases = {"twice": '{"format": "scry-map/1", "format": "scry-map/1"}',
+    cases = {"twice": '{"format": "scry-screen-map/1", "format": "scry-screen-map/1"}',
              "digits": '{"format": 1' + "1" * 5000 + "}",
              "deep": "[" * 100000 + "]" * 100000}
     for name, text in cases.items():
-        path = tmp_path / f"{name}.scry-map.json"
+        path = tmp_path / f"{name}.screen-map.json"
         path.write_text(text)
         # How deep a nesting the JSON parser reaches depends on the host's C stack: where it
         # parses, the list is refused as no map instead.
-        said = "is not a (JSON|scry-map/1) map" if name == "deep" else "is not a JSON map"
+        said = "is not a (JSON|scry-screen-map/1) map" if name == "deep" else "is not a JSON map"
         with pytest.raises(Invalid, match=said) as e:
             Maps().load(str(path))
         assert e.value.code == "bad_argument", name
-    big = tmp_path / "big.scry-map.json"
+    big = tmp_path / "big.screen-map.json"
     big.write_bytes(b" " * (screen_map.FILE_BYTES_MAX + 1))
     with pytest.raises(Invalid, match="far past the most a map holds"):
         Maps().load(str(big))
@@ -469,10 +600,10 @@ def test_load_forgets_the_last_identification_and_save_moves_it_to_the_file(
     maps = Maps()
     maps.add("a", [[7, 3, 1, 1]], [{"name": "x", "rect": [0, 0, 1, 1]}], Reads(PLAY))
     assert maps.find(Reads(PLAY), stop=4)["layer"] == "session"
-    maps.save(str(tmp_path / "demo.scry-map.json"), False)
+    maps.save(str(tmp_path / "demo.screen-map.json"), False)
     assert maps.found is not None and maps.found.layer == "file"
     assert maps.target("x")["identified_at_stop"] == 4
-    maps.load(str(tmp_path / "demo.scry-map.json"))
+    maps.load(str(tmp_path / "demo.screen-map.json"))
     with pytest.raises(Invalid, match="no screen is identified"):
         maps.target("x")
 
@@ -526,7 +657,7 @@ def test_an_index_screen_matches_the_same_pens_through_another_palette(tmp_path:
     assert maps.find(reads, stop=1)["screen"] == "board"
     assert reads.asked == [True]
     assert maps.find(Reads(_indexed([4, 8], b"\x21\x21\x21")), stop=2)["matched"] is False
-    path = tmp_path / "demo.scry-map.json"
+    path = tmp_path / "demo.screen-map.json"
     maps.save(str(path), False)
     assert json.loads(path.read_text())["screens"][0]["cells"] == "index"
     again = Maps()
@@ -545,7 +676,7 @@ def test_an_rgb_screen_tells_the_two_palettes_apart_and_asks_for_no_indices() ->
 def test_a_map_that_declares_no_cells_is_saved_without_them(tmp_path: Path) -> None:
     maps = Maps()
     maps.load(_file(tmp_path, _doc()))
-    out = tmp_path / "out" / "demo.scry-map.json"
+    out = tmp_path / "out" / "demo.screen-map.json"
     out.parent.mkdir()
     maps.save(str(out), False)
     assert all("cells" not in s for s in json.loads(out.read_text())["screens"])
@@ -589,13 +720,13 @@ def test_cells_a_map_cannot_mean_are_refused(tmp_path: Path, screen: dict[str, A
 
 def test_the_save_line_with_none_or_many_promoted() -> None:
     for n in (0, 2):
-        line = screen_map.save_line({}, {"screens": 3, "path": "/x/a.scry-map.json",
+        line = screen_map.save_line({}, {"screens": 3, "path": "/x/a.screen-map.json",
                                      "promoted": ["s"] * n})
         assert line.endswith(f", {n} promoted from the session"), line
 
 
 def test_a_map_that_is_not_utf8_is_refused_saying_so(tmp_path: Path) -> None:
-    bad = tmp_path / "demo.scry-map.json"
+    bad = tmp_path / "demo.screen-map.json"
     bad.write_bytes(b'{"format": "\xff"}')
     with pytest.raises(Invalid, match="cannot be read"):
         Maps().load(str(bad))
@@ -641,9 +772,9 @@ def test_a_load_that_would_make_the_two_layers_unsaveable_is_refused(
 
 
 def test_check_save_judges_the_path_and_the_overwrite(tmp_path: Path) -> None:
-    screen_map.check_save(str(tmp_path / "demo.scry-map.json"), False)
+    screen_map.check_save(str(tmp_path / "demo.screen-map.json"), False)
     with pytest.raises(Invalid, match="overwrite is true or false; got 'yes'"):
-        screen_map.check_save(str(tmp_path / "demo.scry-map.json"), "yes")
+        screen_map.check_save(str(tmp_path / "demo.screen-map.json"), "yes")
     with pytest.raises(Invalid, match="is not named"):
         screen_map.check_save(str(tmp_path / "demo.json"), True)
 

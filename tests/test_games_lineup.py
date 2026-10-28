@@ -38,17 +38,18 @@ def test_a_binding_missing_an_action_is_refused_before_anything_runs() -> None:
 
 
 def test_the_script_checks_only_screens_its_map_holds_and_the_map_signs_indices() -> None:
-    application, screens = screen_map.parse(json.loads(lineup.MAP.read_text()), str(lineup.MAP))
-    assert application == "lineup"
+    application, mode, screens = screen_map.parse(json.loads(lineup.MAP.read_text()),
+                                                  str(lineup.MAP))
+    assert application == "lineup" and mode == "verified"
     assert all(s.cells == "index" and s.size == (320, 200) for s in screens.values())
     steps = lineup.steps(_binding())
-    asked = {s.name.removeprefix("is ") for s in steps if s.tool == "map_find"}
+    asked = {s.name.removeprefix("is ") for s in steps if s.tool == "screen_map_find"}
     assert asked == set(screens)
     order = list(screens)
     assert order.index("insert") < order.index("hiscores"), (
         "insert is the high-score table plus a banner, so it must be tried first")
     run = Run(dir=Path("/unused"))
-    for step in (s for s in steps if s.tool == "map_find"):
+    for step in (s for s in steps if s.tool == "screen_map_find"):
         name = step.name.removeprefix("is ")
         assert step.check(Reply({"matched": True, "screen": name, "controls": []}), run)
 

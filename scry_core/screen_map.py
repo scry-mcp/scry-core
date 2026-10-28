@@ -2,14 +2,28 @@
 caller names a control instead of a coordinate and a screen is recognised without a picture
 crossing the conversation. No emulator here: a server hands in one read of its screen.
 
-THE FILE is JSON, `"format": "scry-map/1"`, named `<application>.scry-map.json` and kept beside
-the program in the application's own repository (a game both servers run keeps one, beside its
-script in `scry_core.games`):
+THE FILE is JSON, `"format": "scry-screen-map/1"`, named `<application>.screen-map.json` and kept
+beside the program in the application's own repository (a game both servers run keeps one, beside
+its script in `scry_core.games`):
 
-    {"format": "scry-map/1", "application": "bricks",
-     "screens": [{"name": "play", "kind": "pixel", "size": [320, 200],
+    {"format": "scry-screen-map/1", "application": "bricks", "mode": "verified",
+     "screens": [{"name": "play", "kind": "pixel", "size": [320, 200], "anchor": "DrawPlay",
                   "match": [{"crop": [0, 0, 320, 8], "signature": "<16 hex>"}],
                   "controls": [{"name": "paddle", "rect": [140, 180, 40, 8]}]}]}
+
+THE MODE says who answers for the map holding. `verified`: an application whose screens still
+move (one under development, a driver or an emulation being touched), so every way into a screen
+judges its signatures and a map gone stale is noticed by the server. `consolidated`: a finished
+program whose authors keep the map current; each screen names its `anchor`, the symbol after which
+it is whole, and `run_to(screen=)` takes the screen as shown there with no read. The signatures are
+then a protection asked for with `screen_map_find`, not the way in, which is what lets one map
+serve two ports whose pixels differ.
+
+THE PROGRAM'S UNITS. A map is in the units the program draws in; a machine that shows the
+picture larger is described at `load` by an integer `scale` and a `margin` [x, y] on each side
+(Speed Fight's PC port: the arcade's 320x200 at scale 2 with a margin of [0, 40] is its 640x480).
+A read is sampled through that view into the program's units before it is signed, and a control's
+centre is aimed back in the machine's.
 
 Every rectangle is in the screen's own units: cells in a text mode, pixels in a graphics one, as
 `screen_view` counts them. A screen MATCHES when its `kind` and `size` are the screen's and every
@@ -53,9 +67,12 @@ from scry_core import fresh, judges, prose, raster
 from scry_core import vocabulary as vocab
 from scry_core.reply_contract import Invalid, or_unavailable
 
-FORMAT = "scry-map/1"
-SUFFIX = ".scry-map.json"
+FORMAT = "scry-screen-map/1"
+SUFFIX = ".screen-map.json"
 KINDS = ("text", "pixel")
+MODES = ("verified", "consolidated")
+#: The largest scale a view declares: past any picture a machine shows enlarged.
+SCALE_MAX = 8
 #: What a pixel screen's regions are signed over: the colours shown, or the palette indices drawn.
 CELLS = ("rgb", "index")
 #: `cells` as a tool takes it, empty meaning not given (`rgb`).
@@ -77,18 +94,81 @@ Layer = Literal["session", "file"]
 DOC_VALUES = {
     "MAP_SUFFIX": SUFFIX,
     "MAP_LOAD": (f"`load`: `path` (`<application>{SUFFIX}`, absolute or `~`-led) as the file "
-                 "layer. Reply:\n`path`, `application`, `screens`, `controls`."),
+                 "layer, written into\nthe session's state, not to a file. `scale` (1..8) and "
+                 "`margin` [x, y] say how the\nprogram's picture sits on this machine's screen. "
+                 "Reply: `path`, `application`, `mode`,\n`screens`, `controls`."),
     "MAP_SAVE": ("`save`: both layers as one map to `dest`, refused there without `overwrite`, "
-                 "made the file\nlayer. Reply: `path`, `application`, `screens`, `controls`, "
+                 "made the file\nlayer, in the loaded map's `mode` (`verified` when none was "
+                 "loaded). Reply: `path`,\n`application`, `mode`, `screens`, `controls`, "
                  "`promoted`."),
     "MAP_CELLS": ("`cells` `index` (a pixel screen; default\n`rgb`) signs the palette indices "
                   "drawn, not the colours shown, so one map knows a program\nshown through two "
                   "palettes; a screen with no palette refuses it (`no_channel`)."),
     "MAP_FIND": ("Which mapped screen the machine shows. Reply: `matched`; matched, `screen`, "
-                 "`layer`, `kind`,\n`size`, `controls` (`name`, `rect`, `centre`); else "
-                 "`screens_mapped`, `screens_tried`,\n`screens_unjudged` (signed by index on a "
-                 "screen with no palette). None mapped: `needs_call`."),
+                 "`layer`, `kind`,\n`size`, `controls` (`name`, `rect`, `centre`, in the "
+                 "program's units); else `screens_mapped`,\n`screens_tried`, `screens_unjudged` "
+                 "(signed by index on a screen with no palette). None\nmapped: `needs_call`."),
+    "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref`, run to its `anchor`; a "
+                   "`verified` map\njudges it there (`stale_map` when it no longer holds), a "
+                   "`consolidated` one takes it as shown.\nReply: `screen` (`screen`, `layer`, "
+                   "`mode`, `judged`)."),
 }
+
+
+@dataclass(frozen=True)
+class View:
+    """How the program's picture sits on the machine's screen: each program unit `scale` machine
+    units wide and high, `margin` machine units on each side."""
+
+    scale: int = 1
+    margin: tuple[int, int] = (0, 0)
+
+    def machine_size(self, size: tuple[int, int]) -> tuple[int, int]:
+        return (size[0] * self.scale + 2 * self.margin[0],
+                size[1] * self.scale + 2 * self.margin[1])
+
+    def aimed(self, point: list[int]) -> list[int]:
+        """A program point as the machine unit at the middle of its block."""
+        return [self.margin[i] + point[i] * self.scale + self.scale // 2 for i in (0, 1)]
+
+    def program_size(self, grid: Grid) -> tuple[int, int] | None:
+        """The program's size a read shows through this view, or None when it fits none."""
+        w, h = (grid.width - 2 * self.margin[0], grid.height - 2 * self.margin[1])
+        if w < 1 or h < 1 or w % self.scale or h % self.scale:
+            return None
+        return w // self.scale, h // self.scale
+
+    def through(self, grid: Grid) -> Grid:
+        """`grid` sampled into the program's units: the top-left machine unit of each block."""
+        if self == View():
+            return grid
+        size = self.program_size(grid)
+        assert size is not None     # judged by the caller, which names the screen
+        width, height = size
+        step = len(grid.cells) // (grid.width * grid.height)
+
+        def sampled(data: bytes, unit: int) -> bytes:
+            out = bytearray()
+            for y in range(height):
+                row = (self.margin[1] + y * self.scale) * grid.width + self.margin[0]
+                for x in range(width):
+                    at = (row + x * self.scale) * unit
+                    out += data[at:at + unit]
+            return bytes(out)
+        return Grid(grid.kind, width, height, sampled(grid.cells, step),
+                    None if grid.indices is None else sampled(grid.indices, 1))
+
+
+def view(scale: object, margin: object) -> View:
+    """A view as `load` takes it, judged."""
+    if not judges.whole(scale, 1) or scale > SCALE_MAX:
+        raise Invalid("bad_argument", f"`scale` is a whole number 1..{SCALE_MAX}, got {scale!r}")
+    if margin is None:
+        margin = [0, 0]
+    if not (isinstance(margin, list | tuple) and len(margin) == 2
+            and all(judges.whole(v, 0) for v in margin)):
+        raise Invalid("bad_argument", f"`margin` is [x, y], each 0 or more, got {margin!r}")
+    return View(scale, (int(margin[0]), int(margin[1])))
 
 
 @dataclass(frozen=True)
@@ -132,10 +212,12 @@ class Screen:
     match: tuple[tuple[judges.Rect, str], ...]
     controls: tuple[Control, ...]
     cells: str = "rgb"
+    anchor: str = ""
 
     def doc(self) -> dict[str, Any]:
         return {"name": self.name, "kind": self.kind, "size": list(self.size),
                 **({"cells": self.cells} if self.cells != "rgb" else {}),
+                **({"anchor": self.anchor} if self.anchor else {}),
                 "match": [{"crop": list(c), "signature": s} for c, s in self.match],
                 "controls": [c.doc() for c in self.controls]}
 
@@ -159,6 +241,8 @@ class Maps:
     path: Path | None = None
     session: dict[str, Screen] = field(default_factory=dict)
     found: Found | None = None
+    mode: str = "verified"
+    view: View = View()
 
     def started(self) -> None:
         """A `start` succeeded: the session layer and the last identification were the old
@@ -166,9 +250,12 @@ class Maps:
         self.session.clear()
         self.found = None
 
-    def load(self, path_arg: object) -> dict[str, Any]:
-        """The file at `path_arg` as the file layer, replacing any loaded one."""
+    def load(self, path_arg: object, scale: object = 1,
+             margin: object = None) -> dict[str, Any]:
+        """The file at `path_arg` as the file layer, replacing any loaded one, seen through
+        `scale` and `margin`."""
         path = _map_path("path", path_arg)
+        seen = view(scale, margin)
         try:
             if not path.is_file():
                 raise Invalid("bad_argument", f"path: no map file at {path}")
@@ -182,7 +269,7 @@ class Maps:
             doc = json.loads(text, object_pairs_hook=_unique_keys)
         except (ValueError, RecursionError) as e:   # JSONDecodeError is a ValueError
             raise Invalid("bad_argument", f"path: {path} is not a JSON map: {e}") from None
-        application, screens = parse(doc, str(path))
+        application, mode, screens = parse(doc, str(path))
         if application != _application(path):
             raise Invalid("bad_argument", f"path: {path} names application "
                           f"{_application(path)!r} and the file says {application!r}: a map is "
@@ -190,10 +277,13 @@ class Maps:
         if len(screens.keys() | self.session.keys()) > SCREENS_MAX:
             raise Invalid("bad_argument", f"path: {path} holds {len(screens)} screens and the "
                           f"session layer {len(self.session)} more, past the {SCREENS_MAX} a map "
-                          "holds: save the session's first (`map_write`, `save`), or `start` again")
+                          "holds: save the session's first (`screen_map_write`, `save`), or "
+                          "`start` again")
         self.file, self.application, self.path = screens, application, path
+        self.mode, self.view = mode, seen
         self.found = None
-        return {"path": str(path), "application": application, "screens": len(screens),
+        return {"path": str(path), "application": application, "mode": mode,
+                "screens": len(screens),
                 "controls": sum(len(s.controls) for s in screens.values())}
 
     def add(self, name: object, match: object, controls: object, read: Read,
@@ -208,6 +298,11 @@ class Maps:
         if grid.width < 1 or grid.height < 1:
             raise Invalid("unexpected_answer", f"the screen read is {grid.width}x{grid.height}: "
                           "there is nothing to map on it")
+        if self.view.program_size(grid) is None:
+            raise Invalid("unexpected_answer", f"the screen read is {grid.width}x{grid.height}, "
+                          f"which does not fit the view the map was loaded through (scale "
+                          f"{self.view.scale}, margin {list(self.view.margin)})")
+        grid = self.view.through(grid)
         doc = {"name": name, "kind": grid.kind, "size": [grid.width, grid.height],
                "cells": cells, "match": [{"crop": c, "signature": "0" * 16} for c in match],
                "controls": controls if controls is not None else []}
@@ -234,16 +329,18 @@ class Maps:
             *(("session", s) for s in self.session.values()),
             *(("file", s) for name, s in self.file.items() if name not in self.session)]
         if not candidates:
-            raise Invalid("needs_call", "no screen is mapped: `map_write` a map (`load`), or the "
-                          "screen in front of you (`add`)")
+            raise Invalid("needs_call", "no screen is mapped: `screen_map_write` a map (`load`), "
+                          "or the screen in front of you (`add`)")
         # FORGOTTEN BEFORE THE READ: a read that fails is no identification, and acting on the
         # screen the last one found would act on a screen nobody has seen since.
         self.found = None
-        grid = read(indices=any(s.cells == "index" for _, s in candidates))
+        shown = read(indices=any(s.cells == "index" for _, s in candidates))
+        fits = self.view.program_size(shown) is not None
+        grid = self.view.through(shown) if fits else shown
         signed: dict[tuple[judges.Rect, str], str] = {}
         tried = unjudged = 0
         for layer, screen in candidates:
-            if screen.kind != grid.kind or screen.size != (grid.width, grid.height):
+            if not fits or screen.kind != grid.kind or screen.size != (grid.width, grid.height):
                 continue
             if screen.cells == "index" and grid.indices is None:
                 unjudged += 1       # a screen with no palette is no screen drawn by index
@@ -257,7 +354,7 @@ class Maps:
                         "controls": [{"name": c.name, "rect": list(c.rect),
                                       "centre": c.centre()} for c in screen.controls]}
         self.found = None
-        return {"matched": False, "kind": grid.kind, "size": [grid.width, grid.height],
+        return {"matched": False, "kind": shown.kind, "size": [shown.width, shown.height],
                 "screens_tried": tried, "screens_unjudged": unjudged,
                 "screens_mapped": len(candidates)}
 
@@ -268,11 +365,12 @@ class Maps:
         path = _map_path("dest", dest)
         merged = {**self.file, **self.session}
         if not merged:
-            raise Invalid("needs_call", "no screen is mapped: `map_write` the screen in front of "
-                          "you (`add`), or a map (`load`), before saving one")
+            raise Invalid("needs_call", "no screen is mapped: `screen_map_write` the screen in "
+                          "front of you (`add`), or a map (`load`), before saving one")
         application = _application(path)
-        doc = {"format": FORMAT, "application": application,
+        doc = {"format": FORMAT, "application": application, "mode": self.mode,
                "screens": [s.doc() for s in merged.values()]}
+        _consolidated_anchored(self.mode, merged.values(), str(path))
         data = (json.dumps(doc, indent=1) + "\n").encode()
         if overwrite:
             fresh.replace(path, data, "dest:")
@@ -283,22 +381,60 @@ class Maps:
         self.session.clear()
         if self.found is not None and self.found.layer == "session":
             self.found = Found(self.found.screen, "file", self.found.stop)
-        return {"path": str(path), "application": application, "screens": len(merged),
+        return {"path": str(path), "application": application, "mode": self.mode,
+                "screens": len(merged),
                 "controls": sum(len(s.controls) for s in merged.values()),
                 "promoted": promoted}
+
+    def _named(self, screen: str) -> tuple[Layer, Screen]:
+        if screen in self.session:
+            return "session", self.session[screen]
+        if screen in self.file:
+            return "file", self.file[screen]
+        names = ", ".join([*self.session, *(n for n in self.file if n not in self.session)])
+        raise Invalid("unknown_ref", f"screen={screen!r}: no screen {screen!r}; mapped: "
+                      f"{names or 'none'}")
+
+    def anchor(self, screen: str) -> str:
+        """The symbol `screen` is whole after, which `run_to(screen=)` runs to."""
+        _, found = self._named(screen)
+        if not found.anchor:
+            raise Invalid("needs_call", f"screen {screen!r} names no `anchor`: run to the "
+                          "place it is drawn with `ref`, then `screen_map_find`")
+        return found.anchor
+
+    def arrived(self, screen: str, read: Read, stop: int | None) -> dict[str, Any]:
+        """The machine stopped at `screen`'s anchor: a consolidated map takes the screen as
+        shown, a verified one judges its signatures off one read."""
+        layer, found = self._named(screen)
+        self.found = None
+        if self.mode == "verified":
+            shown = read(indices=found.cells == "index")
+            grid = self.view.through(shown) if self.view.program_size(shown) else None
+            if grid is None or (found.kind, found.size) != (grid.kind, (grid.width, grid.height)) \
+                    or (found.cells == "index" and grid.indices is None) \
+                    or not all(_signed({}, grid, crop, found.cells) == want
+                               for crop, want in found.match):
+                raise Invalid("stale_map", f"screen {screen!r} no longer holds at its anchor "
+                              f"{found.anchor}: the machine stopped there and its regions do "
+                              "not match; map it again (`screen_map_write`, `add`)")
+        self.found = Found(found, layer, stop)
+        return {"screen": screen, "layer": layer, "mode": self.mode,
+                "judged": self.mode == "verified"}
 
     def target(self, control: str) -> dict[str, Any]:
         """The centre of `control` on the screen the most recent `find` matched, with that
         screen, its kind and size (what an acting server holds the screen in front to), and the
         stop it was read at."""
         if self.found is None:
-            raise Invalid("needs_call", "no screen is identified: `map_find` at a stop first, "
-                          "and act on the screen it matched")
+            raise Invalid("needs_call", "no screen is identified: `screen_map_find` at a stop "
+                          "first, and act on the screen it matched")
         screen = self.found.screen
         for c in screen.controls:
             if c.name == control:
-                return {"target": c.name, "centre": c.centre(), "screen": screen.name,
-                        "kind": screen.kind, "size": screen.size,
+                return {"target": c.name, "centre": self.view.aimed(c.centre()),
+                        "screen": screen.name, "kind": screen.kind,
+                        "size": self.view.machine_size(screen.size),
                         "identified_at_stop": or_unavailable(
                             self.found.stop, "the stop it was identified at was not numbered "
                             "(its survey came back cut)")}
@@ -354,12 +490,12 @@ def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def parse(doc: object, where: str) -> tuple[str, dict[str, Screen]]:
-    """A `scry-map/1` document's application and screens, in order, or the refusal naming the
+def parse(doc: object, where: str) -> tuple[str, str, dict[str, Screen]]:
+    """A map document's application, mode and screens, in order, or the refusal naming the
     first fault."""
     if not isinstance(doc, dict) or doc.get("format") != FORMAT:
         raise Invalid("bad_argument", f"{where} is not a {FORMAT} map")
-    _keys(doc, {"format", "application", "screens"}, where)
+    _keys(doc, {"format", "application", "mode", "screens"}, where)
     application = doc.get("application")
     if not _name(application):
         raise Invalid("bad_argument", f"{where}: `application` is a name of 1..{_NAME_MAX} "
@@ -377,7 +513,21 @@ def parse(doc: object, where: str) -> tuple[str, dict[str, Screen]]:
             raise Invalid("bad_argument", f"{where}: screen {i} is named {screen.name!r} again; "
                           "a screen's name is unique in its map")
         out[screen.name] = screen
-    return cast(str, application), out
+    mode = doc.get("mode")
+    if mode not in MODES:
+        raise Invalid("bad_argument", f"{where}: `mode` is `verified` or `consolidated`, got "
+                      f"{mode!r}: who answers for the map holding")
+    _consolidated_anchored(cast(str, mode), out.values(), where)
+    return cast(str, application), cast(str, mode), out
+
+
+def _consolidated_anchored(mode: str, screens: Any, where: str) -> None:
+    if mode != "consolidated":
+        return
+    for screen in screens:
+        if not screen.anchor:
+            raise Invalid("bad_argument", f"{where}: screen {screen.name!r} has no `anchor`, and "
+                          "a consolidated map's screens are entered by theirs")
 
 
 def _screen(s: object, where: str, i: int, crop_name: str = "crop") -> Screen:
@@ -385,7 +535,7 @@ def _screen(s: object, where: str, i: int, crop_name: str = "crop") -> Screen:
     at = f"{where}: screen {i}"
     if not isinstance(s, dict):
         raise Invalid("bad_argument", f"{at} is not an object")
-    _keys(s, {"name", "kind", "size", "cells", "match", "controls"}, at)
+    _keys(s, {"name", "kind", "size", "cells", "anchor", "match", "controls"}, at)
     name = s.get("name")
     if not _name(name):
         raise Invalid("bad_argument", f"{at}: `name` is a name of 1..{_NAME_MAX} characters")
@@ -394,6 +544,10 @@ def _screen(s: object, where: str, i: int, crop_name: str = "crop") -> Screen:
     if kind not in KINDS:
         raise Invalid("bad_argument", f"{at}: `kind` is `text` or `pixel`, got {kind!r}")
     cells = _cells(s.get("cells", "rgb"), at)
+    anchor = s.get("anchor", "")
+    if "anchor" in s and not _name(anchor):
+        raise Invalid("bad_argument", f"{at}: `anchor` is a symbol's name of 1..{_NAME_MAX} "
+                      "characters")
     if cells == "index" and kind != "pixel":
         raise Invalid("bad_argument", f"{at}: `cells` index is a pixel screen's; a text screen "
                       "is signed by its cells")
@@ -436,7 +590,7 @@ def _screen(s: object, where: str, i: int, crop_name: str = "crop") -> Screen:
                              f"control {cname!r} rect")
         kept.append(Control(cast(str, cname), rect))
     return Screen(cast(str, name), cast(str, kind), (width, height), tuple(regions),
-                  tuple(kept), cells)
+                  tuple(kept), cells, cast(str, anchor))
 
 
 def _given(obj: dict[str, Any], key: str, at: str) -> Any:
@@ -474,11 +628,11 @@ def add_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
 
 def find_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     if reply["matched"]:
-        return (f"map_find: {reply['screen']} ({reply['layer']}), "
+        return (f"screen_map_find: {reply['screen']} ({reply['layer']}), "
                 f"{prose.counted(len(reply['controls']), 'control')}")
     w, h = reply["size"]
     unjudged = reply.get("screens_unjudged", 0)
-    return (f"map_find: no screen matched the {reply['kind']} {w}x{h} screen "
+    return (f"screen_map_find: no screen matched the {reply['kind']} {w}x{h} screen "
             f"({prose.counted(reply['screens_mapped'], 'screen')} mapped, "
             f"{reply['screens_tried']} of that kind and size"
             + (f", {unjudged} signed by index on a screen with no palette" if unjudged else "")

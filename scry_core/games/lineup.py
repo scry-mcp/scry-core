@@ -30,7 +30,7 @@ from scry_core.game_demo import (
     words,
 )
 
-MAP = Path(__file__).with_name("lineup.scry-map.json")
+MAP = Path(__file__).with_name("lineup.screen-map.json")
 #: The game's actions as its source names them (`J_*`): what every platform binds.
 ACTIONS = ("COIN", "START", "RIGHT", "FIRE1", "UP")
 #: Run on every tick of the game's 50 Hz interrupt, the attract included.
@@ -73,25 +73,25 @@ def steps(binding: Binding) -> list[Step]:
              {"ref": "Draw_High_Scores_Screen", "control": CONTROL, "seconds": WAIT_S},
              arrived("Draw_High_Scores_Screen")),
         wait("drawn", 1500, "the table drawn"),
-        Step("is hiscores", "map_find", {}, found("hiscores")),
+        Step("is hiscores", "screen_map_find", {}, found("hiscores")),
         Step("no credits", "read_memory", {"ref": "Credits", "length": 2},
              word_is("Credits", 0)),
         pressed["COIN"],
         wait("counted", 1000, "the coin counted"),
-        Step("is insert", "map_find", {}, found("insert")),
+        Step("is insert", "screen_map_find", {}, found("insert")),
         Step("credits", "read_memory", {"ref": "Credits", "length": 2},
              word_is("Credits", CREDITS_PER_COIN)),
         pressed["START"],
         Step("to the level", "run_to", {"ref": "Level_Write", "control": CONTROL,
                                         "seconds": WAIT_S}, arrived("Level_Write")),
         wait("level shown", 200, "LEVEL 1 written"),
-        Step("is level", "map_find", {}, found("level")),
+        Step("is level", "screen_map_find", {}, found("level")),
         Step("one spent", "read_memory", {"ref": "Credits", "length": 2},
              word_is("Credits", CREDITS_PER_COIN - 1)),
         Step("first stage", "read_memory", {"ref": "Stage_Act", "length": 2},
              word_is("Stage_Act", 0)),
         wait("play", 3000, "the board filled"),
-        Step("is play", "map_find", {}, found("play")),
+        Step("is play", "screen_map_find", {}, found("play")),
         player({"Status": PLAYER_ACTIVE, "Column": START_COLUMN, "Block": START_BLOCK},
                "in play"),
         pressed["RIGHT"],

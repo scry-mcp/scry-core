@@ -40,9 +40,9 @@ def test_what_answers_while_running_is_the_running_ops_the_registers_and_the_non
 
 
 def test_a_fold_that_answers_by_some_methods_is_named_with_them() -> None:
-    assert roster.by_method({"status", "scan", "map_write"},
-                            {"scan": ("clear",), "map_write": ("load", "save")}) == {
-        "status", "scan(method=clear)", "map_write(method=load|save)"}
+    assert roster.by_method({"status", "scan", "screen_map_write"},
+                            {"scan": ("clear",), "screen_map_write": ("load", "save")}) == {
+        "status", "scan(method=clear)", "screen_map_write(method=load|save)"}
 
 
 GATE = roster.RunningGate(

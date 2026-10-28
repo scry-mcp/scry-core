@@ -80,7 +80,7 @@ def test_arrived_needs_the_target_and_a_control_that_counted(tmp_path: Path) -> 
 
 
 def test_the_map_is_loaded_from_a_copy_in_the_run(tmp_path: Path) -> None:
-    shared = tmp_path / "pkg" / "game.scry-map.json"
+    shared = tmp_path / "pkg" / "game.screen-map.json"
     shared.parent.mkdir()
     shared.write_text("{}", encoding="utf-8")
     run = Run(dir=tmp_path / "run")
@@ -88,8 +88,8 @@ def test_the_map_is_loaded_from_a_copy_in_the_run(tmp_path: Path) -> None:
     step = map_load("map", shared)
     assert callable(step.args)
     args = step.args(run)
-    assert args == {"method": "load", "path": run.dir / "game.scry-map.json"}
-    assert (run.dir / "game.scry-map.json").read_text() == "{}"
+    assert args == {"method": "load", "path": run.dir / "game.screen-map.json"}
+    assert (run.dir / "game.screen-map.json").read_text() == "{}"
     assert step.check(Reply({"screens": 4, "controls": 10}), run) == (
         "4 screens and 10 controls loaded")
 

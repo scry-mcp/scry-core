@@ -74,10 +74,10 @@ def word_is(name: str, value: int) -> Callable[[Reply, Run], str]:
 
 
 def found(screen: str) -> Callable[[Reply, Run], str]:
-    """`map_find`'s check: the machine shows `screen`."""
+    """`screen_map_find`'s check: the machine shows `screen`."""
     def check(reply: Reply, run: Run) -> str:
         expect(reply["matched"] is True and reply.get("screen") == screen,
-               f"map_find answered {reply.get('screen', 'no screen')}, not {screen}")
+               f"screen_map_find answered {reply.get('screen', 'no screen')}, not {screen}")
         named = ", ".join(c["name"] for c in reply["controls"])
         return f"the {screen} screen" + (f", its controls {named}" if named else "")
     return check
@@ -108,7 +108,7 @@ def map_load(name: str, shared: Path) -> Step:
 
     def check(reply: Reply, run: Run) -> str:
         return f"{reply['screens']} screens and {reply['controls']} controls loaded"
-    return Step(name, "map_write", args, check)
+    return Step(name, "screen_map_write", args, check)
 
 
 def recorded(binding: Binding, milliseconds: int) -> Callable[[Reply, Run], str]:
