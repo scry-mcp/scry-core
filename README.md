@@ -42,7 +42,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
 | `scry_core.live_host` | the host a live tier runs on: a canary that refuses one which cannot start the emulator, the ledger that proves no emulator outlived a run, and the run's scratch left as its verdict says |
 | `scry_core.binaries` | which emulator a session runs: the caller's `binary`, else the server's variable, else the PATH's, and what the build says it is |
-| `scry_core.placement` | where an emulator's window goes: the host's helper (`WINDOW_APP`) asked for an app, watched or not and on which display, its flags one argv token a line, or why there are none; and which display a watched start reports |
+| `scry_core.host_args` | the host's own emulator arguments (`SCRY_EMULATOR_ARGS`, one argv token a line), which a server appends after its own flags on every launch that opens a window |
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, the probe's tasks, the prose ceiling, and the tree typed as Windows sees it |
 | `scry_core.host_program` | a test double's program as the host runs one (Python behind a `#!` line on POSIX, a `.cmd` on Windows), the interpreter that is itself the process it runs, absolute and temporary paths as the host spells them, a FIFO or the test skipped where there is none, and the markers that skip a case only POSIX can hold (a mode bit, a file name Windows refuses, a task file of POSIX paths) |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, the README block they generate, and the flow of the steps it shows in the server's front door |
