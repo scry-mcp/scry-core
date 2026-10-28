@@ -19,8 +19,8 @@ from scry_core.reply_contract import unavailable
 State = Literal["held", "acting"]
 
 #: The guest pointer's arrow, hot spot top-left: `X` outline, `o` fill, `.` untouched. It is the
-#: INT 33h driver's default pointer, drawn one cell per guest pixel, so it stands beside a DOS
-#: program's own pointer at that pointer's size.
+#: INT 33h driver's default graphics pointer; DOSBox-X draws a cell per guest pixel, so in a
+#: graphics mode it matches the size of a DOS program's own pointer.
 ARROW = (
     "XX.........",
     "XoX........",
@@ -53,7 +53,8 @@ class Look:
     fade_s: float = 2.5
     pointer: tuple[str, ...] = ARROW
     pointer_outline_rgb: int = 0x2A1400
-    #: Short enough to land before the button the move is posted with acts.
+    #: Short enough that the arrow lands as a program answers the click it stands for; a look,
+    #: not a promise: the button can follow the move by a single BIOS tick, which is shorter.
     pointer_glide_s: float = 0.1
 
     @property
