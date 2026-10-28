@@ -14,6 +14,7 @@ from scry_core import host_args
     ("-set\nsdl display=1\n-set\nsdl windowposition=2088,40",
      ["-set", "sdl display=1", "-set", "sdl windowposition=2088,40"]),
     ("-screen0\r\n\n  \nscreen1\n", ["-screen0", "screen1"]),
+    ("-set\nsdl title=a\x0cb", ["-set", "sdl title=a\x0cb"]),
 ])
 def test_the_tokens_are_the_variable_s_lines(
         monkeypatch: pytest.MonkeyPatch, exported: str | None, tokens: list[str]) -> None:
