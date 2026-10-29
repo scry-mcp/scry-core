@@ -30,6 +30,7 @@ class ReplyEnvelope(TypedDict, total=False):
     message: str
     omitted: list[str]
     how: str
+    note: str
     cancelled: dict[str, Any]
     session: dict[str, Any]
 
@@ -105,10 +106,10 @@ def omitted_when_empty(model: type) -> frozenset[str]:
     return frozenset(marked)
 
 
-def conditions(model: type) -> dict[str, str]:
-    """The `When` words of each conditional field; a required one is a `ValueError`."""
+def conditions(model: type) -> dict[str, contract.When]:
+    """The `When` of each conditional field; a required one is a `ValueError`."""
     hints = _hints(model)
-    found = {n: m.words for n, (h, _) in hints.items() for m in _metadata(h)
+    found = {n: m for n, (h, _) in hints.items() for m in _metadata(h)
              if isinstance(m, contract.When)}
     if both := sorted(n for n in found if hints[n][1]):
         raise ValueError(f"{model.__name__} requires {both}, which it conditions with When")
@@ -262,20 +263,21 @@ def unmodelled(doc: str, model: type, not_fields: Iterable[str] = ()) -> list[st
 
 def conditions_unsaid(doc: str, model: type, not_fields: Iterable[str] = ()) -> list[str]:
     """The promised fields the model leaves optional without a condition (`When`; `OmitEmpty`
-    is one by its nature), and those whose `When` words the `Reply` paragraphs do not say."""
+    is one by its nature), and those whose `When` words the blocks holding a `Reply` do not say."""
     envelope = set(_hints(ReplyEnvelope))
     skip = envelope | set(contract.CODES) | set(get_args(contract.Verdict)) | set(not_fields)
     held, required = set(_fields(model)), own_required(model)
     marked, when = omitted_when_empty(model), conditions(model)
-    said = " ".join(" ".join(f"{head} {body}".split()) for head, body in _paragraphs(doc)).lower()
+    said = " ".join(" ".join(block.split()) for block in doc.split("\n\n")
+                    if _REPLY.search(block)).lower()
     faults: list[str] = []
     for n in reply_sentence_names(doc):
         if n in skip or n not in held or n in required or n in marked:
             continue
         if n not in when:
             faults.append(f"{n}: optional, so its condition is `When(...)` in the model")
-        elif " ".join(when[n].lower().split()) not in said:
-            faults.append(f"{n}: `When({when[n]!r})` is not said in the Reply paragraph")
+        elif any(" ".join(w.lower().split()) not in said for w in when[n].words):
+            faults.append(f"{n}: `{when[n]!r}` is not said in the Reply paragraph")
     return faults
 
 

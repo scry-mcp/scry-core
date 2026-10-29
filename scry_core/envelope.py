@@ -20,6 +20,10 @@ from scry_core import strict_arguments as strict
 #: body.
 Refusal = Callable[[str, dict[str, Any], ValidationError], dict[str, Any]]
 
+#: Opens the shared part of every server's `instructions`: what `note` is, said once for all tools.
+REPLY_NOTE = ("A reply carries `note` only when it has something to say that its fields do not; "
+              "a reply with no `note` has nothing more to say.")
+
 #: Closes every server's `instructions`: the servers are proven on real use before they settle.
 IN_DEVELOPMENT = (
     "IN DEVELOPMENT. This server is half of Scry, MCP servers for MAME and DOSBox-X still taking "
@@ -35,12 +39,12 @@ IN_DEVELOPMENT = (
 
 class Envelope(MCPServer):
     """An `MCPServer` whose schema refusals keep the reply envelope, and whose `instructions`
-    end with `IN_DEVELOPMENT`; an empty one is refused."""
+    end with `REPLY_NOTE` and `IN_DEVELOPMENT`; an empty one is refused."""
 
     def __init__(self, name: str, *, instructions: str, refusal: Refusal) -> None:
         if not instructions.strip():
             raise ValueError(f"{name} declares no instructions of its own")
-        super().__init__(name, instructions=f"{instructions}\n\n{IN_DEVELOPMENT}")
+        super().__init__(name, instructions=f"{instructions}\n\n{REPLY_NOTE}\n\n{IN_DEVELOPMENT}")
         self._refusal = refusal
 
     async def call_tool(self, name: str, arguments: dict[str, Any],

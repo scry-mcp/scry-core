@@ -41,6 +41,13 @@ def test_a_declared_model_is_published_naming_every_field_and_refusing_none() ->
     assert {"summary", "status", "session", "alive", "pc", "title"} <= set(props), props
 
 
+def test_note_is_an_envelope_field_every_reply_may_carry() -> None:
+    assert "note" in reply_schema.ReplyEnvelope.__annotations__
+    reply_schema.declare(_server(), {"status": StatusReply})
+    reply_schema.check("status", {"status": "ok", "note": "a word the fields do not say"})
+    assert "note" not in reply_schema.own_fields(StatusReply)
+
+
 def test_a_published_field_is_its_value_or_unavailable() -> None:
     server = _server()
     reply_schema.declare(server, {"status": StatusReply})
@@ -58,7 +65,7 @@ def test_a_published_field_is_its_value_or_unavailable() -> None:
 class NeededReply(reply_schema.ReplyEnvelope, total=False):
     pc: Required[str]
     polls: Annotated[int, When("by frames")]
-    note: str
+    extra: str
 
 
 def _needed() -> Draft202012Validator:
@@ -76,7 +83,7 @@ def test_a_required_field_is_required_of_an_ok_reply_and_never_of_a_refusal() ->
         {"status": "INVALID", "code": "no_session", "message": "none"}))
     assert list(validator.iter_errors({"status": "ok"}))
     assert not list(validator.iter_errors({"status": "ok", "omitted": ["pc"]}))
-    assert list(validator.iter_errors({"status": "ok", "omitted": ["note"]}))
+    assert list(validator.iter_errors({"status": "ok", "omitted": ["extra"]}))
 
 
 def test_the_judge_refuses_an_ok_reply_missing_a_required_field() -> None:
@@ -87,7 +94,7 @@ def test_the_judge_refuses_an_ok_reply_missing_a_required_field() -> None:
     with pytest.raises(reply_schema.MissingFields, match="pc"):
         reply_schema.check("status", {"status": "ok", "polls": 3})
     with pytest.raises(reply_schema.MissingFields, match="pc"):
-        reply_schema.check("status", {"status": "ok", "omitted": ["note"]})
+        reply_schema.check("status", {"status": "ok", "omitted": ["extra"]})
 
 
 @pytest.fixture(autouse=True)
@@ -169,14 +176,27 @@ def test_the_sentence_faults_name_a_missing_field_a_silent_model_and_a_stale_wor
 
 
 def test_an_optional_promised_field_must_state_its_condition_in_the_sentence() -> None:
-    models = {"a": NeededReply, "b": NeededReply, "c": NeededReply}
-    tools = [_Tool("a", "Reply: `pc`, `polls` (by frames), `note`."),
+    models = {"a": NeededReply, "b": NeededReply, "c": NeededReply, "d": NeededReply}
+    tools = [_Tool("a", "Reply: `pc`, `polls` (by frames), `extra`."),
              _Tool("b", "Reply: `pc` and `polls`."),
-             _Tool("c", "Reply: `pc`; `summary`, `status`.")]
+             _Tool("c", "Reply: `pc`; `summary`, `status`."),
+             _Tool("d", "By frames: it runs.\nReply: `pc`, `polls`.\n\nElsewhere, by frames.")]
     got = reply_schema.sentence_faults(tools, models, {})
     assert got == {
-        "a": ["note: optional, so its condition is `When(...)` in the model"],
+        "a": ["extra: optional, so its condition is `When(...)` in the model"],
         "b": ["polls: `When('by frames')` is not said in the Reply paragraph"]}
+
+
+class TwoWaysReply(reply_schema.ReplyEnvelope, total=False):
+    shared: Annotated[int, When("series", "golden")]
+
+
+def test_a_field_two_methods_share_is_conditioned_on_both_and_each_must_be_said() -> None:
+    models = {"s": TwoWaysReply, "g": TwoWaysReply}
+    tools = [_Tool("s", "`series`: x. Reply: `shared`.\n\n`golden`: y. Reply: `shared`."),
+             _Tool("g", "`series`: x. Reply: `shared`.")]
+    assert reply_schema.sentence_faults(tools, models, {}) == {
+        "g": ["shared: `When('series', 'golden')` is not said in the Reply paragraph"]}
 
 
 def test_the_stop_fields_are_held_to_every_tool_that_quotes_them() -> None:
@@ -220,10 +240,13 @@ def test_a_marked_field_is_never_required() -> None:
 
 
 def test_a_condition_is_read_from_the_model_and_is_never_required() -> None:
-    assert reply_schema.conditions(NeededReply) == {"polls": "by frames"}
+    assert {k: v.words for k, v in reply_schema.conditions(NeededReply).items()} == {
+        "polls": ("by frames",)}
     assert reply_schema.own_required(NeededReply) == frozenset({"pc"})
     with pytest.raises(TypeError, match="condition"):
         When("  ")
+    with pytest.raises(TypeError, match="condition"):
+        When()
 
     class Both(reply_schema.ReplyEnvelope, total=False):
         always: Required[Annotated[int, When("sometimes")]]

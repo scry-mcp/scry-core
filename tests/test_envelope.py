@@ -13,7 +13,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from pydantic import ValidationError
 
-from scry_core.envelope import IN_DEVELOPMENT, Envelope
+from scry_core.envelope import IN_DEVELOPMENT, REPLY_NOTE, Envelope
 
 
 class _Server:
@@ -46,7 +46,8 @@ class _Server:
 
 def test_every_server_tells_the_model_it_is_in_development_after_its_own_instructions() -> None:
     got = _Server().mcp.instructions or ""
-    assert got == "i\n\n" + IN_DEVELOPMENT
+    assert got == "i\n\n" + REPLY_NOTE + "\n\n" + IN_DEVELOPMENT
+    assert "`note`" in REPLY_NOTE
 
 
 def test_a_server_with_no_instructions_of_its_own_is_refused() -> None:

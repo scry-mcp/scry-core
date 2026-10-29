@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import inspect
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -33,6 +35,16 @@ def judged_by_its_model(monkeypatch: pytest.MonkeyPatch) -> None:
             _judge.validate_python({"status": "ok", **out})
             return out
         monkeypatch.setattr(media_tools, name, checked)
+
+
+def test_a_media_tool_s_sentences_say_the_condition_of_each_field_its_model_leaves_optional(
+) -> None:
+    tools = [SimpleNamespace(name=name, description=inspect.getdoc(getattr(media_tools, name)),
+                             input_schema={"properties": dict.fromkeys(
+                                 inspect.signature(getattr(media_tools, name)).parameters, {})})
+             for name in media_replies.MODELS]
+    assert reply_schema.sentence_faults(tools, media_replies.MODELS,
+                                         media_replies.REPLY_WORDS) == {}
 
 
 def _line(tool: str, method: str, reply: dict[str, Any]) -> str:
