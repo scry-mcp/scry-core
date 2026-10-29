@@ -510,6 +510,13 @@ def at_anchor(maps: Maps, screen: str, reply: dict[str, Any], read: Read,
         return e.reply(**kept)
 
 
+def check_frame_run(screen: str, control: object) -> None:
+    """A `control` on a run to a screen with no `anchor` has nothing to count: refused."""
+    if control:
+        raise Invalid("bad_argument", f"screen {screen!r} names no anchor, so it is run to a "
+                      "frame at a time and a `control` has nothing to count: leave it out")
+
+
 #: The least a frame is given when the bound is all but spent.
 MIN_STEP_S = 0.001
 

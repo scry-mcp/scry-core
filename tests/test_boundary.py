@@ -101,20 +101,20 @@ def test_a_call_answers_summary_first_and_session_last_from_the_args_it_ran_with
     assert s.b.nested == 0
 
 
-def test_session_before_keeps_the_block_the_body_built() -> None:
+def test_body_session_keeps_the_block_the_body_built() -> None:
     s = _Server()
 
-    @s.tool("Close", session_before=True)
+    @s.tool("Close", body_session=True)
     def close() -> dict[str, Any]:
         return {"status": "ok", "session": {"altered": True}}
 
     assert close()["session"] == {"altered": True}
 
 
-def test_session_before_with_no_block_from_the_body_composes_one() -> None:
+def test_body_session_with_no_block_from_the_body_composes_one() -> None:
     s = _Server()
 
-    @s.tool("Close", session_before=True)
+    @s.tool("Close", body_session=True)
     def close() -> dict[str, Any]:
         return {"status": "ok"}
 
@@ -683,8 +683,8 @@ def test_the_block_is_asked_whole_for_start_and_status_and_short_for_every_other
     for name in ("start", "status", "read_memory"):
         s.b.finished(name, {}, {"status": "ok"})
     assert s.wholes == [True, True, False]
-    s.b.finished("close", {}, {"status": "ok", "session": {"kept": 1}}, session_before=True)
-    assert s.wholes == [True, True, False]       # close keeps the block of the state before
+    s.b.finished("close", {}, {"status": "ok", "session": {"kept": 1}}, body_session=True)
+    assert s.wholes == [True, True, False]       # close keeps the block its body wrote
 
 
 def test_the_closed_reply_leaves_out_a_marked_field_that_is_empty() -> None:

@@ -132,13 +132,13 @@ class Boundary:
         return self.summaries[name](args, reply)
 
     def finished(self, name: str, args: dict[str, Any], reply: Reply,
-                 session_before: bool = False, outer: bool = True) -> Reply:
+                 body_session: bool = False, outer: bool = True) -> Reply:
         """Close a reply for every path: `summary` first, the tool's fields, `session` last.
 
-        The `session` block is composed after the body; `session_before` keeps the body's
-        (`close`'s)."""
+        The `session` block is composed after the body; `body_session` keeps the one the body
+        wrote (`close` composes its own, after it ended the session)."""
         body = {k: v for k, v in schema.omit_empty(name, reply).items() if k != "session"}
-        kept = reply.get("session") if session_before else None
+        kept = reply.get("session") if body_session else None
         session = (kept if kept is not None
                    else self._session_block(blocks.whole_for(name)))
         summary = _summary(name, args, reply, self.line)
@@ -155,7 +155,7 @@ class Boundary:
             return self.finished(name, arguments, build())
 
     def tool(self, title: str, *, summary: Summary, read_only: bool = False,
-             idempotent: bool = False, session_before: bool = False,
+             idempotent: bool = False, body_session: bool = False,
              on_cancel: cancel.OnCancel | None = None, replay: Replay | None = None,
              ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register `fn` as an MCP tool serialised over the one machine.
@@ -229,7 +229,7 @@ class Boundary:
                         self._answered.append(reply)
                     bound.apply_defaults()
                     args = {n: v for n, v in bound.arguments.items() if n != "ctx"}
-                    return self.finished(fn.__name__, args, reply, session_before,
+                    return self.finished(fn.__name__, args, reply, body_session,
                                          outer=self.nested == 0)
 
             setattr(wrapped, ON_CANCEL_ATTR, on_cancel or "none")

@@ -261,6 +261,13 @@ def test_a_verified_map_takes_an_anchor_on_add_and_keeps_it_out_of_the_reply_wit
     assert maps.add("b", [[0, 0, 1, 1]], [], Reads(TITLE), anchor="DrawB")["anchor"] == "DrawB"
 
 
+def test_a_control_on_a_frame_by_frame_run_is_refused_naming_the_screen() -> None:
+    screen_map.check_frame_run("play", "")
+    with pytest.raises(Invalid, match="screen 'play' names no anchor") as e:
+        screen_map.check_frame_run("play", "frame")
+    assert e.value.code == "bad_argument" and "`control`" in str(e.value)
+
+
 def test_check_add_judges_the_anchor_before_any_read() -> None:
     screen_map.check_add("a", [[0, 0, 1, 1]], None, "", "DrawA")
     with pytest.raises(Invalid, match="`anchor` is a symbol's name"):
