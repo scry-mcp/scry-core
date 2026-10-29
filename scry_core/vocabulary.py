@@ -1,4 +1,4 @@
-"""A closed vocabulary or a range: the judge and the schema half from one tuple."""
+"""A closed vocabulary or a range, judged and described from one tuple, and the one wait ceiling."""
 
 from __future__ import annotations
 
