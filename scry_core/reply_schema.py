@@ -289,10 +289,29 @@ def conditions_unsaid(doc: str, model: type, not_fields: Iterable[str] = ()) -> 
     return faults
 
 
+def blinding_heads(doc: str, model: type) -> list[str]:
+    """The `Reply` heads that backtick a field of `model` that holds no list or object: the
+    parser then reads the body as that field's own detail and examines none of its names."""
+    props = TypeAdapter(model).json_schema()["properties"]
+    return [f"its Reply head backticks `{n}`, a field that is no list: the check then skips the "
+            f"body, so word the head without backticks"
+            for head, _ in _paragraphs(doc) for n in _top_level(head)
+            if n in props and not _nested(props[n])]
+
+
+def _nested(spec: Any) -> bool:
+    """Whether a JSON schema allows an array or an object anywhere."""
+    if isinstance(spec, dict):
+        return spec.get("type") in ("array", "object") or any(_nested(v) for v in spec.values())
+    if isinstance(spec, list):
+        return any(_nested(v) for v in spec)
+    return False
+
+
 def sentence_faults(tools: Iterable[Any], models: Mapping[str, type],
                     words: Mapping[str, Iterable[str]]) -> dict[str, Any]:
-    """By tool, a description's fault: an unmodelled `Reply` field, none named, a stale allowed
-    word, or an optional field with no stated condition."""
+    """By tool, a description's fault: a `Reply` head that blinds the check, an unmodelled `Reply`
+    field, none named, a stale allowed word, or an optional field with no stated condition."""
     tools = list(tools)
     names = {t.name for t in tools}
     wrong: dict[str, Any] = {}
@@ -301,7 +320,9 @@ def sentence_faults(tools: Iterable[Any], models: Mapping[str, type],
         allowed = set(words.get(t.name, ()))
         skip = names | set(t.input_schema.get("properties", {})) | allowed
         said = reply_sentence_names(doc)
-        if not said and own_fields(model):
+        if blind := blinding_heads(doc, model):
+            wrong[t.name] = blind
+        elif not said and own_fields(model):
             wrong[t.name] = "its description names no field of its reply"
         elif miss := unmodelled(doc, model, skip):
             wrong[t.name] = miss

@@ -220,6 +220,15 @@ def test_a_field_two_methods_share_is_conditioned_on_both_and_each_must_be_said(
         "g": ["shared: `When('series', 'golden')` is not said in the Reply paragraph"]}
 
 
+def test_a_reply_head_that_names_a_scalar_field_is_a_fault_since_it_blinds_the_check() -> None:
+    models = {"a": NeededReply, "b": NeededReply}
+    tools = [_Tool("a", "Reply, unless `note` (none): `pc`, `polls` (by frames)."),
+             _Tool("b", "Reply, unless a note: `pc`, `polls` (by frames).")]
+    got = reply_schema.sentence_faults(tools, models, {})
+    assert got == {"a": ["its Reply head backticks `note`, a field that is no list: the check "
+                         "then skips the body, so word the head without backticks"]}, got
+
+
 def test_the_stop_fields_are_held_to_every_tool_that_quotes_them() -> None:
     stop = "the stop: `rows`, `pc`"
     tools = [_Tool("a", f"Reply: {stop}."), _Tool("b", "Reply: `rows`.")]
