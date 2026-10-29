@@ -32,7 +32,9 @@ THE TASK FILE is {"tasks": [...]}, and a task is:
   id       unique; the model writes it at the head of its line
   prompt   what is asked, in a caller's words
   tool     the expected tool, with `args`: name -> value, or {"any_of": [value, ...]} at any
-           depth; `args` itself may be {"any_of": [{...}, {...}]}, equivalent whole calls
+           depth; `args` itself may be {"any_of": [{...}, {...}]}, equivalent whole calls;
+           a pattern may be {"regex": {"lines": [...], "hits": [i, ...], "example": "..."}}:
+           right when it selects exactly the `hits` among the captured `lines`
   allow    argument names that may carry any value
   grammar  values the description HAS to hold (an enum word, a lane), exempt from contamination
   expect   "CANNOT" in place of `tool` and `args`, with `about`: the tool whose limit it probes
@@ -103,6 +105,7 @@ from scry_core.probe_any_of import (
     has_empty_any_of,
     leaves,
     matches,
+    regex_problems,
 )
 from scry_core.prose import counted
 from scry_core.reply_contract import Invalid as Refusal
@@ -373,6 +376,9 @@ def _problems_by_task(surface: Surface, tasks: list[dict[str, Any]]) -> list[lis
             continue
         if has_empty_any_of(task.get("args", {})):
             found.append(f"{where}: an `any_of` with no alternative accepts nothing")
+            continue
+        if bad := regex_problems(task.get("args", {})):
+            found += [f"{where}: a `regex` value: {p}" for p in bad]
             continue
         alternatives = calls(task.get("args", {}))
         if not all(isinstance(a, dict) for a in alternatives):

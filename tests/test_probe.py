@@ -539,6 +539,44 @@ def test_allowed_arguments_take_any_value_and_any_of_takes_either() -> None:
         assert probe.judge(surface, task, probe.parse(line, ["D1"])["D1"]).right is right
 
 
+TRACE = ["open A.TXT -> ok", "open MISSING.DAT -> error 2", "read A.TXT -> ok",
+         "open GONE.CFG -> error 2"]
+FAILED_OPENS = {"regex": {"lines": TRACE, "hits": [1, 3], "example": "open .* -> error"}}
+
+
+@pytest.mark.parametrize("pattern, right", [
+    ("open .* -> error", True),
+    ("(?i)OPEN.*ERROR", True),
+    ("open", False),                 # also the open that worked
+    ("-> error 2", True),
+    ("MISSING", False),              # only one of the two
+    ("(unclosed", False)])
+def test_a_regex_expected_value_is_judged_by_the_lines_it_selects(
+        pattern: str, right: bool) -> None:
+    assert any_of.matches(FAILED_OPENS, pattern) is right
+
+
+def test_a_regex_expected_value_is_held_to_its_own_example_and_hidden_from_contamination() -> None:
+    assert any_of.matches(FAILED_OPENS, any_of.concrete(FAILED_OPENS))
+    assert list(any_of.leaves({"pattern": FAILED_OPENS})) == []
+    assert any_of.regex_problems({"pattern": FAILED_OPENS}) == []
+    bad = {"regex": {"lines": TRACE, "hits": [1, 9], "example": "open"}}
+    assert any_of.regex_problems({"pattern": bad}) == [
+        "hit 9 is not a line of 4", "its own example does not select its hits"]
+    assert any_of.regex_problems({"regex": {"lines": [], "hits": [], "example": ""}}) == [
+        "`lines` is a non-empty list of strings"]
+    assert any_of.regex_problems({"regex": {"lines": TRACE, "hits": "1", "example": ""}}) == [
+        "`hits` is a list of line indices"]
+    assert any_of.matches(FAILED_OPENS, 7) is False
+
+
+def test_a_task_with_a_malformed_regex_value_is_refused() -> None:
+    task = {"id": "M1", "prompt": "p", "tool": "read_memory",
+            "args": {"ref": {"regex": {"lines": [], "hits": [], "example": ""}}}}
+    assert probe.task_problems(_narrowed("mame"), [task]) == [
+        "mame task M1: a `regex` value: `lines` is a non-empty list of strings"]
+
+
 def test_equivalent_whole_calls_are_each_right() -> None:
     whole = SURFACES["mame"]
     surface = dataclasses.replace(whole, tools={"watch_add": whole.tools["watch_add"]})

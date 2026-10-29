@@ -14,6 +14,8 @@ Export rules, each drop named:
 
 - a refused call is dropped, unless the machine moved under it (which cuts);
 - a `drop` tool is dropped, unless the call moved the machine: dropped, the replay falls behind;
+- a `Counted` tool (a wait that polls frame by frame) is the advance its reply's poll count
+  replays, and is dropped when it moved nothing;
 - a tool declared with fields is a CHECK carrying `recorded`; dropped when its arguments name what
   a dropped call wrote (`dest`, the `WRITTEN` fields), since it would hold by construction;
 - any other tool is a STEP, carrying `stop_fields` as `recorded` if it left a new stop;
@@ -53,9 +55,19 @@ RUN_STOPPED_INSIDE = ("its run was stopped by the wall clock or by the machine i
                       "inside its frame that no replayed advance reaches")
 WRITTEN = ("path", "manifest", "dir")
 
+@dataclass(frozen=True)
+class Counted:
+    """A wait that polls frame by frame, exported as the advance `op` run `argument` frames, the
+    number of polls its reply's `field` counts: a replay then stops where the wait did."""
+
+    op: str
+    argument: str
+    field: str
+
+
 #: `wall`: a run the wall clock ends. A tuple of field names: a check of those fields.
 Word = Literal["step", "wall", "drop"]
-ExportAs = Word | tuple[str, ...]
+ExportAs = Word | tuple[str, ...] | Counted
 Replay = ExportAs | Mapping[str, ExportAs]
 WORDS: tuple[str, ...] = get_args(Word)
 
@@ -100,6 +112,8 @@ class Call:
     wrote: tuple[str, ...] = ()
     #: What `record_max` counts.
     keepable: bool = True
+    #: The polls a `Counted` tool's reply reported, when it reported a whole number.
+    counted: int | None = None
 
 
 @dataclass
@@ -230,9 +244,12 @@ class Recorder:
             after = self._read()
             status = str(reply.get("status"))
             moved = _moved_between(began, after)
-            dropped = not moved and (status != "ok" or declared.export_as in ("drop", "wall"))
+            dropped = not moved and (status != "ok" or _runs_nothing_unmoved(declared.export_as))
+            polls = reply.get(declared.export_as.field) if isinstance(declared.export_as, Counted) \
+                else None
             self._add(parent, Call(tool, dict(given), status,
                                    {f: reply[f] for f in fields if f in reply}, began, after,
+                                   counted=polls if type(polls) is int else None,
                                    walled=reply.get("verdict") in WALL_VERDICTS,
                                    wrote=tuple(str(x) for x in (given.get("dest"),
                                                                 *map(reply.get, WRITTEN))
@@ -342,12 +359,14 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
                 break
             out.drop(n, call.op, f"the server refused it ({call.status})")
             continue
-        if declared.export_as in ("drop", "wall") and not _moved(call):
+        if _runs_nothing_unmoved(declared.export_as) and not _moved(call):
             out.drop(n, call.op, _dropped_why(declared) if declared.export_as == "drop"
                      else "it ran nothing: the machine was where it left it")
             unwritten.update(call.wrote)
             continue
-        if (declared.export_as == "wall" or call.walled) and _moved(call):
+        counted = declared.export_as if isinstance(declared.export_as, Counted) else None
+        if (declared.export_as == "wall" or call.walled or (
+                counted is not None and not call.counted)) and _moved(call):
             out.cut_at(n, call.op, RUN_STOPPED_INSIDE + _frames_run(call.before, call.after))
             break
         if isinstance(call.args.get("dest"), str) and call.args["dest"]:
@@ -362,7 +381,11 @@ def document(recorder: Recorder) -> tuple[dict[str, Any], Account]:
             out.steps.append(_step(call, call.recorded))
             out.checks += bool(call.recorded)
             continue
-        out.steps.append(_step(call, call.recorded if _moved(call) else {}))
+        if counted is not None:
+            out.steps.append({"op": counted.op, counted.argument: call.counted,
+                              **({RECORDED: dict(call.recorded)} if call.recorded else {})})
+        else:
+            out.steps.append(_step(call, call.recorded if _moved(call) else {}))
         _states(out, call, recorder.states)
     if "call" not in out.cut and recording.full:
         out.cut_at(len(recording.calls) + 1, unavailable("the recording's bound cut it, no call"),
@@ -435,12 +458,18 @@ def _states(out: Account, call: Call, states: States) -> None:
 
 def _declared(tool: str, export_as: ExportAs | None, read_only: bool) -> Declared:
     if export_as is not None and not (
-            export_as in WORDS or (isinstance(export_as, tuple) and export_as
-                                   and all(isinstance(f, str) for f in export_as))):
-        raise TypeError(f"{tool}: replay={export_as!r} is one of {list(WORDS)} or a tuple of "
-                        "the reply fields a check holds to")
+            isinstance(export_as, Counted) or export_as in WORDS
+            or (isinstance(export_as, tuple) and export_as
+                and all(isinstance(f, str) for f in export_as))):
+        raise TypeError(f"{tool}: replay={export_as!r} is one of {list(WORDS)}, a tuple of "
+                        "the reply fields a check holds to, or a `Counted`")
     return Declared(export_as if export_as is not None else "drop" if read_only else "step",
                     read_only)
+
+
+def _runs_nothing_unmoved(export_as: ExportAs) -> bool:
+    """Whether a call of this kind that left the machine where it was is no step."""
+    return export_as in ("drop", "wall") or isinstance(export_as, Counted)
 
 
 def _dropped_why(declared: Declared) -> str:

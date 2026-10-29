@@ -1,8 +1,9 @@
-"""Expected-value algebra for probe tasks: strict JSON equality and `{"any_of": [...]}`
-alternatives."""
+"""Expected-value algebra for probe tasks: strict JSON equality, `{"any_of": [...]}`
+alternatives and `{"regex": {...}}`, a pattern judged by the lines of a captured text it selects."""
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from typing import Any
 
@@ -10,6 +11,46 @@ from typing import Any
 def is_any_of(value: Any) -> bool:
     """Whether `value` is an `{"any_of": [...]}` node."""
     return isinstance(value, dict) and set(value) == {"any_of"}
+
+
+def is_regex(value: Any) -> bool:
+    """Whether `value` is a `{"regex": {"lines", "hits", "example"}}` node: a pattern is right when
+    it selects exactly the `hits` (indices) among `lines`, whatever its spelling."""
+    return isinstance(value, dict) and set(value) == {"regex"}
+
+
+def selects(node: dict[str, Any], pattern: Any) -> bool:
+    """Whether `pattern` selects exactly the node's hits among its lines."""
+    spec = node["regex"]
+    if not isinstance(pattern, str):
+        return False
+    try:
+        found = re.compile(pattern)
+    except re.error:
+        return False
+    return {i for i, line in enumerate(spec["lines"]) if found.search(line)} == set(spec["hits"])
+
+
+def regex_problems(value: Any) -> list[str]:
+    """What is wrong with the `regex` nodes inside `value`, each as a sentence."""
+    if is_regex(value):
+        spec = value["regex"]
+        lines = spec.get("lines") if isinstance(spec, dict) else None
+        if not isinstance(lines, list) or not lines or not all(isinstance(x, str) for x in lines):
+            return ["`lines` is a non-empty list of strings"]
+        hits = spec.get("hits")
+        if not isinstance(hits, list) or not all(type(h) is int for h in hits):
+            return ["`hits` is a list of line indices"]
+        out = [f"hit {h} is not a line of {len(lines)}" for h in hits if not 0 <= h < len(lines)]
+        held = {"regex": {**spec, "hits": [h for h in hits if 0 <= h < len(lines)]}}
+        if not selects(held, spec.get("example")):
+            out.append("its own example does not select its hits")
+        return out
+    if isinstance(value, dict):
+        return [p for v in value.values() for p in regex_problems(v)]
+    if isinstance(value, list):
+        return [p for v in value for p in regex_problems(v)]
+    return []
 
 
 def same(a: Any, b: Any) -> bool:
@@ -29,6 +70,8 @@ def matches(expected: Any, got: Any) -> bool:
     """`same`, with `{"any_of": [...]}` accepted at any depth of the expected value."""
     if is_any_of(expected):
         return any(matches(e, got) for e in expected["any_of"])
+    if is_regex(expected):
+        return selects(expected, got)
     if isinstance(expected, dict) and isinstance(got, dict):
         return expected.keys() == got.keys() and all(matches(expected[k], got[k]) for k in got)
     if isinstance(expected, list) and isinstance(got, list):
@@ -41,6 +84,8 @@ def concrete(expected: Any) -> Any:
     """The expected value with each `any_of` replaced by its first alternative."""
     if is_any_of(expected):
         return concrete(expected["any_of"][0])
+    if is_regex(expected):
+        return expected["regex"]["example"]
     if isinstance(expected, dict):
         return {k: concrete(v) for k, v in expected.items()}
     if isinstance(expected, list):
@@ -54,7 +99,10 @@ def calls(args: Any) -> list[Any]:
 
 
 def leaves(value: Any) -> Iterator[Any]:
-    """Every scalar of `value`, through every alternative of an `any_of`."""
+    """Every scalar of `value`, through every alternative of an `any_of`; a `regex` node's lines
+    are data, not words the model was told."""
+    if is_regex(value):
+        return
     if isinstance(value, dict):
         for v in (value["any_of"] if is_any_of(value) else value.values()):
             yield from leaves(v)
