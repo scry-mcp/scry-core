@@ -1,3 +1,5 @@
+"""A closed vocabulary or a range: the judge and the schema half from one tuple."""
+
 from __future__ import annotations
 
 from typing import Any

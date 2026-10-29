@@ -1,4 +1,4 @@
-"""Test doubles and paths as this host runs and spells them."""
+"""Test doubles and paths as this host runs and spells them, and the POSIX-only skips."""
 
 from __future__ import annotations
 
