@@ -1,0 +1,17 @@
+"""The stop's instruction, in the one shape both servers answer."""
+
+from __future__ import annotations
+
+from pydantic import ConfigDict
+from typing_extensions import TypedDict
+
+from scry_core.reply_schema import Unavailable
+
+
+class StopInstruction(TypedDict):
+    __pydantic_config__ = ConfigDict(extra="forbid", strict=True)  # type: ignore[misc]
+    address: str
+    bytes: str
+    text: str
+    symbol: str | Unavailable
+    delta: int | Unavailable

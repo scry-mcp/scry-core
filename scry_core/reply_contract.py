@@ -83,6 +83,19 @@ class _OmitEmpty:
 OmitEmpty = _OmitEmpty()
 
 
+class When:
+    """`Annotated[T, When("by frames")]`: the field comes only under that condition, and the
+    tool's `Reply:` paragraph says those words."""
+
+    def __init__(self, words: str) -> None:
+        if not isinstance(words, str) or not words.strip():
+            raise TypeError(f"a condition is words the Reply paragraph says; got {words!r}")
+        self.words = words
+
+    def __repr__(self) -> str:
+        return f"When({self.words!r})"
+
+
 def is_empty(value: Any) -> bool:
     """`None`, `""`, `0`, `0.0`, `False`, `[]`, `()` or `{}`."""
     return value is None or (isinstance(value, bool | int | float | str | list | tuple | dict)

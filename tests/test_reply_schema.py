@@ -6,11 +6,12 @@ from __future__ import annotations
 from typing import Annotated, Any, Required
 
 import pytest
+from jsonschema import Draft202012Validator
 from mcp.server.mcpserver import MCPServer
 
 from scry_core import reply_schema
 from scry_core import reply_shapes_guard as shapes
-from scry_core.reply_contract import OmitEmpty
+from scry_core.reply_contract import OmitEmpty, When
 from scry_core.strict_arguments import registered
 
 
@@ -38,7 +39,55 @@ def test_a_declared_model_is_published_naming_every_field_and_refusing_none() ->
     assert schema["required"] == ["status"], schema
     props = schema["properties"]
     assert {"summary", "status", "session", "alive", "pc", "title"} <= set(props), props
-    assert all(spec == {} for spec in props.values()), "a published type could refuse a real reply"
+
+
+def test_a_published_field_is_its_value_or_unavailable() -> None:
+    server = _server()
+    reply_schema.declare(server, {"status": StatusReply})
+    schema = registered(server)[0].output_schema
+    assert schema is not None
+    validator = Draft202012Validator(schema)
+    for good in ({"status": "ok", "alive": True, "pc": "0814:0106"},
+                 {"status": "ok", "alive": {"available": False, "why": "gone"}}):
+        assert not list(validator.iter_errors(good)), good
+    for bad in ({"status": "ok", "alive": 1}, {"status": "ok", "alive": {"available": False}},
+                {"status": "maybe"}, {"alive": True}):
+        assert list(validator.iter_errors(bad)), bad
+
+
+class NeededReply(reply_schema.ReplyEnvelope, total=False):
+    pc: Required[str]
+    polls: Annotated[int, When("by frames")]
+    note: str
+
+
+def _needed() -> Draft202012Validator:
+    server = _server()
+    reply_schema.declare(server, {"status": NeededReply})
+    schema = registered(server)[0].output_schema
+    assert schema is not None
+    return Draft202012Validator(schema)
+
+
+def test_a_required_field_is_required_of_an_ok_reply_and_never_of_a_refusal() -> None:
+    validator = _needed()
+    assert not list(validator.iter_errors({"status": "ok", "pc": "0x10"}))
+    assert not list(validator.iter_errors(
+        {"status": "INVALID", "code": "no_session", "message": "none"}))
+    assert list(validator.iter_errors({"status": "ok"}))
+    assert not list(validator.iter_errors({"status": "ok", "omitted": ["pc"]}))
+    assert list(validator.iter_errors({"status": "ok", "omitted": ["note"]}))
+
+
+def test_the_judge_refuses_an_ok_reply_missing_a_required_field() -> None:
+    reply_schema.declare(_server(), {"status": NeededReply})
+    reply_schema.check("status", {"status": "ok", "pc": "0x10"})
+    reply_schema.check("status", {"status": "ok", "omitted": ["pc"], "how": "narrow"})
+    reply_schema.check("status", {"status": "INVALID", "code": "no_session", "message": "none"})
+    with pytest.raises(reply_schema.MissingFields, match="pc"):
+        reply_schema.check("status", {"status": "ok", "polls": 3})
+    with pytest.raises(reply_schema.MissingFields, match="pc"):
+        reply_schema.check("status", {"status": "ok", "omitted": ["note"]})
 
 
 @pytest.fixture(autouse=True)
@@ -119,6 +168,17 @@ def test_the_sentence_faults_name_a_missing_field_a_silent_model_and_a_stale_wor
                    "three": "allowed and no longer quoted: ['gone']"}
 
 
+def test_an_optional_promised_field_must_state_its_condition_in_the_sentence() -> None:
+    models = {"a": NeededReply, "b": NeededReply, "c": NeededReply}
+    tools = [_Tool("a", "Reply: `pc`, `polls` (by frames), `note`."),
+             _Tool("b", "Reply: `pc` and `polls`."),
+             _Tool("c", "Reply: `pc`; `summary`, `status`.")]
+    got = reply_schema.sentence_faults(tools, models, {})
+    assert got == {
+        "a": ["note: optional, so its condition is `When(...)` in the model"],
+        "b": ["polls: `When('by frames')` is not said in the Reply paragraph"]}
+
+
 def test_the_stop_fields_are_held_to_every_tool_that_quotes_them() -> None:
     stop = "the stop: `rows`, `pc`"
     tools = [_Tool("a", f"Reply: {stop}."), _Tool("b", "Reply: `rows`.")]
@@ -157,3 +217,23 @@ def test_a_marked_field_is_never_required() -> None:
 
     with pytest.raises(ValueError, match="always"):
         reply_schema.declare(_server(), {"status": Marked})
+
+
+def test_a_condition_is_read_from_the_model_and_is_never_required() -> None:
+    assert reply_schema.conditions(NeededReply) == {"polls": "by frames"}
+    assert reply_schema.own_required(NeededReply) == frozenset({"pc"})
+    with pytest.raises(TypeError, match="condition"):
+        When("  ")
+
+    class Both(reply_schema.ReplyEnvelope, total=False):
+        always: Required[Annotated[int, When("sometimes")]]
+
+    with pytest.raises(ValueError, match="always"):
+        reply_schema.declare(_server(), {"status": Both})
+
+
+def test_the_shape_guard_names_a_missing_required_field() -> None:
+    reply_schema.declare(_server(), {"status": NeededReply})
+    summary = shapes._wrap_summary(lambda name, args, reply: f"{name}: {reply['status']}")
+    with pytest.raises(AssertionError, match="omits.*pc"):
+        summary("status", {}, {"status": "ok"})

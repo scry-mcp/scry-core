@@ -1,6 +1,6 @@
 [project]
 name = "scry-core"
-version = "0.68.2"
+version = "0.69.0"
 description = "What the Scry emulator MCP servers share, held once: the reply contract, captures and their comparisons, screen maps, the demo runner, the probe and the live bench"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -27,7 +27,16 @@ dependencies = [
 reply_shapes = "scry_core.reply_shapes"
 
 [dependency-groups]
-dev = ["mypy>=1.11", "pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.6"]
+# `jsonschema` is what the SDK's client validates a reply with; the tests run the same validator
+# over the published `outputSchema`, so a schema a real client would refuse is red here.
+dev = [
+    "jsonschema>=4.26.0",
+    "mypy>=1.11",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "types-jsonschema>=4.26.0.20261006",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["scry_core"]

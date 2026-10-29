@@ -1,9 +1,9 @@
 """Each tool's published `outputSchema` and the battery's strict check of every reply.
 
-The published schema names fields and constrains none: any datum may come back as
-`unavailable(why)`, and a typed schema would fail a call the server answered in a validating
-client. `check` is the strict judge. The schema never reaches a model's context, so
-`reply_sentence_names` and `unmodelled` hold the description's `Reply` paragraph to the model."""
+Each field is published as its value or `unavailable(why)`, and the fields an `ok` reply always
+carries are required of it; `check` is the same judge, strict. The schema never reaches a model's
+context, so `reply_sentence_names`, `unmodelled` and `conditions_unsaid` hold the description's
+`Reply` paragraph to the model."""
 
 from __future__ import annotations
 
@@ -42,11 +42,49 @@ class Unavailable(TypedDict):
     why: str
 
 
+class MissingFields(ValueError):
+    """An `ok` reply that leaves out fields its model requires."""
+
+
+def _hints(model: type) -> dict[str, tuple[Any, bool]]:
+    """Each field's hint without `Required`/`NotRequired`, and whether the field is required.
+
+    Read from the hints as well as `__required_keys__`, which postponed annotations leave blind."""
+    required = set(getattr(model, "__required_keys__", ()))
+    out: dict[str, tuple[Any, bool]] = {}
+    for name, hint in get_type_hints(model, include_extras=True).items():
+        while get_origin(hint) in (Required, NotRequired):
+            if get_origin(hint) is Required:
+                required.add(name)
+            else:
+                required.discard(name)
+            hint = get_args(hint)[0]
+        out[name] = (hint, name in required)
+    return out
+
+
+def _metadata(hint: Any) -> tuple[Any, ...]:
+    return tuple(getattr(hint, "__metadata__", ()))
+
+
+def _values_or_unavailable(model: type) -> dict[str, Any]:
+    """Each non-envelope field's hint widened with `Unavailable`."""
+    envelope = _hints(ReplyEnvelope)
+    return {name: hint if name in envelope else hint | Unavailable
+            for name, (hint, _) in _hints(model).items()}
+
+
+def own_required(model: type) -> frozenset[str]:
+    """The fields `model` adds to the envelope that an `ok` reply always carries."""
+    envelope = _hints(ReplyEnvelope)
+    return frozenset(n for n, (_, required) in _hints(model).items()
+                     if required and n not in envelope)
+
+
 def judged(model: type) -> TypeAdapter[Any]:
     """The judge of `model`: each non-envelope field also takes `Unavailable`."""
-    envelope = get_type_hints(ReplyEnvelope, include_extras=True)
-    fields = {name: hint if name in envelope else hint | Unavailable
-              for name, hint in get_type_hints(model, include_extras=True).items()}
+    fields = _values_or_unavailable(model)
+    fields["status"] = Required[fields["status"]]
     judge: Any = TypedDict(f"{model.__name__}Judged", fields, total=False)  # type: ignore[misc]
     setattr(judge, "__pydantic_config__", ConfigDict(extra="forbid", strict=True))  # noqa: B010
     return TypeAdapter(judge)
@@ -54,22 +92,27 @@ def judged(model: type) -> TypeAdapter[Any]:
 
 _JUDGES: dict[str, TypeAdapter[Any]] = {}
 _OMIT_EMPTY: dict[str, frozenset[str]] = {}
+_REQUIRED: dict[str, frozenset[str]] = {}
 
 
 def omitted_when_empty(model: type) -> frozenset[str]:
     """The fields marked `OmitEmpty`; a required one is a `ValueError`."""
-    marked: set[str] = set()
-    required = set(getattr(model, "__required_keys__", ()))
-    for name, hint in get_type_hints(model, include_extras=True).items():
-        while get_origin(hint) in (Required, NotRequired):
-            if get_origin(hint) is Required:
-                required.add(name)
-            hint = get_args(hint)[0]
-        if any(m is contract.OmitEmpty for m in getattr(hint, "__metadata__", ())):
-            marked.add(name)
-    if both := sorted(marked & required):
+    hints = _hints(model)
+    marked = {n for n, (h, _) in hints.items()
+              if any(m is contract.OmitEmpty for m in _metadata(h))}
+    if both := sorted(n for n in marked if hints[n][1]):
         raise ValueError(f"{model.__name__} requires {both}, which it marks OmitEmpty")
     return frozenset(marked)
+
+
+def conditions(model: type) -> dict[str, str]:
+    """The `When` words of each conditional field; a required one is a `ValueError`."""
+    hints = _hints(model)
+    found = {n: m.words for n, (h, _) in hints.items() for m in _metadata(h)
+             if isinstance(m, contract.When)}
+    if both := sorted(n for n in found if hints[n][1]):
+        raise ValueError(f"{model.__name__} requires {both}, which it conditions with When")
+    return found
 
 
 def omit_empty(name: str, reply: dict[str, Any]) -> dict[str, Any]:
@@ -81,9 +124,20 @@ def omit_empty(name: str, reply: dict[str, Any]) -> dict[str, Any]:
 
 
 def published(model: type) -> dict[str, Any]:
-    """`model`'s schema as a client reads it: every field named, none constrained."""
-    return {"type": "object", "properties": {name: {} for name in _fields(model)},
-            "required": ["status"]}
+    """`model`'s schema as a client reads it: each field its value or `Unavailable`, and the
+    required fields required of an `ok` reply (or named in its `omitted`)."""
+    shape: Any = TypedDict(  # type: ignore[misc]
+        f"{model.__name__}Published", _values_or_unavailable(model), total=False)
+    schema: dict[str, Any] = TypeAdapter(shape).json_schema()
+    schema["required"] = ["status"]
+    if need := sorted(own_required(model)):
+        schema["if"] = {"properties": {"status": {"const": "ok"}}, "required": ["status"]}
+        schema["then"] = {"allOf": [
+            {"anyOf": [{"required": [n]},
+                       {"required": ["omitted"],
+                        "properties": {"omitted": {"contains": {"const": n}}}}]}
+            for n in need]}
+    return schema
 
 
 def _fields(model: type) -> list[str]:
@@ -109,16 +163,26 @@ def declare(server: MCPServer, models: Mapping[str, type]) -> None:
         raise ValueError(gap)
     for name, tool in tools.items():
         _OMIT_EMPTY[name] = omitted_when_empty(models[name])
+        conditions(models[name])
+        _REQUIRED[name] = own_required(models[name])
         tool.fn_metadata = tool.fn_metadata.model_copy(
             update={"output_schema": published(models[name])})
         _JUDGES[name] = judged(models[name])
 
 
 def check(name: str, reply: dict[str, Any]) -> None:
-    """`reply` as the wire carries it against `name`'s model; an undeclared name is not judged."""
+    """`reply` as the wire carries it against `name`'s model; an undeclared name is not judged.
+    An `ok` reply missing a required field its `omitted` does not name is `MissingFields`."""
     judge = _JUDGES.get(name)
-    if judge is not None:
-        judge.validate_python(_as_on_the_wire(reply))
+    if judge is None:
+        return
+    wire = _as_on_the_wire(reply)
+    judge.validate_python(wire)
+    if wire.get("status") != "ok":
+        return
+    gone = sorted(_REQUIRED.get(name, frozenset()) - wire.keys() - set(wire.get("omitted", ())))
+    if gone:
+        raise MissingFields(f"{name}'s ok reply omits {gone}, which its model requires")
 
 
 def _as_on_the_wire(value: Any) -> Any:
@@ -133,17 +197,25 @@ def _as_on_the_wire(value: Any) -> Any:
 _REPLY = re.compile(r"\bReply\b[^:\n]*:")
 
 
+def _paragraphs(doc: str) -> list[tuple[str, str]]:
+    """Each `Reply` paragraph as what opens it before the colon and what follows."""
+    out: list[tuple[str, str]] = []
+    for found in _REPLY.finditer(doc):
+        text = doc[found.end():]
+        end = text.find("\n\n")
+        out.append((doc[found.start() + len("Reply"):found.end() - 1],
+                    text if end < 0 else text[:end]))
+    return out
+
+
 def reply_sentence_names(doc: str) -> list[str]:
     """The fields a docstring's `Reply` paragraphs name at top level: backticked identifiers
     outside parentheses and outside the list a colon opens."""
     names: list[str] = []
-    for found in _REPLY.finditer(doc):
+    for head, body in _paragraphs(doc):
         # `Reply, per channel in `measures`:` names the field the list after the colon belongs to
-        opened = _top_level(doc[found.start() + len("Reply"):found.end() - 1])
-        text = doc[found.end():]
-        end = text.find("\n\n")
-        words = opened + _top_level(text if end < 0 else text[:end], listing=bool(opened))
-        for word in words:
+        opened = _top_level(head)
+        for word in opened + _top_level(body, listing=bool(opened)):
             if word not in names:
                 names.append(word)
     return names
@@ -188,24 +260,45 @@ def unmodelled(doc: str, model: type, not_fields: Iterable[str] = ()) -> list[st
     return [n for n in reply_sentence_names(doc) if n not in held and n not in other]
 
 
+def conditions_unsaid(doc: str, model: type, not_fields: Iterable[str] = ()) -> list[str]:
+    """The promised fields the model leaves optional without a condition (`When`; `OmitEmpty`
+    is one by its nature), and those whose `When` words the `Reply` paragraphs do not say."""
+    envelope = set(_hints(ReplyEnvelope))
+    skip = envelope | set(contract.CODES) | set(get_args(contract.Verdict)) | set(not_fields)
+    held, required = set(_fields(model)), own_required(model)
+    marked, when = omitted_when_empty(model), conditions(model)
+    said = " ".join(" ".join(f"{head} {body}".split()) for head, body in _paragraphs(doc)).lower()
+    faults: list[str] = []
+    for n in reply_sentence_names(doc):
+        if n in skip or n not in held or n in required or n in marked:
+            continue
+        if n not in when:
+            faults.append(f"{n}: optional, so its condition is `When(...)` in the model")
+        elif " ".join(when[n].lower().split()) not in said:
+            faults.append(f"{n}: `When({when[n]!r})` is not said in the Reply paragraph")
+    return faults
+
+
 def sentence_faults(tools: Iterable[Any], models: Mapping[str, type],
                     words: Mapping[str, Iterable[str]]) -> dict[str, Any]:
-    """By tool, a description's fault: an unmodelled `Reply` field, none named, or a stale allowed
-    word."""
+    """By tool, a description's fault: an unmodelled `Reply` field, none named, a stale allowed
+    word, or an optional field with no stated condition."""
     tools = list(tools)
     names = {t.name for t in tools}
     wrong: dict[str, Any] = {}
     for t in tools:
         doc, model = t.description or "", models[t.name]
         allowed = set(words.get(t.name, ()))
+        skip = names | set(t.input_schema.get("properties", {})) | allowed
         said = reply_sentence_names(doc)
         if not said and own_fields(model):
             wrong[t.name] = "its description names no field of its reply"
-        elif miss := unmodelled(doc, model,
-                                names | set(t.input_schema.get("properties", {})) | allowed):
+        elif miss := unmodelled(doc, model, skip):
             wrong[t.name] = miss
         elif unused := sorted(allowed - set(said)):
             wrong[t.name] = f"allowed and no longer quoted: {unused}"
+        elif bare := conditions_unsaid(doc, model, skip):
+            wrong[t.name] = bare
     return wrong
 
 

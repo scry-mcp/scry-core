@@ -84,6 +84,10 @@ def _wrap_summary(original: Summary) -> Summary:
             raise AssertionError(f"{name}'s reply is not the shape its model declares, so its "
                                  f"published schema would lie: {e}. Name the field in the "
                                  f"tool's reply model, or give it the declared type") from None
+        except reply_schema.MissingFields as e:
+            raise AssertionError(f"{e}. A field that always comes is built on every `ok` path "
+                                 f"(a datum not read is `unavailable(why)`); one that comes "
+                                 f"only sometimes is `When(...)` in the model") from None
         return original(name, args, reply, *rest)
     return checked
 
