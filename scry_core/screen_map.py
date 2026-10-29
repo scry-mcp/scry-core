@@ -11,6 +11,9 @@ its script in `scry_core.games`):
                   "match": [{"crop": [0, 0, 320, 8], "signature": "<16 hex>"}],
                   "controls": [{"name": "paddle", "rect": [140, 180, 40, 8]}]}]}
 
+THE FORMAT NUMBER stays `/1` until the first release freezes it: a key added before then
+(`cells`, `anchor`) joins `/1`, and a reader older than a key refuses a map that uses it.
+
 THE MODE says who answers for the map holding. `verified`: an application whose screens still
 move (one under development, a driver or an emulation being touched), so every way into a screen
 judges its signatures and a map gone stale is noticed by the server. `consolidated`: a finished
