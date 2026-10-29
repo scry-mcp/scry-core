@@ -105,7 +105,8 @@ DOC_VALUES = {
                  "layer, held by the\nserver; nothing is written to disk. `scale` (1..8) and "
                  "`margin` [x, y] (machine pixels on\neach side) say how the program's picture "
                  "sits on this machine's screen; maps and `add`'s\ncrops are in the program's "
-                 "units. Reply: `path`, `application`, `mode`, `screens`, `controls`."),
+                 "units. Reply: `path`, `application`, `mode`, `screens`, `controls`, `pointer`\n"
+                 "(a map that declares the program's pointer)."),
     "MAP_SAVE": ("`save`: both layers as one map to `dest`, refused there without `overwrite`, "
                  "made the file\nlayer, in the loaded map's `mode` (`verified` when none was "
                  "loaded). Reply: `path`,\n`application`, `mode`, `screens`, `controls`, "
