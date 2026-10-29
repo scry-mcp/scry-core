@@ -556,6 +556,20 @@ def test_a_regex_expected_value_is_judged_by_the_lines_it_selects(
     assert any_of.matches(FAILED_OPENS, pattern) is right
 
 
+ALSO_OPENS = {"regex": {"lines": TRACE, "hits": [1, 3], "also": [0], "example": "open"}}
+
+
+@pytest.mark.parametrize("pattern, right", [
+    ("open", True),                   # the hits and the allowed line, nothing else
+    ("open .* -> error", True),       # the hits alone
+    ("MISSING", False),               # one hit short
+    ("A.TXT", False),                 # the allowed line, and line 2, which is neither
+    (".", False)])                    # everything
+def test_a_regex_value_may_allow_lines_beside_the_ones_it_requires(
+        pattern: str, right: bool) -> None:
+    assert any_of.matches(ALSO_OPENS, pattern) is right
+
+
 def test_a_regex_expected_value_is_held_to_its_own_example_and_hidden_from_contamination() -> None:
     assert any_of.matches(FAILED_OPENS, any_of.concrete(FAILED_OPENS))
     assert list(any_of.leaves({"pattern": FAILED_OPENS})) == []
@@ -567,6 +581,13 @@ def test_a_regex_expected_value_is_held_to_its_own_example_and_hidden_from_conta
         "`lines` is a non-empty list of strings"]
     assert any_of.regex_problems({"regex": {"lines": TRACE, "hits": "1", "example": ""}}) == [
         "`hits` is a list of line indices"]
+    assert any_of.regex_problems({"regex": {"lines": TRACE, "hits": [1], "also": "0",
+                                            "example": "open"}}) == [
+        "`also` is a list of line indices"]
+    assert any_of.regex_problems({"regex": {"lines": TRACE, "hits": [1], "also": [1, 8],
+                                            "example": "MISSING"}}) == [
+        "hit 8 is not a line of 4", "a line is both a hit and allowed beside the hits"]
+    assert any_of.regex_problems({"pattern": ALSO_OPENS}) == []
     assert any_of.matches(FAILED_OPENS, 7) is False
 
 

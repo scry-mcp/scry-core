@@ -15,12 +15,13 @@ def is_any_of(value: Any) -> bool:
 
 def is_regex(value: Any) -> bool:
     """Whether `value` is a `{"regex": {"lines", "hits", "example"}}` node: a pattern is right when
-    it selects exactly the `hits` (indices) among `lines`, whatever its spelling."""
+    it selects every one of the `hits` (indices) among `lines` and, beside them, only lines the
+    optional `also` allows, whatever its spelling."""
     return isinstance(value, dict) and set(value) == {"regex"}
 
 
 def selects(node: dict[str, Any], pattern: Any) -> bool:
-    """Whether `pattern` selects exactly the node's hits among its lines."""
+    """Whether `pattern` selects all the node's hits among its lines, and nothing but `also`."""
     spec = node["regex"]
     if not isinstance(pattern, str):
         return False
@@ -28,7 +29,9 @@ def selects(node: dict[str, Any], pattern: Any) -> bool:
         found = re.compile(pattern)
     except re.error:
         return False
-    return {i for i, line in enumerate(spec["lines"]) if found.search(line)} == set(spec["hits"])
+    chosen = {i for i, line in enumerate(spec["lines"]) if found.search(line)}
+    hits = set(spec["hits"])
+    return hits <= chosen <= hits | set(spec.get("also", []))
 
 
 def regex_problems(value: Any) -> list[str]:
@@ -41,8 +44,15 @@ def regex_problems(value: Any) -> list[str]:
         hits = spec.get("hits")
         if not isinstance(hits, list) or not all(type(h) is int for h in hits):
             return ["`hits` is a list of line indices"]
-        out = [f"hit {h} is not a line of {len(lines)}" for h in hits if not 0 <= h < len(lines)]
-        held = {"regex": {**spec, "hits": [h for h in hits if 0 <= h < len(lines)]}}
+        also = spec.get("also", [])
+        if not isinstance(also, list) or not all(type(a) is int for a in also):
+            return ["`also` is a list of line indices"]
+        out = [f"hit {h} is not a line of {len(lines)}" for h in [*hits, *also]
+               if not 0 <= h < len(lines)]
+        if set(hits) & set(also):
+            out.append("a line is both a hit and allowed beside the hits")
+        held = {"regex": {**spec, "hits": [h for h in hits if 0 <= h < len(lines)],
+                          "also": [a for a in also if 0 <= a < len(lines)]}}
         if not selects(held, spec.get("example")):
             out.append("its own example does not select its hits")
         return out

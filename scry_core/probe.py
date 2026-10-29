@@ -33,8 +33,9 @@ THE TASK FILE is {"tasks": [...]}, and a task is:
   prompt   what is asked, in a caller's words
   tool     the expected tool, with `args`: name -> value, or {"any_of": [value, ...]} at any
            depth; `args` itself may be {"any_of": [{...}, {...}]}, equivalent whole calls;
-           a pattern may be {"regex": {"lines": [...], "hits": [i, ...], "example": "..."}}:
-           right when it selects exactly the `hits` among the captured `lines`
+           a pattern may be {"regex": {"lines": [...], "hits": [i, ...], "also": [j, ...],
+           "example": "..."}}: right when it selects every one of the `hits` among the captured
+           `lines` and, beside them, only the lines `also` allows (optional)
   allow    argument names that may carry any value
   grammar  values the description HAS to hold (an enum word, a lane), exempt from contamination
   expect   "CANNOT" in place of `tool` and `args`, with `about`: the tool whose limit it probes
