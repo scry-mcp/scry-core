@@ -261,12 +261,20 @@ def unmodelled(doc: str, model: type, not_fields: Iterable[str] = ()) -> list[st
     return [n for n in reply_sentence_names(doc) if n not in held and n not in other]
 
 
+def _said(words: str, text: str, own: str) -> bool:
+    """Whether `words` stand in `text` as whole words, outside the backticked name `own`."""
+    outside = text.replace(f"`{own}`", " ")
+    return re.search(rf"(?<!\w){re.escape(' '.join(words.lower().split()))}(?!\w)",
+                     outside) is not None
+
+
 def conditions_unsaid(doc: str, model: type, not_fields: Iterable[str] = ()) -> list[str]:
     """The promised fields the model leaves optional without a condition (`When`; `OmitEmpty`
-    is one by its nature), and those whose `When` words the blocks holding a `Reply` do not say."""
+    is one by its nature), and those whose `When` words the blocks holding a `Reply` do not say
+    as whole words, the field's own name not counting."""
     envelope = set(_hints(ReplyEnvelope))
-    skip = envelope | set(contract.CODES) | set(get_args(contract.Verdict)) | set(not_fields)
     held, required = set(_fields(model)), own_required(model)
+    skip = envelope | set(contract.CODES) | set(get_args(contract.Verdict)) | set(not_fields)
     marked, when = omitted_when_empty(model), conditions(model)
     said = " ".join(" ".join(block.split()) for block in doc.split("\n\n")
                     if _REPLY.search(block)).lower()
@@ -276,7 +284,7 @@ def conditions_unsaid(doc: str, model: type, not_fields: Iterable[str] = ()) -> 
             continue
         if n not in when:
             faults.append(f"{n}: optional, so its condition is `When(...)` in the model")
-        elif any(" ".join(w.lower().split()) not in said for w in when[n].words):
+        elif not all(_said(w, said, n.lower()) for w in when[n].words):
             faults.append(f"{n}: `{when[n]!r}` is not said in the Reply paragraph")
     return faults
 
@@ -299,7 +307,8 @@ def sentence_faults(tools: Iterable[Any], models: Mapping[str, type],
             wrong[t.name] = miss
         elif unused := sorted(allowed - set(said)):
             wrong[t.name] = f"allowed and no longer quoted: {unused}"
-        elif bare := conditions_unsaid(doc, model, skip):
+        elif bare := conditions_unsaid(doc, model, set(t.input_schema.get("properties", {}))
+                                       | allowed):
             wrong[t.name] = bare
     return wrong
 

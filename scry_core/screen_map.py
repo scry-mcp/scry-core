@@ -105,11 +105,11 @@ DOC_VALUES = {
     "MAP_CELLS": ("`cells` `index` (a pixel screen; default\n`rgb`) signs the palette indices "
                   "drawn, not the colours shown, so one map knows a program\nshown through two "
                   "palettes; a screen with no palette refuses it (`no_channel`)."),
-    "MAP_FIND": ("Which mapped screen the machine shows. Reply: `matched`; matched, `screen`, "
-                 "`layer`, `kind`,\n`size`, `controls` (`name`, `rect`, `centre`), in the "
-                 "program's units; else the machine's\n`kind` and `size`, `screens_mapped`, "
-                 "`screens_tried`, `screens_unjudged` (signed by index on a\nscreen with no "
-                 "palette), or `view_fits: false`. None mapped: `needs_call`."),
+    "MAP_FIND": ("Which mapped screen the machine shows. Reply: `matched`, `kind` and `size`; when "
+                 "matched,\n`screen`, `layer`, `controls` (`name`, `rect`, `centre`), in the "
+                 "program's units; when not,\n`screens_mapped` and, if the view fits the map, "
+                 "`screens_tried` and `screens_unjudged`\n(signed by index on a screen with no "
+                 "palette), else `view_fits` false. None mapped:\n`needs_call`."),
     "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref` (exactly one), run to "
                    "its `anchor`, the\n`control` still required; a `verified` map judges it "
                    "there (`stale_map` when it no longer\nholds), a `consolidated` one takes it "

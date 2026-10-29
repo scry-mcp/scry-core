@@ -187,6 +187,27 @@ def test_an_optional_promised_field_must_state_its_condition_in_the_sentence() -
         "b": ["polls: `When('by frames')` is not said in the Reply paragraph"]}
 
 
+class CarefulReply(reply_schema.ReplyEnvelope, total=False):
+    arm: Annotated[int, When("arm")]
+    armed_now: Annotated[int, When("read")]
+    start: Annotated[int, When("with `plan`")]
+
+
+def test_a_condition_is_said_by_whole_words_and_never_by_its_own_field_name() -> None:
+    models = {n: CarefulReply for n in ("a", "b", "c", "d", "start")}
+    tools = [_Tool("a", "Reply: `arm` (an arm), `armed_now` (already there)."),
+             _Tool("b", "Reply: `arm`, `armed_now` (read)."),
+             _Tool("c", "Reply: `armed_now` (read), `start`."),
+             _Tool("d", "Reply: `arm`."),
+             _Tool("start", "Reply: `start` (with `plan`).")]
+    got = reply_schema.sentence_faults(tools, models, {})
+    assert got == {
+        "a": ["armed_now: `When('read')` is not said in the Reply paragraph"],
+        "b": ["arm: `When('arm')` is not said in the Reply paragraph"],
+        "c": ["start: `When('with `plan`')` is not said in the Reply paragraph"],
+        "d": ["arm: `When('arm')` is not said in the Reply paragraph"]}, got
+
+
 class TwoWaysReply(reply_schema.ReplyEnvelope, total=False):
     shared: Annotated[int, When("series", "golden")]
 
