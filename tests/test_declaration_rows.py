@@ -73,3 +73,16 @@ def test_the_kinds_listed_are_the_one_named_or_every_one_and_no_other() -> None:
     assert rows.chosen_kinds("", ("breakpoint", "watch")) == ("breakpoint", "watch")
     with pytest.raises(Invalid, match="kind is one of"):
         rows.chosen_kinds("comment", ("breakpoint", "watch"))
+
+
+@pytest.mark.parametrize(("ref", "all_", "said"), [
+    ("x", True, "takes no `ref`"), (" ", True, "takes no `ref`"),
+    ("", False, "names nothing"), ("  ", False, "names nothing")],
+    ids=["a ref with all", "a blank ref with all", "no ref", "a blank ref"])
+def test_a_clear_names_one_ref_or_all_and_a_blank_one_is_neither(
+        ref: str, all_: bool, said: str) -> None:
+    with pytest.raises(Invalid, match=said) as e:
+        rows.check_clear_scope(ref, all_, "watch")
+    assert '`declaration_clear(kind="watch", all=True)`' in str(e.value)
+    rows.check_clear_scope("x", False, "watch")
+    rows.check_clear_scope("", True, "watch")

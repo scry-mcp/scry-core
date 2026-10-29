@@ -328,6 +328,32 @@ def test_a_program_shown_doubled_with_a_margin_is_found_in_its_own_units(tmp_pat
     assert added["match"][0]["signature"] == _sig(PLAY, [6, 2, 2, 2])
 
 
+def _doubled_in_x(grid: Grid, margin_x: int) -> Grid:
+    """`grid` drawn twice as large with `margin_x` black columns left and right."""
+    width, height = grid.width * 2 + 2 * margin_x, grid.height * 2
+    out = bytearray(3 * width * height)
+    for y in range(height):
+        for x in range(width):
+            sx = (x - margin_x) // 2
+            if 0 <= sx < grid.width:
+                src = (y // 2) * grid.width + sx
+                out[(y * width + x) * 3:(y * width + x) * 3 + 3] = grid.cells[src * 3:src * 3 + 3]
+    return Grid("pixel", width, height, bytes(out))
+
+
+def test_a_verified_screen_is_judged_at_its_anchor_through_a_view_with_an_x_margin(
+        tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _anchored("verified")), scale=2, margin=[2, 0])
+    shown = _doubled_in_x(PLAY, 2)
+    assert (shown.width, shown.height) == (2 * W + 4, 2 * H)
+    assert maps.arrived("play", Reads(shown), stop=7)["judged"] is True
+    assert maps.target("quit")["size"] == (2 * W + 4, 2 * H)
+    with pytest.raises(Invalid, match="no longer holds") as e:
+        maps.arrived("play", Reads(_doubled_in_x(TITLE, 2)), stop=8)
+    assert e.value.code == "stale_map"
+
+
 def test_a_screen_the_view_does_not_fit_is_said_so_not_unmatched(tmp_path: Path) -> None:
     pc = Maps()
     pc.load(_file(tmp_path, _doc()), scale=2, margin=[0, 1])
@@ -740,7 +766,49 @@ def test_a_screen_with_no_palette_is_still_matched_by_the_maps_colour_screens() 
     assert missed["matched"] is False
     assert (missed["screens_tried"], missed["screens_unjudged"]) == (0, 1)
     line = screen_map.find_line({}, missed)
-    assert "0 of that kind and size, 1 more left unjudged: signed by index, on a screen" in line
+    assert ("0 of that kind and size, 1 more left unjudged: signed by index, on a screen "
+            "whose pens") in line
+
+
+class _NoPens(Reads):
+    """A machine whose palette cannot name its pens: asked for them it refuses, as MAME does for
+    a palette with shadows enabled; asked for colours alone it answers."""
+
+    def __call__(self, indices: bool = False) -> Grid:
+        if indices:
+            self.asked.append(indices)
+            raise Invalid("no_channel", "the palette has shadows enabled")
+        return super().__call__(indices)
+
+
+def test_a_screen_whose_pens_cannot_be_read_is_still_judged_by_its_colours() -> None:
+    """A map holding an index screen asks for pens; a machine that cannot give them must not
+    stop the colour screens being judged."""
+    maps = Maps()
+    maps.add("board", [[0, 0, 2, 1]], [], Reads(ARCADE), cells="index")
+    maps.add("menu", [[0, 0, 2, 1]], [], Reads(PC))
+    colours = Grid("pixel", 2, 1, b"\x20\x20\x20" * 2)
+    reads = _NoPens(colours)
+    found = maps.find(reads, stop=1)
+    assert (found["matched"], found["screen"]) == (True, "menu"), found
+    assert reads.asked == [True, False], "pens asked for, then the colours alone"
+    maps.session.pop("menu")
+    missed = maps.find(_NoPens(colours), stop=2)
+    assert (missed["matched"], missed["screens_tried"], missed["screens_unjudged"]) == (
+        False, 0, 1), missed
+
+
+def test_a_machine_that_refuses_the_read_for_another_reason_is_not_retried() -> None:
+    class Dead(Reads):
+        def __call__(self, indices: bool = False) -> Grid:
+            self.count += 1
+            raise Invalid("host_failed", "the emulator went away")
+    maps = Maps()
+    maps.add("board", [[0, 0, 2, 1]], [], Reads(ARCADE), cells="index")
+    dead = Dead(PC)
+    with pytest.raises(Invalid, match="went away"):
+        maps.find(dead, stop=1)
+    assert dead.count == 1
 
 
 def test_an_index_screen_on_a_read_without_indices_is_the_machines_answer() -> None:

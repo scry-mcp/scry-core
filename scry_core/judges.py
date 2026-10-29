@@ -49,13 +49,6 @@ def hex_at_width(value: int, bits: int) -> str:
     return f"{value:#0{2 + (bits + 3) // 4}x}"
 
 
-#: Hits a call lists (a scan's survivors): the most shown, and the default when none is named.
-HITS_MAX, HITS_DEFAULT = 400, 40
-#: A value scan's cells and its comparisons, compared unsigned; `!` is "not equal".
-SCAN_CELL_BYTES = (1, 2, 4)
-SCAN_OPERATORS = ("=", "!", ">", ">=", "<", "<=")
-
-
 def whole(value: object, lo: int = 0, hi: int | None = None) -> TypeGuard[int]:
     """`value` is an int in `lo..hi`; a bool is not."""
     return (isinstance(value, int) and not isinstance(value, bool) and value >= lo

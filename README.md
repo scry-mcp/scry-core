@@ -75,6 +75,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.bus_writes` | a tap's bus access as bytes: the lanes its mask drove in either byte order, and a count watch's value table |
 | `scry_core.docs` | a tool description's `{NAME}` placeholders, filled from the constants that enforce them |
 | `scry_core.reference` | a server's reference generated from its registry: per tool its call, arguments, reply fields, description and a live example, on its family's page; the index and the envelope in `REFERENCE.md`; and `drift`, the check each server's test runs |
+| `scry_core.scan_vocabulary` | the words a value scan is asked in: its cell widths, its comparisons, the most hits a call lists |
 | `scry_core.screen_map` | screen maps (`scry-screen-map/1`): which screen of an application a machine shows, off one read of it, and its named controls, in a file layer and a session layer; a map's mode (verified or consolidated), each screen's anchor for `run_to(screen=)`, and the view a machine shows the program's picture through |
 | `scry_core.pens` | the views of a screen by pen both servers draw: an isolation's hue and greys, its pixels and box, the pixel view's crop, and unused pens said as runs |
 

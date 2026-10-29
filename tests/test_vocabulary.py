@@ -63,15 +63,3 @@ def test_a_wait_inside_its_bound_and_zero_where_it_means_something_pass() -> Non
     with pytest.raises(Invalid, match=r"settle_seconds=-1 .*0 \(never wait\) or more than zero"):
         vocabulary.check_wait(-1, "settle_seconds", zero_means="never wait")
 
-
-@pytest.mark.parametrize(("ref", "all_", "said"), [
-    ("x", True, "takes no `ref`"), (" ", True, "takes no `ref`"),
-    ("", False, "names nothing"), ("  ", False, "names nothing")],
-    ids=["a ref with all", "a blank ref with all", "no ref", "a blank ref"])
-def test_a_clear_names_one_ref_or_all_and_a_blank_one_is_neither(
-        ref: str, all_: bool, said: str) -> None:
-    with pytest.raises(Invalid, match=said) as e:
-        vocabulary.check_clear_scope(ref, all_, "watch")
-    assert '`declaration_clear(kind="watch", all=True)`' in str(e.value)
-    vocabulary.check_clear_scope("x", False, "watch")
-    vocabulary.check_clear_scope("", True, "watch")

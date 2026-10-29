@@ -120,8 +120,8 @@ DOC_VALUES = {
     "MAP_FIND": ("Which mapped screen the machine shows. Reply: `matched`, `kind` and `size`; when "
                  "matched,\n`screen`, `layer`, `controls` (`name`, `rect`, `centre`), in the "
                  "program's units; when not,\n`screens_mapped` and, if the view fits the map, "
-                 "`screens_tried` and `screens_unjudged`\n(signed by index on a screen with no "
-                 "palette), else `view_fits` false. None mapped:\n`needs_call`."),
+                 "`screens_tried` and `screens_unjudged`\n(signed by index on a screen whose pens "
+                 "cannot be read), else `view_fits` false. None mapped:\n`needs_call`."),
     "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref` (exactly one). With an "
                    "`anchor`, run to it (`control`\nrequired): a `verified` map judges it there "
                    "(`stale_map` when it no longer holds), a\n`consolidated` one takes it as "
@@ -379,7 +379,13 @@ class Maps:
         # FORGOTTEN BEFORE THE READ: a read that fails is no identification, and acting on the
         # screen the last one found would act on a screen nobody has seen since.
         self.found = None
-        shown = read(indices=any(s.cells == "index" for _, s in candidates))
+        wants_pens = any(s.cells == "index" for _, s in candidates)
+        try:
+            shown = read(indices=wants_pens)
+        except Invalid as e:
+            if not wants_pens or e.code != "no_channel":
+                raise
+            shown = read(indices=False)     # pens it cannot name: the colour screens still judge
         fits = self.view.program_size(shown) is not None
         grid = self.view.through(shown) if fits else shown
         signed: dict[tuple[judges.Rect, str], str] = {}
@@ -388,7 +394,7 @@ class Maps:
             if not fits or screen.kind != grid.kind or screen.size != (grid.width, grid.height):
                 continue
             if screen.cells == "index" and grid.indices is None:
-                unjudged += 1       # a screen with no palette is no screen drawn by index
+                unjudged += 1       # pens the machine could not give: judged by colours alone
                 continue
             tried += 1
             if all(_signed(signed, grid, crop, screen.cells) == want
@@ -763,8 +769,8 @@ def find_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     return (f"screen_map_find: no screen matched the {reply['kind']} {w}x{h} screen "
             f"({prose.counted(reply['screens_mapped'], 'screen')} mapped, "
             f"{reply['screens_tried']} of that kind and size"
-            + (f", {unjudged} more left unjudged: signed by index, on a screen with no palette"
-               if unjudged else "")
+            + (f", {unjudged} more left unjudged: signed by index, on a screen whose pens "
+               "cannot be read" if unjudged else "")
             + ")")
 
 

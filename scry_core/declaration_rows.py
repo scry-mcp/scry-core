@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from scry_core import vocabulary as vocab
-from scry_core.reply_contract import or_unavailable
+from scry_core.reply_contract import Invalid, or_unavailable
 
 UNDATED_WHY = "the row carries no date with an offset"
 NO_ORIGIN_WHY = ("the row names no session it was declared in: clear it by its ref, or declare it "
@@ -15,6 +15,19 @@ NO_ORIGIN_WHY = ("the row names no session it was declared in: clear it by its r
 #: A comment is adopted by commenting it again, never by declaring it.
 NO_ORIGIN_COMMENT_WHY = ("the row names no session it was commented in: delete it by its ref, or "
                          "comment it again here to adopt it")
+
+
+def check_clear_scope(ref: str, all_: bool, kind: str) -> None:
+    """A clear names one `ref` or `all=True`: never both, and a blank `ref` is neither one nor
+    every declaration, whichever side of `all` it is on."""
+    clear_all = f'`declaration_clear(kind="{kind}", all=True)`'
+    if all_ and ref:
+        raise Invalid("bad_argument", f"`all` clears every declaration of this kind and takes no "
+                      f"`ref`; got ref={ref!r}: {clear_all} alone")
+    if not all_ and not ref.strip():
+        raise Invalid("bad_argument", f"ref={ref!r} names nothing, and an empty ref never means "
+                      f"every declaration: the `ref` its declaring reply carried, or all=True to "
+                      f"clear every one ({clear_all})")
 
 
 def chosen_kinds(kind: str, kinds: Sequence[str]) -> tuple[str, ...]:
