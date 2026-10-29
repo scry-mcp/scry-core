@@ -8,10 +8,11 @@ keeps it, each paragraph travelling with the block it follows. Examples come fro
 transcript (`examples_from`, held in `docs/reference/examples.json`), never typed by hand.
 
     uv run python -m scry_core.reference <module>:<attribute> \
-        [--examples JSONL ... [--mark PATH=TEXT ...]] [--write]
+        [--examples JSONL ... [--mark PATH=TEXT ...] [--skip REGEX]] [--write]
 
 Run from the server's repository. `--examples` rewrites `examples.json` from the transcripts
-first (`--mark` spells a host directory as the text it names); `--write` rewrites the pages,
+first (`--mark` spells a host directory as the text it names, `--skip` leaves out the cells a
+pattern matches); `--write` rewrites the pages,
 else they are compared. Exit codes: 0 the pages agree with
 the registry (or were rewritten); 1 drift, one finding a line; 2 a usage error (a spec naming no
 registry included); 3 INVALID, nothing was compared (a registry with no tool or a roster naming
@@ -415,22 +416,44 @@ def write(reg: Registry) -> list[str]:
 # ======================================================================== the examples
 
 
+#: Reply keys that belong to the run that produced an example, not to the tool.
+RUN_KEYS = {k: "" for k in ("created_at", "origin", "pid", "stub_port", "input_port",
+                            "wall_at", "saved_at", "version")}
+_CLOCK = re.compile(r"\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d)?(?:[+-]\d\d:\d\d)?)?")
+#: The random suffix a live run gives its scratch directory.
+_RUN_DIR = re.compile(r"(?<=-matrix-)[0-9a-f]{8,}|(?<=-session-)[\w]{6,}")
+
+
+def _steady(value: Any) -> Any:
+    """`value` with a clock reading or a run directory's random name replaced by a mark."""
+    if isinstance(value, dict):
+        return {k: _steady(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_steady(v) for v in value]
+    if isinstance(value, str):
+        return _RUN_DIR.sub("<run>", _CLOCK.sub("<time>", value))
+    return value
+
+
 def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
-                  norm: demo.Normaliser) -> dict[str, Any]:
+                  norm: demo.Normaliser, skip: re.Pattern[str] | None = None) -> dict[str, Any]:
     """One example per tool of `tools` from a live run's records. Only an OK cell whose reply
-    carries a `status` is a candidate; the first `ok` reply wins, else the first refusal.
-    Paths are spelled host-independently, `LEFT_OUT` dropped, long values abridged."""
+    carries a `status` is a candidate, and not one whose call or reply `skip` matches; the first
+    `ok` reply wins, else the first refusal. Paths are spelled host-independently, `LEFT_OUT`
+    dropped, the run's own values (`RUN_KEYS`, clock readings) hidden, long values abridged."""
     ok: dict[str, Mapping[str, Any]] = {}
     refused: dict[str, Mapping[str, Any]] = {}
     for rec in records:
         name, reply = rec.get("tool"), rec.get("reply")
         if (name in tools and rec.get("verdict") == "OK" and isinstance(reply, dict)
-                and "status" in reply):
+                and "status" in reply
+                and not (skip and skip.search(json.dumps([rec.get("args"), reply])))):
             (ok if reply["status"] == "ok" else refused).setdefault(str(name), rec)
     return {name: {"from": f"{rec.get('section', '')}: {rec.get('label', '')}",
-                   "call": norm.reply(dict(rec.get("args") or {})),
-                   "reply": demo.abridged(norm.reply(
-                       {k: v for k, v in rec["reply"].items() if k not in LEFT_OUT}))}
+                   "call": _steady(norm.reply(dict(rec.get("args") or {}), RUN_KEYS)),
+                   "reply": demo.abridged(_steady(norm.reply(
+                       {k: v for k, v in rec["reply"].items() if k not in LEFT_OUT},
+                       RUN_KEYS)))}
             for name, rec in sorted({**refused, **ok}.items())}
 
 
@@ -489,10 +512,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--mark", action="append", default=[], metavar="PATH=TEXT", type=_mark,
                    help="spell a directory of the live run's host as TEXT in the examples (its "
                         "scratch as $TMPDIR, its bench, its builds); repeatable")
+    p.add_argument("--skip", type=re.compile, metavar="REGEX",
+                   help="leave out the cells whose call or reply matches REGEX, so the tool's "
+                        "next OK cell is its example (a board a stranger cannot have)")
     p.add_argument("--write", action="store_true", help="rewrite the pages")
     ns = p.parse_args(argv)
     if ns.mark and not ns.examples:
         p.error("--mark spells the examples' paths, so it needs --examples")
+    if ns.skip and not ns.examples:
+        p.error("--skip picks among the examples' cells, so it needs --examples")
     try:
         reg = _loaded(ns.registry)
     except _BadSpec as e:
@@ -508,7 +536,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                      for spelled in (path, os.path.realpath(path))}
             norm = demo.Normaliser(root, Path.home().resolve(), {},
                                    marks={**marks, str(root): demo.placeholder(root)})
-            picked = examples_from(_records(ns.examples), tools, norm)
+            picked = examples_from(_records(ns.examples), tools, norm, ns.skip)
             if not picked:
                 raise Invalid("the transcripts hold no OK cell of a tool of this server")
             (reg.root / PAGES_DIR).mkdir(parents=True, exist_ok=True)

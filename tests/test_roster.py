@@ -92,3 +92,15 @@ def test_methods_for_no_fold_or_naming_none_are_refused() -> None:
         roster.RunningGate(ops=frozenset({"status"}), methods={"status": ("x",)}).check_folds({})
     with pytest.raises(ValueError, match="scan names no method"):
         roster.RunningGate(ops=frozenset({"scan"}), methods={"scan": ()})
+
+
+def test_a_shared_tool_filed_under_another_family_is_named() -> None:
+    shared = {"start": "Session", "log": "Machine", "list_a": "Lists", "nowhere": "Lists"}
+    assert ROSTER.misfiled(shared) == ["log is in Read, the shared declaration says Machine"]
+    assert Roster((("Session", ("start",)), ("Machine", ("log",))), ()).misfiled(shared) == []
+
+
+def test_the_shared_declaration_names_each_tool_in_one_family() -> None:
+    assert roster.SHARED_FAMILIES["debug"] == "Write"
+    families = set(roster.SHARED_FAMILIES.values())
+    assert {"Captures", "Lists", "Machine", "Names", "Screen"} <= families

@@ -72,6 +72,29 @@ def answers_while_running(running_ok: Iterable[str], not_steps: Iterable[str],
             *sorted(set(not_steps) - set(kept_out))]
 
 
+#: The family of every tool both servers have, declared once: a model reading the two rosters
+#: sees one surface, and a server that files a shared name elsewhere is refused by `misfiled`.
+SHARED_FAMILIES: Mapping[str, str] = {
+    **dict.fromkeys(("start", "status", "close"), "Session"),
+    **dict.fromkeys(("machine_map", "log", "log_wait"), "Machine"),
+    "symbols_find": "Names",
+    **dict.fromkeys(("run_to", "run_for", "step", "resume", "stop", "trace"), "Advance"),
+    **dict.fromkeys(("breakpoint_at", "regpoint_add", "watch_add", "declaration_list",
+                     "declaration_clear"), "Declarations"),
+    **dict.fromkeys(("read_memory", "registers", "disassemble", "find", "memdump",
+                     "screen_map_find", "screen_map_write"), "Read"),
+    **dict.fromkeys(("palette", "screen_view", "screen_signature"), "Screen"),
+    **dict.fromkeys(("write", "set_register", "debug"), "Write"),
+    "scan": "Scan",
+    **dict.fromkeys(("comment_list", "comment_write"), "Comments"),
+    **dict.fromkeys(("state_list", "state_write"), "States"),
+    **dict.fromkeys(("record", "audio_record", "series_capture", "snapshot", "captures"),
+                    "Captures"),
+    **dict.fromkeys(("image_compare", "audio_compare"), "Files"),
+    **dict.fromkeys(("perform", "perform_export", "drive"), "Lists"),
+}
+
+
 @dataclass(frozen=True)
 class Roster:
     """`families` as `(name, tools)` in listing order; `answering` may spell a call with
@@ -116,3 +139,9 @@ class Roster:
         return ([f"held twice: {t}" for t in twice]
                 + [f"in no family: {t}" for t in sorted(set(registered) - set(listed))]
                 + [f"not registered: {t}" for t in sorted(set(listed) - set(registered))])
+
+    def misfiled(self, shared: Mapping[str, str]) -> list[str]:
+        """The tools this roster files under another family than `shared` declares."""
+        return [f"{t} is in {name}, the shared declaration says {shared[t]}"
+                for name, tools in self.families for t in tools
+                if t in shared and shared[t] != name]

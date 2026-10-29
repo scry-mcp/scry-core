@@ -4,6 +4,7 @@ and its examples picked from a live run's transcript."""
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import types
@@ -381,7 +382,38 @@ def test_an_example_keeps_the_shape_of_a_long_reply_and_spells_the_host_s_paths(
     assert rows[-1] == f"... {20 - demo.ABRIDGED_ITEMS} more", rows
     assert shown["reply"]["text"] == "x" * demo.ABRIDGED_CHARS + " ... (1000 characters)"
     assert shown["reply"]["path"] == "./out.png"
-    assert shown["reply"]["pid"] == 4242, "only a demo hides by key; an example shows the run"
+    assert shown["reply"]["pid"] == demo.VOLATILE_MARK, "a pid is the run's, not the tool's"
+
+
+def test_an_example_hides_the_clock_the_pids_and_the_run_s_directory_name(
+        tmp_path: Path) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    reply = {"status": "ok", "created_at": "2026-10-29T15:39:51+00:00", "stub_port": 51204,
+             "version": "DOSBox-X version 2026.10.01 SDL2",
+             "summary": "state_write save: x, 81391 bytes, PROBE 2026-10-29 17:14",
+             "dir": "$TMPDIR/dosbox-x-live-matrix-67c0070a3b18/jobs-scratch/A",
+             "kept": "no-time-here"}
+    shown = reference.examples_from([_record("peek", "OK", reply)], {"peek"}, norm)["peek"]
+    again = reference.examples_from([_record("peek", "OK", {
+        **reply, "created_at": "2027-01-02T03:04:05+00:00", "stub_port": 1,
+        "summary": "state_write save: x, 81391 bytes, PROBE 2027-01-02 03:04",
+        "dir": "$TMPDIR/dosbox-x-live-matrix-aaaaaaaaaaaa/jobs-scratch/A"})],
+        {"peek"}, norm)["peek"]
+    assert shown == again, "two runs of one tool give one example"
+    assert shown["reply"]["created_at"] == demo.VOLATILE_MARK
+    assert shown["reply"]["kept"] == "no-time-here"
+    assert "2026-10-29" not in json.dumps(shown) and "67c0070a3b18" not in json.dumps(shown)
+
+
+def test_a_skipped_cell_is_no_candidate_and_the_next_ok_cell_of_the_tool_wins(
+        tmp_path: Path) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    records = [_record("peek", "OK", {"status": "ok", "board": "private-board"}, "bench"),
+               _record("peek", "OK", {"status": "ok", "board": "free-board"}, "free"),
+               _record("poke", "OK", {"status": "ok", "board": "private-board"}, "bench")]
+    picked = reference.examples_from(records, {"peek", "poke"}, norm,
+                                     skip=re.compile("private-board"))
+    assert picked["peek"]["from"] == "[A] fixture: free" and "poke" not in picked
 
 
 # ======================================================================== the command
@@ -414,6 +446,20 @@ def test_the_command_builds_the_examples_from_a_transcript(
     assert _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--write") == 0
     held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
     assert set(held) == {"peek", "poke"}
+
+
+def test_the_command_skips_the_cells_a_pattern_names_and_needs_the_transcript_to_do_so(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    jsonl = tmp_path / "transcript.jsonl"
+    jsonl.write_text("\n".join(json.dumps(_record("peek", "OK", {"status": "ok", "b": b}, b))
+                               for b in ("private", "free")) + "\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as usage:
+        _main(tmp_path, monkeypatch, "--skip", "private")
+    assert usage.value.code == 2
+    assert _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--skip", "private",
+                 "--write") == 0
+    held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
+    assert held["peek"]["reply"]["b"] == "free"
 
 
 def test_a_transcript_naming_no_tool_of_the_server_is_invalid(
