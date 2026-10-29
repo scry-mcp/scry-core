@@ -141,3 +141,13 @@ def test_summaries_is_true_or_false_in_one_sentence(value: object) -> None:
 def test_the_summaries_argument_names_the_rows_shown() -> None:
     said = sa.summaries_argument(24)
     assert "the first 24" in said and "never of a step" in said
+
+
+def test_a_sequence_run_requires_what_a_run_always_counts_and_the_rest_stays_optional() -> None:
+    from scry_core import reply_schema
+
+    class Run(reply_schema.ReplyEnvelope, sa.SequenceFields, sa.SequenceRun, total=False):
+        pass
+
+    assert reply_schema.own_required(Run) == {"failed_at", "held", "ran", "steps_completed"}
+    assert not {"ran", "held"} & set(sa.SequenceFields.__annotations__)

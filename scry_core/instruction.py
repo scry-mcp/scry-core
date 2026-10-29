@@ -11,7 +11,7 @@ from scry_core.reply_schema import Unavailable
 class StopInstruction(TypedDict):
     __pydantic_config__ = ConfigDict(extra="forbid", strict=True)  # type: ignore[misc]
     address: str
-    bytes: str
+    bytes: str | Unavailable
     text: str
     symbol: str | Unavailable
     delta: int | Unavailable

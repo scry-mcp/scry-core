@@ -17,7 +17,7 @@ def test_an_instruction_is_judged_whole_with_symbol_and_delta_unavailable_togeth
     judge = TypeAdapter(StopInstruction)
     judge.validate_python(_PLACED)
     gone = {"available": False, "why": "no symbol table is loaded"}
-    judge.validate_python({**_PLACED, "symbol": gone, "delta": gone})
+    judge.validate_python({**_PLACED, "symbol": gone, "delta": gone, "bytes": gone})
     for bad in ({k: v for k, v in _PLACED.items() if k != "delta"}, {**_PLACED, "seg_off": "x"},
                 {**_PLACED, "delta": "4"}):
         with pytest.raises(ValidationError):

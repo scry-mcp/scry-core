@@ -7,7 +7,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Required
 
 from typing_extensions import TypedDict
 
@@ -101,22 +101,26 @@ class SequenceFields(TypedDict, total=False):
 
     errors: list[Any]
     failed: dict[str, Any]
-    failed_at: int | dict[str, Any]
     field: str
     got: Any
-    held: int
-    note: str
-    ran: list[Any]
     ran_path: str | dict[str, Any]
     recorded: Any
     replies_path: str | dict[str, Any]
-    steps_completed: int
     steps_total: int
     still_running: bool
     stopped: dict[str, Any]
     stops: dict[str, Any]
     truncated: bool
     verdict: str
+
+
+class SequenceRun(TypedDict, total=False):
+    """What every reply of a tool that runs a sequence carries, beside `SequenceFields`."""
+
+    failed_at: Required[int | dict[str, Any]]
+    held: Required[int]
+    ran: Required[list[Any]]
+    steps_completed: Required[int]
 
 
 def looked(channel: str, since: list[str], mark: int, rx: re.Pattern[str],
