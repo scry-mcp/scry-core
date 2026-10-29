@@ -25,6 +25,12 @@ picture larger is described at `load` by an integer `scale` and a `margin` [x, y
 A read is sampled through that view into the program's units before it is signed, and a control's
 centre is aimed back in the machine's.
 
+THE PROGRAM'S OWN POINTER. A program that integrates the driver's motion into a pointer of its
+own and clamps it drifts from the driver's after a clamp. The map may declare, once for the
+application, `"pointer": {"x": ref, "y": ref, "bytes": 2}`: where that pointer lives in the
+program's memory, in the program's units. A server that moves a pointer reads it back there and
+corrects until it is where it was asked to be.
+
 Every rectangle is in the screen's own units: cells in a text mode, pixels in a graphics one, as
 `screen_view` counts them. A screen MATCHES when its `kind` and `size` are the screen's and every
 `match` signature is `scry-sig/1` (`raster.signature`) over its crop. A pixel screen may say
@@ -229,6 +235,21 @@ class Screen:
 
 
 @dataclass(frozen=True)
+class Pointer:
+    """Where the program keeps its own pointer, in the program's units: a ref for each axis (a
+    symbol or `SEG:OFF`, as the server reads them) and the `bytes` each holds. A program that
+    integrates the driver's motion into a pointer of its own and clamps it drifts from the
+    driver's, so this is what a move is judged against."""
+
+    x: str
+    y: str
+    bytes: int = 2
+
+    def doc(self) -> dict[str, Any]:
+        return {"x": self.x, "y": self.y, "bytes": self.bytes}
+
+
+@dataclass(frozen=True)
 class Found:
     """The most recent identification: the screen, its layer, and the stop it was read at (None
     when the server could not name that stop)."""
@@ -249,6 +270,7 @@ class Maps:
     found: Found | None = None
     mode: str = "verified"
     view: View = View()
+    pointer: Pointer | None = None
 
     def started(self) -> None:
         """A `start` succeeded: the session layer and the last identification were the old
@@ -275,7 +297,7 @@ class Maps:
             doc = json.loads(text, object_pairs_hook=_unique_keys)
         except (ValueError, RecursionError) as e:   # JSONDecodeError is a ValueError
             raise Invalid("bad_argument", f"path: {path} is not a JSON map: {e}") from None
-        application, mode, screens = parse(doc, str(path))
+        application, mode, screens, pointer = parse(doc, str(path))
         if application != _application(path):
             raise Invalid("bad_argument", f"path: {path} names application "
                           f"{_application(path)!r} and the file says {application!r}: a map is "
@@ -286,11 +308,12 @@ class Maps:
                           "holds: save the session's first (`screen_map_write`, `save`), or "
                           "`start` again")
         self.file, self.application, self.path = screens, application, path
-        self.mode, self.view = mode, seen
+        self.mode, self.view, self.pointer = mode, seen, pointer
         self.found = None
         return {"path": str(path), "application": application, "mode": mode,
                 "screens": len(screens),
-                "controls": sum(len(s.controls) for s in screens.values())}
+                "controls": sum(len(s.controls) for s in screens.values()),
+                **({"pointer": pointer.doc()} if pointer else {})}
 
     def add(self, name: object, match: object, controls: object, read: Read,
             cells: object = "rgb") -> dict[str, Any]:
@@ -378,6 +401,7 @@ class Maps:
                           "front of you (`add`), or a map (`load`), before saving one")
         application = _application(path)
         doc = {"format": FORMAT, "application": application, "mode": self.mode,
+               **({"pointer": self.pointer.doc()} if self.pointer else {}),
                "screens": [s.doc() for s in merged.values()]}
         _consolidated_anchored(self.mode, merged.values(), str(path))
         data = (json.dumps(doc, indent=1) + "\n").encode()
@@ -542,12 +566,12 @@ def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def parse(doc: object, where: str) -> tuple[str, str, dict[str, Screen]]:
-    """A map document's application, mode and screens, in order, or the refusal naming the
-    first fault."""
+def parse(doc: object, where: str) -> tuple[str, str, dict[str, Screen], Pointer | None]:
+    """A map document's application, mode, screens in order and pointer, or the refusal naming
+    the first fault."""
     if not isinstance(doc, dict) or doc.get("format") != FORMAT:
         raise Invalid("bad_argument", f"{where} is not a {FORMAT} map")
-    _keys(doc, {"format", "application", "mode", "screens"}, where)
+    _keys(doc, {"format", "application", "mode", "screens"}, where, optional={"pointer"})
     application = doc.get("application")
     if not _name(application):
         raise Invalid("bad_argument", f"{where}: `application` is a name of 1..{_NAME_MAX} "
@@ -570,7 +594,27 @@ def parse(doc: object, where: str) -> tuple[str, str, dict[str, Screen]]:
         raise Invalid("bad_argument", f"{where}: `mode` is `verified` or `consolidated`, got "
                       f"{mode!r}: who answers for the map holding")
     _consolidated_anchored(cast(str, mode), out.values(), where)
-    return cast(str, application), cast(str, mode), out
+    return (cast(str, application), cast(str, mode), out,
+            _pointer(doc["pointer"], where) if "pointer" in doc else None)
+
+
+def _pointer(value: object, where: str) -> Pointer:
+    """The `pointer` declaration, judged."""
+    at = f"{where}: `pointer`"
+    if not isinstance(value, dict):
+        raise Invalid("bad_argument", f"{at} is an object: the refs of the program's own pointer")
+    _keys(value, {"x", "y"}, f"{at}", optional={"bytes"})
+    if "x" not in value or "y" not in value:
+        raise Invalid("bad_argument", f"{at} needs `x` and `y`: a ref for each axis")
+    for axis in ("x", "y"):
+        ref = value[axis]
+        if not isinstance(ref, str) or not ref.strip() or len(ref) > _NAME_MAX:
+            raise Invalid("bad_argument", f"{where}: `pointer.{axis}` is a ref (a symbol or "
+                          f"SEG:OFF) of 1..{_NAME_MAX} characters")
+    width = value.get("bytes", 2)
+    if width not in (1, 2, 4) or isinstance(width, bool):
+        raise Invalid("bad_argument", f"{where}: `pointer.bytes` is 1, 2 or 4, got {width!r}")
+    return Pointer(value["x"], value["y"], width)
 
 
 def _consolidated_anchored(mode: str, screens: Any, where: str) -> None:
@@ -658,11 +702,12 @@ def _name(value: object) -> bool:
             and value == value.strip() and value.isprintable())
 
 
-def _keys(obj: dict[str, Any], allowed: set[str], at: str) -> None:
-    extra = sorted(set(obj) - allowed)
+def _keys(obj: dict[str, Any], allowed: set[str], at: str,
+          optional: frozenset[str] | set[str] = frozenset()) -> None:
+    extra = sorted(set(obj) - allowed - optional)
     if extra:
         raise Invalid("bad_argument", f"{at} carries {extra}, which a {FORMAT} map does not "
-                      f"have (it has {sorted(allowed)})")
+                      f"have (it has {sorted(allowed | optional)})")
 
 
 def load_line(args: dict[str, Any], reply: dict[str, Any]) -> str:

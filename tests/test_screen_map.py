@@ -834,6 +834,37 @@ def test_a_run_to_a_screen_carries_its_arrival_or_refuses_a_stale_one(tmp_path: 
     assert maps.found is None, "a run that did not arrive leaves no screen identified"
 
 
+def test_a_map_declares_where_the_program_keeps_its_pointer(tmp_path: Path) -> None:
+    maps = Maps()
+    assert Maps().pointer is None
+    got = maps.load(_file(tmp_path, {**_doc(), "pointer": {"x": "1A2B:0010", "y": "_pointer_y"}}))
+    assert got["pointer"] == {"x": "1A2B:0010", "y": "_pointer_y", "bytes": 2}, got
+    assert maps.pointer == screen_map.Pointer("1A2B:0010", "_pointer_y", 2)
+    maps.add("extra", [[0, 0, 1, 1]], [], Reads(TITLE))
+    saved = maps.save(str(tmp_path / "again.screen-map.json"), False)
+    assert saved["path"].endswith("again.screen-map.json")
+    doc = json.loads((tmp_path / "again.screen-map.json").read_text())
+    assert doc["pointer"] == {"x": "1A2B:0010", "y": "_pointer_y", "bytes": 2}, doc
+    (tmp_path / "plain").mkdir()
+    plain = Maps()
+    got = plain.load(_file(tmp_path / "plain", _doc()))
+    assert plain.pointer is None and "pointer" not in got, got
+
+
+@pytest.mark.parametrize("pointer, said", [
+    ("here", "`pointer` is an object"),
+    ({"x": "a"}, "`pointer` needs `x` and `y`"),
+    ({"x": "a", "y": ""}, "`pointer.y` is a ref"),
+    ({"x": "a", "y": "b", "bytes": 3}, "`pointer.bytes` is 1, 2 or 4"),
+    ({"x": "a", "y": "b", "extra": 1}, "extra"),
+])
+def test_a_misshapen_pointer_declaration_refuses_the_whole_map(
+        tmp_path: Path, pointer: object, said: str) -> None:
+    with pytest.raises(Invalid, match=said) as e:
+        Maps().load(_file(tmp_path, {**_doc(), "pointer": pointer}))
+    assert e.value.code == "bad_argument"
+
+
 class Frames:
     """A machine that shows `shown[n]` after n frames and answers one frame per `step`."""
 

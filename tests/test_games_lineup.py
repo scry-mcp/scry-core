@@ -38,8 +38,8 @@ def test_a_binding_missing_an_action_is_refused_before_anything_runs() -> None:
 
 
 def test_the_script_checks_only_screens_its_map_holds_and_the_map_signs_indices() -> None:
-    application, mode, screens = screen_map.parse(json.loads(lineup.MAP.read_text()),
-                                                  str(lineup.MAP))
+    application, mode, screens, _ = screen_map.parse(json.loads(lineup.MAP.read_text()),
+                                                     str(lineup.MAP))
     assert application == "lineup" and mode == "verified"
     assert all(s.cells == "index" and s.size == (320, 200) for s in screens.values())
     steps = lineup.steps(_binding())
