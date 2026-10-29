@@ -17,6 +17,11 @@ def agrees(n: int, one: str, many: str) -> str:
     return one if n == 1 else many
 
 
+def ended_by(code: int) -> str:
+    """A negative exit code is a signal."""
+    return f"died by signal {-code}" if code < 0 else f"exited with code {code}"
+
+
 def clipped(text: str, limit: int = REFUSAL_CHARS_SHOWN) -> str:
     """Cut `text` at a word; the rest is in `message`."""
     if len(text) <= limit:

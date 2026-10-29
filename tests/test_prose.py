@@ -14,6 +14,11 @@ def test_a_verb_agrees_with_its_count() -> None:
     assert (prose.agrees(1, "was", "were"), prose.agrees(0, "was", "were")) == ("was", "were")
 
 
+def test_a_process_that_ended_says_how_a_signal_and_a_code_apart() -> None:
+    assert [prose.ended_by(c) for c in (0, 7, -11, -9)] == [
+        "exited with code 0", "exited with code 7", "died by signal 11", "died by signal 9"]
+
+
 def test_a_refusal_is_cut_at_a_word_and_says_its_code() -> None:
     assert prose.clipped("a" * prose.REFUSAL_CHARS_SHOWN) == "a" * prose.REFUSAL_CHARS_SHOWN
     assert prose.clipped("a" * 100 + " " + "b" * 30) == "a" * 100 + "..."
