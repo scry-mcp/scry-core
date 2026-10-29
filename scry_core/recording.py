@@ -15,7 +15,8 @@ Export rules, each drop named:
 - a refused call is dropped, unless the machine moved under it (which cuts);
 - a `drop` tool is dropped, unless the call moved the machine: dropped, the replay falls behind;
 - a `Counted` tool (a wait that polls frame by frame) is the advance its reply's poll count
-  replays, and is dropped when it moved nothing;
+  replays, dropped when it moved nothing and CUT when it moved with no whole-number count or
+  ended on a `WALL_VERDICTS` verdict;
 - a tool declared with fields is a CHECK carrying `recorded`; dropped when its arguments name what
   a dropped call wrote (`dest`, the `WRITTEN` fields), since it would hold by construction;
 - any other tool is a STEP, carrying `stop_fields` as `recorded` if it left a new stop;

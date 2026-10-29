@@ -37,7 +37,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.verdict` | what every instrument here answers when it has no verdict (the probe, the cap check, the live bench, the demo, the replay, the hook): `Invalid` and the exit codes 0, 1 and 3 |
 | `scry_core.client_cap` | the prefix of a text the MCP client delivers, in its own unit |
 | `scry_core.probe` | what a model calls when all it holds is what the client delivers |
-| `scry_core.probe_any_of` | a task's expected values: JSON equality that keeps a bool from passing for a number, and the `any_of` alternatives |
+| `scry_core.probe_any_of` | a task's expected values: JSON equality that keeps a bool from passing for a number, the `any_of` alternatives, and a `regex` node that judges a pattern by the lines of a captured text it selects |
 | `scry_core.probe_captures` | the capture store: one file per task with the lines a real run answered it with, written from a run and judged again, free, against the surface as it is now |
 | `scry_core.probe_checks` | what each server's suite checks on its own probe surface: tasks, captures, the cap and its margins |
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
