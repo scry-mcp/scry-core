@@ -291,14 +291,28 @@ def _shown(tool: str, args: Mapping[str, Any], reply: Reply | None,
     call = f"{tool}(" + ", ".join(f"{k}={json.dumps(v, ensure_ascii=False)}"
                                   for k, v in args.items()) + ")"
     data = None if reply is None else {k: reply.data[k] for k in fields}
-    answer = "(no reply)" if data is None else json.dumps(
-        abridged(data), indent=2, ensure_ascii=False)
+    answer = "(no reply)" if data is None else _compact(abridged(data))
     return f"```\n{call}\n-> {answer}\n```"
+
+
+def _compact(value: Any, depth: int = 0) -> str:
+    """`value` as indented JSON with a list of scalars on one line: a rect or a point is one
+    thought, and a column of numbers is most of a big reply's bytes."""
+    pad = "  " * (depth + 1)
+    if isinstance(value, dict) and value:
+        rows = [f"{pad}{json.dumps(k, ensure_ascii=False)}: {_compact(v, depth + 1)}"
+                for k, v in value.items()]
+        return "{\n" + ",\n".join(rows) + "\n" + "  " * depth + "}"
+    if isinstance(value, list) and value and not all(
+            isinstance(v, (str, int, float, bool)) or v is None for v in value):
+        rows = [pad + _compact(v, depth + 1) for v in value]
+        return "[\n" + ",\n".join(rows) + "\n" + "  " * depth + "]"
+    return json.dumps(value, ensure_ascii=False)
 
 
 def fenced(value: Any) -> str:
     """`value` as a JSON code block."""
-    return "```json\n" + json.dumps(value, indent=2, ensure_ascii=False) + "\n```"
+    return "```json\n" + _compact(value) + "\n```"
 
 
 def _entry(n: int, tool: str, args: Mapping[str, Any], reply: Reply | None, line: str) -> str:

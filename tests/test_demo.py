@@ -632,3 +632,16 @@ def test_two_paths_joined_by_a_colon_are_each_spelt_from_the_root() -> None:
     norm = d.Normaliser(root=Path(m, "proj"), home=Path(m), volatile={})
     assert norm.text(f"{m}{sep}a:{m}{sep}b") == "~/a:~/b"
     assert norm.text(f"x={m}{sep}proj{sep}c&{m}{sep}d|{m}{sep}e") == "x=./c&~/d|~/e"
+
+
+def test_a_list_of_scalars_is_one_line_in_a_transcript_block() -> None:
+    """A rect or a pixel pair is one thought, not four lines: the README's size is its cost."""
+    block = d.fenced({"size": [640, 480], "controls": [{"name": "pict", "rect": [103, 0, 33, 11]}],
+                      "names": ["a", "b"], "none": [], "mixed": [1, [2, 3]]})
+    assert '"size": [640, 480],' in block, block
+    assert '"rect": [103, 0, 33, 11]' in block, block
+    assert '"names": ["a", "b"]' in block and '"none": []' in block, block
+    assert '"mixed": [\n' in block, block
+    assert json.loads(block.removeprefix("```json\n").removesuffix("\n```")) == {
+        "size": [640, 480], "controls": [{"name": "pict", "rect": [103, 0, 33, 11]}],
+        "names": ["a", "b"], "none": [], "mixed": [1, [2, 3]]}
