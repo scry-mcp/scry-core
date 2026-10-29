@@ -95,10 +95,12 @@ import tempfile
 import traceback
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from types import MappingProxyType, ModuleType
 from typing import Any, cast
 
+from scry_core import strict_arguments
 from scry_core.client_cap import delivered
 from scry_core.probe_any_of import (
     calls,
@@ -177,6 +179,9 @@ class Tool:
     schema: dict[str, Any]
     #: Narrowed to what the schema offers: a parameter the SDK injects (`ctx`) is not the model's.
     signature: inspect.Signature
+    #: The server's own schema: why it refuses these arguments, or None. Absent on a hand-built
+    #: tool, which then has only its signature.
+    refused: Callable[[dict[str, Any]], str | None] | None = None
 
 
 #: The server's pre-gate judge: (tool, arguments given, arguments with defaults).
@@ -264,14 +269,18 @@ def configure(servers_file: Path, tasks_dir: Path) -> ProbeRepo:
 def load_surface(repo: ProbeRepo, server: str) -> Surface:
     module = repo.modules[server]
     tools: dict[str, Tool] = {}
+    held = ({t.name: t for t in strict_arguments.registered(module.mcp)}
+            if hasattr(module.mcp, "_tool_manager") else {})
     for listed in asyncio.run(module.mcp.list_tools()):
         schema = dict(listed.input_schema or {})
         offered = set(schema.get("properties") or {})
         signature = inspect.signature(getattr(module, listed.name))
         signature = signature.replace(parameters=[p for p in signature.parameters.values()
                                                   if p.name in offered])
+        sdk = held.get(listed.name)
         tools[listed.name] = Tool(listed.name, delivered(listed.description or ""), schema,
-                                  signature)
+                                  signature,
+                                  None if sdk is None else partial(strict_arguments.refused, sdk))
     if not tools:
         raise Invalid(f"{server} lists no tools, so there is nothing to examine")
     return Surface(server, delivered(module.mcp.instructions or ""), tools,
@@ -647,6 +656,8 @@ def judge(surface: Surface, task: dict[str, Any], answer: Answer) -> Verdict:
                   for expected_args in calls(task.get("args", {}))]
     if all(mismatches):
         return wrong(mismatches[0])
+    if tool.refused is not None and (why := tool.refused(answer.args or {})):
+        return wrong(f"the schema refuses it: {why}")
     if refusal := _refusal(surface, tool, answer.args or {}):
         return wrong(refusal)
     return Verdict(True, "right", answer.text)

@@ -114,6 +114,9 @@ DOC_VALUES = {
     "MAP_CELLS": ("`cells` `index` (a pixel screen; default\n`rgb`) signs the palette indices "
                   "drawn, not the colours shown, so one map knows a program\nshown through two "
                   "palettes; a screen with no palette refuses it (`no_channel`)."),
+    "MAP_ANCHOR": ("`anchor` (a symbol's name) is the symbol after which the screen is whole, "
+                   "what `run_to(screen=)`\nruns to: a consolidated map refuses an `add` without "
+                   "one (`bad_argument`), since it enters its\nscreens by theirs."),
     "MAP_FIND": ("Which mapped screen the machine shows. Reply: `matched`, `kind` and `size`; when "
                  "matched,\n`screen`, `layer`, `controls` (`name`, `rect`, `centre`), in the "
                  "program's units; when not,\n`screens_mapped` and, if the view fits the map, "
@@ -322,13 +325,18 @@ class Maps:
                 **({"pointer": pointer.doc()} if pointer else {})}
 
     def add(self, name: object, match: object, controls: object, read: Read,
-            cells: object = "rgb") -> dict[str, Any]:
+            cells: object = "rgb", anchor: object = "") -> dict[str, Any]:
         """A screen written from the screen in front of the caller: each `match` crop signed
-        off one read, in `cells`, kept in the session layer."""
+        off one read, in `cells`, kept in the session layer; on a consolidated map it names the
+        `anchor` it is entered by."""
         if not (isinstance(match, list) and match):
             raise Invalid("bad_argument", "match is a list of at least one crop [x, y, width, "
                           "height]: the stable regions the screen is known by")
         _cells(cells, "cells")
+        if self.mode == "consolidated" and not anchor:
+            raise Invalid("bad_argument", "the loaded map is consolidated, whose screens are "
+                          "entered by their `anchor`: pass the symbol after which this screen is "
+                          "whole")
         grid = read(indices=cells == "index")
         if grid.width < 1 or grid.height < 1:
             raise Invalid("unexpected_answer", f"the screen read is {grid.width}x{grid.height}: "
@@ -340,7 +348,8 @@ class Maps:
         grid = self.view.through(grid)
         doc = {"name": name, "kind": grid.kind, "size": [grid.width, grid.height],
                "cells": cells, "match": [{"crop": c, "signature": "0" * 16} for c in match],
-               "controls": controls if controls is not None else []}
+               "controls": controls if controls is not None else [],
+               **({"anchor": anchor} if anchor else {})}
         screen = _screen(doc, "the screen", 0, "match")
         screen = dataclasses.replace(screen, match=tuple(
             (crop, _signed({}, grid, crop, screen.cells)) for crop, _ in screen.match))
@@ -355,7 +364,8 @@ class Maps:
                 "cells": screen.cells,
                 "match": [{"crop": list(c), "signature": s} for c, s in screen.match],
                 "controls": len(screen.controls), "replaced": replaced,
-                "shadows_file": screen.name in self.file}
+                "shadows_file": screen.name in self.file,
+                **({"anchor": screen.anchor} if screen.anchor else {})}
 
     def find(self, read: Read, stop: int | None) -> dict[str, Any]:
         """Which screen the machine shows, off ONE read: the session layer first, then the
@@ -746,7 +756,8 @@ def find_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
     return (f"screen_map_find: no screen matched the {reply['kind']} {w}x{h} screen "
             f"({prose.counted(reply['screens_mapped'], 'screen')} mapped, "
             f"{reply['screens_tried']} of that kind and size"
-            + (f", {unjudged} signed by index on a screen with no palette" if unjudged else "")
+            + (f", {unjudged} more left unjudged: signed by index, on a screen with no palette"
+               if unjudged else "")
             + ")")
 
 
@@ -761,7 +772,7 @@ def check_path(name: str, value: object) -> None:
 
 
 def check_add(screen: object, match: object, controls: object = None,
-              cells: object = "") -> None:
+              cells: object = "", anchor: object = "") -> None:
     """The `add` method's machine-independent half, everything but whether its rectangles lie on the
     screen, which only a read can say: the name, the crops' shapes, the controls' shapes, keys
     and names. A fault found here costs no read."""
@@ -780,7 +791,8 @@ def check_add(screen: object, match: object, controls: object = None,
     _screen({"name": screen, "kind": "pixel", "size": [_ANY_SIDE, _ANY_SIDE],
              "cells": cells or "rgb",
              "match": [{"crop": c, "signature": "0" * 16} for c in match],
-             "controls": controls if controls is not None else []}, "the screen", 0, "match")
+             "controls": controls if controls is not None else [],
+             **({"anchor": anchor} if anchor else {})}, "the screen", 0, "match")
 
 
 def check_save(dest: object, overwrite: object) -> None:

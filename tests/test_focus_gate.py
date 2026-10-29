@@ -14,6 +14,12 @@ from scry_core import focus_gate as fg
 from scry_core import focus_watch as fw
 
 
+@pytest.fixture(autouse=True)
+def _opted_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The control moves the owner's desk, so it runs only when asked: these tests ask."""
+    monkeypatch.setenv(fg.OPT_IN_VAR, "1")
+
+
 def _fake_run(stdout: str, rc: int = 0, stderr: str = "") -> object:
     def run(*_a: object, **_k: object) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess([], rc, stdout, stderr)
@@ -216,6 +222,27 @@ def test_a_control_that_does_not_hold_clears_nothing(
         assert c.space.reason.startswith(why)
 
 
+def test_without_the_opt_in_the_control_takes_nothing_from_the_desk_and_says_so(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(fg.OPT_IN_VAR)
+    asked: list[bool] = []
+
+    def hold(background: bool) -> tuple[int, int]:
+        asked.append(background)
+        return 3000, 4000
+
+    def never() -> fg.Moved:
+        raise AssertionError("the owner's Space was moved without being asked")
+    monkeypatch.setattr(fg, "move_space", never)
+    samples = [_app(ms) for ms in range(1000, 6001, 100)]
+    c = fg.control(_Watched(samples), {"mame"}, hold)
+    assert asked == [True], "a start was put in front without being asked"
+    assert (c.front.status, c.behind.status, c.space.status) == ("BLOCKED", "OK", "BLOCKED")
+    for cell in (c.front, c.space):
+        assert fg.OPT_IN_VAR in cell.reason and "desk" in cell.reason
+    assert c.since is None
+
+
 def test_a_space_move_inside_the_behind_window_blocks_that_cell_and_names_nobody(
         monkeypatch: pytest.MonkeyPatch) -> None:
     samples = [_app(ms, "mame" if 1000 <= ms <= 2000 else "Finder",
@@ -258,6 +285,21 @@ def test_the_verdict_is_judged_only_after_a_control_and_a_window_long_enough(
     v = fg.verdict(watch, {"mame"}, since, end)
     assert (v.status, watch.exited) == (status, True)
     assert says in v.reason and "w.tsv" in v.reason
+
+
+def test_without_the_opt_in_a_clean_run_is_unproven_and_a_stolen_focus_still_fails(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(fg.OPT_IN_VAR)
+    clean = _Watched([_app(ms) for ms in range(0, 70_001, 500)])
+    v = fg.verdict(clean, {"mame"}, None, 70_000)
+    assert v.status == "BLOCKED" and "unproven" in v.reason and fg.OPT_IN_VAR in v.reason
+    assert clean.exited
+    stolen = _Watched([_app(ms, "mame" if ms == 30_000 else "Finder")
+                       for ms in range(0, 70_001, 500)])
+    v = fg.verdict(stolen, {"mame"}, None, 70_000)
+    assert v.status == "FAIL" and "TOOK_FOCUS" in v.reason and "w.tsv" in v.reason
+    v = fg.verdict(_Watched([]), {"mame"}, None, 70_000)
+    assert v.status == "BLOCKED" and "no sample" in v.reason
 
 
 @pytest.mark.parametrize("window_ms, status", [(fg.MIN_WINDOW_MS - 1, "BLOCKED"),

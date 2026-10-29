@@ -53,7 +53,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.comment_file` | the comment file both servers read and write (version 1): its header, columns, text and stamp rules, parse and render, each server's `ref` and `cpu` columns handed in as a `Policy` |
 | `scry_core.replay` | the runner of that document: the server over stdio, its steps in one `perform`, with no model |
 | `scry_core.focus_watch` | whether a live run took the owner's focus or moved their Space: the frontmost application and each display's Space, keyed by the display, sampled from outside the run (macOS), and the judge of a window of samples |
-| `scry_core.focus_gate` | the flow a live section takes the watch through: the control (a start in front, one behind, the owner's Space moved and put back), the verdict after it, each in `live_pool`'s words |
+| `scry_core.focus_gate` | the flow a live section takes the watch through: the control (a start in front, one behind, the owner's Space moved and put back; the first and last only when asked), the verdict after it, each in `live_pool`'s words |
 | `scry_core.frame_window` | `perform(until_frame=F)` on a server whose stops carry an absolute `frame`: the arguments' check, the list's check against where the machine stands, and the `Cycle` that repeats the list until a stop reads the frame, bounded in steps and in time |
 | `scry_core.presence` | the presence indicator: a session's state (held, acting), the one look both emulators draw, the writer that delivers the latest state off the call's path, what a server keeps of it (`Shown`), and the check that holds a server's declaration of which tools drive against its registry |
 | `scry_core.guardian` | what ends an emulator with its server: on POSIX a watcher process that also keeps its session's wall-clock bound, on Windows a job object the server holds, which the OS closes however the server ends |
@@ -120,7 +120,10 @@ A live tier that runs beside somebody working wraps its run in `scry_core.focus_
 takes `scry_core.focus_gate.control` in the same harness (one start that must be seen in front,
 one that must not, and the owner's Space moved and put back, which must be seen moved), and
 judges the run after it with `focus_gate.verdict`; each outcome is OK, FAIL or BLOCKED,
-`live_pool`'s words, put on the tier's own cells. The two module docstrings are the contract.
+`live_pool`'s words, put on the tier's own cells. The start in front and the Space move take the
+desk of whoever is working, so they run only with `SCRY_FOCUS_CONTROL=1` on an idle machine;
+unset, those two cells are BLOCKED and the verdict says it is unproven (a stolen focus still
+fails it). The two module docstrings are the contract.
 
 ## Parallel live tiers
 

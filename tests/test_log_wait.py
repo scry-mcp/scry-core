@@ -77,22 +77,30 @@ def test_a_stop_or_a_death_ends_the_wait_after_one_last_read(
     assert isinstance(late, log_wait.Found) and late.line == "GO late", late
 
 
-def test_a_stop_that_lands_as_the_bound_runs_out_is_the_stop() -> None:
-    lands = time.monotonic() + 0.03                    # the bound's own instant
+def test_a_stop_that_lands_as_the_bound_runs_out_is_the_stop(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    now = [100.0]                          # a clock only the wait's own sleeps advance
+    monkeypatch.setattr(time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(time, "sleep", lambda s: now.__setitem__(0, now[0] + s))
+    lands = now[0] + 0.03                              # the bound's own instant
     got = log_wait.wait(re.compile("GO"), feed(["a"]), seconds=0.03,
-                        stopped=lambda: time.monotonic() >= lands, alive=lambda: True)
+                        stopped=lambda: now[0] >= lands, alive=lambda: True)
     assert isinstance(got, log_wait.Ended) and got.ending == "STOPPED", got
     assert got.at_bound, got
     inside = wait(feed(["a"]), stopped=lambda: True)
     assert isinstance(inside, log_wait.Ended) and not inside.at_bound, inside
 
 
-def test_an_emulator_that_died_as_the_bound_ran_out_is_gone_not_a_timeout() -> None:
+def test_an_emulator_that_died_as_the_bound_ran_out_is_gone_not_a_timeout(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     """The bound's own instant is asked about the emulator too: one that died in the last poll
     is GONE, never a TIMEOUT saying the machine still runs."""
-    dies = time.monotonic() + 0.03
+    now = [100.0]
+    monkeypatch.setattr(time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(time, "sleep", lambda s: now.__setitem__(0, now[0] + s))
+    dies = now[0] + 0.03
     got = log_wait.wait(re.compile("GO"), feed(["a"]), seconds=0.03,
-                        stopped=lambda: False, alive=lambda: time.monotonic() < dies)
+                        stopped=lambda: False, alive=lambda: now[0] < dies)
     assert isinstance(got, log_wait.Ended) and got.ending == "GONE", got
 
 

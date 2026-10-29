@@ -234,10 +234,37 @@ def test_the_anchor_of_an_unknown_or_unanchored_screen_is_refused(tmp_path: Path
 def test_a_session_screen_shadows_the_files_anchor_too(tmp_path: Path) -> None:
     maps = Maps()
     maps.load(_file(tmp_path, _anchored("consolidated")))
-    maps.add("play", [[6, 2, 2, 2]], [], Reads(PLAY))
-    with pytest.raises(Invalid, match="screen 'play' names no `anchor`"):
-        maps.anchor("play")
+    maps.add("play", [[6, 2, 2, 2]], [], Reads(PLAY), anchor="DrawPlayAgain")
+    assert maps.anchor("play") == "DrawPlayAgain"
     assert maps.anchor("title") == "DrawTitle"
+
+
+def test_a_consolidated_map_refuses_a_screen_with_no_anchor_and_saves_one_with(
+        tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _anchored("consolidated")))
+    with pytest.raises(Invalid, match="`anchor`") as e:
+        maps.add("extra", [[0, 0, 1, 1]], [], Reads(TITLE))
+    assert e.value.code == "bad_argument" and "consolidated" in str(e.value)
+    assert "extra" not in maps.session, "a refused add left a screen behind"
+    added = maps.add("extra", [[0, 0, 1, 1]], [], Reads(TITLE), anchor="DrawExtra")
+    assert added["anchor"] == "DrawExtra"
+    out = tmp_path / "out.screen-map.json"
+    maps.save(str(out), False)
+    names = {s["name"]: s.get("anchor") for s in json.loads(out.read_text())["screens"]}
+    assert names["extra"] == "DrawExtra"
+
+
+def test_a_verified_map_takes_an_anchor_on_add_and_keeps_it_out_of_the_reply_without_one() -> None:
+    maps = Maps()
+    assert "anchor" not in maps.add("a", [[0, 0, 1, 1]], [], Reads(TITLE))
+    assert maps.add("b", [[0, 0, 1, 1]], [], Reads(TITLE), anchor="DrawB")["anchor"] == "DrawB"
+
+
+def test_check_add_judges_the_anchor_before_any_read() -> None:
+    screen_map.check_add("a", [[0, 0, 1, 1]], None, "", "DrawA")
+    with pytest.raises(Invalid, match="`anchor` is a symbol's name"):
+        screen_map.check_add("a", [[0, 0, 1, 1]], None, "", 7)
 
 
 def test_save_keeps_the_maps_mode_and_a_map_begun_here_is_verified(tmp_path: Path) -> None:
@@ -705,6 +732,8 @@ def test_a_screen_with_no_palette_is_still_matched_by_the_maps_colour_screens() 
     missed = maps.find(Reads(no_palette), stop=2)
     assert missed["matched"] is False
     assert (missed["screens_tried"], missed["screens_unjudged"]) == (0, 1)
+    line = screen_map.find_line({}, missed)
+    assert "0 of that kind and size, 1 more left unjudged: signed by index, on a screen" in line
 
 
 def test_an_index_screen_on_a_read_without_indices_is_the_machines_answer() -> None:

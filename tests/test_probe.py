@@ -657,6 +657,44 @@ def test_a_check_that_breaks_is_invalid_never_a_refusal() -> None:
         probe.judge(surface, _tasks("mame")[0], probe.parse(line, ["M1"])["M1"])
 
 
+def test_a_wrong_typed_argument_is_the_schemas_refusal_never_a_broken_check() -> None:
+    """The real server's schema refuses `length="six"` as `bad_argument` before its check runs;
+    the probe judges it the same way, so a check that would raise `TypeError` on it never does."""
+    def not_for_strings(tool: str, given: dict[str, Any], effective: dict[str, Any]) -> None:
+        effective["length"] + 1
+    whole = _narrowed("mame")
+    tool = dataclasses.replace(
+        whole.tools["read_memory"],
+        refused=lambda args: None if isinstance(args.get("length"), int)
+        else "length: Input should be a valid integer")
+    surface = dataclasses.replace(whole, check=not_for_strings,
+                                  tools={**whole.tools, "read_memory": tool})
+    line = 'M1: {"tool": "read_memory", "args": {"ref": "PlayerX", "length": "six"}}'
+    task = {**_tasks("mame")[0], "allow": ["length"]}     # a free argument: no expected value
+    verdict = probe.judge(surface, task, probe.parse(line, ["M1"])["M1"])
+    assert not verdict.right and "the schema refuses it" in verdict.why, verdict
+
+
+def test_a_loaded_servers_tools_carry_its_strict_schema_as_their_refusal() -> None:
+    from mcp.server import MCPServer
+
+    from scry_core import strict_arguments
+
+    server = MCPServer("toy")
+
+    @server.tool()
+    def count(n: int) -> int:
+        return n
+    strict_arguments.strict_arguments(server)
+    module = types.ModuleType("toy")
+    module.count = count  # type: ignore[attr-defined]
+    module.mcp = server  # type: ignore[attr-defined]
+    surface = probe.load_surface(dataclasses.replace(REPO, modules={"toy": module}), "toy")
+    refused = surface.tools["count"].refused
+    assert refused is not None and refused({"n": 3}) is None
+    assert "valid integer" in (refused({"n": "3"}) or ""), "strict mode rescues no string"
+
+
 # ---- what is refused before a model is asked ------------------------------------------------
 
 
