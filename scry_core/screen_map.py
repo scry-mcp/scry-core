@@ -122,9 +122,10 @@ DOC_VALUES = {
     "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref` (exactly one). With an "
                    "`anchor`, run to it (`control`\nrequired): a `verified` map judges it there "
                    "(`stale_map` when it no longer holds), a\n`consolidated` one takes it as "
-                   "shown. With none, a frame at a time until the map names it,\nwithin "
-                   "`seconds`; no `control`. Reply: `screen` (`screen`, `layer`, `mode`, "
-                   "`judged`),\n`frames` run. Refused: an unmapped screen (`unknown_ref`)."),
+                   "shown. With none, a retrace (a frame, on MAME) at a time until the map "
+                   "names it,\nwithin `seconds`; a `control` is refused there (`bad_argument`). "
+                   "Reply: `screen` (`screen`, `layer`,\n`mode`, `judged`), `frames` run. "
+                   "Refused: an unmapped screen (`unknown_ref`)."),
 }
 
 
