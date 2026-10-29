@@ -580,3 +580,12 @@ def test_a_header_naming_no_channel_is_told_apart_from_a_file_that_is_no_wav(
     path.write_bytes(base)
     assert not wav.without_channel(path)
     assert not wav.without_channel(tmp_path / "never.wav")
+
+
+def test_a_reference_whose_onset_leaves_too_little_is_not_refined_on_noise(
+        tmp_path: Path) -> None:
+    quiet = [0] * 5900 + [int(AMP * 0.5 * math.sin(i)) for i in range(100)]
+    ref = _write(tmp_path / "r.wav", [quiet])
+    other = _write(tmp_path / "o.wav", [[0] * 40 + quiet[:-40]])
+    got = wav.compare(wav.read("a", other), wav.read("b", ref), None, True)
+    assert got["aligned_by_samples"] == 40, got

@@ -851,11 +851,34 @@ def test_a_map_declares_where_the_program_keeps_its_pointer(tmp_path: Path) -> N
     assert plain.pointer is None and "pointer" not in got, got
 
 
+@pytest.mark.parametrize("ref, screen, said", [
+    ("", "", "got neither"),
+    ("Main", "play", "got ref and screen"),
+    ("", " play", "is a name"),
+])
+def test_a_run_to_names_a_ref_or_a_screen_exactly_once(ref: str, screen: str, said: str) -> None:
+    with pytest.raises(Invalid, match=said) as e:
+        screen_map.check_run_to(ref, screen)
+    assert e.value.code == "bad_argument"
+    screen_map.check_run_to("Main", "")
+    screen_map.check_run_to("", "play")
+
+
+def test_a_run_to_summary_names_its_ref_or_its_screen_and_how_it_was_taken() -> None:
+    assert screen_map.run_to_named({"ref": "Main"}, {}) == "Main"
+    assert screen_map.run_to_named({"ref": "", "screen": "play"},
+                                   {"screen": {"judged": True}}) == "screen play (judged)"
+    assert screen_map.run_to_named({"screen": "play"},
+                                   {"screen": {"judged": False}}) == "screen play (taken as shown)"
+    assert screen_map.run_to_named({"screen": "play"}, {}) == "screen play"
+
+
 @pytest.mark.parametrize("pointer, said", [
     ("here", "`pointer` is an object"),
     ({"x": "a"}, "`pointer` needs `x` and `y`"),
     ({"x": "a", "y": ""}, "`pointer.y` is a ref"),
     ({"x": "a", "y": "b", "bytes": 3}, "`pointer.bytes` is 1, 2 or 4"),
+    ({"x": "a", "y": "b", "bytes": 2.0}, "`pointer.bytes` is 1, 2 or 4"),
     ({"x": "a", "y": "b", "extra": 1}, "extra"),
 ])
 def test_a_misshapen_pointer_declaration_refuses_the_whole_map(
@@ -871,7 +894,7 @@ class Frames:
     def __init__(self, shown: list[Grid], verdicts: dict[int, str] | None = None) -> None:
         self.shown, self.frames, self.verdicts = shown, 0, verdicts or {}
 
-    def step(self) -> dict[str, Any]:
+    def step(self, left: float = 0.0) -> dict[str, Any]:
         self.frames += 1
         return {"status": "ok", "verdict": self.verdicts.get(self.frames, "ELAPSED"),
                 "stop_seq": 10 + self.frames, "pc": f"0x{self.frames:x}", "summary": "frame"}
@@ -901,7 +924,7 @@ def test_a_run_to_a_screen_that_never_shows_times_out_naming_the_frames_it_ran(
     monkeypatch.setattr(time, "monotonic", lambda: now[0])
     machine = Frames([TITLE])
 
-    def step() -> dict[str, Any]:
+    def step(left: float) -> dict[str, Any]:
         now[0] += 1.0
         return machine.step()
     got = screen_map.run_until(maps, "play", step, machine.read, 3.0)
@@ -927,23 +950,38 @@ def test_a_screen_named_nowhere_is_refused_before_a_frame_runs(tmp_path: Path) -
     assert e.value.code == "unknown_ref" and machine.frames == 0
 
 
-@pytest.mark.parametrize("ref, screen, said", [
-    ("", "", "got neither"),
-    ("Main", "play", "got ref and screen"),
-    ("", " play", "is a name"),
-])
-def test_a_run_to_names_a_ref_or_a_screen_exactly_once(ref: str, screen: str, said: str) -> None:
-    with pytest.raises(Invalid, match=said) as e:
-        screen_map.check_run_to(ref, screen)
-    assert e.value.code == "bad_argument"
-    screen_map.check_run_to("Main", "")
-    screen_map.check_run_to("", "play")
+def test_a_pointer_is_refused_under_a_view_that_is_not_the_programs_own(tmp_path: Path) -> None:
+    """The pointer is read in the program's units; a scaled or margined view aims in the
+    machine's, so the two would never be compared fairly."""
+    doc = {**_doc(), "pointer": {"x": "a", "y": "b"}}
+    for scale, margin in ((2, None), (1, [0, 40])):
+        with pytest.raises(Invalid, match="scale 1 and no margin") as e:
+            Maps().load(_file(tmp_path, doc), scale=scale, margin=margin)
+        assert e.value.code == "bad_argument"
+    Maps().load(_file(tmp_path, doc), scale=1, margin=[0, 0])
 
 
-def test_a_run_to_summary_names_its_ref_or_its_screen_and_how_it_was_taken() -> None:
-    assert screen_map.run_to_named({"ref": "Main"}, {}) == "Main"
-    assert screen_map.run_to_named({"ref": "", "screen": "play"},
-                                   {"screen": {"judged": True}}) == "screen play (judged)"
-    assert screen_map.run_to_named({"screen": "play"},
-                                   {"screen": {"judged": False}}) == "screen play (taken as shown)"
-    assert screen_map.run_to_named({"screen": "play"}, {}) == "screen play"
+class Slow(Frames):
+    """Each frame takes `cost` seconds of the clock."""
+
+    def __init__(self, cost: float) -> None:
+        super().__init__([TITLE])
+        self.cost = cost
+
+
+def test_each_frame_is_given_the_time_left_and_not_the_whole_bound(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    now = [0.0]
+    monkeypatch.setattr(time, "monotonic", lambda: now[0])
+    machine = Slow(4.0)
+    asked: list[float] = []
+
+    def step(left: float) -> dict[str, Any]:
+        asked.append(left)
+        now[0] += machine.cost
+        return machine.step()
+    got = screen_map.run_until(maps, "play", step, machine.read, 10.0)
+    assert got["verdict"] == "TIMEOUT", got
+    assert asked == [10.0, 6.0, 2.0], asked

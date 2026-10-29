@@ -46,6 +46,8 @@ ONSET_FRACTION = 0.02
 #: many samples of it, over this many from the reference's onset.
 REFINE_LAG = 512
 REFINE_SPAN = 2048
+#: Under this many samples after the reference's onset the best lag is noise.
+REFINE_MIN_SPAN = 256
 #: Plateau detector: samples within `FLAT_EPS` 16-bit steps are flat; a run past `CLIP_RUN_MAX`
 #: clips.
 FLAT_EPS = 2
@@ -392,9 +394,11 @@ def _refined(pa: Sequence[int], pb: Sequence[int], shift: int) -> int:
     between two renders, and a soft first bar moves it by tens of samples."""
     start = onset(from_rest(pb)) or 0
     span = min(REFINE_SPAN, len(pb) - start)
+    if span < REFINE_MIN_SPAN:
+        return shift
     ref = centred(pb)[start:start + span]
     follower = centred(pa)
-    best, at = -2.0, shift
+    best, at = -math.inf, shift
     for lag in range(shift - REFINE_LAG, shift + REFINE_LAG + 1):
         lo = start + lag
         if lo < 0 or lo + span > len(follower):

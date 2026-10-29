@@ -299,6 +299,10 @@ class Maps:
         except (ValueError, RecursionError) as e:   # JSONDecodeError is a ValueError
             raise Invalid("bad_argument", f"path: {path} is not a JSON map: {e}") from None
         application, mode, screens, pointer = parse(doc, str(path))
+        if pointer and (seen.scale != 1 or any(seen.margin)):
+            raise Invalid("bad_argument", f"path: {path} declares the program's pointer, which is "
+                          "read in the program's units: load it at scale 1 and no margin, since "
+                          "a view aims in the machine's")
         if application != _application(path):
             raise Invalid("bad_argument", f"path: {path} names application "
                           f"{_application(path)!r} and the file says {application!r}: a map is "
@@ -495,17 +499,22 @@ def at_anchor(maps: Maps, screen: str, reply: dict[str, Any], read: Read,
         return e.reply(**kept)
 
 
-def run_until(maps: Maps, screen: str, step: Callable[[], dict[str, Any]], read: Read,
+#: The least a frame is given when the bound is all but spent.
+MIN_STEP_S = 0.001
+
+
+def run_until(maps: Maps, screen: str, step: Callable[[float], dict[str, Any]], read: Read,
               seconds: float) -> dict[str, Any]:
-    """`run_to(screen=)` for a screen with no `anchor`: `step` runs the machine one frame and
-    answers its stop, and the map judges the screen after each, so the run ends where the screen
-    is whole. A stop `step` did not make as a frame ends it as it is; `seconds` of wall time
-    bound it. The reply is the last stop's with `verdict` and `frames`, and on arrival `screen`."""
+    """`run_to(screen=)` for a screen with no `anchor`: `step(left)` runs the machine one frame
+    within the `left` seconds of the bound and answers its stop, and the map judges the screen
+    after each, so the run ends where the screen is whole. A stop `step` did not make as a frame
+    ends it as it is; `seconds` of wall time bound it. The reply is the last stop's with
+    `verdict` and `frames`, and on arrival `screen`."""
     maps.is_anchored(screen)              # an unmapped name is refused before a frame runs
     deadline = time.monotonic() + seconds
     frames = 0
     while True:
-        reply = step()
+        reply = step(max(deadline - time.monotonic(), MIN_STEP_S))
         frames += 1
         if reply.get("status") != "ok" or reply.get("verdict") != "ELAPSED":
             maps.found = None
@@ -613,7 +622,7 @@ def _pointer(value: object, where: str) -> Pointer:
             raise Invalid("bad_argument", f"{where}: `pointer.{axis}` is a ref (a symbol or "
                           f"SEG:OFF) of 1..{_NAME_MAX} characters")
     width = value.get("bytes", 2)
-    if width not in (1, 2, 4) or isinstance(width, bool):
+    if not isinstance(width, int) or isinstance(width, bool) or width not in (1, 2, 4):
         raise Invalid("bad_argument", f"{where}: `pointer.bytes` is 1, 2 or 4, got {width!r}")
     return Pointer(value["x"], value["y"], width)
 
