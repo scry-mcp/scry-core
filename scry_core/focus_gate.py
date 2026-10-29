@@ -185,8 +185,9 @@ def _unproven(watch: Watched, names: Collection[str], end_ms: int, record: str) 
 
 
 def verdict(watch: Watched, names: Collection[str], since: int | None, end_ms: int) -> Judged:
-    """End the watch, then judge the run, only after a held control and a window of
-    `MIN_WINDOW_MS`."""
+    """End the watch, then judge the run: OK only after a held control and a window of
+    `MIN_WINDOW_MS`. Without the opt-in a clean watch is BLOCKED as unproven and a stolen focus
+    is still a FAIL."""
     record = f"record {watch.path}"
     try:
         watch.__exit__(None, None, None)

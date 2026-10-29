@@ -1345,6 +1345,20 @@ def test_an_expected_call_the_servers_judge_refuses_is_a_task_problem() -> None:
     assert probe.task_problems(surface, [task]) == []
 
 
+def test_an_expected_call_the_servers_schema_refuses_is_a_task_problem() -> None:
+    """The schema refuses before the server's own check, in the preflight as in the judge."""
+    whole = SURFACES["dosbox-x"]
+    tool = dataclasses.replace(
+        whole.tools["step"], refused=lambda a: None if isinstance(a.get("count"), int)
+        else "count: Input should be a valid integer")
+    surface = dataclasses.replace(whole, tools={**whole.tools, "step": tool})
+    task = {"id": "D1", "prompt": "p", "tool": "step", "args": {"mode": "into", "count": "3"},
+            "allow": ["e9", "e9_filter", "e9_stamp"]}
+    assert probe.task_problems(surface, [task]) == [
+        "dosbox-x task D1: its own expected call is refused: the schema refuses it: "
+        "count: Input should be a valid integer"]
+
+
 def test_a_call_with_no_args_is_a_call_with_none() -> None:
     """A tool that takes nothing is written without `args`, which is how a model writes it."""
     task = {"id": "S1", "prompt": "p", "tool": "status"}

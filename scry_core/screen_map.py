@@ -111,12 +111,14 @@ DOC_VALUES = {
                  "made the file\nlayer, in the loaded map's `mode` (`verified` when none was "
                  "loaded). Reply: `path`,\n`application`, `mode`, `screens`, `controls`, "
                  "`promoted`."),
-    "MAP_CELLS": ("`cells` `index` (a pixel screen; default\n`rgb`) signs the palette indices "
-                  "drawn, not the colours shown, so one map knows a program\nshown through two "
-                  "palettes; a screen with no palette refuses it (`no_channel`)."),
-    "MAP_ANCHOR": ("`anchor` (a symbol's name) is the symbol after which the screen is whole, "
-                   "what `run_to(screen=)`\nruns to: a consolidated map refuses an `add` without "
-                   "one (`bad_argument`), since it enters its\nscreens by theirs."),
+    "MAP_CELLS": ("`add`'s `cells` `index` (a pixel screen; default\n`rgb`) signs the palette "
+                  "indices drawn, not the colours shown, so one map knows a program\n"
+                  "shown through two palettes; a screen with no palette refuses it "
+                  "(`no_channel`)."),
+    "MAP_ANCHOR": ("`add`'s `anchor` (a symbol or an address, as `run_to`'s `ref`) is the place "
+                   "after which the screen is whole,\nwhat `run_to(screen=)` runs to: a "
+                   "consolidated map refuses an `add` without one (`bad_argument`),\nsince it "
+                   "enters its screens by theirs."),
     "MAP_FIND": ("Which mapped screen the machine shows. Reply: `matched`, `kind` and `size`; when "
                  "matched,\n`screen`, `layer`, `controls` (`name`, `rect`, `centre`), in the "
                  "program's units; when not,\n`screens_mapped` and, if the view fits the map, "
@@ -383,7 +385,7 @@ class Maps:
         try:
             shown = read(indices=wants_pens)
         except Invalid as e:
-            if not wants_pens or e.code != "no_channel":
+            if e.code != "no_channel" or not any(s.cells != "index" for _, s in candidates):
                 raise
             shown = read(indices=False)     # pens it cannot name: the colour screens still judge
         fits = self.view.program_size(shown) is not None
@@ -425,7 +427,8 @@ class Maps:
         doc = {"format": FORMAT, "application": application, "mode": self.mode,
                **({"pointer": self.pointer.doc()} if self.pointer else {}),
                "screens": [s.doc() for s in merged.values()]}
-        _consolidated_anchored(self.mode, merged.values(), str(path))
+        _consolidated_anchored(self.mode, merged.values(), str(path),
+                               "`add` it again with one")
         data = (json.dumps(doc, indent=1) + "\n").encode()
         if overwrite:
             fresh.replace(path, data, "dest:")
@@ -627,7 +630,7 @@ def parse(doc: object, where: str) -> tuple[str, str, dict[str, Screen], Pointer
     if mode not in MODES:
         raise Invalid("bad_argument", f"{where}: `mode` is `verified` or `consolidated`, got "
                       f"{mode!r}: who answers for the map holding")
-    _consolidated_anchored(cast(str, mode), out.values(), where)
+    _consolidated_anchored(cast(str, mode), out.values(), where, "name one in the file")
     return (cast(str, application), cast(str, mode), out,
             _pointer(doc["pointer"], where) if "pointer" in doc else None)
 
@@ -651,13 +654,13 @@ def _pointer(value: object, where: str) -> Pointer:
     return Pointer(value["x"], value["y"], width)
 
 
-def _consolidated_anchored(mode: str, screens: Any, where: str) -> None:
+def _consolidated_anchored(mode: str, screens: Any, where: str, remedy: str) -> None:
     if mode != "consolidated":
         return
     for screen in screens:
         if not screen.anchor:
             raise Invalid("bad_argument", f"{where}: screen {screen.name!r} has no `anchor`, and "
-                          "a consolidated map's screens are entered by theirs")
+                          f"a consolidated map's screens are entered by theirs: {remedy}")
 
 
 def _screen(s: object, where: str, i: int, crop_name: str = "crop") -> Screen:
@@ -676,8 +679,8 @@ def _screen(s: object, where: str, i: int, crop_name: str = "crop") -> Screen:
     cells = _cells(s.get("cells", "rgb"), at)
     anchor = s.get("anchor", "")
     if "anchor" in s and not _name(anchor):
-        raise Invalid("bad_argument", f"{at}: `anchor` is a symbol's name of 1..{_NAME_MAX} "
-                      "characters")
+        raise Invalid("bad_argument", f"{at}: `anchor` is a symbol or an address of "
+                      f"1..{_NAME_MAX} characters")
     if cells == "index" and kind != "pixel":
         raise Invalid("bad_argument", f"{at}: `cells` index is a pixel screen's; a text screen "
                       "is signed by its cells")

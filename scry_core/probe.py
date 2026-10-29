@@ -424,6 +424,8 @@ def _call_problems(surface: Surface, tool: Tool, where: str, args: dict[str, Any
 def _refusal(surface: Surface, tool: Tool, args: dict[str, Any]) -> str:
     """Why this call would be refused before reaching the machine, or ""; its names already bind."""
     bound = tool.signature.bind(**args)
+    if tool.refused is not None and (why := tool.refused(args)):
+        return f"the schema refuses it: {why}"
     if surface.check is None:
         return ""
     given = dict(bound.arguments)
@@ -656,8 +658,6 @@ def judge(surface: Surface, task: dict[str, Any], answer: Answer) -> Verdict:
                   for expected_args in calls(task.get("args", {}))]
     if all(mismatches):
         return wrong(mismatches[0])
-    if tool.refused is not None and (why := tool.refused(answer.args or {})):
-        return wrong(f"the schema refuses it: {why}")
     if refusal := _refusal(surface, tool, answer.args or {}):
         return wrong(refusal)
     return Verdict(True, "right", answer.text)

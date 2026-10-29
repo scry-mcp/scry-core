@@ -2,6 +2,7 @@
 the identification it came from."""
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import time
@@ -255,6 +256,15 @@ def test_a_consolidated_map_refuses_a_screen_with_no_anchor_and_saves_one_with(
     assert names["extra"] == "DrawExtra"
 
 
+def test_saving_a_consolidated_map_with_an_unanchored_session_screen_names_the_remedy(
+        tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _anchored("consolidated")))
+    maps.session["loose"] = dataclasses.replace(maps.file["play"], name="loose", anchor="")
+    with pytest.raises(Invalid, match="screen 'loose' has no `anchor`.*`add` it again with one"):
+        maps.save(str(tmp_path / "out.screen-map.json"), False)
+
+
 def test_a_verified_map_takes_an_anchor_on_add_and_keeps_it_out_of_the_reply_without_one() -> None:
     maps = Maps()
     assert "anchor" not in maps.add("a", [[0, 0, 1, 1]], [], Reads(TITLE))
@@ -270,7 +280,7 @@ def test_a_control_on_a_frame_by_frame_run_is_refused_naming_the_screen() -> Non
 
 def test_check_add_judges_the_anchor_before_any_read() -> None:
     screen_map.check_add("a", [[0, 0, 1, 1]], None, "", "DrawA")
-    with pytest.raises(Invalid, match="`anchor` is a symbol's name"):
+    with pytest.raises(Invalid, match="`anchor` is a symbol or an address"):
         screen_map.check_add("a", [[0, 0, 1, 1]], None, "", 7)
 
 
@@ -481,8 +491,8 @@ def _broken(path: list[Any], value: Any) -> Any:
     (["screens", 0, "size"], KeyError, "`size` is [width, height]"),
     (["mode"], "draft", "`mode` is `verified` or `consolidated`"),
     (["mode"], KeyError, "`mode` is `verified` or `consolidated`"),
-    (["screens", 0, "anchor"], "", "`anchor` is a symbol's name"),
-    (["mode"], "consolidated", "screen 'title' has no `anchor`"),
+    (["screens", 0, "anchor"], "", "`anchor` is a symbol or an address"),
+    (["mode"], "consolidated", "entered by theirs: name one in the file"),
 ])
 def test_a_broken_map_is_refused_whole_naming_its_first_fault(
         tmp_path: Path, path: list[Any], value: Any, said: str) -> None:
@@ -792,10 +802,19 @@ def test_a_screen_whose_pens_cannot_be_read_is_still_judged_by_its_colours() -> 
     found = maps.find(reads, stop=1)
     assert (found["matched"], found["screen"]) == (True, "menu"), found
     assert reads.asked == [True, False], "pens asked for, then the colours alone"
-    maps.session.pop("menu")
-    missed = maps.find(_NoPens(colours), stop=2)
+    other = Grid("pixel", 2, 1, b"\x00" * 6)
+    missed = maps.find(_NoPens(other), stop=2)
     assert (missed["matched"], missed["screens_tried"], missed["screens_unjudged"]) == (
-        False, 0, 1), missed
+        False, 1, 1), missed
+
+
+def test_pens_that_cannot_be_read_are_refused_when_no_screen_can_be_judged_without_them() -> None:
+    maps = Maps()
+    maps.add("board", [[0, 0, 2, 1]], [], Reads(ARCADE), cells="index")
+    reads = _NoPens(PC)
+    with pytest.raises(Invalid, match="shadows enabled") as e:
+        maps.find(reads, stop=1)
+    assert e.value.code == "no_channel" and reads.asked == [True], "read again for nothing"
 
 
 def test_a_machine_that_refuses_the_read_for_another_reason_is_not_retried() -> None:
