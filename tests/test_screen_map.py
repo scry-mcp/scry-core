@@ -282,6 +282,8 @@ def test_check_add_judges_the_anchor_before_any_read() -> None:
     screen_map.check_add("a", [[0, 0, 1, 1]], None, "", "DrawA")
     with pytest.raises(Invalid, match="`anchor` is a symbol or an address"):
         screen_map.check_add("a", [[0, 0, 1, 1]], None, "", 7)
+    with pytest.raises(Invalid, match="no space at either end"):
+        screen_map.check_add("a", [[0, 0, 1, 1]], None, "", " bad")
 
 
 def test_save_keeps_the_maps_mode_and_a_map_begun_here_is_verified(tmp_path: Path) -> None:

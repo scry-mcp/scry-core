@@ -683,7 +683,7 @@ def _screen(s: object, where: str, i: int, crop_name: str = "crop") -> Screen:
     anchor = s.get("anchor", "")
     if "anchor" in s and not _name(anchor):
         raise Invalid("bad_argument", f"{at}: `anchor` is a symbol or an address of "
-                      f"1..{_NAME_MAX} characters")
+                      f"1..{_NAME_MAX} characters, with no space at either end")
     if cells == "index" and kind != "pixel":
         raise Invalid("bad_argument", f"{at}: `cells` index is a pixel screen's; a text screen "
                       "is signed by its cells")
