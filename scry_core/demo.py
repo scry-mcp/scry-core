@@ -553,6 +553,9 @@ def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
     given = {"binary": ns.binary, "cwd": getattr(ns, "cwd", None),
              "rompath": getattr(ns, "rompath", None),
              "shared": getattr(ns, "shared", None)}
+    if empty := [k for k in ("binary", "cwd", "rompath") if given[k] == ""]:
+        print(f"INVALID: --{empty[0]} names a path, and an empty one names nothing")
+        return EXIT_INVALID
     run = Run(dir=transcript.parent, options={k: v for k, v in given.items() if v is not None})
     try:
         code = execute(demo, run, transcript, ns.update_readme)

@@ -15,6 +15,7 @@ from mcp.client import Client
 
 from scry_core import demo as d
 from scry_core import verdict
+from scry_core.verdict import EXIT_INVALID
 
 SERVER = Path(__file__).resolve().parent / "fixtures" / "demo" / "server.py"
 README = f"# A demo\n\nBefore.\n\n{d.BEGIN}\nold block\n{d.END}\n\nAfter.\n"
@@ -645,3 +646,12 @@ def test_a_list_of_scalars_is_one_line_in_a_transcript_block() -> None:
     assert json.loads(block.removeprefix("```json\n").removesuffix("\n```")) == {
         "size": [640, 480], "controls": [{"name": "pict", "rect": [103, 0, 33, 11]}],
         "names": ["a", "b"], "none": [], "mixed": [1, [2, 3]]}
+
+
+@pytest.mark.parametrize("option", ["--cwd", "--binary", "--rompath"])
+def test_an_option_that_names_a_path_is_refused_empty(
+        tmp_path: Path, log: Path, option: str, capsys: pytest.CaptureFixture[str]) -> None:
+    demo = _demo(tmp_path, offers=frozenset({"cwd", "rompath"}))
+    code = d.main(demo, ["--transcript", str(tmp_path / "t.md"), option, ""])
+    assert code == EXIT_INVALID, code
+    assert f"{option} names a path" in capsys.readouterr().out
