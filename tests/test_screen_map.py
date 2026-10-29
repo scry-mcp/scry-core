@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -831,6 +832,68 @@ def test_a_run_to_a_screen_carries_its_arrival_or_refuses_a_stale_one(tmp_path: 
     timed_out = {"status": "ok", "verdict": "TIMEOUT"}
     assert screen_map.at_anchor(maps, "play", timed_out, Reads(PLAY), 6) is timed_out
     assert maps.found is None, "a run that did not arrive leaves no screen identified"
+
+
+class Frames:
+    """A machine that shows `shown[n]` after n frames and answers one frame per `step`."""
+
+    def __init__(self, shown: list[Grid], verdicts: dict[int, str] | None = None) -> None:
+        self.shown, self.frames, self.verdicts = shown, 0, verdicts or {}
+
+    def step(self) -> dict[str, Any]:
+        self.frames += 1
+        return {"status": "ok", "verdict": self.verdicts.get(self.frames, "ELAPSED"),
+                "stop_seq": 10 + self.frames, "pc": f"0x{self.frames:x}", "summary": "frame"}
+
+    def read(self, indices: bool = False) -> Grid:
+        return self.shown[min(self.frames, len(self.shown) - 1)]
+
+
+def test_a_screen_with_no_anchor_is_run_to_a_frame_at_a_time_until_the_map_names_it(
+        tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    assert not maps.is_anchored("play")
+    machine = Frames([TITLE, TITLE, TITLE, PLAY])
+    got = screen_map.run_until(maps, "play", machine.step, machine.read, 30.0)
+    assert got["verdict"] == "TARGET" and got["frames"] == 3 and got["pc"] == "0x3", got
+    assert got["screen"] == {"screen": "play", "layer": "file", "mode": "verified",
+                             "judged": True}, got
+    assert maps.target("paddle")["identified_at_stop"] == 13, "the control is of this stop"
+
+
+def test_a_run_to_a_screen_that_never_shows_times_out_naming_the_frames_it_ran(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    now = [0.0]
+    monkeypatch.setattr(time, "monotonic", lambda: now[0])
+    machine = Frames([TITLE])
+
+    def step() -> dict[str, Any]:
+        now[0] += 1.0
+        return machine.step()
+    got = screen_map.run_until(maps, "play", step, machine.read, 3.0)
+    assert got["verdict"] == "TIMEOUT" and got["frames"] == 3 and "screen" not in got, got
+    assert maps.found is None
+
+
+def test_a_stop_that_is_not_a_frame_ends_the_run_to_a_screen_as_it_is(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    machine = Frames([TITLE], {2: "OTHER_STOP"})
+    got = screen_map.run_until(maps, "play", machine.step, machine.read, 30.0)
+    assert got["verdict"] == "OTHER_STOP" and got["frames"] == 2, got
+    assert maps.found is None
+
+
+def test_a_screen_named_nowhere_is_refused_before_a_frame_runs(tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    machine = Frames([TITLE])
+    with pytest.raises(Invalid, match="no screen") as e:
+        screen_map.run_until(maps, "nowhere", machine.step, machine.read, 30.0)
+    assert e.value.code == "unknown_ref" and machine.frames == 0
 
 
 @pytest.mark.parametrize("ref, screen, said", [

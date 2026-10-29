@@ -59,6 +59,8 @@ from __future__ import annotations
 import dataclasses
 import json
 import re
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
@@ -110,11 +112,12 @@ DOC_VALUES = {
                  "program's units; when not,\n`screens_mapped` and, if the view fits the map, "
                  "`screens_tried` and `screens_unjudged`\n(signed by index on a screen with no "
                  "palette), else `view_fits` false. None mapped:\n`needs_call`."),
-    "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref` (exactly one), run to "
-                   "its `anchor`, the\n`control` still required; a `verified` map judges it "
-                   "there (`stale_map` when it no longer\nholds), a `consolidated` one takes it "
-                   "as shown. Reply: `screen` (`screen`, `layer`, `mode`,\n`judged`). Refused: "
-                   "an unmapped screen (`unknown_ref`), one with no `anchor` (`needs_call`)."),
+    "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref` (exactly one). With an "
+                   "`anchor`, run to it (`control`\nrequired): a `verified` map judges it there "
+                   "(`stale_map` when it no longer holds), a\n`consolidated` one takes it as "
+                   "shown. With none, a frame at a time until the map names it,\nwithin "
+                   "`seconds`; no `control`. Reply: `screen` (`screen`, `layer`, `mode`, "
+                   "`judged`),\n`frames` run. Refused: an unmapped screen (`unknown_ref`)."),
 }
 
 
@@ -409,6 +412,10 @@ class Maps:
                           "place it is drawn with `ref`, then `screen_map_find`")
         return found.anchor
 
+    def is_anchored(self, screen: str) -> bool:
+        """Whether `screen` names an `anchor`, the place a run to it goes to."""
+        return bool(self._named(screen)[1].anchor)
+
     def arrived(self, screen: str, read: Read, stop: int | None) -> dict[str, Any]:
         """The machine stopped at `screen`'s anchor: a consolidated map takes the screen as
         shown, a verified one judges its signatures off one read."""
@@ -461,6 +468,31 @@ def at_anchor(maps: Maps, screen: str, reply: dict[str, Any], read: Read,
     except Invalid as e:
         kept = {k: v for k, v in reply.items() if k not in ("verdict", "summary", "status")}
         return e.reply(**kept)
+
+
+def run_until(maps: Maps, screen: str, step: Callable[[], dict[str, Any]], read: Read,
+              seconds: float) -> dict[str, Any]:
+    """`run_to(screen=)` for a screen with no `anchor`: `step` runs the machine one frame and
+    answers its stop, and the map judges the screen after each, so the run ends where the screen
+    is whole. A stop `step` did not make as a frame ends it as it is; `seconds` of wall time
+    bound it. The reply is the last stop's with `verdict` and `frames`, and on arrival `screen`."""
+    maps.is_anchored(screen)              # an unmapped name is refused before a frame runs
+    deadline = time.monotonic() + seconds
+    frames = 0
+    while True:
+        reply = step()
+        frames += 1
+        if reply.get("status") != "ok" or reply.get("verdict") != "ELAPSED":
+            maps.found = None
+            return reply if reply.get("status") != "ok" else {**reply, "frames": frames}
+        shown = maps.find(read, reply.get("stop_seq"))
+        if shown.get("matched") and shown["screen"] == screen:
+            return {**reply, "verdict": "TARGET", "frames": frames,
+                    "screen": {"screen": screen, "layer": shown["layer"], "mode": maps.mode,
+                               "judged": True}}
+        if time.monotonic() >= deadline:
+            maps.found = None
+            return {**reply, "verdict": "TIMEOUT", "frames": frames}
 
 
 def _signed(signed: dict[tuple[judges.Rect, str], str], grid: Grid, crop: judges.Rect,
@@ -707,7 +739,8 @@ def check_run_to(ref: object, screen: object) -> None:
     named = [k for k, v in (("ref", ref), ("screen", screen)) if isinstance(v, str) and v.strip()]
     if len(named) != 1:
         raise Invalid("bad_argument", "run_to needs a `ref` (a symbol or an address) or a "
-                      "`screen` (a mapped screen, run to its anchor), exactly one; got "
+                      "`screen` (a mapped screen, run to its anchor or by frames), exactly one; "
+                      "got "
                       f"{' and '.join(named) or 'neither'}")
     if named == ["screen"] and not _name(screen):
         raise Invalid("bad_argument", f"screen={screen!r} is a name of 1..{_NAME_MAX} "
