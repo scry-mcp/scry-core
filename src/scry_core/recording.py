@@ -6,9 +6,9 @@ the client it uses.
 The recording starts at a `start` that left a session up (a failed plan included), is cleared by
 the next one and survives `close`. Every outermost call is recorded except a sequence (its steps
 are recorded instead) and the `outside` tools. Past `record_max` the recording stops and the export
-says it is cut there. The document names the entry file, the states it loads and the declarations
-the start found stored (`needs`), so a replay that would start under other breakpoints says so
-before it plays.
+says it is cut there. The document names the entry (a file or a module), the states it loads and
+the declarations the start found stored (`needs`), so a replay that would start under other
+breakpoints says so before it plays.
 
 Export rules, each drop named:
 

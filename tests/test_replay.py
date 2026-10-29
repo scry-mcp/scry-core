@@ -31,10 +31,11 @@ def _lists(refs: list[str]) -> dict[str, Any]:
 
 
 def _repo(tmp_path: Path, steps: list[dict[str, Any]], states: list[str] | None = None,
-          server: str = "mame", declarations: list[str] | None = None) -> Path:
+          server: str = "mame", declarations: list[str] | None = None,
+          entry: str = "server.py") -> Path:
     shutil.copyfile(FIXTURE, tmp_path / "server.py")
     doc = tmp_path / "session.json"
-    doc.write_text(json.dumps({"version": 3, "server": server, "entry": "server.py",
+    doc.write_text(json.dumps({"version": 3, "server": server, "entry": entry,
                                "start": {"system": "board"}, "steps": steps,
                                "needs": {"states": states or [],
                                          "declarations": _lists(declarations or [])}}))
@@ -57,6 +58,21 @@ def test_a_document_whose_steps_hold_replays_with_exit_0(
     assert "OK perform: 1 step, 1 holding to a recorded answer" in out
     assert "REPLAY session: every step held" in out
     assert (tmp_path / "tmp" / "replays" / "session" / "transcript.md").is_file()
+
+
+def test_an_entry_that_is_a_module_name_is_started_with_dash_m(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        ) -> None:
+    """A packaged server has no entry file at the repository root, and running its file as a
+    script would put the package directory first on the path."""
+    package = tmp_path / "packaged"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    shutil.copyfile(FIXTURE, package / "server.py")
+    doc = _repo(tmp_path, [{"op": "run_for", "frames": 4, "recorded": {"frame": 4}}],
+                entry="packaged.server")
+    assert _run(monkeypatch, tmp_path, doc, "--binary", "/opt/mame") == 0
+    assert "REPLAY session: every step held" in capsys.readouterr().out
 
 
 def test_a_step_that_diverges_is_exit_1_naming_the_step_and_the_field(
@@ -116,8 +132,9 @@ def test_a_server_that_does_not_start_is_exit_3(
 @pytest.mark.parametrize("text, says", [
     ("not json", "not a readable document"),
     ('{"version": 2}', "not a version 3 replay document"),
-    ('{"version": 3, "steps": [{}]}', "names no server entry file"),
-    ('{"version": 3, "entry": "../x.py", "steps": [{}]}', "names no server entry file"),
+    ('{"version": 3, "steps": [{}]}', "names no server entry"),
+    ('{"version": 3, "entry": "../x.py", "steps": [{}]}', "names no server entry"),
+    ('{"version": 3, "entry": "pkg/x", "steps": [{}]}', "names no server entry"),
     ('{"version": 3, "entry": "x.py", "steps": []}', "holds no steps"),
     ('{"version": 3, "entry": "x.py", "steps": [1]}', "one that is not an object"),
     ('{"version": 3, "entry": "x.py", "steps": [{}], "start": []}', "`start` is an object"),

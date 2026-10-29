@@ -1,21 +1,22 @@
 """THE RUNNER of a replay document (`scry_core.recording` writes it): `python -m scry_core.replay
 <document> [--binary PATH] [--rompath DIR] [--transcript PATH]`, from the server's repository,
-with no model. It starts the server the document names (`entry`, a file of the repository it runs
-from) over stdio, calls `start` with the document's arguments and the options given, checks that
-the store declares what the recorded start found declared and that every saved state the document
-loads is there, plays the steps in one `perform`, and closes. It is `scry_core.demo`'s machinery
-with the document as its steps, and inherits its exit codes: 0 every step held, 1 a step failed
-or diverged in the server's own words, or the server said it held a number of steps the document
-does not record, 2 usage, 3 nothing was demonstrated (a document that is not one, or that records
-nothing a step holds to; a start the server refused; other declarations, or a saved state it
-lacks; a server that did not start, or broke: a call that raised or timed out, an error result,
-a list it refused whole).
+with no model. It starts the server the document names (`entry`, a file or a module of the
+repository it runs from) over stdio, calls `start` with the document's arguments and the options
+given, checks that the store declares what the recorded start found declared and that every saved
+state the document loads is there, plays the steps in one `perform`, and closes. It is
+`scry_core.demo`'s machinery with the document as its steps, and inherits its exit codes: 0 every
+step held, 1 a step failed or diverged in the server's own words, or the server said it held a
+number of steps the document does not record, 2 usage, 3 nothing was demonstrated (a document that
+is not one, or that records nothing a step holds to; a start the server refused; other
+declarations, or a saved state it lacks; a server that did not start, or broke: a call that raised
+or timed out, an error result, a list it refused whole).
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -30,6 +31,16 @@ from scry_core.verdict import EXIT_INVALID, Invalid
 STEP_CODES = frozenset({"step_failed", "diverged"})
 
 
+def _entry_command(entry: str, root: Path) -> list[str]:
+    """The server's argv for `entry`: a `.py` file beside the document runs as a script, a dotted
+    module name runs with `-m`, so a packaged server never puts its own directory first."""
+    if entry.endswith(".py") and Path(entry).name == entry:
+        return [sys.executable, str(root / entry)]
+    if re.fullmatch(r"[A-Za-z_]\w*(\.[A-Za-z_]\w*)*", entry):
+        return [sys.executable, "-m", entry]
+    raise ValueError(entry)
+
+
 def _read(path: Path) -> dict[str, Any]:
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
@@ -38,10 +49,11 @@ def _read(path: Path) -> dict[str, Any]:
     if not isinstance(doc, dict) or doc.get("version") != DOCUMENT_VERSION:
         raise Invalid(f"{path} is not a version {DOCUMENT_VERSION} replay document")
     entry = doc.get("entry")
-    if not (isinstance(entry, str) and entry and Path(entry).name == entry
-            and entry.endswith(".py")):
-        raise Invalid(f"{path} names no server entry file (`entry`, a `.py` file of the "
-                           "repository the replay runs from)")
+    try:
+        _entry_command(entry if isinstance(entry, str) else "", Path())
+    except ValueError:
+        raise Invalid(f"{path} names no server entry (`entry`, a `.py` file of the repository "
+                           "the replay runs from or an importable module name)") from None
     steps, start, needs = doc.get("steps"), doc.get("start", {}), doc.get("needs", {})
     if not isinstance(steps, list) or not steps or not all(isinstance(s, dict) for s in steps):
         raise Invalid(f"{path} holds no steps, or one that is not an object, so a replay "
@@ -158,7 +170,7 @@ def build(doc: dict[str, Any], root: Path, name: str) -> demo.Demo:
              demo.Step("close", "close", {}, lambda r, run: "closed", failure=_broke,
                        broken_is_invalid=True)]
     return demo.Demo(name=name, root=root,
-                     server=[sys.executable, str(root / doc["entry"])],
+                     server=_entry_command(doc["entry"], root),
                      steps=plan, offers=frozenset({"rompath"}),
                      verdict=lambda total, ok: f"REPLAY {name}: " + (
                          "every step held" if ok == total else "it did not hold"))
