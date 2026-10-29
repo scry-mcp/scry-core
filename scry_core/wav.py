@@ -42,6 +42,10 @@ SILENT_RMS = 0.005
 SILENCE_DBFS = -60.0
 SILENCE_MIN_S = 0.050
 ONSET_FRACTION = 0.02
+#: The onset puts two recordings near each other; the waveforms put them exactly, within this
+#: many samples of it, over this many from the reference's onset.
+REFINE_LAG = 512
+REFINE_SPAN = 2048
 #: Plateau detector: samples within `FLAT_EPS` 16-bit steps are flat; a run past `CLIP_RUN_MAX`
 #: clips.
 FLAT_EPS = 2
@@ -382,9 +386,33 @@ def _first_onset(recording: Recording, start: int, end: int) -> int | None:
                 if (o := onset(from_rest(cut))) is not None), default=None)
 
 
+def _refined(pa: Sequence[int], pb: Sequence[int], shift: int) -> int:
+    """The lag within `REFINE_LAG` of `shift` at which `pa` best follows `pb` from `pb`'s onset
+    (normalised cross-correlation): a threshold crossing wanders with the least difference
+    between two renders, and a soft first bar moves it by tens of samples."""
+    start = onset(from_rest(pb)) or 0
+    span = min(REFINE_SPAN, len(pb) - start)
+    ref = centred(pb)[start:start + span]
+    follower = centred(pa)
+    best, at = -2.0, shift
+    for lag in range(shift - REFINE_LAG, shift + REFINE_LAG + 1):
+        lo = start + lag
+        if lo < 0 or lo + span > len(follower):
+            continue
+        seg = follower[lo:lo + span]
+        energy = sum(v * v for v in seg)
+        if not energy:
+            continue
+        score = sum(x * y for x, y in zip(seg, ref, strict=True)) / math.sqrt(energy)
+        if score > best:
+            best, at = score, lag
+    return at
+
+
 def compare(a: Recording, b: Recording, window: Sequence[float] | None,
             align: bool) -> dict[str, Any]:
-    """`a` against reference `b` over `window`, `b` shifted so the onsets meet when `align`."""
+    """`a` against reference `b` over `window`; when `align`, shifted so the onsets meet, then the
+    waveforms."""
     if (a.rate, len(a.channels), a.width) != (b.rate, len(b.channels), b.width):
         raise Invalid("bad_argument", f"the recordings are {a.rate} Hz x {len(a.channels)} "
                       f"x {8 * a.width}-bit and {b.rate} Hz x {len(b.channels)} x "
@@ -397,6 +425,9 @@ def compare(a: Recording, b: Recording, window: Sequence[float] | None,
     exact = a.raw[sa * frame:ea * frame] == b.raw[sb * frame:eb * frame]
     oa, ob = _first_onset(a, sa, ea), _first_onset(b, sb, eb)
     shift = oa - ob if align and oa is not None and ob is not None else 0
+    if align and oa is not None and ob is not None:
+        loud = max(range(len(b.channels)), key=lambda k: _rms(centred(b.channels[k][sb:eb])))
+        shift = _refined(a.channels[loud][sa:ea], b.channels[loud][sb:eb], shift)
     pairs = []
     for ca, cb in zip(a.channels, b.channels, strict=True):
         pa, pb = centred(ca[sa:ea]), centred(cb[sb:eb])

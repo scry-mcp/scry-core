@@ -179,6 +179,22 @@ def test_alignment_meets_the_onsets_and_says_how_far(tmp_path: Path) -> None:
     assert raw["length_delta_samples"] == 0
 
 
+def test_a_soft_first_bar_is_aligned_by_the_waveform_not_by_a_threshold_crossing(
+        tmp_path: Path) -> None:
+    """A swell with a quiet start: the 2 % crossing wanders with the least difference between
+    two renders, and the waveforms meet only at the delay the second is really laid at."""
+    n, delay = 6000, 7
+    swell = [int(AMP * 0.5 * min(1.0, i / 3000) ** 2 * math.sin(2 * math.pi * 440 * i / RATE))
+             for i in range(n)]
+    ref = swell
+    hiss = [int(AMP * 0.5 * 0.03 * (((i * 7919) % 13) - 6) / 6) for i in range(n)]
+    other = [h + (0 if i < delay else swell[i - delay]) for i, h in enumerate(hiss)]
+    a = _write(tmp_path / "a.wav", [other])
+    b = _write(tmp_path / "b.wav", [ref])
+    got = wav.compare(wav.read("a", a), wav.read("b", b), None, True)
+    assert got["aligned_by_samples"] == delay, got
+
+
 def test_two_silences_compare_nothing(tmp_path: Path) -> None:
     a = _write(tmp_path / "a.wav", [[0] * 800])
     b = _write(tmp_path / "b.wav", [[0] * 800])
