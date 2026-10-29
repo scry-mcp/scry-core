@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import NotRequired
+
 from pydantic import ConfigDict
 from typing_extensions import TypedDict
 
@@ -15,3 +17,4 @@ class StopInstruction(TypedDict):
     text: str
     symbol: str | Unavailable
     delta: int | Unavailable
+    comment: NotRequired[str]

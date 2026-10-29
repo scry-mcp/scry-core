@@ -24,6 +24,10 @@ def test_an_instruction_is_judged_whole_with_symbol_and_delta_unavailable_togeth
             judge.validate_python(bad)
 
 
+def test_a_comment_beside_an_instruction_is_its_own_key() -> None:
+    TypeAdapter(StopInstruction).validate_python({**_PLACED, "comment": "the loop's top"})
+
+
 def test_a_platform_adds_its_own_keys_beside_the_common_ones() -> None:
     class Extended(StopInstruction):  # a platform's own subclass
         flow: str
