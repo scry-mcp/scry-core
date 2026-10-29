@@ -635,6 +635,18 @@ def test_two_paths_joined_by_a_colon_are_each_spelt_from_the_root() -> None:
     assert norm.text(f"x={m}{sep}proj{sep}c&{m}{sep}d|{m}{sep}e") == "x=./c&~/d|~/e"
 
 
+def test_a_small_flat_object_inside_a_reply_is_one_line_and_the_reply_itself_is_not() -> None:
+    """A control is a name, a rect and a point: one row, not eight; the top level stays a
+    column so the reply reads as fields."""
+    block = d.fenced({"matched": True, "controls": [
+        {"name": "pict", "rect": [103, 0, 33, 11], "centre": [119, 5]}]})
+    assert '{"name": "pict", "rect": [103, 0, 33, 11], "centre": [119, 5]}' in block, block
+    assert block.startswith('```json\n{\n  "matched": true,'), block
+    wide = {"controls": [{"name": "x" * 90, "rect": [1, 2, 3, 4]}]}
+    assert '"name": "' + "x" * 90 + '",\n' in d.fenced(wide), "a long one stays a column"
+    assert json.loads(d.fenced(wide).removeprefix("```json\n").removesuffix("\n```")) == wide
+
+
 def test_a_list_of_scalars_is_one_line_in_a_transcript_block() -> None:
     """A rect or a pixel pair is one thought, not four lines: the README's size is its cost."""
     block = d.fenced({"size": [640, 480], "controls": [{"name": "pict", "rect": [103, 0, 33, 11]}],

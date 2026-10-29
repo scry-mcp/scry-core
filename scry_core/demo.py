@@ -295,10 +295,26 @@ def _shown(tool: str, args: Mapping[str, Any], reply: Reply | None,
     return f"```\n{call}\n-> {answer}\n```"
 
 
+#: Longest line a small object inside a reply is folded onto.
+ONE_LINE_MAX = 100
+
+
+def _flat(value: dict[str, Any]) -> bool:
+    """Whether every value is a scalar or a list of scalars."""
+    def scalar(v: Any) -> bool:
+        return isinstance(v, (str, int, float, bool)) or v is None
+    return all(scalar(v) or (isinstance(v, list) and all(scalar(x) for x in v))
+               for v in value.values())
+
+
 def _compact(value: Any, depth: int = 0) -> str:
     """`value` as indented JSON with a list of scalars on one line: a rect or a point is one
     thought, and a column of numbers is most of a big reply's bytes."""
     pad = "  " * (depth + 1)
+    if depth and isinstance(value, dict) and value and _flat(value):
+        line = json.dumps(value, ensure_ascii=False)
+        if len(line) <= ONE_LINE_MAX:
+            return line
     if isinstance(value, dict) and value:
         rows = [f"{pad}{json.dumps(k, ensure_ascii=False)}: {_compact(v, depth + 1)}"
                 for k, v in value.items()]
