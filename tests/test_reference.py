@@ -405,6 +405,29 @@ def test_an_example_hides_the_clock_the_pids_and_the_run_s_directory_name(
     assert "2026-10-29" not in json.dumps(shown) and "67c0070a3b18" not in json.dumps(shown)
 
 
+@pytest.mark.parametrize("leaf", [
+    "dosbox-x-live-matrix-67c0070a3b18", "dosbox-x-live-matrix-A-knkhhrs9",
+    "dosbox-x-live-job-kzs3o8s9", "mame-mcp-o9hgql4s", "mame-mcp-_mkiyq7s",
+    "mame-live-matrix-state-r__6erd8", "dosbox-x-session-o_b8jy2k"])
+def test_every_random_directory_name_a_run_makes_is_hidden(tmp_path: Path, leaf: str) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    shown = reference.examples_from(
+        [_record("peek", "OK", {"status": "ok", "dir": f"$TMPDIR/{leaf}/jobs/x.json",
+                                "flag": "--no-session-persistence"})], {"peek"}, norm)["peek"]
+    assert shown["reply"]["dir"] == f"$TMPDIR/{leaf.rsplit('-', 1)[0]}-<run>/jobs/x.json", shown
+    assert leaf.rsplit("-", 1)[1] not in json.dumps(shown)
+    assert shown["reply"]["flag"] == "--no-session-persistence"
+
+
+def test_a_skip_that_is_no_regex_is_a_usage_error_not_a_drift(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    jsonl = tmp_path / "t.jsonl"
+    jsonl.write_text(json.dumps(_record("peek", "OK", {"status": "ok"})) + "\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as usage:
+        _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--skip", "(")
+    assert usage.value.code == 2
+
+
 def test_a_skipped_cell_is_no_candidate_and_the_next_ok_cell_of_the_tool_wins(
         tmp_path: Path) -> None:
     norm = Normaliser(tmp_path, Path.home(), {})

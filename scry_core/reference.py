@@ -420,8 +420,10 @@ def write(reg: Registry) -> list[str]:
 RUN_KEYS = {k: "" for k in ("created_at", "origin", "pid", "stub_port", "input_port",
                             "wall_at", "saved_at", "version")}
 _CLOCK = re.compile(r"\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d)?(?:[+-]\d\d:\d\d)?)?")
-#: The random suffix a live run gives its scratch directory.
-_RUN_DIR = re.compile(r"(?<=-matrix-)[0-9a-f]{8,}|(?<=-session-)[\w]{6,}")
+#: A scratch directory a run makes: `<emulator>-...-` then the 12 hex characters of a uuid or the 8
+#: of `tempfile.mkdtemp`, as a whole path component.
+_RUN_DIR = re.compile(
+    r"(?:(?<=[/\\])|^)((?:dosbox-x|mame)-[\w-]*?-)(?:[0-9a-f]{12}|[0-9a-z_]{8})(?!\w)")
 
 
 def _steady(value: Any) -> Any:
@@ -431,7 +433,7 @@ def _steady(value: Any) -> Any:
     if isinstance(value, list):
         return [_steady(v) for v in value]
     if isinstance(value, str):
-        return _RUN_DIR.sub("<run>", _CLOCK.sub("<time>", value))
+        return _RUN_DIR.sub(r"\1<run>", _CLOCK.sub("<time>", value))
     return value
 
 
@@ -502,6 +504,13 @@ def _mark(value: str) -> tuple[str, str]:
     return path, text
 
 
+def _pattern(value: str) -> re.Pattern[str]:
+    try:
+        return re.compile(value)
+    except re.error as e:
+        raise argparse.ArgumentTypeError(f"{value!r} is not a regular expression: {e}") from e
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="python -m scry_core.reference", allow_abbrev=False,
                                 description="Generate or check a server's reference pages.",
@@ -513,9 +522,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--mark", action="append", default=[], metavar="PATH=TEXT", type=_mark,
                    help="spell a directory of the live run's host as TEXT in the examples (its "
                         "scratch as $TMPDIR, its bench, its builds); repeatable")
-    p.add_argument("--skip", type=re.compile, metavar="REGEX",
-                   help="leave out the cells whose call or reply matches REGEX, so the tool's "
-                        "next OK cell is its example (a board a stranger cannot have)")
+    p.add_argument("--skip", type=_pattern, metavar="REGEX",
+                   help="leave out the cells whose call, reply, section or label matches REGEX, "
+                        "so the tool's next OK cell is its example (a board a stranger cannot "
+                        "have); a tool left with none shows a refusal, else no example")
     p.add_argument("--write", action="store_true", help="rewrite the pages")
     ns = p.parse_args(argv)
     if ns.mark and not ns.examples:
