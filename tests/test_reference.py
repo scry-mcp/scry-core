@@ -416,6 +416,15 @@ def test_a_skipped_cell_is_no_candidate_and_the_next_ok_cell_of_the_tool_wins(
     assert picked["peek"]["from"] == "[A] fixture: free" and "poke" not in picked
 
 
+def test_a_cell_whose_name_the_pattern_matches_is_skipped_too(tmp_path: Path) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    named = {**_record("peek", "OK", {"status": "ok"}, "on private-board"), "section": "[H] x"}
+    free = _record("peek", "OK", {"status": "ok"}, "free")
+    picked = reference.examples_from([named, free], {"peek"}, norm,
+                                     skip=re.compile("private-board"))
+    assert picked["peek"]["from"] == "[A] fixture: free"
+
+
 # ======================================================================== the command
 
 

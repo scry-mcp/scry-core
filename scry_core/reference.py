@@ -438,8 +438,8 @@ def _steady(value: Any) -> Any:
 def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
                   norm: demo.Normaliser, skip: re.Pattern[str] | None = None) -> dict[str, Any]:
     """One example per tool of `tools` from a live run's records. Only an OK cell whose reply
-    carries a `status` is a candidate, and not one whose call or reply `skip` matches; the first
-    `ok` reply wins, else the first refusal. Paths are spelled host-independently, `LEFT_OUT`
+    carries a `status` is a candidate, and not one whose call, reply or name `skip` matches; the
+    first `ok` reply wins, else the first refusal. Paths are spelled host-independently, `LEFT_OUT`
     dropped, the run's own values (`RUN_KEYS`, clock readings) hidden, long values abridged."""
     ok: dict[str, Mapping[str, Any]] = {}
     refused: dict[str, Mapping[str, Any]] = {}
@@ -447,7 +447,8 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
         name, reply = rec.get("tool"), rec.get("reply")
         if (name in tools and rec.get("verdict") == "OK" and isinstance(reply, dict)
                 and "status" in reply
-                and not (skip and skip.search(json.dumps([rec.get("args"), reply])))):
+                and not (skip and skip.search(json.dumps(
+                    [rec.get("args"), reply, rec.get("section"), rec.get("label")])))):
             (ok if reply["status"] == "ok" else refused).setdefault(str(name), rec)
     return {name: {"from": f"{rec.get('section', '')}: {rec.get('label', '')}",
                    "call": _steady(norm.reply(dict(rec.get("args") or {}), RUN_KEYS)),
