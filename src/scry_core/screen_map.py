@@ -104,6 +104,17 @@ Layer = Literal["session", "file"]
 #: both servers describe in the same words, filled after the docstring is dedented.
 DOC_VALUES = {
     "MAP_SUFFIX": SUFFIX,
+    "MAP_WRITE": ("The screen map: an application's screens, each known by the signatures of its "
+                  "stable regions, and their controls, in a session layer and a file layer."),
+    "MAP_ADD": ("`add`: the screen shown now as `screen` in the session layer, one {ADD_READ} "
+                "signing each `match` crop ([x, y, width, height], 1..16), `controls` "
+                "([{\"name\", \"rect\"}]) {ADD_PLACES}; needs the machine stopped. Reply: "
+                "`screen`, `kind`, `size`, `cells`, `match`, `controls`, `replaced`, "
+                "`shadows_file`, `anchor` (when given)."),
+    "MAP_REFUSED": ("Refused: an argument the method does not take; a misshapen name, crop, "
+                    "control, view or file; an `add` without an `anchor` to a consolidated map, "
+                    "and a save of one holding a screen with none (`bad_argument`); nothing "
+                    "mapped to save (`needs_call`)"),
     "MAP_LOAD": (f"`load`: `path` (`<application>{SUFFIX}`, absolute or `~`-led) as the file "
                  "layer, held by the\nserver; nothing is written to disk. `scale` (1..8) and "
                  "`margin` [x, y] (machine pixels on\neach side) say how the program's picture "
@@ -173,15 +184,20 @@ class View:
             out = bytearray()
             for y in range(height):
                 row = (self.margin[1] + y * self.scale) * grid.width + self.margin[0]
-                for x in range(width):
-                    at = (row + x * self.scale) * unit
-                    out += data[at:at + unit]
+                if unit == 1:
+                    out += data[row:row + width * self.scale:self.scale]
+                elif self.scale == 1:
+                    out += data[row * unit:(row + width) * unit]
+                else:
+                    for x in range(width):
+                        at = (row + x * self.scale) * unit
+                        out += data[at:at + unit]
             return bytes(out)
         return Grid(grid.kind, width, height, sampled(grid.cells, step),
                     None if grid.indices is None else sampled(grid.indices, 1))
 
 
-def view(scale: object, margin: object) -> View:
+def judged_view(scale: object, margin: object) -> View:
     """A view as `load` takes it, judged."""
     if not judges.whole(scale, 1) or scale > SCALE_MAX:
         raise Invalid("bad_argument", f"`scale` is a whole number 1..{SCALE_MAX}, got {scale!r}")
@@ -293,7 +309,7 @@ class Maps:
         """The file at `path_arg` as the file layer, replacing any loaded one, seen through
         `scale` and `margin`."""
         path = _map_path("path", path_arg)
-        seen = view(scale, margin)
+        seen = judged_view(scale, margin)
         try:
             if not path.is_file():
                 raise Invalid("bad_argument", f"path: no map file at {path}")
@@ -527,6 +543,42 @@ def check_frame_run(screen: str, control: object) -> None:
     if control:
         raise Invalid("bad_argument", f"screen {screen!r} names no anchor, so it is run to a "
                       "frame at a time and a `control` has nothing to count: leave it out")
+
+
+def no_control(declare: str = "") -> Invalid:
+    """The refusal of a `run_to` that names no `control`; `declare` adds how this server declares
+    one."""
+    return Invalid(
+        "bad_argument",
+        "no control is named: `run_to` measures nothing without one. A `control` is a second ref "
+        "known to be hot on this screen (the vblank or timer handler, a loop the program is in): "
+        "with it, a bound that expires with the control firing says breakpoints work here and the "
+        "target's did not fire; without it the silence could be breakpoints never firing at all"
+        + (f" ({declare})" if declare else ""))
+
+
+def run_to_screen(maps: Maps, screen: str, control: str, seconds: float, *,
+                  step: Callable[[float], dict[str, Any]],
+                  run_to_anchor: Callable[[str], dict[str, Any]], read: Read,
+                  stop_seq: Callable[[dict[str, Any]], int | None],
+                  run_for_only: frozenset[str],
+                  frame_run: Callable[[], None] = lambda: None,
+                  declare: str = "") -> dict[str, Any]:
+    """`run_to(screen=)` once for every server: a screen with no anchor is run to a frame at a
+    time until the map names it (`step`, its `run_for_only` keys dropped); an anchored one is run
+    to its anchor (`run_to_anchor`) and the arrival judged. `frame_run` refuses what a frame run
+    cannot apply; `stop_seq` names the stop the arrival is read at."""
+    if not maps.is_anchored(screen):
+        check_frame_run(screen, control)
+        frame_run()
+        out = run_until(maps, screen, step, read, seconds)
+        if out.get("status") == "ok":
+            out = {k: v for k, v in out.items() if k not in run_for_only}
+        return out
+    if not control:
+        raise no_control(declare)
+    reply = run_to_anchor(maps.anchor(screen))
+    return at_anchor(maps, screen, reply, read, stop_seq(reply))
 
 
 #: The least a frame is given when the bound is all but spent.

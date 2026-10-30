@@ -18,28 +18,6 @@ from scry_core.reply_contract import unavailable
 
 State = Literal["held", "acting"]
 
-#: The INT 33h driver's default graphics pointer, hot spot top-left: `X` outline, `o` fill, `.`
-#: untouched. One cell per guest pixel, it matches a DOS program's own pointer.
-ARROW = (
-    "XX.........",
-    "XoX........",
-    "XooX.......",
-    "XoooX......",
-    "XooooX.....",
-    "XoooooX....",
-    "XooooooX...",
-    "XoooooooX..",
-    "XooooooooX.",
-    "XoooooXXXXX",
-    "XooXooX....",
-    "XoXXXooX...",
-    "XX..XooX...",
-    ".....XooX..",
-    ".....XooX..",
-    "......XX...",
-)
-
-
 @dataclass(frozen=True)
 class Look:
     """Colours are 0xRRGGBB; alphas 0 to 1."""
@@ -50,10 +28,6 @@ class Look:
     acting_alpha: float = 0.85
     held_share: float = 1 / 3
     fade_s: float = 2.5
-    pointer: tuple[str, ...] = ARROW
-    pointer_outline_rgb: int = 0x2A1400
-    #: A look, not a promise: the button may follow the move by one BIOS tick, which is shorter.
-    pointer_glide_s: float = 0.1
 
     @property
     def held_alpha(self) -> float:
@@ -145,7 +119,7 @@ class Presence:
             self._set("held")
 
     def redeliver(self) -> None:
-        """Send the current state again (DOSBox-X's pointer)."""
+        """Send the current state again, for an adapter whose drawn content changed under it."""
         with self._cv:
             self._again = True
             self._cv.notify()

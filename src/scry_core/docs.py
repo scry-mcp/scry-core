@@ -8,8 +8,15 @@ PLACEHOLDER = re.compile(r"\{[A-Z][A-Z0-9_]*\}")
 
 def filled(name: str, doc: str, values: Mapping[str, str]) -> str:
     """`doc` with `values` filled; `TypeError` naming `name` if a placeholder is left."""
-    for key, value in values.items():
-        doc = doc.replace("{" + key + "}", value)
+    # A value may name another placeholder: an acyclic chain settles within `len(values)` passes.
+    for _ in range(len(values) + 1):
+        before = doc
+        for key, value in values.items():
+            doc = doc.replace("{" + key + "}", value)
+        if doc == before:
+            break
+    else:
+        raise TypeError(f"{name}'s placeholders form a cycle: {sorted(values)}")
     left = PLACEHOLDER.findall(doc)
     if left:
         raise TypeError(f"{name}'s docstring names {left}, which nothing fills")

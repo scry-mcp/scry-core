@@ -224,6 +224,19 @@ def test_a_process_that_survives_kill_is_named_with_its_state(
     assert gone.line().endswith("still alive after SIGKILL: pid 4242 state U")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the process list is ps on POSIX")
+def test_a_process_whose_name_is_not_utf8_does_not_break_the_list(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    real = subprocess.run
+
+    def ps_with_a_raw_byte(argv: list[str], **kw: object) -> subprocess.CompletedProcess[str]:
+        assert argv[0] == "ps"
+        return real(["/bin/sh", "-c", r"printf '12 12 S odd\252name\n'"], **kw)  # type: ignore[call-overload, no-any-return]
+
+    monkeypatch.setattr("scry_core.live_host.subprocess.run", ps_with_a_raw_byte)
+    assert host._processes() == {12: (12, "S", "odd\ufffdname")}
+
+
 def test_a_pid_the_same_program_took_later_is_never_signalled(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     ledger = host.EmulatorLedger(tmp_path / "ledger")

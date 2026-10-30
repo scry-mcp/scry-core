@@ -26,3 +26,15 @@ def test_the_media_modules_export_their_values() -> None:
     assert picture.DOC_VALUES == {"PICTURE": picture.DESCRIBED, "PICTURE_ARGS": picture.ARGUMENTS,
                                   "PICTURE_ATTACH": picture.ATTACH}
     assert {"SERIES_MAX": str(series.SERIES_MAX)} == series.DOC_VALUES
+
+
+def test_a_value_that_names_another_is_filled_whatever_their_order() -> None:
+    values = {"OUTER": "see {INNER}", "INNER": "inside"}
+    assert docs.filled("tool", "A {OUTER}.", values) == "A see inside."
+    assert docs.filled("tool", "A {OUTER}.", dict(reversed(values.items()))) == "A see inside."
+
+
+def test_values_that_name_themselves_or_each_other_are_refused_not_looped() -> None:
+    for values in ({"A": "x{A}"}, {"A": "{B}", "B": "{A}"}, {"C": "{B}", "B": "{A}", "A": "{C}"}):
+        with pytest.raises(TypeError, match="cycle|nothing fills"):
+            docs.filled("tool", "see {A} {C}", values)

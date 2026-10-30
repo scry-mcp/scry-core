@@ -248,6 +248,48 @@ def _top_level(text: str, listing: bool = False) -> list[str]:
     return names
 
 
+def _in_parentheses(text: str) -> list[tuple[str, str]]:
+    """Each backticked identifier one parenthesis deep, with the top-level backticked word the
+    parenthesis follows, for the parentheses that open with prose: one that opens with a name is
+    a nested field's list, which is not examined."""
+    found: list[tuple[str, str]] = []
+    owner, opened, i = "", [], 0
+    while i < len(text):
+        c = text[i]
+        if c == "(":
+            rest = text[i + 1:].lstrip()
+            opened.append(bool(rest) and rest[0] != "`")
+        elif c == ")":
+            if opened:
+                opened.pop()
+        elif c == "`":
+            close = text.find("`", i + 1)
+            if close < 0:
+                break
+            word = text[i + 1:close]
+            if word.isidentifier():
+                if not opened:
+                    owner = word
+                elif len(opened) == 1 and opened[0]:
+                    found.append((owner, word))
+            i = close
+        i += 1
+    return found
+
+
+def parenthesised_fields(doc: str, model: type) -> list[str]:
+    """The top-level fields of `model` a `Reply` paragraph names inside the parentheses of a scalar
+    field."""
+    props = TypeAdapter(model).json_schema()["properties"]
+    names: list[str] = []
+    for head, body in _paragraphs(doc):
+        for owner, word in _in_parentheses(head + ":" + body):
+            if (word in props and owner in props and not _nested(props[owner])
+                    and word not in names):
+                names.append(word)
+    return names
+
+
 def own_fields(model: type, envelope: type = ReplyEnvelope) -> list[str]:
     """The fields `model` adds to `envelope`."""
     shared = set(_fields(envelope))
@@ -279,7 +321,7 @@ def conditions_unsaid(doc: str, model: type, not_fields: Iterable[str] = ()) -> 
     said = " ".join(" ".join(block.split()) for block in doc.split("\n\n")
                     if _REPLY.search(block)).lower()
     faults: list[str] = []
-    for n in reply_sentence_names(doc):
+    for n in [*reply_sentence_names(doc), *parenthesised_fields(doc, model)]:
         if n in skip or n not in held or n in required or n in marked:
             continue
         if n not in when:

@@ -95,7 +95,7 @@ def _processes() -> dict[int, tuple[int, str, str]]:
     if WINDOWS:
         return _tasklist()
     done = subprocess.run(["ps", "-A", "-o", "pid=,pgid=,stat=,comm="], capture_output=True,
-                          text=True, check=False)
+                          text=True, errors="replace", check=False)
     if done.returncode != 0:
         raise OSError(f"ps answered rc={done.returncode}: {done.stderr.strip()}")
     found: dict[int, tuple[int, str, str]] = {}

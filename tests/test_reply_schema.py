@@ -166,6 +166,26 @@ class _Tool:
         self.input_schema: dict[str, Any] = {"properties": {a: {} for a in args}}
 
 
+class _Parenthesised(reply_schema.ReplyEnvelope, total=False):
+    line: str
+    call: str
+    hits: list[dict[str, str]]
+    ref: str
+
+
+def test_a_top_level_field_named_inside_parentheses_is_held_to_a_condition() -> None:
+    doc = ("Reply: `line` (the first match; `call` on `dos`), `hits` (`ref` of each), "
+           "`line` (`ref` too).")
+    got = reply_schema.conditions_unsaid(doc, _Parenthesised)
+    assert sorted(f.split(":")[0] for f in got) == ["call", "hits", "line"], got
+
+
+def test_a_stray_bracket_an_unclosed_quote_and_a_non_name_do_not_confuse_the_parentheses() -> None:
+    for doc in ("Reply: `line`), `call`.", "Reply: `line` (a match; `call",
+                "Reply: `line` (a `1.5`)."):
+        assert reply_schema.parenthesised_fields(doc, _Parenthesised) == []
+
+
 def test_the_sentence_faults_name_a_missing_field_a_silent_model_and_a_stale_word() -> None:
     tools = [_Tool("one", "Reply: `rows`, `extra`."), _Tool("two", "No paragraph."),
              _Tool("three", "Reply: `rows` and `quit`.")]

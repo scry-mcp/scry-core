@@ -7,12 +7,12 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Required
+from typing import Annotated, Any, Required
 
 from typing_extensions import TypedDict
 
 from scry_core import vocabulary as vocab
-from scry_core.reply_contract import unavailable
+from scry_core.reply_contract import When, unavailable
 
 
 def _nothing(reply: dict[str, Any], cut: dict[str, Any]) -> None:
@@ -107,8 +107,8 @@ class SequenceFields(TypedDict, total=False):
     recorded: Any
     replies_path: str | dict[str, Any]
     steps_total: int
-    still_running: bool
-    stopped: dict[str, Any]
+    still_running: Annotated[bool, When("else")]
+    stopped: Annotated[dict[str, Any], When("`TARGET`")]
     stops: dict[str, Any]
     truncated: bool
     verdict: str

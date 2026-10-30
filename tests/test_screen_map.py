@@ -278,6 +278,14 @@ def test_a_control_on_a_frame_by_frame_run_is_refused_naming_the_screen() -> Non
     assert e.value.code == "bad_argument" and "`control`" in str(e.value)
 
 
+def test_a_run_to_with_no_control_is_refused_once_for_both_servers() -> None:
+    plain = screen_map.no_control()
+    assert plain.code == "bad_argument" and "no control is named" in str(plain)
+    assert "breakpoints never firing" in str(plain), "the reason, not only the rule"
+    hinted = screen_map.no_control("declare one with `breakpoint_at(ref, role=\"control\")`")
+    assert str(hinted).startswith(str(plain)) and "role=" in str(hinted)
+
+
 def test_check_add_judges_the_anchor_before_any_read() -> None:
     screen_map.check_add("a", [[0, 0, 1, 1]], None, "", "DrawA")
     with pytest.raises(Invalid, match="`anchor` is a symbol or an address"):
@@ -385,6 +393,24 @@ def test_a_view_a_map_cannot_be_seen_through_is_refused(tmp_path: Path, scale: i
     with pytest.raises(Invalid, match=_re(said)) as e:
         Maps().load(_file(tmp_path, _doc()), scale=scale, margin=margin)
     assert e.value.code == "bad_argument"
+
+
+@pytest.mark.parametrize("unit", [1, 3])
+@pytest.mark.parametrize("scale, margin", [(1, (0, 0)), (1, (2, 1)), (2, (0, 0)), (3, (1, 2))])
+def test_a_view_samples_the_top_left_unit_of_each_block(unit: int, scale: int,
+                                                        margin: tuple[int, int]) -> None:
+    width, height = 4 * scale + 2 * margin[0], 3 * scale + 2 * margin[1]
+    cells = bytes((i * 7 + 1) % 251 for i in range(width * height * unit))
+    indices = bytes(i % 256 for i in range(width * height))
+    got = screen_map.View(scale, margin).through(
+        Grid("pixel", width, height, cells, indices))
+    assert (got.width, got.height) == (4, 3)
+
+    def pick(data: bytes, size: int, x: int, y: int) -> bytes:
+        at = ((margin[1] + y * scale) * width + margin[0] + x * scale) * size
+        return data[at:at + size]
+    assert got.cells == b"".join(pick(cells, unit, x, y) for y in range(3) for x in range(4))
+    assert got.indices == b"".join(pick(indices, 1, x, y) for y in range(3) for x in range(4))
 
 
 def test_a_screen_added_through_a_view_it_does_not_fit_is_the_machines_answer() -> None:
@@ -957,6 +983,35 @@ def test_a_run_to_a_screen_carries_its_arrival_or_refuses_a_stale_one(tmp_path: 
     timed_out = {"status": "ok", "verdict": "TIMEOUT"}
     assert screen_map.at_anchor(maps, "play", timed_out, Reads(PLAY), 6) is timed_out
     assert maps.found is None, "a run that did not arrive leaves no screen identified"
+
+
+def test_one_run_to_screen_flow_serves_a_screen_with_an_anchor_and_one_without(
+        tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _anchored("verified")))
+    assert maps.is_anchored("play")
+    ran: list[str] = []
+
+    def to_anchor(anchor: str) -> dict[str, Any]:
+        ran.append(anchor)
+        return {"status": "ok", "verdict": "TARGET", "stop_seq": 7, "pc": "0x10"}
+    machine = Frames([PLAY])
+    flow: dict[str, Any] = dict(step=machine.step, run_to_anchor=to_anchor, read=machine.read,
+                stop_seq=lambda r: r["stop_seq"], run_for_only=frozenset({"frame"}))
+    got = screen_map.run_to_screen(maps, "play", "vblank", 30.0, **flow)
+    assert ran == [maps.anchor("play")] and got["screen"]["screen"] == "play", got
+    with pytest.raises(Invalid, match="no control is named") as e:
+        screen_map.run_to_screen(maps, "play", "", 30.0, declare="declare it here", **flow)
+    assert e.value.code == "bad_argument" and "declare it here" in str(e.value)
+    refused: list[str] = []
+    maps.load(_file(tmp_path, _doc()))
+    assert not maps.is_anchored("play")
+    tail = Frames([TITLE, PLAY])
+    got = screen_map.run_to_screen(
+        maps, "play", "", 30.0, **{**flow, "step": tail.step, "read": tail.read},
+        frame_run=lambda: refused.append("checked"))
+    assert refused == ["checked"] and got["verdict"] == "TARGET" and "frame" not in got, got
+    assert len(ran) == 1, "a screen with no anchor never ran to one"
 
 
 def test_a_map_declares_where_the_program_keeps_its_pointer(tmp_path: Path) -> None:

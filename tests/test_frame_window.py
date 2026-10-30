@@ -30,6 +30,11 @@ def test_a_window_needs_summaries_and_none_is_no_window() -> None:
     fw.check_arguments(0, summaries=False)
 
 
+def test_the_sentence_both_servers_print_names_the_bounds_the_code_refuses_at() -> None:
+    said = fw.DOC_VALUES["UNTIL_FRAME"]
+    assert str(fw.UNTIL_STEPS_MAX) in said and f"{fw.UNTIL_SECONDS_MAX:g}" in said, said
+
+
 def test_a_list_with_no_run_for_cannot_reach_a_frame() -> None:
     with pytest.raises(Invalid, match="needs a `run_for` step"):
         fw.check_until([{"op": "registers"}], 9, here=3, running=False)

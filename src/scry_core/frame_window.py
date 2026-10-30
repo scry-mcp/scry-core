@@ -22,10 +22,14 @@ UNTIL_OP = "run_for"
 UNTIL_STEPS_MAX = 5000
 UNTIL_SECONDS_MAX = vocab.WAIT_MAX_S
 
+DOC_VALUES = {"UNTIL_FRAME": (
+    "`until_frame=F` needs `summaries=True` (a window is hundreds of steps) and a `run_for` step, "
+    f"and repeats the list until a stop reads frame F, within {UNTIL_STEPS_MAX} steps and "
+    f"{UNTIL_SECONDS_MAX:g} s; `no_channel` if there is no frame counter.")}
+
 
 def check_arguments(until_frame: int, summaries: bool) -> None:
-    """`until_frame`'s machine-independent half: a frame number, with `summaries`, because a
-    window is hundreds of steps."""
+    """`until_frame`'s machine-independent half: a frame number, with `summaries`."""
     if isinstance(until_frame, bool) or not isinstance(until_frame, int) or until_frame < 0:
         raise Invalid("bad_argument", f"until_frame={until_frame!r} is a frame number, 0 for none")
     if until_frame and not summaries:
