@@ -7,9 +7,9 @@ state the document loads is there, plays the steps in one `perform`, and closes.
 `scry_core.demo`'s machinery with the document as its steps, and inherits its exit codes: 0 every
 step held, 1 a step failed or diverged in the server's own words, or the server said it held a
 number of steps the document does not record, 2 usage, 3 nothing was demonstrated (a document that
-is not one, or that records nothing a step holds to; a start the server refused; other
-declarations, or a saved state it lacks; a server that did not start, or broke: a call that raised
-or timed out, an error result, a list it refused whole).
+is not one, that records nothing a step holds to, or whose `entry` file is gone; a start the
+server refused; other declarations, or a saved state it lacks; a server that did not start, or
+broke: a call that raised or timed out, an error result, a list it refused whole).
 """
 
 from __future__ import annotations
@@ -151,6 +151,11 @@ def _failed(steps: Sequence[Mapping[str, Any]]) -> Callable[[demo.Reply, demo.Ru
 
 def build(doc: dict[str, Any], root: Path, name: str) -> demo.Demo:
     """The document as a demo of its server: start, the states it needs, the steps, close."""
+    entry = doc["entry"]
+    if entry.endswith(".py") and not (root / entry).is_file():
+        raise Invalid(f"the document's entry `{entry}` is not a file in {root}: a document "
+                      f"exported before the server moved into a package names a script that is "
+                      f"gone; set `entry` to the server's importable module name")
     steps = doc["steps"]
     needs = doc.get("needs") or {}
     states, declared = list(needs.get("states") or []), dict(needs.get("declarations") or {})
@@ -170,7 +175,7 @@ def build(doc: dict[str, Any], root: Path, name: str) -> demo.Demo:
              demo.Step("close", "close", {}, lambda r, run: "closed", failure=_broke,
                        broken_is_invalid=True)]
     return demo.Demo(name=name, root=root,
-                     server=_entry_command(doc["entry"], root),
+                     server=_entry_command(entry, root),
                      steps=plan, offers=frozenset({"rompath"}),
                      verdict=lambda total, ok: f"REPLAY {name}: " + (
                          "every step held" if ok == total else "it did not hold"))

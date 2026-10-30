@@ -75,6 +75,18 @@ def test_an_entry_that_is_a_module_name_is_started_with_dash_m(
     assert "REPLAY session: every step held" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("entry", ["server.py", "dosbox_x_server.py"])
+def test_an_entry_file_that_is_gone_is_refused_naming_it_before_any_server_starts(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        entry: str) -> None:
+    doc = _repo(tmp_path, [HELD1], entry=entry)
+    (tmp_path / "server.py").unlink()
+    assert _run(monkeypatch, tmp_path, doc) == 3
+    out = capsys.readouterr().out
+    assert out.startswith(f"INVALID: the document's entry `{entry}` is not a file in "), out
+    assert "importable module name" in out and "did not start" not in out
+
+
 def test_a_step_that_diverges_is_exit_1_naming_the_step_and_the_field(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
         ) -> None:
