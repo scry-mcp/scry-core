@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 REFUSAL_CHARS_SHOWN = 120
@@ -10,6 +10,13 @@ HEX_BYTES_SHOWN = 64
 def counted(n: int, noun: str, plural: str | None = None) -> str:
     """`n` with its noun, grammatically plural (never `(s)`)."""
     return f"{n} {noun if n == 1 else plural or noun + 's'}"
+
+
+def ambiguous_name(name: str, addresses: Sequence[str], where: str) -> str:
+    """The refusal of a name the table gives more than once, naming each address in file order."""
+    return (f"{name!r} names {counted(len(addresses), 'symbol')} in {where} "
+            f"({', '.join(addresses)}), so taking one would be a guess at the wrong address: "
+            "use the address of the one meant")
 
 
 def agrees(n: int, one: str, many: str) -> str:

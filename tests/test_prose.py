@@ -33,3 +33,9 @@ def test_a_reads_bytes_are_shown_whole_up_to_the_ceiling_then_counted() -> None:
     whole = "ab" * prose.HEX_BYTES_SHOWN
     assert prose.hex_clipped(whole) == whole
     assert prose.hex_clipped(whole + "cdef") == whole + "... (2 more bytes in `hex`)"
+
+
+def test_an_ambiguous_name_is_refused_naming_every_address_in_the_files_order() -> None:
+    said = prose.ambiguous_name("COUNT", ["0x10", "0x30", "0x50"], "cpu :maincpu's table")
+    assert said.startswith("'COUNT' names 3 symbols in cpu :maincpu's table (0x10, 0x30, 0x50)")
+    assert "use the address of the one meant" in said

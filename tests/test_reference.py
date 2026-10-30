@@ -405,6 +405,18 @@ def test_an_example_hides_the_clock_the_pids_and_the_run_s_directory_name(
     assert "2026-10-29" not in json.dumps(shown) and "67c0070a3b18" not in json.dumps(shown)
 
 
+@pytest.mark.parametrize("stamp", [
+    "2026-10-29", "2026-10-29 17:14", "2026-10-29T17:14:55", "2026-10-29T17:14:55.123456",
+    "2026-10-29T17:14:55Z", "2026-10-29T17:14:55+0200", "2026-10-29T17:14:55.5-05:00",
+    "20261029T171455.123456Z"])
+def test_every_clock_form_a_run_writes_is_hidden(tmp_path: Path, stamp: str) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    shown = reference.examples_from(
+        [_record("peek", "OK", {"status": "ok", "summary": f"saved at {stamp} (frame 7)"})],
+        {"peek"}, norm)["peek"]
+    assert shown["reply"]["summary"] == "saved at <time> (frame 7)", shown
+
+
 @pytest.mark.parametrize("leaf", [
     "dosbox-x-live-matrix-67c0070a3b18", "dosbox-x-live-matrix-A-knkhhrs9",
     "dosbox-x-live-job-kzs3o8s9", "mame-mcp-o9hgql4s", "mame-mcp-_mkiyq7s",
@@ -437,6 +449,16 @@ def test_a_skipped_cell_is_no_candidate_and_the_next_ok_cell_of_the_tool_wins(
     picked = reference.examples_from(records, {"peek", "poke"}, norm,
                                      skip=re.compile("private-board"))
     assert picked["peek"]["from"] == "[A] fixture: free" and "poke" not in picked
+
+
+@pytest.mark.parametrize("private", ["é-private", "C:\\private\\x", 'say "private"'])
+def test_a_skip_reads_the_text_a_person_reads_not_its_json_escapes(
+        tmp_path: Path, private: str) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    records = [_record("peek", "OK", {"status": "ok", "board": private}, "bench"),
+               _record("peek", "OK", {"status": "ok", "board": "free-board"}, "free")]
+    picked = reference.examples_from(records, {"peek"}, norm, skip=re.compile(re.escape(private)))
+    assert picked["peek"]["from"] == "[A] fixture: free"
 
 
 def test_a_cell_whose_name_the_pattern_matches_is_skipped_too(tmp_path: Path) -> None:

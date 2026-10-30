@@ -450,3 +450,12 @@ def test_a_signal_module_in_the_pools_directory_is_not_the_trampolines(
     isolated.insert(1, "-I")                   # the job itself keeps out of the directory too
     r = lp.run_pool([lp.Job("j", isolated, planned=("j",))], 1, tmp_path / "o", VAR)
     assert r.outcomes == {"j": "OK"}, r.reasons
+
+
+def test_a_spanning_section_with_no_company_has_its_cells_named_and_one_with_company_none() -> None:
+    alone = lp.cannot_be_judged([("O", ["o1", "o2"], False), ("X", ["x1"], True)])
+    assert alone == [("o1", "[O] judges what the other sections do, and none is chosen"),
+                     ("o2", "[O] judges what the other sections do, and none is chosen")]
+    assert lp.cannot_be_judged([]) == []
+    assert lp.cannot_be_judged_line("o1", "why") == (
+        "cannot be judged in this selection: o1: why")

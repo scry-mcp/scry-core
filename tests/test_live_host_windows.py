@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import os
 import signal
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -73,19 +75,26 @@ def test_a_listing_row_that_is_not_a_process_is_skipped() -> None:
         77: (77, "R", "mamed.exe")}
 
 
-def test_a_canary_that_hangs_on_windows_is_ended_by_itself(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(("polled", "taskkills"), [(None, 1), (1, 0)])
+def test_a_canary_is_ended_with_its_tree_on_windows_only_while_it_still_runs(
+        monkeypatch: pytest.MonkeyPatch, polled: int | None, taskkills: int) -> None:
+    """A canary already reaped (an interrupt landing after `communicate`) has a pid another
+    program may hold now: its tree is not looked for."""
+    monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.setattr(host, "WINDOWS", True)
     monkeypatch.setattr(host, "LEAVE_S", 0.01)
     monkeypatch.setattr(host, "_alive", lambda pids, within_s: set())
     monkeypatch.setattr(os, "killpg", lambda *_a: pytest.fail("a group signalled"), raising=False)
-    ended: list[str] = []
+    ran: list[list[str]] = []
+    monkeypatch.setattr(subprocess, "run", lambda argv, **_k: ran.append(argv))
 
     class Proc:
         pid = 4242
 
-        def kill(self) -> None:
-            ended.append("kill")
+        def poll(self) -> int | None:
+            return polled
 
         def wait(self, timeout: float) -> int:
             return 1
-    assert host._end_group(Proc()) is False and ended == ["kill"]  # type: ignore[arg-type]
+    assert host._end_group(Proc()) is False  # type: ignore[arg-type]
+    assert ran == [["taskkill", "/F", "/T", "/PID", "4242"]] * taskkills

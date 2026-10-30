@@ -289,6 +289,49 @@ def test_update_readme_rewrites_the_block_and_the_capture(
     assert d.readme_drift(_readme(demo), normalised).startswith("line 1: the README has ")
 
 
+def _highlighted(tmp_path: Path) -> d.Demo:
+    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True,
+                    highlight="The boot call says where the machine stands."),
+             d.Step("look", "read", {}, _said("value")),
+             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
+                    lambda reply, run: "a picture", highlight="One call, one picture."),
+             d.Step("end", "close", {}, lambda reply, run: "closed")]
+    return _demo(tmp_path, steps)
+
+
+def test_a_highlighted_demo_s_block_carries_its_highlights_and_links_the_whole_run(
+        tmp_path: Path, log: Path) -> None:
+    demo = _highlighted(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    block = d.block_of(_readme(demo).read_text())
+    assert "The boot call says where the machine stands." in block
+    assert "One call, one picture." in block
+    assert "**1. `start`**" in block and "**3. `picture`**" in block
+    assert "**2. `read`**" not in block and "**4. `close`**" not in block
+    assert f"[{d.FULL_NAME}]({d.FULL_NAME})" in block and "4 calls" in block
+    assert (_readme(demo).parent / d.FULL_NAME).read_text() == _norm(tmp_path)
+
+
+def test_a_demo_with_no_highlight_keeps_the_whole_run_in_its_block(
+        tmp_path: Path, log: Path) -> None:
+    demo = _demo(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    assert not (_readme(demo).parent / d.FULL_NAME).exists()
+
+
+def test_stale_reads_the_committed_whole_run_of_a_highlighted_demo(
+        tmp_path: Path, log: Path) -> None:
+    demo = _highlighted(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    assert d.stale(demo, tmp_path / "out") == []
+    whole = _readme(demo).parent / d.FULL_NAME
+    whole.write_text(whole.read_text().replace("value 7", "value 8", 1))
+    found = d.stale(demo, tmp_path / "out")
+    assert len(found) == 1 and found[0].startswith(f"x's {d.FULL_NAME}: line "), found
+    whole.unlink()
+    assert d.stale(demo, tmp_path / "out") == [f"x's {d.FULL_NAME} is not committed"]
+
+
 @pytest.mark.parametrize("readme", ["no markers\n", f"{d.BEGIN}\n{d.BEGIN}\n{d.END}\n",
                                     f"{d.BEGIN}\n{d.END}\n{d.END}\n", f"{d.END}\n{d.BEGIN}\n"])
 def test_markers_not_there_once_are_invalid_and_write_nothing(

@@ -71,7 +71,11 @@ def steps(binding: Binding) -> list[Step]:
         map_load("map", MAP),
         Step("to the high scores", "run_to",
              {"ref": "Draw_High_Scores_Screen", "control": CONTROL, "seconds": WAIT_S},
-             arrived("Draw_High_Scores_Screen")),
+             arrived("Draw_High_Scores_Screen"),
+             highlight=("`run_to` takes the game's own routine name from the build's symbol map "
+                        "and runs the machine until that routine begins. `control` is a place "
+                        "known to run, and the reply counts its hits meanwhile, so a run that "
+                        "missed its target says whether the machine was running at all.")),
         wait("drawn", 1500, "the table drawn"),
         Step("is hiscores", "screen_map_find", {}, found("hiscores")),
         Step("no credits", "read_memory", {"ref": "Credits", "length": 2},
@@ -80,7 +84,11 @@ def steps(binding: Binding) -> list[Step]:
         wait("counted", 1000, "the coin counted"),
         Step("is insert", "screen_map_find", {}, found("insert")),
         Step("credits", "read_memory", {"ref": "Credits", "length": 2},
-             word_is("Credits", CREDITS_PER_COIN)),
+             word_is("Credits", CREDITS_PER_COIN),
+             highlight=("The script names the game's own variables, and each server resolves them "
+                        "through its build's map: `Credits` is read by name, the same call on the "
+                        "arcade board and on the PC port. The coin the demo dropped is counted as "
+                        "three credits.")),
         pressed["START"],
         Step("to the level", "run_to", {"ref": "Level_Write", "control": CONTROL,
                                         "seconds": WAIT_S}, arrived("Level_Write")),

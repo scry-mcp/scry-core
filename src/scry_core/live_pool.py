@@ -71,6 +71,23 @@ def default_workers() -> int:
     return max(1, (count or 1) // 2)
 
 
+#: The line a plan prints for a cell its selection can never judge.
+CANNOT_BE_JUDGED = "cannot be judged in this selection"
+
+
+def cannot_be_judged(spanning: Sequence[tuple[str, Sequence[str], bool]]) -> list[tuple[str, str]]:
+    """The cells a selection plans and can never judge, as `(label, why)`: those of each spanning
+    section `(name, labels, has_company)` whose verdict judges what the other sections do, when
+    `has_company` (decided by the caller, whose sections it is) says none is chosen beside it."""
+    return [(label, f"[{name}] judges what the other sections do, and none is chosen")
+            for name, labels, has_company in spanning if not has_company for label in labels]
+
+
+def cannot_be_judged_line(label: str, why: str) -> str:
+    """The plan's line for one such cell."""
+    return f"{CANNOT_BE_JUDGED}: {label}: {why}"
+
+
 @dataclass(frozen=True)
 class Summary:
     """What one job ran: its planned labels, each one's outcome and reason, and its transcript."""

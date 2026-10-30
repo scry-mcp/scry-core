@@ -28,7 +28,7 @@ import json
 import os
 import re
 import types
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import (
@@ -419,7 +419,8 @@ def write(reg: Registry) -> list[str]:
 #: Reply keys that belong to the run that produced an example, not to the tool.
 RUN_KEYS = {k: "" for k in ("created_at", "origin", "pid", "stub_port", "input_port",
                             "wall_at", "saved_at", "version")}
-_CLOCK = re.compile(r"\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d)?(?:[+-]\d\d:\d\d)?)?")
+_CLOCK = re.compile(r"\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d(?:\.\d+)?)?"
+                    r"(?:Z|[+-]\d\d:?\d\d)?)?|\d{8}T\d{6}(?:\.\d+)?Z?")
 #: A scratch directory a run makes: `<emulator>-...-` then the 12 hex characters of a uuid or the 8
 #: of `tempfile.mkdtemp`, as a whole path component.
 _RUN_DIR = re.compile(
@@ -437,6 +438,19 @@ def _steady(value: Any) -> Any:
     return value
 
 
+def _leaves(value: Any) -> Iterator[str]:
+    """Every key and scalar of `value` as a person reads it, with no JSON escape in it."""
+    if isinstance(value, Mapping):
+        for k, v in value.items():
+            yield str(k)
+            yield from _leaves(v)
+    elif isinstance(value, list | tuple):
+        for v in value:
+            yield from _leaves(v)
+    else:
+        yield value if isinstance(value, str) else json.dumps(value)
+
+
 def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
                   norm: demo.Normaliser, skip: re.Pattern[str] | None = None) -> dict[str, Any]:
     """One example per tool of `tools` from a live run's records. Only an OK cell whose reply
@@ -449,8 +463,8 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
         name, reply = rec.get("tool"), rec.get("reply")
         if (name in tools and rec.get("verdict") == "OK" and isinstance(reply, dict)
                 and "status" in reply
-                and not (skip and skip.search(json.dumps(
-                    [rec.get("args"), reply, rec.get("section"), rec.get("label")])))):
+                and not (skip and skip.search("\n".join(_leaves(
+                    [rec.get("args"), reply, rec.get("section"), rec.get("label")]))))):
             (ok if reply["status"] == "ok" else refused).setdefault(str(name), rec)
     return {name: {"from": f"{rec.get('section', '')}: {rec.get('label', '')}",
                    "call": _steady(norm.reply(dict(rec.get("args") or {}), RUN_KEYS)),

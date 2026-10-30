@@ -35,6 +35,16 @@ class ReplyEnvelope(TypedDict, total=False):
     session: dict[str, Any]
 
 
+class RunEnvelope(ReplyEnvelope, total=False):
+    """What a reply of a server that runs a machine adds around its own fields: the stop a call
+    met or applied, and the answers and exit code of a session that ended under it."""
+
+    answers_while_running: list[Any]
+    exit_code: int | dict[str, Any]
+    last_stop: dict[str, Any]
+    stopped_on_its_own: dict[str, Any]
+
+
 class Unavailable(TypedDict):
     """`reply_contract.unavailable(why)`, which any field may be in place of its value."""
 

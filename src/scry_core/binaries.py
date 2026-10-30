@@ -5,10 +5,8 @@ The first rung holding anything is taken, and a wrong value there is refused, ne
 
 from __future__ import annotations
 
-import contextlib
 import os
 import shutil
-import signal
 import subprocess
 import sys
 import tempfile
@@ -16,7 +14,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import IO, Any
 
-from scry_core import judges
+from scry_core import judges, process_tree
 from scry_core.reply_contract import Code, Invalid
 
 ARGUMENT = "argument"
@@ -123,18 +121,8 @@ def _spawn(argv: list[str], out: IO[bytes], err: IO[bytes],
 
 
 def _end_group(proc: subprocess.Popen[bytes], ran_out: bool) -> None:
-    """End the probe's group and reap it. On Windows the tree is followed by parent pid, so it
-    is ended only while the probe still runs: a freed pid can be another program's."""
-    if sys.platform == "win32":
-        if ran_out:
-            with contextlib.suppress(subprocess.TimeoutExpired):
-                subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
-                               capture_output=True, check=False, timeout=VERSION_TIMEOUT_S)
-    else:
-        with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.killpg(proc.pid, signal.SIGKILL)
-    with contextlib.suppress(subprocess.TimeoutExpired):
-        proc.wait(timeout=VERSION_TIMEOUT_S)
+    """End the probe's group and reap it."""
+    process_tree.end_tree(proc, ran_out=ran_out, wait_s=VERSION_TIMEOUT_S)
 
 
 def _head(file: IO[bytes]) -> bytes:

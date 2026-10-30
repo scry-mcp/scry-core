@@ -141,7 +141,7 @@ DOC_VALUES = {
     "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref` (exactly one). With an "
                    "`anchor`, run to it (`control`\nrequired): a `verified` map judges it there "
                    "(`stale_map` when it no longer holds), a\n`consolidated` one takes it as "
-                   "shown. With none, a retrace (a frame, on MAME) at a time until the map "
+                   "shown. With none, a frame at a time until the map "
                    "names it,\nwithin `seconds`; a `control` is refused there (`bad_argument`). "
                    "Reply: `screen` (`screen`, `layer`,\n`mode`, `judged`), `frames` run. "
                    "Refused: an unmapped screen (`unknown_ref`)."),
@@ -525,14 +525,15 @@ class Maps:
 
 
 def at_anchor(maps: Maps, screen: str, reply: dict[str, Any], read: Read,
-              stop: int | None) -> dict[str, Any]:
+              stop_seq: Callable[[dict[str, Any]], int | None]) -> dict[str, Any]:
     """`run_to(screen=)`'s reply: an arrival judged as the map's mode says, carried as `screen`;
-    a map gone stale refused with the stop kept; any other end forgets the last screen."""
+    a map gone stale refused with the stop kept; any other end forgets the last screen.
+    `stop_seq` names the arrival's stop and is asked only of an arrival."""
     if reply.get("status") != "ok" or reply.get("verdict") != "TARGET":
         maps.found = None
         return reply
     try:
-        return {**reply, "screen": maps.arrived(screen, read, stop)}
+        return {**reply, "screen": maps.arrived(screen, read, stop_seq(reply))}
     except Invalid as e:
         kept = {k: v for k, v in reply.items() if k not in ("verdict", "summary", "status")}
         return e.reply(**kept)
@@ -578,7 +579,7 @@ def run_to_screen(maps: Maps, screen: str, control: str, seconds: float, *,
     if not control:
         raise no_control(declare)
     reply = run_to_anchor(maps.anchor(screen))
-    return at_anchor(maps, screen, reply, read, stop_seq(reply))
+    return at_anchor(maps, screen, reply, read, stop_seq)
 
 
 #: The least a frame is given when the bound is all but spent.

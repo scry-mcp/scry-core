@@ -973,15 +973,16 @@ def test_a_run_to_a_screen_carries_its_arrival_or_refuses_a_stale_one(tmp_path: 
     maps = Maps()
     maps.load(_file(tmp_path, _anchored("verified")))
     arrived = {"status": "ok", "verdict": "TARGET", "pc": "0x10", "summary": "s"}
-    got = screen_map.at_anchor(maps, "play", arrived, Reads(PLAY), 3)
+    got = screen_map.at_anchor(maps, "play", arrived, Reads(PLAY), lambda r: 3)
     assert got["screen"] == {"screen": "play", "layer": "file", "mode": "verified",
                              "judged": True} and got["pc"] == "0x10"
-    stale = screen_map.at_anchor(maps, "play", arrived, Reads(TITLE), 4)
+    assert maps.found is not None and maps.found.stop == 3, "dated at the stop it was handed"
+    stale = screen_map.at_anchor(maps, "play", arrived, Reads(TITLE), lambda r: 4)
     assert (stale["status"], stale["code"], stale["pc"]) == ("INVALID", "stale_map", "0x10")
     assert "verdict" not in stale and "summary" not in stale
     maps.arrived("play", Reads(PLAY), 5)
     timed_out = {"status": "ok", "verdict": "TIMEOUT"}
-    assert screen_map.at_anchor(maps, "play", timed_out, Reads(PLAY), 6) is timed_out
+    assert screen_map.at_anchor(maps, "play", timed_out, Reads(PLAY), lambda r: 6) is timed_out
     assert maps.found is None, "a run that did not arrive leaves no screen identified"
 
 
@@ -1012,6 +1013,30 @@ def test_one_run_to_screen_flow_serves_a_screen_with_an_anchor_and_one_without(
         frame_run=lambda: refused.append("checked"))
     assert refused == ["checked"] and got["verdict"] == "TARGET" and "frame" not in got, got
     assert len(ran) == 1, "a screen with no anchor never ran to one"
+
+
+def test_a_frame_run_that_ends_on_a_refusal_hands_it_back_with_its_own_keys(
+        tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    refused = {"status": "INVALID", "code": "not_stopped", "frame": 3}
+    machine = Frames([TITLE])
+    got = screen_map.run_to_screen(
+        maps, "play", "", 30.0, step=lambda left: dict(refused), run_to_anchor=lambda a: {},
+        read=machine.read, stop_seq=lambda r: None, run_for_only=frozenset({"frame"}))
+    assert got == refused, "a refusal keeps every key it carries"
+
+
+def test_a_run_to_an_anchor_that_did_not_arrive_never_asks_for_the_arrival_stop(
+        tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _anchored("verified")))
+    machine = Frames([PLAY])
+    got = screen_map.run_to_screen(
+        maps, "play", "vblank", 30.0, step=machine.step,
+        run_to_anchor=lambda anchor: {"status": "ok", "verdict": "TIMEOUT"},
+        read=machine.read, stop_seq=lambda r: r["stop_seq"], run_for_only=frozenset())
+    assert got["verdict"] == "TIMEOUT", got
 
 
 def test_a_map_declares_where_the_program_keeps_its_pointer(tmp_path: Path) -> None:

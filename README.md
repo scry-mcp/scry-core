@@ -17,6 +17,9 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.reply_schema` | each tool's reply model published as its `outputSchema` (every field its value or `unavailable(why)`, the fields an `ok` reply always carries required), the envelope every reply carries, the strict check of every reply the battery builds, a field marked `OmitEmpty` left out when empty or `When(...)` stated in its sentence, and the names a description's `Reply:` sentence gives that its model does not hold or leaves optional without a stated condition |
 | `scry_core.roster` | a server's tools by family: the `instructions`' roster and the sentence naming what answers a running machine, both rendered from one table that partitions the registry, and the gate saying what a step may run on a running machine |
 | `scry_core.media_replies` | the reply models of the file tools both servers share |
+| `scry_core.tool_replies` | the fields of `screen_map_write`, `log_wait` and `comment_write` that mean the same on both servers, each server's model adding its own |
+| `scry_core.regpoint` | the `regpoint_hit` of a registerpoint stop: its ref, condition and pc, and the sentence saying it stays armed |
+| `scry_core.process_tree` | ending a launched process with everything it started, and whether a pid lives (a zombie is not alive; a failing `ps` is an error) |
 | `scry_core.session_block` | the `session` block that closes every reply: the alarms on every one, the fixed half on `start` and `status`, the short block naming what it left out, or the half itself where naming it would cost more; what `close` and `status` say with no session |
 | `scry_core.boundary` | the call boundary every server wraps its tools in: the lock, the nesting, a cancelled call's end and record, and the reply every path closes with |
 | `scry_core.ends_table` | a server reference's table of how a cancelled call ends, held against what its tools declare |
@@ -46,7 +49,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.host_args` | the host's own emulator arguments (`SCRY_EMULATOR_ARGS`, one argv token a line), which a server appends after its own flags on every launch that opens a window |
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, the probe's tasks, the prose ceiling, and the tree typed as Windows sees it |
 | `scry_core.host_program` | a test double's program and a path as the host runs and spells them, and the markers that skip a case only one host can hold |
-| `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, the README block they generate, and the flow of the steps it shows in the server's front door |
+| `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, the README block they generate (the steps a demo marks as its highlights, each with how the call does it, and a link to the whole run it commits beside the README), and the flow of the steps it shows in the server's front door |
 | `scry_core.game_demo` | one game's demo written once for both servers: the `Binding` that holds only what a platform cannot say the same way (how it starts, which input fires each of the game's actions, the screen's refresh, the recording its sound is held to) and the steps a script builds from it |
 | `scry_core.games` | the scripts of the games both servers run, one module per game with its one screen map |
 | `scry_core.recording` | a session as a bench: what a server did, recorded from its `start` through its call boundary, and exported as `perform`'s own document (`perform_export`); the check a replayed step holds to |
@@ -135,9 +138,11 @@ A live tier whose jobs share nothing runs them as child processes of its own scr
 ## Demos
 
 Each server keeps its demos in `demos/<name>/`: a README with the prompt to give an MCP client, a
-`demo.py` making the same calls and checking each answer, and the transcript and `screen.png` that
-`demo.py --update-readme` writes from a run where every step passed, so what the README shows is
-what the server answered. `scry_core.demo` is the runner both servers share, and its module
+`demo.py` making the same calls and checking each answer, and what `demo.py --update-readme`
+writes from a run where every step passed, so what the README shows is what the server answered:
+the README's block, which holds every step or, where the demo marks steps as highlights, only
+those with how each call does it and a `TRANSCRIPT.md` beside it with every step, and
+`screen.png`. `scry_core.demo` is the runner both servers share, and its module
 docstring is the contract. A game that exists on both platforms is one script in `scry_core.games`,
 run by each server's `demos/<game>/` through a short `Binding` (`scry_core.game_demo`): the same
 steps, symbols, screen map and checks on both, which is what proves the two servers answer one

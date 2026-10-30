@@ -2,7 +2,8 @@
 
 A host whose input layer stopped answering blocks every SDL program at its init, deaf to signals,
 so a run first launches an emulator that ends by itself and refuses the host when it does not.
-Pooled jobs record into the parent's ledger and scratch. POSIX only (`ps`, process groups).
+Pooled jobs record into the parent's ledger and scratch. Processes are listed with `ps` or, on
+Windows, `tasklist`.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, cast
 
+from scry_core import process_tree
 from scry_core.guardian import KILL
 from scry_core.prose import counted
 
@@ -79,14 +81,8 @@ def canary(argv: Sequence[str]) -> str:
 
 
 def _end_group(proc: subprocess.Popen[bytes]) -> bool:
-    """SIGKILL the group `proc` leads (on Windows `proc`); whether it is still alive."""
-    with contextlib.suppress(ProcessLookupError, PermissionError):
-        if WINDOWS or sys.platform == "win32":     # the tests' seam, then the spelling mypy narrows
-            proc.kill()
-        else:
-            os.killpg(proc.pid, signal.SIGKILL)
-    with contextlib.suppress(subprocess.TimeoutExpired):
-        proc.wait(LEAVE_S)
+    """End the group `proc` leads (on Windows its tree); whether it is still alive."""
+    process_tree.end_tree(proc, ran_out=proc.poll() is None, wait_s=LEAVE_S)
     return bool(_alive({proc.pid}, 0.0))
 
 

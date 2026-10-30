@@ -19,6 +19,10 @@ cleanup call unless its last step made it, so no emulator outlives it.
 `--update-readme` rewrites the README block, the capture and the `Demo.front` flow only after a
 run whose every step was OK.
 
+A demo whose steps carry a `highlight` puts only those steps in the README block, each with its
+sentence on how the call does it, and commits the whole normalised run beside the README as
+`FULL_NAME`, which the block links; `stale` compares both.
+
 Normalisation hides what differs between two honest runs and nothing else: `$HOME` as `~`, the
 repository root as `.`, the values of `VOLATILE` keys (and the demo's and step's own) in a reply
 as `<volatile>`, and of `host_args` keys in a call's arguments as `<host>`. Hiding is by key, so
@@ -51,6 +55,7 @@ from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 BEGIN = "<!-- demo-transcript:begin -->"
 END = "<!-- demo-transcript:end -->"
+FULL_NAME = "TRANSCRIPT.md"
 VOLATILE_MARK = "<volatile>"
 
 ABRIDGED_ITEMS = 6
@@ -138,6 +143,8 @@ class Step:
     #: A call the front door shows (`Demo.front`), reply abridged to the fields named. A named
     #: field the reply lacks fails the step, so the front door never shows a stale shape.
     shown: tuple[str, ...] = ()
+    #: How the call does what it shows: the step goes in the README block with this sentence.
+    highlight: str = ""
 
 
 @dataclass(frozen=True)
@@ -331,10 +338,13 @@ def fenced(value: Any) -> str:
     return "```json\n" + _compact(value) + "\n```"
 
 
-def _entry(n: int, tool: str, args: Mapping[str, Any], reply: Reply | None, line: str) -> str:
-    """One transcript step: verdict line, then call and reply folded."""
-    parts = [f"**{n}. `{tool}`**: {line}", "", "<details><summary>call and reply</summary>",
-             "", fenced(dict(args))]
+def _entry(n: int, tool: str, args: Mapping[str, Any], reply: Reply | None, line: str,
+           highlight: str = "") -> str:
+    """One transcript step: verdict line, its highlight, then call and reply folded."""
+    parts = [f"**{n}. `{tool}`**: {line}", ""]
+    if highlight:
+        parts += [highlight, ""]
+    parts += ["<details><summary>call and reply</summary>", "", fenced(dict(args))]
     if reply is not None:
         parts += ["", fenced(reply.data)]
         if reply.attachments:
@@ -352,15 +362,19 @@ class Transcripts:
     whole: list[str] = field(default_factory=list)
     normalised: list[str] = field(default_factory=list)
     flow: list[str] = field(default_factory=list)
+    story: list[str] = field(default_factory=list)
 
     def add(self, n: int, tool: str, args: Mapping[str, Any], reply: Reply | None,
             line: str, volatile: Mapping[str, str] | None = None,
-            shown: tuple[str, ...] = ()) -> None:
+            shown: tuple[str, ...] = (), highlight: str = "") -> None:
         self.whole.append(_entry(n, tool, args, reply, line))
         normal = None if reply is None else Reply(self.norm.reply(reply.data, volatile),
                                                   reply.attachments)
         normal_args = self.norm.arguments(dict(args))
         self.normalised.append(_entry(n, tool, normal_args, normal, self.norm.text(line)))
+        if highlight:
+            self.story.append(_entry(n, tool, normal_args, normal, self.norm.text(line),
+                                     highlight))
         if shown:
             spell = self.flow_norm or self.norm
             flow_reply = None if reply is None else Reply(spell.reply(reply.data, volatile),
@@ -440,7 +454,7 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                     ok, line, args, reply = await _step(client, step, run)
                     out.lines.append(norm.text(line))
                     out.transcripts.add(n, step.tool, args, reply, line, step.volatile,
-                                        step.shown if ok else ())
+                                        step.shown if ok else (), step.highlight)
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
@@ -610,21 +624,24 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
         capture.unlink(missing_ok=True)  # only this run's picture may reach the README
     norm = Normaliser(demo.root.resolve(), Path.home().resolve(),
                       {**VOLATILE, **demo.volatile}, demo.host_args)
-    normalised, flow = _beside(transcript)
+    normalised, flow, story = _beside(transcript)
     flow.unlink(missing_ok=True)  # only this run's flow may reach the front door
+    story.unlink(missing_ok=True)
     out = asyncio.run(_drive(demo, run, run.dir / "server.stderr", norm))
     if out.transcripts.whole:
         transcript.write_text("\n\n".join(out.transcripts.whole) + "\n", encoding="utf-8")
         normalised.write_text("\n\n".join(out.transcripts.normalised) + "\n", encoding="utf-8")
     if out.transcripts.flow:
         flow.write_text("\n\n".join(out.transcripts.flow) + "\n", encoding="utf-8")
+    if out.transcripts.story:
+        story.write_text(_story(out.transcripts.story, len(demo.steps)), encoding="utf-8")
     for line in out.lines:
         print(line)
     if out.transcripts.whole:
         print(f"transcript: {transcript}")
         print(f"normalised: {normalised}")
     if out.code == EXIT_PASS and update_readme and capture is not None and demo.readme:
-        _update_readmes(demo, demo.readme, capture, normalised, flow)
+        _update_readmes(demo, demo.readme, capture, normalised, flow, story)
     return out.code
 
 
@@ -641,19 +658,41 @@ def load(demo_file: Path) -> Demo:
     return found
 
 
-def _beside(transcript: Path) -> tuple[Path, Path]:
-    """The normalised transcript and the front door's flow, written beside `transcript`."""
+def _beside(transcript: Path) -> tuple[Path, Path, Path]:
+    """The normalised transcript, the front door's flow and the README's highlights, written
+    beside `transcript`."""
     return (transcript.with_name(transcript.stem + ".normalised.md"),
-            transcript.with_name(transcript.stem + ".flow.md"))
+            transcript.with_name(transcript.stem + ".flow.md"),
+            transcript.with_name(transcript.stem + ".story.md"))
+
+
+def _story(entries: list[str], calls: int) -> str:
+    """The README block of a highlighted demo: what it holds, the highlights, the link."""
+    return (f"The run is {prose.counted(calls, 'call')}; these are the ones that show how it is "
+            f"done, and every call with its reply is in [{FULL_NAME}]({FULL_NAME}).\n\n"
+            + "\n\n".join(entries) + "\n")
+
+
+def highlighted(demo: Demo) -> bool:
+    return any(step.highlight for step in demo.steps)
 
 
 def stale(demo: Demo, run_dir: Path) -> list[str]:
     """How the committed README block, flow and picture depart from the run in `run_dir`, one
     line each, or empty."""
-    normalised, flow = _beside(run_dir / "transcript.md")
+    normalised, flow, story = _beside(run_dir / "transcript.md")
     found = []
-    if demo.readme is not None and (drift := readme_drift(demo.readme, normalised)):
+    if demo.readme is not None and (drift := readme_drift(
+            demo.readme, story if highlighted(demo) else normalised)):
         found.append(f"{demo.name}'s README: {drift}")
+    if demo.readme is not None and highlighted(demo):
+        whole = demo.readme.with_name(FULL_NAME)
+        if not whole.is_file():
+            found.append(f"{demo.name}'s {FULL_NAME} is not committed")
+        elif drift := first_difference(whole.read_text(encoding="utf-8").strip("\n"),
+                                       normalised.read_text(encoding="utf-8").strip("\n"),
+                                       (FULL_NAME, "the run")):
+            found.append(f"{demo.name}'s {FULL_NAME}: {drift}")
     if demo.front is not None and (drift := flow_drift(demo.front, demo.name, flow)):
         found.append(f"the front door's {demo.name} flow: {drift}")
     if demo.readme is not None and demo.capture is not None:
@@ -668,19 +707,21 @@ def _no_readme(demo: Demo) -> Invalid:
     return Invalid(f"the demo {demo.name} has no README block to update")
 
 
-def _update_readmes(demo: Demo, readme: Path, capture: Path, normalised: Path, flow: Path
-                    ) -> None:
+def _update_readmes(demo: Demo, readme: Path, capture: Path, normalised: Path, flow: Path,
+                    story: Path) -> None:
     """Rewrite the README block, picture and flow; every text is built before any file is
     written, so a failure leaves all as they were."""
     if not capture.is_file():
         raise Invalid(f"the capture {capture} was not written by this run, so the README was "
                       "left as it was")
     text = with_block(readme.read_text(encoding="utf-8"),
-                      normalised.read_text(encoding="utf-8"))
+                      (story if highlighted(demo) else normalised).read_text(encoding="utf-8"))
     front = None if demo.front is None else with_block(
         demo.front.read_text(encoding="utf-8"), flow.read_text(encoding="utf-8"),
         flow_begin(demo.name), flow_end(demo.name))
     shutil.copyfile(capture, readme.with_name("screen.png"))
+    if highlighted(demo):
+        shutil.copyfile(normalised, readme.with_name(FULL_NAME))
     readme.write_text(text, encoding="utf-8")
     print(f"README: {readme} block and screen.png rewritten")
     if demo.front is not None and front is not None:

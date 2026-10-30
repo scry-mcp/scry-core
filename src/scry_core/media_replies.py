@@ -4,10 +4,30 @@ so the two never describe one tool two ways. A method's own fields come only wit
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Required
+
+from typing_extensions import TypedDict
 
 from scry_core.reply_contract import When
 from scry_core.reply_schema import ReplyEnvelope
+
+
+class CapturesFields(TypedDict, total=False):
+    """What `captures` lists, whichever envelope a server's reply sits in."""
+
+    captures: Required[list[Any]]
+
+
+class PerformExportFields(TypedDict, total=False):
+    """What `perform(export=)` answers: the replay file and what it holds."""
+
+    checks: Required[int]
+    cut: Required[dict[str, Any]]
+    dropped: Required[list[Any]]
+    dropped_total: Required[int]
+    path: Required[str]
+    replay: Required[str]
+    steps: Required[int]
 
 
 class ImageCompareReply(ReplyEnvelope, total=False):
