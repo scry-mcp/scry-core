@@ -40,21 +40,31 @@ def managed(current: int, held: list[int], ident: str = "D1") -> dict[str, Any]:
 
 def test_a_space_not_shown_is_switched_to_on_the_display_that_holds_it() -> None:
     desk = [managed(1, [1, 5], "MAIN"), managed(9, [9, 12], "SIDE")]
-    assert wh.plan_switch(12, desk) == ("SIDE", 12)
-    assert wh.plan_switch(5, desk) == ("MAIN", 5)
+    assert wh.plan_switch([12], desk) == ("SIDE", 12)
+    assert wh.plan_switch([5], desk) == ("MAIN", 5)
 
 
 def test_a_space_already_shown_needs_no_switch() -> None:
-    assert wh.plan_switch(1, [managed(1, [1, 5])]) is None
+    assert wh.plan_switch([1], [managed(1, [1, 5])]) is None
+
+
+def test_a_window_on_several_spaces_needs_no_switch_when_one_of_them_is_shown() -> None:
+    assert wh.plan_switch([5, 1], [managed(1, [1, 5])]) is None
+
+
+def test_a_window_on_several_spaces_none_shown_is_switched_to_the_first_a_display_holds() -> None:
+    desk = [managed(1, [1, 5, 6], "MAIN")]
+    assert wh.plan_switch([77, 6, 5], desk) == ("MAIN", 6)
 
 
 def test_a_space_no_display_holds_has_no_switch() -> None:
-    assert wh.plan_switch(77, [managed(1, [1, 5])]) is None
+    assert wh.plan_switch([77], [managed(1, [1, 5])]) is None
+    assert wh.plan_switch([], [managed(1, [1, 5])]) is None
 
 
 def test_a_display_the_listing_wrote_oddly_is_passed_over_not_trusted() -> None:
     odd: dict[str, Any] = {"Display Identifier": "X", "Spaces": [{"ManagedSpaceID": 3}]}
-    assert wh.plan_switch(3, [odd, managed(1, [1, 3], "OK")]) == ("OK", 3)
+    assert wh.plan_switch([3], [odd, managed(1, [1, 3], "OK")]) == ("OK", 3)
 
 
 LISTING: list[dict[str, Any]] = [
@@ -89,11 +99,11 @@ def test_an_activation_reports_why_it_failed_and_nothing_when_it_did_not() -> No
     assert wh.activation_error("osascript did not answer") == "osascript did not answer"
 
 
-def _host(monkeypatch: pytest.MonkeyPatch, space: int | None, desk: list[Any] | None
+def _host(monkeypatch: pytest.MonkeyPatch, spaces: list[int], desk: list[Any] | None
           ) -> tuple[wh.MacHost, list[Any]]:
     calls: list[Any] = []
     host = wh.MacHost()
-    monkeypatch.setattr(host, "space_of", lambda _w: space)
+    monkeypatch.setattr(host, "spaces_of", lambda _w: spaces)
     monkeypatch.setattr(fw, "_managed", lambda: desk)
     def switch(ident: str, space: int) -> None:
         calls.append(("switch", ident, space))
@@ -111,21 +121,21 @@ WINDOW = w.Seen(pid=42, number=9, bounds=(0, 0, 400, 300), onscreen=False)
 
 def test_a_window_on_a_hidden_space_gets_its_space_then_its_application(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    host, calls = _host(monkeypatch, 5, [managed(1, [1, 5], "MAIN")])
+    host, calls = _host(monkeypatch, [5], [managed(1, [1, 5], "MAIN")])
     assert host.activate(WINDOW) == ""
     assert calls == [("switch", "MAIN", 5), ("app", 42)]
 
 
 def test_a_window_on_the_shown_space_only_gets_its_application(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    host, calls = _host(monkeypatch, 1, [managed(1, [1, 5])])
+    host, calls = _host(monkeypatch, [1], [managed(1, [1, 5])])
     assert host.activate(WINDOW) == "" and calls == [("app", 42)]
 
 
-@pytest.mark.parametrize(("space", "desk"), [(None, [managed(1, [1])]), (5, None)])
+@pytest.mark.parametrize(("spaces", "desk"), [([], [managed(1, [1])]), ([5], None)])
 def test_a_host_that_cannot_say_where_the_window_is_says_so_and_does_nothing(
-        monkeypatch: pytest.MonkeyPatch, space: int | None, desk: list[Any] | None) -> None:
-    host, calls = _host(monkeypatch, space, desk)
+        monkeypatch: pytest.MonkeyPatch, spaces: list[int], desk: list[Any] | None) -> None:
+    host, calls = _host(monkeypatch, spaces, desk)
     assert "would not say which Space" in host.activate(WINDOW) and calls == []
 
 
@@ -170,7 +180,7 @@ def test_a_window_the_server_lists_is_listed_here_with_the_space_that_holds_it()
     assert {s.number for s in shown} <= {x["kCGWindowNumber"] for x in mine}
     desk = fw._managed() or []
     held = {int(s["ManagedSpaceID"]) for d in desk for s in d["Spaces"]}
-    assert host.space_of(shown[0]) in held
+    assert set(host.spaces_of(shown[0])) <= held
 
 
 @DESKTOP
@@ -182,12 +192,43 @@ def test_the_windows_above_one_are_on_screen_and_never_itself() -> None:
                for s in over)
 
 
+def _above_host(monkeypatch: pytest.MonkeyPatch, over: list[w.Seen],
+                spaces: dict[int, list[int]]) -> wh.MacHost:
+    """A host whose window server answers `over` for any window and puts windows on `spaces`."""
+    host = wh.MacHost()
+    monkeypatch.setattr(host, "_over", lambda _w: over)
+    monkeypatch.setattr(host, "spaces_of", lambda s: spaces[s.number])
+    monkeypatch.setattr(fw, "_managed", lambda: [managed(1, [1, 4891, 3938])])
+    return host
+
+
+COVER = w.Seen(pid=200, number=2, bounds=(0, 0, 2048, 1152), onscreen=True)
+BESIDE = w.Seen(pid=300, number=3, bounds=(0, 0, 500, 500), onscreen=True)
+
+
+def test_a_cover_on_a_space_the_display_is_not_showing_does_not_cover(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """MAME's window, with a full-screen application on another Space: the window server still
+    lists that application's window on screen and above, though the display shows the other."""
+    host = _above_host(monkeypatch, [COVER, BESIDE], {9: [1], 2: [4891], 3: [1]})
+    assert host.above(WINDOW) == [BESIDE]
+
+
+@pytest.mark.parametrize(("mine", "theirs"), [([1], [1, 4891]), ([1], []), ([], [4891]),
+                                              ([1], [0]), ([1], [0, 99])])
+def test_a_window_on_every_space_or_of_an_unknown_one_still_covers(
+        monkeypatch: pytest.MonkeyPatch, mine: list[int], theirs: list[int]) -> None:
+    """THE CONTROL: only a Space known to differ clears a window; a doubt keeps it covering."""
+    host = _above_host(monkeypatch, [COVER], {9: mine, 2: theirs})
+    assert host.above(WINDOW) == [COVER]
+
+
 @DARWIN
 def test_a_host_without_coregraphics_lists_nothing_and_knows_no_space(
         monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(fw, "_graphics", lambda: None)
     host = wh.MacHost()
-    assert host.displays() == [] and host.above(WINDOW) == [] and host.space_of(WINDOW) is None
+    assert host.displays() == [] and host.above(WINDOW) == [] and host.spaces_of(WINDOW) == []
 
 
 def test_the_switch_waits_for_the_window_to_be_shown_then_lets_the_transition_settle(

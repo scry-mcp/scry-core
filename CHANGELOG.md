@@ -6,6 +6,12 @@ What a server author notices. A client's view of each server is in that server's
 
 ### Fixed
 
+- `MacHost.above` leaves out a window on a Space known to differ from the window's own: the window
+  server keeps a full-screen application's window listed on screen, and above, while the display
+  shows another Space, so a window brought back to its Space still read as covered (MAME's did).
+  A window on several Spaces needs no Space switch when one of them is shown, and an ID that names
+  no Space of the desk (0, reported for a window on every desktop) says nothing of where a window
+  is. `MacHost.space_of` is gone for `spaces_of`.
 - `bring_front` activates the largest window of the pid, the one `state_of` reads, and not the
   first it lists: MAME lists a small auxiliary window before its own.
 

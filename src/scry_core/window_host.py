@@ -49,19 +49,34 @@ def _rounded(r: _Rect) -> Rect:
     return round(r.x), round(r.y), round(r.width), round(r.height)
 
 
-def plan_switch(space: int, managed: list[Any]) -> tuple[str, int] | None:
-    """The (display identifier, Space) to switch to so `space` is shown, or None when it already
-    is, or when no display holds it."""
+def plan_switch(spaces: list[int], managed: list[Any]) -> tuple[str, int] | None:
+    """The (display identifier, Space) to switch to so one of `spaces` is shown, or None when one
+    already is, or when no display holds any."""
+    target: tuple[str, int] | None = None
     for display in managed:
         try:
-            held = [int(s["ManagedSpaceID"]) for s in display["Spaces"]]
+            held = {int(s["ManagedSpaceID"]) for s in display["Spaces"]}
             current = int(display["Current Space"]["ManagedSpaceID"])
             ident = str(display["Display Identifier"])
         except (KeyError, TypeError, ValueError):
             continue
-        if space in held:
-            return None if current == space else (ident, space)
-    return None
+        if current in spaces:
+            return None
+        if target is None:
+            target = next(((ident, n) for n in spaces if n in held), None)
+    return target
+
+
+def _space_ids(managed: list[Any] | None) -> set[int]:
+    """Every Space ID the desk lists. The window server also reports IDs that name no Space (0 for a
+    window on every desktop, on the reports found), and those say nothing of where a window is."""
+    found: set[int] = set()
+    for display in managed or []:
+        try:
+            found.update(int(s["ManagedSpaceID"]) for s in display["Spaces"])
+        except (KeyError, TypeError, ValueError):
+            continue
+    return found
 
 
 def seen_from(listing: list[dict[str, Any]]) -> list[Seen]:
@@ -107,9 +122,17 @@ class MacHost:
         return seen_from(focus_watch.windows())
 
     def above(self, window: Seen) -> list[Seen]:
-        """The windows the window server says are on screen over `window` (it does not mix the
-        Spaces the way the full listing's order does: a full-screen window of a Space not shown
-        stays listed on screen, ahead of everything, for as long as its application lives)."""
+        """The windows over `window` on the Space it is on. The window server lists a full-screen
+        application's window on screen, and above, for as long as the application lives, though the
+        display shows another Space: only a Space known to differ clears a window."""
+        known = _space_ids(focus_watch._managed())
+        mine = known.intersection(self.spaces_of(window))
+        return [s for s in self._over(window)
+                if not mine or not (theirs := known.intersection(self.spaces_of(s)))
+                or mine & theirs]
+
+    def _over(self, window: Seen) -> list[Seen]:
+        """The windows the window server says are on screen over `window`, on any Space."""
         libs = focus_watch._graphics()
         if libs is None:
             return []
@@ -119,11 +142,11 @@ class MacHost:
         found = focus_watch.plist_of(cf, listed) if listed else None
         return seen_from(found) if isinstance(found, list) else []
 
-    def space_of(self, window: Seen) -> int | None:
-        """The Space the window server says holds `window`, or None."""
+    def spaces_of(self, window: Seen) -> list[int]:
+        """Every Space the window server says holds `window`; none when it will not say."""
         libs = focus_watch._graphics()
         if libs is None or focus_watch.spaces_missing(libs[0]):
-            return None
+            return []
         cg, cf = libs
         number = ctypes.c_int(window.number)
         cf.CFNumberCreate.restype = ctypes.c_void_p
@@ -139,16 +162,16 @@ class MacHost:
         cf.CFRelease(array)
         cf.CFRelease(item)
         spaces = focus_watch.plist_of(cf, listed) if listed else None
-        return int(spaces[0]) if isinstance(spaces, list) and spaces else None
+        return [int(n) for n in spaces] if isinstance(spaces, list) else []
 
     def activate(self, window: Seen) -> str:
         """Switch to the window's Space, then make its application frontmost; why not, or ''."""
-        space = self.space_of(window)
+        spaces = self.spaces_of(window)
         managed = focus_watch._managed()
-        if space is None or managed is None:
+        if not spaces or managed is None:
             return ("the window server would not say which Space holds the window "
                     f"(missing: {focus_watch.spaces_missing() or 'the listing itself'})")
-        if (step := plan_switch(space, managed)) is not None:
+        if (step := plan_switch(spaces, managed)) is not None:
             switch_space(*step)
             self._until_shown(window)
         return activate_app(window.pid)
