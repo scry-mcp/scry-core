@@ -12,6 +12,9 @@ What a server author notices. A client's view of each server is in that server's
   `window` reply block), `wait_visible`, and `bring_front`, read back. `judge_background` and
   `launch_environment`, which both servers each wrote, are here once.
 - `window_host`: macOS and Windows hosts for it. Windows is written against user32 and not yet run.
+- `window_tier` and `window_stand_ins`: the `window` pytest marker, its fixture and `on_the_desk`,
+  served to every suite with this package installed; the tier is out of the default run and runs
+  with `-m window` (README, *On-demand tiers*).
 - The `window_not_visible` code: the window never appeared, appeared on another display, or did not
   come forward.
 

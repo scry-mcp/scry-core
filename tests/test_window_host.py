@@ -4,22 +4,18 @@ forward from behind a full-screen application, with the activation by pid alone 
 
 from __future__ import annotations
 
-import os
-import shutil
 import subprocess
 import sys
 import time
-from collections.abc import Iterator
-from pathlib import Path
 from typing import Any
 
 import pytest
 
-from scry_core import focus_gate
 from scry_core import focus_watch as fw
 from scry_core import window as w
 from scry_core import window_host as wh
 from scry_core.reply_contract import Invalid
+from scry_core.window_stand_ins import on_the_desk
 
 DARWIN = pytest.mark.skipif(sys.platform != "darwin", reason="the host under test is macOS")
 
@@ -33,7 +29,6 @@ def _desktop() -> bool:
 DESKTOP = pytest.mark.skipif(not _desktop(), reason="no desktop session: no display or no window")
 SPACES = pytest.mark.skipif(sys.platform == "darwin" and fw._managed() is None,
                             reason="the window server's Space listing is unavailable")
-FIXTURES = Path(__file__).parent / "fixtures" / "window_host"
 
 
 def managed(current: int, held: list[int], ident: str = "D1") -> dict[str, Any]:
@@ -221,61 +216,7 @@ def test_a_window_that_is_never_shown_ends_the_wait_at_its_bound(
 
 # ---- bringing a window forward from behind a full-screen application ---------------------------
 
-def _built(tmp_path: Path, name: str) -> Path:  # needs the desk
-    out = tmp_path / name
-    run = subprocess.run(["swiftc", "-O", str(FIXTURES / f"{name}.swift"), "-o", str(out)],
-                         capture_output=True, text=True, timeout=300, check=False)
-    assert run.returncode == 0, run.stderr
-    return out
-
-
-def _until(what: str, ok: Any, bound_s: float = 12.0) -> None:  # needs the desk
-    end = time.monotonic() + bound_s
-    while not ok():
-        assert time.monotonic() < end, f"{what}: not true within {bound_s:g} s"
-        time.sleep(0.25)
-
-
-@pytest.fixture
-def behind_a_fullscreen_app(  # needs the desk
-        tmp_path: Path) -> Iterator[tuple[int, wh.MacHost]]:
-    """A window of its own, then a full-screen application taking the display's Space over it."""
-    procs: list[subprocess.Popen[bytes]] = []
-    try:
-        target = subprocess.Popen([str(_built(tmp_path, "target"))])
-        procs.append(target)
-        host = wh.MacHost()
-        _until("the target window listed on screen",
-               lambda: (s := w.state_of(target.pid, host.windows(), host.displays(), host.above))
-               is not None and s.onscreen)
-        procs.append(subprocess.Popen([str(_built(tmp_path, "cover"))]))
-        _until("the full-screen application taking the Space",
-               lambda: (s := w.state_of(target.pid, host.windows(), host.displays(), host.above))
-               is not None and not s.onscreen)
-        yield target.pid, host
-    finally:
-        for p in reversed(procs):
-            p.terminate()
-        for p in procs:
-            p.wait(timeout=10)
-        time.sleep(1.5)         # the display returns to the owner's Space
-
-
-DESK = [DARWIN,
-        pytest.mark.skipif(os.environ.get(focus_gate.OPT_IN_VAR) != "1",
-                           reason=f"moves the owner's desk: set {focus_gate.OPT_IN_VAR}=1 on an "
-                                  f"idle machine"),
-        pytest.mark.skipif(shutil.which("swiftc") is None,
-                           reason="the stand-in windows need swiftc")]
-
-
-def _on_the_desk(test: Any) -> Any:
-    for mark in DESK:
-        test = mark(test)
-    return test
-
-
-@_on_the_desk
+@on_the_desk
 def test_the_control_activating_by_pid_alone_leaves_the_window_behind(  # needs the desk
         behind_a_fullscreen_app: tuple[int, wh.MacHost]) -> None:
     """The way that failed in the field: rc 0, and the window stays where it was."""
@@ -288,7 +229,7 @@ def test_the_control_activating_by_pid_alone_leaves_the_window_behind(  # needs 
     assert still is not None and not still.onscreen, "the control no longer fails: re-measure"
 
 
-@_on_the_desk
+@on_the_desk
 def test_a_window_behind_a_fullscreen_application_comes_forward_by_its_space_and_its_app(
         # needs the desk
         behind_a_fullscreen_app: tuple[int, wh.MacHost]) -> None:

@@ -62,6 +62,8 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.window_capture` | what the host shows of an emulator's window, for a live tier: the window found by its owner's pid, captured by the host (macOS, a refusal raised as `Blocked`), two captures compared by where they differ, and whether that difference is the presence edge |
 | `scry_core.window` | the window a server was asked to open, as the host shows it: the `display` and `fullscreen` of a watched `start` validated against the host's displays, the window found by its owner's pid and read as a `window` reply block (display, bounds, on screen, in front, full screen), waited for, and brought forward and read back; plus the shared launch-behind decision and environment |
 | `scry_core.window_host` | the window system behind `window`: macOS through CoreGraphics (a window forward means its display's Space switched to, then its application frontmost) and Windows through user32 (not yet run on Windows) |
+| `scry_core.window_tier` | the pytest plugin serving the window tier: the `window` marker and the `behind_a_fullscreen_app` fixture, with nothing to copy into a server's tests |
+| `scry_core.window_stand_ins` | what that fixture opens (a window of its own, then a full-screen application taking its Space) and `on_the_desk`, which marks a test as the tier and skips it unless the desk may be moved |
 | `scry_core.process_name` | the name a server's process, and its guardians', go by in the host's process list |
 | `scry_core.narrowing` | a reply that answers less than everything and says so: `omitted` and `how`, and the `sections` list a caller narrows by |
 | `scry_core.traffic` | what a server's replies and its tool list cost the model, per tool, in the client's unit, and the visual tokens of the pictures replies attach, read from `list_tools()` and, when given, live transcripts |
@@ -129,6 +131,20 @@ judges the run after it with `focus_gate.verdict`; each outcome is OK, FAIL or B
 desk of whoever is working, so they run only with `SCRY_FOCUS_CONTROL=1` on an idle machine;
 unset, those two cells are BLOCKED and the verdict says it is unproven (a stolen focus still
 fails it). The two module docstrings are the contract.
+
+## On-demand tiers
+
+A tier that takes the desk of whoever is working never runs by accident. Each is a marker, left
+out of the default run by `addopts` and run by naming it:
+
+| Marker | What it opens or moves | Command |
+|---|---|---|
+| `window` | stand-in windows, and the owner's Space (macOS only; skipped without the variable, without `swiftc`, or off a Mac) | `SCRY_FOCUS_CONTROL=1 uv run pytest -m window --no-cov` |
+
+The marker, the `behind_a_fullscreen_app` fixture and the `on_the_desk` decorator arrive with this
+package, so a server adds only `not window` to its own `addopts` (`-m 'not live and not window'`).
+`--no-cov` because a partial run cannot judge a floor that belongs to the whole tree, and a
+command-line `-m` replaces the one in `addopts`.
 
 ## Parallel live tiers
 

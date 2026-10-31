@@ -25,6 +25,8 @@ dependencies = [
 [project.entry-points.pytest11]
 # The shape guard's plugin (`reply_shapes_guard` says why it is one); pytest comes from the suite.
 reply_shapes = "scry_core.reply_shapes"
+# The window tier's marker and fixture, served to every suite with this package installed.
+window_tier = "scry_core.window_tier"
 
 [dependency-groups]
 # `jsonschema` is what the SDK's client validates a reply with; the tests run the same validator
@@ -69,15 +71,15 @@ testpaths = ["tests"]
 # and never evaluates `fail_under`, so a bare run exits 0 having judged nothing. A partial run
 # goes red on the floor by construction, because the floor is the whole package's: pass
 # `--no-cov` for one of those. `pytester` runs the shape guard on suites of the test's own.
-addopts = "--cov -p pytester"
+addopts = "-m 'not window' --cov -p pytester"
 # The core's own anchor: the contract every server's envelope goes through.
 reply_shapes_anchors = ["scry_core.reply_contract", "scry_core.boundary"]
 
 [tool.coverage.run]
 branch = true
 source = ["src/scry_core", "tests"]
-# The plugin's thin hooks, which `reply_shapes.py` says why no run can measure.
-omit = ["src/scry_core/reply_shapes.py"]
+# The plugins' thin hooks, which `reply_shapes.py` says why no run can measure.
+omit = ["src/scry_core/reply_shapes.py", "src/scry_core/window_tier.py"]
 
 [tool.coverage.report]
 # THE FLOOR IS THE VENDOR'S: coverage.py's `fail_under`, judged by pytest-cov at the end of every
