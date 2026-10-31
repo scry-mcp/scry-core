@@ -243,6 +243,25 @@ def test_a_window_on_the_right_display_but_off_screen_is_returned_and_says_so() 
     assert state.display == 0 and not state.onscreen
 
 
+# ---- observing it ------------------------------------------------------------------------------
+
+def test_observing_a_window_the_owner_dragged_to_another_display_answers_where_it_is() -> None:
+    state = w.observe(PID, Host([seen(PID, (2300, 100, 400, 300))]))
+    assert state.display == 1 and state.onscreen
+
+
+def test_observing_names_no_display_so_asks_none_back() -> None:
+    state = w.observe(PID, Host([seen(PID, (100, 100, 400, 300), onscreen=False)]))
+    assert state.display == 0 and not state.onscreen
+
+
+def test_observing_a_pid_with_no_window_is_a_refusal_that_sends_to_status() -> None:
+    with pytest.raises(Invalid) as e:
+        w.observe(PID, Host([]))
+    assert e.value.code == "window_not_visible"
+    assert "no window" in str(e.value) and str(PID) in str(e.value) and "status" in str(e.value)
+
+
 # ---- bringing it forward -----------------------------------------------------------------------
 
 def test_a_covered_window_is_brought_in_front_and_read_back() -> None:
@@ -298,6 +317,31 @@ def test_a_pid_with_no_window_cannot_be_brought_forward() -> None:
         w.bring_front(PID, Host([]), 1.0, clock, clock.sleep)
     assert e.value.code == "window_not_visible" and "no window" in str(e.value)
     assert clock.now >= 1.0
+
+def test_a_background_session_that_does_not_come_forward_says_a_background_app_cannot() -> None:
+    clock = Clock()
+    host = Host([seen(PID, (100, 100, 400, 300), onscreen=False)], brings=False)
+    with pytest.raises(Invalid) as e:
+        w.bring_front(PID, host, 1.0, clock, clock.sleep, launched_behind=True)
+    message = str(e.value)
+    assert "background=true" in message and "cannot be brought to the front" in message
+    assert "background=false" in message
+
+
+def test_a_session_not_launched_behind_never_blames_the_background() -> None:
+    """THE CONTROL: the same failure without the hint carries no word about it."""
+    clock = Clock()
+    host = Host([seen(PID, (100, 100, 400, 300), onscreen=False)], brings=False)
+    with pytest.raises(Invalid) as e:
+        w.bring_front(PID, host, 1.0, clock, clock.sleep)
+    assert "background" not in str(e.value)
+
+
+def test_a_background_session_that_does_come_forward_is_returned_not_refused() -> None:
+    clock = Clock()
+    host = Host([seen(PID, (100, 100, 400, 300), onscreen=False)])
+    state = w.bring_front(PID, host, 1.0, clock, clock.sleep, launched_behind=True)
+    assert state.front
 
 
 def test_a_window_already_in_front_is_not_activated() -> None:

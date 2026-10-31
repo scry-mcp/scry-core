@@ -1,5 +1,6 @@
 """The window a server was asked to open, as the host shows it: asked for (`request`), found
-(`state_of`), waited for (`wait_visible`) and brought forward (`bring_front`).
+(`state_of`), read as it stands (`observe`), waited for (`wait_visible`) and brought forward
+(`bring_front`).
 
 A server never computes geometry: the emulator centres its own window on the display index it is
 given, and this reads back where it landed. `WindowState.block()` is a reply's `window` block.
@@ -120,8 +121,7 @@ def _holds(r: Rect, point: tuple[float, float]) -> bool:
 
 
 def above_in_order(listed: list[Seen]) -> Callable[[Seen], list[Seen]]:
-    """`Host.above` for a host whose list is already front to back (Windows). A window gone from the
-    list since it was read has nothing known above it."""
+    """`Host.above` for a host whose list is already front to back (Windows)."""
     def above(window: Seen) -> list[Seen]:
         return [s for s in listed[:listed.index(window)] if s.onscreen] if window in listed else []
     return above
@@ -155,6 +155,15 @@ def _not_visible(message: str, **fields: Any) -> Invalid:
 
 def _read(pid: int, host: Host) -> WindowState | None:
     return state_of(pid, host.windows(), host.displays(), host.above)
+
+
+def observe(pid: int, host: Host) -> WindowState:
+    """The window `pid` owns, on whatever display; `window_not_visible` when it owns none."""
+    state = _read(pid, host)
+    if state is None:
+        raise _not_visible(f"no window of pid {pid} is listed: the emulator has none open, or the "
+                           f"host's window list cannot be read; call `status`")
+    return state
 
 
 def _wait(pid: int, host: Host, bound_s: float, clock: Callable[[], float],
@@ -195,9 +204,11 @@ def wait_visible(pid: int, display: int, bound_s: float, host: Host,
 
 def bring_front(pid: int, host: Host, bound_s: float,
                 clock: Callable[[], float] = time.monotonic,
-                sleep: Callable[[float], None] = time.sleep) -> WindowState:
+                sleep: Callable[[float], None] = time.sleep, *,
+                launched_behind: bool = False) -> WindowState:
     """The window of `pid` in front of whatever covers it, read back; `window_not_visible` when it
-    is still not shown or still covered after `bound_s` seconds."""
+    is still not shown or still covered after `bound_s` seconds. `launched_behind` marks a session
+    started as a background application."""
     first = _read(pid, host)
     if first is not None and first.front:
         return first
@@ -212,9 +223,12 @@ def bring_front(pid: int, host: Host, bound_s: float,
                            activation=why or "none was tried")
     problem = ("the window is not on screen" if not state.onscreen
                else "the window is covered by another application's window")
+    cause = ("; this session was started with `background=true`, and a background application "
+             "cannot be brought to the front: `close` and `start` again with `background=false`"
+             if launched_behind else "")
     raise _not_visible(
         f"{problem} after the activation ({why or 'which reported no error'}): it is on a "
-        f"Space that is not shown, or something is in front of it", seen=state.block())
+        f"Space that is not shown, or something is in front of it{cause}", seen=state.block())
 
 
 def judge_background(background: bool | None, watched: bool) -> bool:

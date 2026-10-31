@@ -12,11 +12,16 @@ What a server author notices. A client's view of each server is in that server's
   A window on several Spaces needs no Space switch when one of them is shown, and an ID that names
   no Space of the desk (0, reported for a window on every desktop) says nothing of where a window
   is. `MacHost.space_of` is gone for `spaces_of`.
+- `bring_front` takes `launched_behind` and, when the window does not come forward, says a
+  background application cannot be brought to the front and to start again with
+  `background=false`.
 - `bring_front` activates the largest window of the pid, the one `state_of` reads, and not the
   first it lists: MAME lists a small auxiliary window before its own.
 
 ### Added
 
+- `observe(pid, host)`: the window a pid owns now, wherever it is, with no display to compare; a
+  pid with none is `window_not_visible`. The `window` tools answer from it.
 - `window`: the window a watched `start` asks for (`request`: `display` as the OS's index with 0 the
   main display, `fullscreen`; both refused on an unwatched start rather than ignored, a display the
   host lacks refused naming how many it has), its state read from the host (`state_of`, the
