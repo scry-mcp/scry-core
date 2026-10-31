@@ -62,8 +62,9 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.window_capture` | what the host shows of an emulator's window, for a live tier: the window found by its owner's pid, captured by the host (macOS, a refusal raised as `Blocked`), two captures compared by where they differ, and whether that difference is the presence edge |
 | `scry_core.window` | the window a server was asked to open, as the host shows it: the `display` and `fullscreen` of a watched `start` validated against the host's displays, the window found by its owner's pid and read as a `window` reply block (display, bounds, on screen, in front, full screen), waited for, and brought forward and read back; plus the shared launch-behind decision and environment |
 | `scry_core.window_host` | the window system behind `window`: macOS through CoreGraphics (a window forward means its display's Space switched to, then its application frontmost) and Windows through user32 (not yet run on Windows) |
+| `scry_core.conformance` | the window contract a server runs in one test file: `WindowContract` over a `subject` fixture, the rules every server's `start` and `window` meet |
 | `scry_core.window_tier` | the pytest plugin serving the window tier: the `window` marker and the `behind_a_fullscreen_app` fixture, with nothing to copy into a server's tests |
-| `scry_core.window_stand_ins` | what that fixture opens (a window of its own, then a full-screen application taking its Space) and `on_the_desk`, which marks a test as the tier and skips it unless the desk may be moved |
+| `scry_core.window_stand_ins` | what that fixture opens (a window of its own, then a full-screen application taking its Space) and `on_the_desk`, which marks a test as the tier and skips it unless the desk may be moved; `hosts`, the window doubles of a server's unit tests |
 | `scry_core.process_name` | the name a server's process, and its guardians', go by in the host's process list |
 | `scry_core.narrowing` | a reply that answers less than everything and says so: `omitted` and `how`, and the `sections` list a caller narrows by |
 | `scry_core.traffic` | what a server's replies and its tool list cost the model, per tool, in the client's unit, and the visual tokens of the pictures replies attach, read from `list_tools()` and, when given, live transcripts |
@@ -145,6 +146,12 @@ The marker, the `behind_a_fullscreen_app` fixture and the `on_the_desk` decorato
 package, so a server adds only `not window` to its own `addopts` (`-m 'not live and not window'`).
 `--no-cov` because a partial run cannot judge a floor that belongs to the whole tree, and a
 command-line `-m` replaces the one in `addopts`.
+
+## A new server
+
+[docs/new-emulator.md](docs/new-emulator.md) is the checklist, and `scry_core.conformance` holds
+the window contract a server's own `start` and `window` run against. [docs/katas.md](docs/katas.md)
+lists the demos and screen maps and which servers run each.
 
 ## Parallel live tiers
 

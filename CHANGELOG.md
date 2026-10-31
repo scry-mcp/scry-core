@@ -12,14 +12,28 @@ What a server author notices. A client's view of each server is in that server's
   A window on several Spaces needs no Space switch when one of them is shown, and an ID that names
   no Space of the desk (0, reported for a window on every desktop) says nothing of where a window
   is. `MacHost.space_of` is gone for `spaces_of`.
-- `bring_front` takes `launched_behind` and, when the window does not come forward, says a
-  background application cannot be brought to the front and to start again with
-  `background=false`.
+- `bring_front` takes `launched_behind` and, when the window does not come forward, names
+  `background=true` as what may keep it behind and says to start again with `background=false`.
+  A session started `background=true` does come forward when the window can be shown.
 - `bring_front` activates the largest window of the pid, the one `state_of` reads, and not the
   first it lists: MAME lists a small auxiliary window before its own.
 
+### Changed
+
+- `bring_front`'s `launched_behind` has no default: a server that forgets to say whether it launched
+  behind fails at the call instead of losing the explanation.
+- `game_demo.expect` is `demo.expect`, beside `StepFailed`, for every demo's step checks.
+
 ### Added
 
+- `window.requested`, `prove`, `answer` and `summary`, `window.WAIT_S`, and
+  `tool_replies.WindowRefusedFields`: the body of a server's `start` window half and of its
+  `window` tool, which both servers had written once each.
+- `conformance.WindowContract`: the window rules a server runs against its own `start` and
+  `window` in one test file, and `window_stand_ins.hosts`, the window doubles its unit tests use.
+  `window_stand_ins` also holds the desk tier's shared steps (`under_a_cover`, `comes_forward`).
+- `docs/new-emulator.md` and `docs/katas.md`: what a server for another emulator takes from this
+  package, and which demos exist and where.
 - `observe(pid, host)`: the window a pid owns now, wherever it is, with no display to compare; a
   pid with none is `window_not_visible`. The `window` tools answer from it.
 - `window`: the window a watched `start` asks for (`request`: `display` as the OS's index with 0 the
