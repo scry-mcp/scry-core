@@ -46,7 +46,6 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
 | `scry_core.live_host` | the host a live tier runs on: a canary that refuses one which cannot start the emulator, the ledger that proves no emulator outlived a run, and the run's scratch left as its verdict says |
 | `scry_core.binaries` | which emulator a session runs: the caller's `binary`, else the server's variable, else the PATH's, and what the build says it is |
-| `scry_core.host_args` | the host's own emulator arguments (`SCRY_EMULATOR_ARGS`, one argv token a line), which a server appends after its own flags on every launch that opens a window |
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, the probe's tasks, the prose ceiling, and the tree typed as Windows sees it |
 | `scry_core.host_program` | a test double's program and a path as the host runs and spells them, and the markers that skip a case only one host can hold |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, the README block they generate (the steps a demo marks as its highlights, each with how the call does it, and a link to the whole run it commits beside the README), and the flow of the steps it shows in the server's front door |

@@ -15,6 +15,11 @@ What a server author notices. A client's view of each server is in that server's
 - The `window_not_visible` code: the window never appeared, appeared on another display, or did not
   come forward.
 
+### Removed
+
+- `host_args` and `SCRY_EMULATOR_ARGS`: the window is the caller's, said in `start`, so a host no
+  longer injects placement flags.
+
 ## 0.80.0
 
 ### Added
