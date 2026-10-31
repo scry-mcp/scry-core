@@ -93,6 +93,12 @@ class StepFailed(Exception):
     """A step's answer was not the one its check asked for: the message says why."""
 
 
+def expect(holds: bool, why: str) -> None:
+    """A step's check: `StepFailed` with `why` unless `holds`."""
+    if not holds:
+        raise StepFailed(why)
+
+
 @dataclass(frozen=True)
 class Reply(Mapping[str, Any]):
     """One tool's answer as a mapping, plus the media type of each non-text part."""

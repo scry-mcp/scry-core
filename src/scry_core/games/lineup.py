@@ -16,13 +16,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from scry_core.demo import Reply, Run, Step
+from scry_core.demo import Reply, Run, Step, expect
 from scry_core.game_demo import (
     WAIT_S,
     Binding,
     arrived,
     elapsed,
-    expect,
     found,
     map_load,
     sound,

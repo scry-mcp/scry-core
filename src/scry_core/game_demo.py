@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from scry_core.demo import Args, Reply, Run, Step, StepFailed
+from scry_core.demo import Args, Reply, Run, Step, StepFailed, expect
 
 WAIT_S = 120
 
@@ -52,11 +52,6 @@ class Binding:
             raise KeyError(f"{self.platform} binds no {action!r}; it binds {sorted(self.inputs)}")
         bound = self.inputs[action]
         return Step(name, bound.tool, dict(bound.args), check, volatile=self.volatile)
-
-
-def expect(holds: bool, why: str) -> None:
-    if not holds:
-        raise StepFailed(why)
 
 
 def words(reply: Reply) -> list[int]:

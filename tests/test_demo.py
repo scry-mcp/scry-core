@@ -736,3 +736,9 @@ def test_an_option_that_names_a_path_is_refused_empty(
     code = d.main(demo, ["--transcript", str(tmp_path / "t.md"), option, ""])
     assert code == EXIT_INVALID, code
     assert f"{option} names a path" in capsys.readouterr().out
+
+
+def test_expect_passes_a_true_claim_and_fails_a_false_one_with_its_reason() -> None:
+    d.expect(True, "never read")
+    with pytest.raises(d.StepFailed, match="the value was not 8"):
+        d.expect(False, "the value was not 8")
