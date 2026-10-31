@@ -7,6 +7,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -15,7 +16,14 @@ from scry_core import focus_watch as fw
 from scry_core import window as w
 from scry_core import window_host as wh
 from scry_core.reply_contract import Invalid
-from scry_core.window_stand_ins import on_the_desk
+from scry_core.window_stand_ins import (
+    built,
+    comes_forward,
+    on_the_desk,
+    shown,
+    under_a_cover,
+    until,
+)
 
 DARWIN = pytest.mark.skipif(sys.platform != "darwin", reason="the host under test is macOS")
 
@@ -275,5 +283,30 @@ def test_a_window_behind_a_fullscreen_application_comes_forward_by_its_space_and
         # needs the desk
         behind_a_fullscreen_app: tuple[int, wh.MacHost]) -> None:
     pid, host = behind_a_fullscreen_app
-    brought = w.bring_front(pid, host, 8.0)
+    brought = w.bring_front(pid, host, 8.0, launched_behind=False)
     assert brought.onscreen and brought.front
+
+
+def _window_tool(pid: int) -> Any:  # needs the desk
+    """A `window` tool of the shape a server's replies have, over the real host."""
+    def tool(front: bool = False) -> dict[str, Any]:  # needs the desk
+        try:
+            return {"status": "ok",
+                    **w.answer(pid, w.WindowRequest(0, False), front=front, launched_behind=False)}
+        except Invalid as refused:
+            return {"status": "INVALID", "code": refused.code, "message": str(refused)}
+    return tool
+
+
+@on_the_desk
+def test_the_shared_tier_helpers_bring_a_covered_window_forward(  # needs the desk
+        tmp_path: Path) -> None:
+    target = subprocess.Popen([str(built(tmp_path, "target"))])
+    try:
+        until("the target window listed on screen",
+              lambda: shown(target.pid, wh.MacHost()) is True)
+        with under_a_cover(target.pid, tmp_path):
+            comes_forward(_window_tool(target.pid))
+    finally:
+        target.terminate()
+        target.wait(timeout=10)

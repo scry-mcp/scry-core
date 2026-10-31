@@ -23,6 +23,8 @@ Rect = tuple[int, int, int, int]       # x, y, width, height, in the host's own 
 NO_DISPLAY = -1
 #: Seconds between two readings of the host's window list.
 POLL_S = 0.25
+#: Seconds a watched start, and the `window` tool, wait on the host's window list.
+WAIT_S = 10.0
 
 
 @dataclass(frozen=True)
@@ -205,7 +207,7 @@ def wait_visible(pid: int, display: int, bound_s: float, host: Host,
 def bring_front(pid: int, host: Host, bound_s: float,
                 clock: Callable[[], float] = time.monotonic,
                 sleep: Callable[[float], None] = time.sleep, *,
-                launched_behind: bool = False) -> WindowState:
+                launched_behind: bool) -> WindowState:
     """The window of `pid` in front of whatever covers it, read back; `window_not_visible` when it
     is still not shown or still covered after `bound_s` seconds. `launched_behind` marks a session
     started as a background application."""
@@ -223,12 +225,52 @@ def bring_front(pid: int, host: Host, bound_s: float,
                            activation=why or "none was tried")
     problem = ("the window is not on screen" if not state.onscreen
                else "the window is covered by another application's window")
-    cause = ("; this session was started with `background=true`, and a background application "
-             "cannot be brought to the front: `close` and `start` again with `background=false`"
-             if launched_behind else "")
+    cause = ("; this session was started with `background=true`, which may be what keeps it "
+             "behind: `close` and `start` again with `background=false`" if launched_behind else "")
     raise _not_visible(
         f"{problem} after the activation ({why or 'which reported no error'}): it is on a "
         f"Space that is not shown, or something is in front of it{cause}", seen=state.block())
+
+
+def requested(shared: bool, display: int | None,
+              fullscreen: bool | None) -> WindowRequest | None:
+    """`request` for a server's `start`; the host's display count is read only when watched."""
+    count = len(host().displays()) if shared else 0
+    return request(display, fullscreen, shared=shared, display_count=count)
+
+
+def prove(pid: int, asked: WindowRequest) -> WindowState:
+    """The window `pid` opened as `asked`, waited for up to `WAIT_S`; a `fullscreen` that does not
+    fill its display is refused. The refusal leaves the session live, so `window` and `close`
+    still act."""
+    proved = wait_visible(pid, asked.display, WAIT_S, host())
+    if asked.fullscreen and not proved.fullscreen:
+        raise _not_visible("the window opened on the asked display but does not fill it, which "
+                           "`fullscreen` asked for: `close` and start again with "
+                           "`fullscreen=false`", asked_display=asked.display, seen=proved.block())
+    return proved
+
+
+def answer(pid: int, asked: WindowRequest | None, *, front: bool,
+           launched_behind: bool) -> dict[str, Any]:
+    """The `window` tool's reply fields: where the window is, brought forward on `front`;
+    `no_channel` for a session started without a window request."""
+    if asked is None:
+        raise Invalid("no_channel", "this session was started without `shared=true`, so the "
+                      "server placed no window and proves none: close it and start again with "
+                      "`shared=true`")
+    where = host()
+    state = (bring_front(pid, where, WAIT_S, launched_behind=launched_behind) if front
+             else observe(pid, where))
+    return {"window": state.block()}
+
+
+def summary(args: dict[str, Any], reply: dict[str, Any]) -> str:
+    """The one line `window` answers with in a transcript."""
+    seen = reply.get("window") or {}
+    return (f"window: display {seen.get('display')}, "
+            f"{'on screen' if seen.get('onscreen') else 'off screen'}, "
+            f"{'in front' if seen.get('front') else 'covered'}")
 
 
 def judge_background(background: bool | None, watched: bool) -> bool:

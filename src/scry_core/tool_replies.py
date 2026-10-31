@@ -61,3 +61,11 @@ class CommentWriteFields(TypedDict, total=False):
     replaced_total: Annotated[int, When("`load`")]
     truncated: Annotated[bool, When("`save`", "`load`")]
     unchanged: Annotated[int, When("`load`")]
+
+
+class WindowRefusedFields(TypedDict, total=False):
+    """What a `window_not_visible` refusal says of the window it looked for, on both servers."""
+
+    activation: Annotated[str, When("`window_not_visible` after an activation")]
+    asked_display: Annotated[int, When("`window_not_visible`")]
+    seen: Annotated[dict[str, Any], When("`window_not_visible` with a window listed")]

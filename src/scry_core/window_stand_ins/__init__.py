@@ -12,7 +12,8 @@ import shutil
 import subprocess
 import sys
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -57,25 +58,45 @@ def until(what: str, ok: Any, bound_s: float = 12.0) -> None:  # needs the desk
         time.sleep(POLL_S)
 
 
+def shown(pid: int, host: wh.MacHost) -> bool | None:  # needs the desk
+    """Whether the window of `pid` is on screen, or None while it lists none."""
+    state = w.state_of(pid, host.windows(), host.displays(), host.above)
+    return None if state is None else state.onscreen
+
+
+@contextmanager
+def under_a_cover(pid: int, tmp_path: Path) -> Iterator[None]:  # needs the desk
+    """A full-screen application taking the Space the window of `pid` is on, for the block."""
+    host = wh.MacHost()
+    cover = subprocess.Popen([str(built(tmp_path, "cover"))])
+    try:
+        until("the full-screen application taking the Space", lambda: shown(pid, host) is False)
+        yield
+    finally:
+        cover.terminate()
+        cover.wait(timeout=10)
+        time.sleep(RETURN_S)     # the display returns to the owner's Space
+
+
 def behind_a_fullscreen_app(  # needs the desk
         tmp_path: Path) -> Iterator[tuple[int, wh.MacHost]]:
     """A window of its own, then a full-screen application taking the display's Space over it."""
-    procs: list[subprocess.Popen[bytes]] = []
+    target = subprocess.Popen([str(built(tmp_path, "target"))])
     try:
-        target = subprocess.Popen([str(built(tmp_path, "target"))])
-        procs.append(target)
         host = wh.MacHost()
-        until("the target window listed on screen",
-              lambda: (s := w.state_of(target.pid, host.windows(), host.displays(), host.above))
-              is not None and s.onscreen)
-        procs.append(subprocess.Popen([str(built(tmp_path, "cover"))]))
-        until("the full-screen application taking the Space",
-              lambda: (s := w.state_of(target.pid, host.windows(), host.displays(), host.above))
-              is not None and not s.onscreen)
-        yield target.pid, host
+        until("the target window listed on screen", lambda: shown(target.pid, host) is True)
+        with under_a_cover(target.pid, tmp_path):
+            yield target.pid, host
     finally:
-        for p in reversed(procs):
-            p.terminate()
-        for p in procs:
-            p.wait(timeout=10)
-        time.sleep(RETURN_S)     # the display returns to the owner's Space
+        target.terminate()
+        target.wait(timeout=10)
+
+
+def comes_forward(window: Callable[..., dict[str, Any]]) -> None:  # needs the desk
+    """`window` (a server's tool) answers the window behind the cover, and `front=True` brings it
+    back."""
+    behind = window()["window"]
+    assert behind["onscreen"] is False, behind
+    front = window(front=True)
+    assert front["status"] == "ok", front
+    assert front["window"]["onscreen"] is True and front["window"]["front"] is True, front

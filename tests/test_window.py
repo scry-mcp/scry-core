@@ -268,7 +268,7 @@ def test_a_covered_window_is_brought_in_front_and_read_back() -> None:
     clock = Clock()
     cover = seen(OTHER, (0, 0, 2048, 1152), number=2)
     host = Host([cover, seen(PID, (100, 100, 400, 300), onscreen=False)])
-    state = w.bring_front(PID, host, 3.0, clock, clock.sleep)
+    state = w.bring_front(PID, host, 3.0, clock, clock.sleep, launched_behind=False)
     assert state.onscreen and state.front and host.activated == [1]
 
 
@@ -279,7 +279,7 @@ def test_the_window_activated_is_the_largest_of_the_pid_as_the_reading_picks_it(
     cover = seen(OTHER, (0, 0, 2048, 1152), number=2)
     host = Host([cover, seen(PID, (0, 652, 200, 200), number=7, onscreen=False),
                  seen(PID, (100, 100, 400, 300), number=1, onscreen=False)])
-    state = w.bring_front(PID, host, 3.0, clock, clock.sleep)
+    state = w.bring_front(PID, host, 3.0, clock, clock.sleep, launched_behind=False)
     assert host.activated == [1], host.activated
     assert state.bounds == (100, 100, 400, 300)
 
@@ -288,7 +288,7 @@ def test_a_window_that_does_not_come_forward_is_a_refusal_with_what_was_read_bac
     clock = Clock()
     host = Host([seen(PID, (100, 100, 400, 300), onscreen=False)], brings=False)
     with pytest.raises(Invalid) as e:
-        w.bring_front(PID, host, 1.0, clock, clock.sleep)
+        w.bring_front(PID, host, 1.0, clock, clock.sleep, launched_behind=False)
     assert e.value.code == "window_not_visible" and "not on screen" in str(e.value)
     assert e.value.fields["seen"]["onscreen"] is False and clock.now >= 1.0
 
@@ -298,7 +298,7 @@ def test_a_window_on_screen_but_covered_says_it_is_covered() -> None:
     cover = seen(OTHER, (0, 0, 2048, 1152), number=2)
     host = Host([cover, seen(PID, (100, 100, 400, 300))], brings=False)
     with pytest.raises(Invalid) as e:
-        w.bring_front(PID, host, 1.0, clock, clock.sleep)
+        w.bring_front(PID, host, 1.0, clock, clock.sleep, launched_behind=False)
     assert "covered" in str(e.value)
 
 
@@ -307,14 +307,14 @@ def test_the_activation_the_host_refuses_is_said_with_its_reason() -> None:
     host = Host([seen(PID, (100, 100, 400, 300), onscreen=False)], brings=False,
                 refuses="the window server would not switch Spaces")
     with pytest.raises(Invalid) as e:
-        w.bring_front(PID, host, 1.0, clock, clock.sleep)
+        w.bring_front(PID, host, 1.0, clock, clock.sleep, launched_behind=False)
     assert "would not switch Spaces" in str(e.value)
 
 
 def test_a_pid_with_no_window_cannot_be_brought_forward() -> None:
     clock = Clock()
     with pytest.raises(Invalid) as e:
-        w.bring_front(PID, Host([]), 1.0, clock, clock.sleep)
+        w.bring_front(PID, Host([]), 1.0, clock, clock.sleep, launched_behind=False)
     assert e.value.code == "window_not_visible" and "no window" in str(e.value)
     assert clock.now >= 1.0
 
@@ -324,7 +324,7 @@ def test_a_background_session_that_does_not_come_forward_says_a_background_app_c
     with pytest.raises(Invalid) as e:
         w.bring_front(PID, host, 1.0, clock, clock.sleep, launched_behind=True)
     message = str(e.value)
-    assert "background=true" in message and "cannot be brought to the front" in message
+    assert "background=true" in message and "may be what keeps it behind" in message
     assert "background=false" in message
 
 
@@ -333,7 +333,7 @@ def test_a_session_not_launched_behind_never_blames_the_background() -> None:
     clock = Clock()
     host = Host([seen(PID, (100, 100, 400, 300), onscreen=False)], brings=False)
     with pytest.raises(Invalid) as e:
-        w.bring_front(PID, host, 1.0, clock, clock.sleep)
+        w.bring_front(PID, host, 1.0, clock, clock.sleep, launched_behind=False)
     assert "background" not in str(e.value)
 
 
@@ -347,13 +347,130 @@ def test_a_background_session_that_does_come_forward_is_returned_not_refused() -
 def test_a_window_already_in_front_is_not_activated() -> None:
     clock = Clock()
     host = Host([seen(PID, (100, 100, 400, 300))])
-    state = w.bring_front(PID, host, 1.0, clock, clock.sleep)
+    state = w.bring_front(PID, host, 1.0, clock, clock.sleep, launched_behind=False)
     assert state.front and host.activated == []
 
 
 def test_a_window_gone_from_the_list_has_nothing_known_above_it() -> None:
     gone = seen(PID, (0, 0, 400, 300))
     assert w.above_in_order([seen(OTHER, (0, 0, 2048, 1152), number=2)])(gone) == []
+
+
+def test_launched_behind_has_no_default_so_a_server_that_forgets_it_fails_aloud() -> None:
+    clock = Clock()
+    with pytest.raises(TypeError, match="launched_behind"):
+        w.bring_front(PID, Host([seen(PID, (0, 0, 400, 300))]), 1.0, clock,  # type: ignore[call-arg]
+                      clock.sleep)
+
+
+# ---- what a server's start and window tool call --------------------------------------------------
+
+def _desk(monkeypatch: pytest.MonkeyPatch, host: Host) -> None:
+    monkeypatch.setattr(w, "host", lambda _platform="": host)
+    monkeypatch.setattr(w, "WAIT_S", 0.0)
+
+
+def test_requested_reads_the_display_count_only_for_a_watched_start(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    class Counting(Host):
+        asked = 0
+
+        def displays(self) -> list[w.Display]:
+            self.asked += 1
+            return super().displays()
+
+    counting = Counting([])
+    _desk(monkeypatch, counting)
+    assert w.requested(False, None, None) is None and counting.asked == 0
+    w.requested(True, None, None)
+    assert counting.asked == 1
+    _desk(monkeypatch, Host([]))
+    assert w.requested(True, 1, True) == w.WindowRequest(1, True)
+    with pytest.raises(Invalid) as e:
+        w.requested(True, 2, None)
+    assert e.value.code == "bad_argument" and "2 displays" in str(e.value)
+
+
+def test_prove_returns_the_window_on_the_asked_display(monkeypatch: pytest.MonkeyPatch) -> None:
+    _desk(monkeypatch, Host([seen(PID, (2148, 100, 400, 300))]))
+    assert w.prove(PID, w.WindowRequest(1, False)).display == 1
+
+
+def test_prove_refuses_a_fullscreen_that_does_not_fill_the_display(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    _desk(monkeypatch, Host([seen(PID, (100, 100, 400, 300))]))
+    with pytest.raises(Invalid) as e:
+        w.prove(PID, w.WindowRequest(0, True))
+    assert e.value.code == "window_not_visible" and "does not fill" in str(e.value)
+    assert e.value.fields["asked_display"] == 0 and e.value.fields["seen"]["fullscreen"] is False
+
+
+def test_prove_accepts_a_fullscreen_that_fills_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    _desk(monkeypatch, Host([seen(PID, (0, 0, 2048, 1152))]))
+    assert w.prove(PID, w.WindowRequest(0, True)).fullscreen is True
+
+
+def test_prove_and_answer_wait_for_the_one_bound_core_holds(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    bounds: list[float] = []
+    _desk(monkeypatch, Host([]))
+    monkeypatch.setattr(w, "WAIT_S", 7.5)
+
+    def waited(pid: int, display: int, bound_s: float, *_a: object) -> w.WindowState:
+        bounds.append(bound_s)
+        return w.WindowState(display, (0, 0, 1, 1), True, True, False)
+
+    def brought(pid: int, host: object, bound_s: float, *_a: object, **_k: object
+                ) -> w.WindowState:
+        bounds.append(bound_s)
+        return w.WindowState(0, (0, 0, 1, 1), True, True, False)
+
+    monkeypatch.setattr(w, "wait_visible", waited)
+    monkeypatch.setattr(w, "bring_front", brought)
+    w.prove(PID, w.WindowRequest(0, False))
+    w.answer(PID, w.WindowRequest(0, False), front=True, launched_behind=False)
+    assert bounds == [7.5, 7.5]
+
+
+def test_prove_refuses_a_window_that_never_appears(monkeypatch: pytest.MonkeyPatch) -> None:
+    _desk(monkeypatch, Host([]))
+    with pytest.raises(Invalid) as e:
+        w.prove(PID, w.WindowRequest(0, False))
+    assert e.value.code == "window_not_visible"
+
+
+def test_answer_without_a_window_request_is_no_channel(monkeypatch: pytest.MonkeyPatch) -> None:
+    _desk(monkeypatch, Host([seen(PID, (0, 0, 400, 300))]))
+    with pytest.raises(Invalid) as e:
+        w.answer(PID, None, front=False, launched_behind=False)
+    assert e.value.code == "no_channel" and "shared=true" in str(e.value)
+
+
+def test_answer_reports_the_window_and_front_brings_it_forward(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    cover = seen(OTHER, (0, 0, 2048, 1152), number=2)
+    host = Host([cover, seen(PID, (100, 100, 400, 300))])
+    _desk(monkeypatch, host)
+    asked = w.WindowRequest(0, False)
+    assert w.answer(PID, asked, front=False, launched_behind=False)["window"]["front"] is False
+    assert host.activated == []
+    assert w.answer(PID, asked, front=True, launched_behind=False)["window"]["front"] is True
+    assert host.activated == [1]
+
+
+def test_answer_passes_the_background_launch_to_the_refusal(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    _desk(monkeypatch, Host([seen(PID, (100, 100, 400, 300), onscreen=False)], brings=False))
+    with pytest.raises(Invalid) as e:
+        w.answer(PID, w.WindowRequest(0, False), front=True, launched_behind=True)
+    assert "background=true" in str(e.value)
+
+
+def test_the_window_summary_names_display_screen_and_front() -> None:
+    reply = {"window": {"display": 1, "onscreen": True, "front": False}}
+    assert w.summary({}, reply) == "window: display 1, on screen, covered"
+    assert w.summary({}, {"window": {"display": 0, "onscreen": False, "front": True}}) == (
+        "window: display 0, off screen, in front")
 
 
 # ---- launching behind -------------------------------------------------------------------------
