@@ -1,6 +1,8 @@
 """A registerpoint stop is described one way on both servers."""
 from __future__ import annotations
 
+import pytest
+
 from scry_core import regpoint
 
 
@@ -14,3 +16,8 @@ def test_a_hit_names_the_registerpoint_where_it_stopped_and_that_it_stays_armed(
 def test_what_only_one_server_knows_rides_beside_the_common_fields() -> None:
     got = regpoint.hit("rp", "d0 == 1", "0x10", cpu=":maincpu", index=3)
     assert got["cpu"] == ":maincpu" and got["index"] == 3 and got["ref"] == "rp"
+
+
+def test_a_server_cannot_replace_the_note_every_hit_carries() -> None:
+    with pytest.raises(TypeError, match="note"):
+        regpoint.hit("rp", "d0 == 1", "0x10", note="gone")

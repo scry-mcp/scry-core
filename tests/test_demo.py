@@ -332,6 +332,32 @@ def test_stale_reads_the_committed_whole_run_of_a_highlighted_demo(
     assert d.stale(demo, tmp_path / "out") == [f"x's {d.FULL_NAME} is not committed"]
 
 
+def test_stale_flags_a_whole_run_left_by_a_demo_that_lost_its_highlights(
+        tmp_path: Path, log: Path) -> None:
+    demo = _highlighted(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    plain = d.Demo(**{**demo.__dict__, "steps": [
+        d.Step(s.name, s.tool, s.args, s.check, options=s.options) for s in demo.steps]})
+    found = d.stale(plain, tmp_path / "out")
+    assert any(f"x's {d.FULL_NAME} is committed" in line for line in found), found
+
+
+def test_stale_names_what_a_run_did_not_write_and_does_not_raise(
+        tmp_path: Path, log: Path) -> None:
+    demo = _highlighted(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    (tmp_path / "out" / "transcript.story.md").unlink()
+    (tmp_path / "out" / "transcript.normalised.md").unlink()
+    found = d.stale(demo, tmp_path / "out")
+    assert len(found) == 1 and "wrote no" in found[0] and "transcript.story.md" in found[0], found
+
+
+def test_a_step_highlight_that_is_no_text_is_refused(tmp_path: Path) -> None:
+    demo = _demo(tmp_path, [d.Step("boot", "start", {}, _said("value"), highlight=3)])  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match=r"step boot: `highlight` is 3"):
+        d.main(demo, ["--transcript", str(tmp_path / "t.md")])
+
+
 @pytest.mark.parametrize("readme", ["no markers\n", f"{d.BEGIN}\n{d.BEGIN}\n{d.END}\n",
                                     f"{d.BEGIN}\n{d.END}\n{d.END}\n", f"{d.END}\n{d.BEGIN}\n"])
 def test_markers_not_there_once_are_invalid_and_write_nothing(

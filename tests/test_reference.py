@@ -461,6 +461,14 @@ def test_a_skip_reads_the_text_a_person_reads_not_its_json_escapes(
     assert picked["peek"]["from"] == "[A] fixture: free"
 
 
+def test_a_skip_anchors_its_pattern_to_each_value_not_to_the_whole_cell(tmp_path: Path) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    records = [_record("peek", "OK", {"status": "ok", "board": "private"}, "bench"),
+               _record("peek", "OK", {"status": "ok", "board": "free"}, "free")]
+    picked = reference.examples_from(records, {"peek"}, norm, skip=re.compile("^private$"))
+    assert picked["peek"]["from"] == "[A] fixture: free"
+
+
 def test_a_cell_whose_name_the_pattern_matches_is_skipped_too(tmp_path: Path) -> None:
     norm = Normaliser(tmp_path, Path.home(), {})
     named = {**_record("peek", "OK", {"status": "ok"}, "on private-board"), "section": "[H] x"}
@@ -824,3 +832,16 @@ def test_a_module_whose_own_import_fails_is_invalid_not_usage(
     monkeypatch.syspath_prepend(str(tmp_path))
     assert reference.main(["half_registry:REGISTRY"]) == 3
     assert "no_such_dependency_of_it" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(("text", "want"), [
+    ("at 2026-10-31T08:15:00Z ok", "at <time> ok"),
+    ("2026-10-31", "<time>"),
+    ("20261031T081500Z", "<time>"),
+    ("id 120261031T081500Z", "id 120261031T081500Z"),
+    ("n1202610-31-12", "n1202610-31-12"),
+    ("v2026-10-311", "v2026-10-311"),
+])
+def test_a_clock_reading_is_a_whole_number_and_a_longer_digit_run_is_not_one(
+        text: str, want: str) -> None:
+    assert reference._steady(text) == want

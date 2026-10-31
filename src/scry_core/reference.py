@@ -419,8 +419,8 @@ def write(reg: Registry) -> list[str]:
 #: Reply keys that belong to the run that produced an example, not to the tool.
 RUN_KEYS = {k: "" for k in ("created_at", "origin", "pid", "stub_port", "input_port",
                             "wall_at", "saved_at", "version")}
-_CLOCK = re.compile(r"\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d(?:\.\d+)?)?"
-                    r"(?:Z|[+-]\d\d:?\d\d)?)?|\d{8}T\d{6}(?:\.\d+)?Z?")
+_CLOCK = re.compile(r"(?<!\d)(?:\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d(?:\.\d+)?)?"
+                    r"(?:Z|[+-]\d\d:?\d\d)?)?|\d{8}T\d{6}(?:\.\d+)?Z?)(?!\d)")
 #: A scratch directory a run makes: `<emulator>-...-` then the 12 hex characters of a uuid or the 8
 #: of `tempfile.mkdtemp`, as a whole path component.
 _RUN_DIR = re.compile(
@@ -463,8 +463,8 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
         name, reply = rec.get("tool"), rec.get("reply")
         if (name in tools and rec.get("verdict") == "OK" and isinstance(reply, dict)
                 and "status" in reply
-                and not (skip and skip.search("\n".join(_leaves(
-                    [rec.get("args"), reply, rec.get("section"), rec.get("label")]))))):
+                and not (skip and any(skip.search(leaf) for leaf in _leaves(
+                    [rec.get("args"), reply, rec.get("section"), rec.get("label")])))):
             (ok if reply["status"] == "ok" else refused).setdefault(str(name), rec)
     return {name: {"from": f"{rec.get('section', '')}: {rec.get('label', '')}",
                    "call": _steady(norm.reply(dict(rec.get("args") or {}), RUN_KEYS)),

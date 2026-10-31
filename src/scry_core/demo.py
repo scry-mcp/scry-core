@@ -529,6 +529,9 @@ def _declared(demo: Demo) -> None:
         if not (isinstance(step.shown, tuple) and all(isinstance(k, str) for k in step.shown)):
             raise ValueError(f"step {step.name}: `shown` is {step.shown!r}, not a tuple of the "
                              "reply's field names")
+        if not isinstance(step.highlight, str):
+            raise ValueError(f"step {step.name}: `highlight` is {step.highlight!r}, not a "
+                             "sentence")
         if not isinstance(step.options, bool | frozenset):
             raise ValueError(f"step {step.name}: `options` is {step.options!r}, not True, False "
                              "or a frozenset of option names")
@@ -681,17 +684,24 @@ def stale(demo: Demo, run_dir: Path) -> list[str]:
     """How the committed README block, flow and picture depart from the run in `run_dir`, one
     line each, or empty."""
     normalised, flow, story = _beside(run_dir / "transcript.md")
+    highlights = highlighted(demo)
+    needed = ([story if highlights else normalised, *([normalised] if highlights else [])]
+              if demo.readme is not None else []) + ([flow] if demo.front is not None else [])
+    if missing := [path.name for path in needed if not path.is_file()]:
+        return [f"{demo.name}: the run in {run_dir} wrote no {', '.join(missing)}"]
     found = []
     if demo.readme is not None and (drift := readme_drift(
-            demo.readme, story if highlighted(demo) else normalised)):
+            demo.readme, story if highlights else normalised)):
         found.append(f"{demo.name}'s README: {drift}")
-    if demo.readme is not None and highlighted(demo):
+    if demo.readme is not None:
         whole = demo.readme.with_name(FULL_NAME)
-        if not whole.is_file():
+        if not highlights and whole.is_file():
+            found.append(f"{demo.name}'s {FULL_NAME} is committed and the demo has no highlight")
+        elif highlights and not whole.is_file():
             found.append(f"{demo.name}'s {FULL_NAME} is not committed")
-        elif drift := first_difference(whole.read_text(encoding="utf-8").strip("\n"),
-                                       normalised.read_text(encoding="utf-8").strip("\n"),
-                                       (FULL_NAME, "the run")):
+        elif highlights and (drift := first_difference(
+                whole.read_text(encoding="utf-8").strip("\n"),
+                normalised.read_text(encoding="utf-8").strip("\n"), (FULL_NAME, "the run"))):
             found.append(f"{demo.name}'s {FULL_NAME}: {drift}")
     if demo.front is not None and (drift := flow_drift(demo.front, demo.name, flow)):
         found.append(f"the front door's {demo.name} flow: {drift}")
