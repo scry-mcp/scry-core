@@ -2,6 +2,19 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+### Added
+
+- `window`: the window a watched `start` asks for (`request`: `display` as the OS's index with 0 the
+  main display, `fullscreen`; both refused on an unwatched start rather than ignored, a display the
+  host lacks refused naming how many it has), its state read from the host (`state_of`, the
+  `window` reply block), `wait_visible`, and `bring_front`, read back. `judge_background` and
+  `launch_environment`, which both servers each wrote, are here once.
+- `window_host`: macOS and Windows hosts for it. Windows is written against user32 and not yet run.
+- The `window_not_visible` code: the window never appeared, appeared on another display, or did not
+  come forward.
+
 ## 0.80.0
 
 ### Added

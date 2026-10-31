@@ -52,6 +52,7 @@ Code = Literal[
     "diverged",
     "no_recording",
     "stale_map",
+    "window_not_visible",
 ]
 CODES: frozenset[str] = frozenset(get_args(Code))
 
