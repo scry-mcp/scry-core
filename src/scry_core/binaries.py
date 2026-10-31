@@ -101,7 +101,7 @@ def version(binary: str, env: Mapping[str, str] | None = None,
             return {"available": False,
                     "why": f"`{binary} -version` did not return in {seconds:g} s"}
         finally:
-            _end_group(proc, ran_out=proc.returncode is None)
+            _end_group(proc, still_running=proc.returncode is None)
         said = b"\n".join(_head(f) for f in (out, err)).decode("utf-8", "replace")
     for line in said.splitlines():
         if line.strip():
@@ -120,9 +120,9 @@ def _spawn(argv: list[str], out: IO[bytes], err: IO[bytes],
                                 start_new_session=True)
 
 
-def _end_group(proc: subprocess.Popen[bytes], ran_out: bool) -> None:
+def _end_group(proc: subprocess.Popen[bytes], still_running: bool) -> None:
     """End the probe's group and reap it."""
-    process_tree.end_tree(proc, ran_out=ran_out, wait_s=VERSION_TIMEOUT_S)
+    process_tree.end_tree(proc, still_running=still_running, wait_s=VERSION_TIMEOUT_S)
 
 
 def _head(file: IO[bytes]) -> bytes:

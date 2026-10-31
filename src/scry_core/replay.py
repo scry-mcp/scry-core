@@ -153,9 +153,8 @@ def build(doc: dict[str, Any], root: Path, name: str) -> demo.Demo:
     """The document as a demo of its server: start, the states it needs, the steps, close."""
     entry = doc["entry"]
     if entry.endswith(".py") and not (root / entry).is_file():
-        raise Invalid(f"the document's entry `{entry}` is not a file in {root}: a document "
-                      f"exported before the server moved into a package names a script that is "
-                      f"gone; set `entry` to the server's importable module name")
+        raise Invalid(f"the document's entry `{entry}` is not a file in {root}: set `entry` "
+                      f"to the server's importable module name")
     steps = doc["steps"]
     needs = doc.get("needs") or {}
     states, declared = list(needs.get("states") or []), dict(needs.get("declarations") or {})

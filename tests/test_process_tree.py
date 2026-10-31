@@ -75,8 +75,8 @@ def test_on_windows_the_tree_is_taskkilled_while_the_process_still_runs(
 
         def wait(self, timeout: float) -> int:
             return 0
-    process_tree.end_tree(Proc(), ran_out=True, wait_s=0.1)  # type: ignore[arg-type]
-    process_tree.end_tree(Proc(), ran_out=False, wait_s=0.1)  # type: ignore[arg-type]
+    process_tree.end_tree(Proc(), still_running=True, wait_s=0.1)  # type: ignore[arg-type]
+    process_tree.end_tree(Proc(), still_running=False, wait_s=0.1)  # type: ignore[arg-type]
     assert ran == [["taskkill", "/F", "/T", "/PID", "4242"]], "a reaped pid may be another's now"
 
 

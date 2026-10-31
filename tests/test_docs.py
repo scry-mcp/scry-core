@@ -36,5 +36,10 @@ def test_a_value_that_names_another_is_filled_whatever_their_order() -> None:
 
 def test_values_that_name_themselves_or_each_other_are_refused_not_looped() -> None:
     for values in ({"A": "x{A}"}, {"A": "{B}", "B": "{A}"}, {"C": "{B}", "B": "{A}", "A": "{C}"}):
-        with pytest.raises(TypeError, match="cycle|nothing fills"):
-            docs.filled("tool", "see {A} {C}", values)
+        with pytest.raises(TypeError, match="cycle"):
+            docs.filled("tool", "see {A}", values)
+
+
+def test_a_placeholder_no_value_names_is_not_called_a_cycle() -> None:
+    with pytest.raises(TypeError, match="nothing fills"):
+        docs.filled("tool", "see {A} {C}", {"A": "x"})

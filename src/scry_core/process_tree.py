@@ -14,13 +14,14 @@ WAIT_TIMEOUT = 0x102
 ERROR_ACCESS_DENIED = 5
 
 
-def end_tree(proc: subprocess.Popen[Any], *, ran_out: bool = True, wait_s: float = 5.0) -> None:
+def end_tree(proc: subprocess.Popen[Any], *, still_running: bool = True,
+             wait_s: float = 5.0) -> None:
     """End `proc`'s group (on Windows its tree, by parent pid) and reap it within `wait_s`.
 
-    The Windows tree is followed by pid, so it is ended only while `ran_out` says `proc` still
+    The Windows tree is followed by pid, so it is ended only while `still_running` says `proc` still
     runs: a freed pid can be another program's."""
     if sys.platform == "win32":
-        if ran_out:
+        if still_running:
             with contextlib.suppress(subprocess.TimeoutExpired):
                 subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
                                capture_output=True, check=False, timeout=wait_s)

@@ -82,7 +82,7 @@ def canary(argv: Sequence[str]) -> str:
 
 def _end_group(proc: subprocess.Popen[bytes]) -> bool:
     """End the group `proc` leads (on Windows its tree); whether it is still alive."""
-    process_tree.end_tree(proc, ran_out=proc.poll() is None, wait_s=LEAVE_S)
+    process_tree.end_tree(proc, still_running=proc.poll() is None, wait_s=LEAVE_S)
     return bool(_alive({proc.pid}, 0.0))
 
 

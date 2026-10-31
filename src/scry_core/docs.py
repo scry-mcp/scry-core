@@ -15,9 +15,9 @@ def filled(name: str, doc: str, values: Mapping[str, str]) -> str:
             doc = doc.replace("{" + key + "}", value)
         if doc == before:
             break
-    else:
-        raise TypeError(f"{name}'s placeholders form a cycle: {sorted(values)}")
     left = PLACEHOLDER.findall(doc)
+    if looping := [n for n in left if n.strip("{}") in values]:
+        raise TypeError(f"{name}'s placeholders form a cycle: {looping}")
     if left:
         raise TypeError(f"{name}'s docstring names {left}, which nothing fills")
     return doc
