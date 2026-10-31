@@ -4,6 +4,11 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+### Fixed
+
+- `bring_front` activates the largest window of the pid, the one `state_of` reads, and not the
+  first it lists: MAME lists a small auxiliary window before its own.
+
 ### Added
 
 - `window`: the window a watched `start` asks for (`request`: `display` as the OS's index with 0 the

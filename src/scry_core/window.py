@@ -127,14 +127,19 @@ def above_in_order(listed: list[Seen]) -> Callable[[Seen], list[Seen]]:
     return above
 
 
+def main_window(pid: int, listed: list[Seen]) -> Seen | None:
+    """The largest window `pid` owns; an emulator also lists small auxiliary ones."""
+    mine = [s for s in listed if s.pid == pid]
+    return max(mine, key=lambda s: s.bounds[2] * s.bounds[3]) if mine else None
+
+
 def state_of(pid: int, listed: list[Seen], displays: list[Display],
              above: Callable[[Seen], list[Seen]]) -> WindowState | None:
     """The largest window `pid` owns among `listed`, or None when it owns none. `above` answers
     which windows are over a given one."""
-    mine = [s for s in listed if s.pid == pid]
-    if not mine:
+    window = main_window(pid, listed)
+    if window is None:
         return None
-    window = max(mine, key=lambda s: s.bounds[2] * s.bounds[3])
     centre = _centre(window.bounds)
     on = next((d for d in displays if _holds(d.bounds, centre)), None)
     covered = not window.onscreen or any(
@@ -197,7 +202,7 @@ def bring_front(pid: int, host: Host, bound_s: float,
     if first is not None and first.front:
         return first
     why = ""
-    if (listed := next((s for s in host.windows() if s.pid == pid), None)) is not None:
+    if (listed := main_window(pid, host.windows())) is not None:
         why = host.activate(listed)
     state = _wait(pid, host, bound_s, clock, sleep, lambda s: s is not None and s.front)
     if state is not None and state.front:

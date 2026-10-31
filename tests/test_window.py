@@ -253,6 +253,18 @@ def test_a_covered_window_is_brought_in_front_and_read_back() -> None:
     assert state.onscreen and state.front and host.activated == [1]
 
 
+def test_the_window_activated_is_the_largest_of_the_pid_as_the_reading_picks_it() -> None:
+    """MAME lists a small auxiliary window before its own; activating the first leaves the
+    emulator's window where it was."""
+    clock = Clock()
+    cover = seen(OTHER, (0, 0, 2048, 1152), number=2)
+    host = Host([cover, seen(PID, (0, 652, 200, 200), number=7, onscreen=False),
+                 seen(PID, (100, 100, 400, 300), number=1, onscreen=False)])
+    state = w.bring_front(PID, host, 3.0, clock, clock.sleep)
+    assert host.activated == [1], host.activated
+    assert state.bounds == (100, 100, 400, 300)
+
+
 def test_a_window_that_does_not_come_forward_is_a_refusal_with_what_was_read_back() -> None:
     clock = Clock()
     host = Host([seen(PID, (100, 100, 400, 300), onscreen=False)], brings=False)
