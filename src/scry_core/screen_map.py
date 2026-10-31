@@ -138,10 +138,11 @@ DOC_VALUES = {
                  "program's units; when not,\n`screens_mapped` and, if the view fits the map, "
                  "`screens_tried` and `screens_unjudged`\n(signed by index on a screen whose pens "
                  "cannot be read), else `view_fits` false. None mapped:\n`needs_call`."),
-    "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref` (exactly one). With an "
-                   "`anchor`, run to it (`control`\nrequired): a `verified` map judges it there "
+    "MAP_RUN_TO": ("`screen`: a mapped screen's name instead of `ref` (exactly one). If the "
+                   "screen names an `anchor` (set by `screen_map_write`), run to it (`control`\n"
+                   "required): a `verified` map judges it there "
                    "(`stale_map` when it no longer holds), a\n`consolidated` one takes it as "
-                   "shown. With none, a frame at a time until the map "
+                   "shown. If it names none, a frame at a time until the map "
                    "names it,\nwithin `seconds`; a `control` is refused there (`bad_argument`). "
                    "Reply: `screen` (`screen`, `layer`,\n`mode`, `judged`), `frames` run. "
                    "Refused: an unmapped screen (`unknown_ref`)."),
