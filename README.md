@@ -106,6 +106,7 @@ uv run python -m scry_core.probe all --check --servers mcp_probe/servers.py --ta
 uv run python -m scry_core.live_bench check --bench <bench>
 uv run python -m scry_core.traffic <server> --servers mcp_probe/servers.py --transcript <jsonl>
 uv run python -m scry_core.hook
+uv run python -m scry_core.window_cli {displays|words|launch|proof}
 uv run python -m scry_core.replay <document> [--binary PATH] [--rompath DIR] [--transcript PATH]
 uv run python -m scry_core.reference <module>:<attribute> [--examples JSONL ... [--mark PATH=TEXT ...]] [--write]
 ```
@@ -142,7 +143,7 @@ out of the default run by `addopts` and run by naming it:
 
 | Marker | What it opens or moves | Command |
 |---|---|---|
-| `window` | stand-in windows, and the owner's Space (macOS only; skipped without the variable, without `swiftc`, or off a Mac) | `SCRY_FOCUS_CONTROL=1 uv run pytest -m window --no-cov` |
+| `window` | stand-in windows, and the owner's Space (macOS: skipped without the variable or without `swiftc`; Windows: the `WindowsHost` tests need an interactive desktop, not the variable) | `SCRY_FOCUS_CONTROL=1 uv run pytest -m window --no-cov` (macOS), `uv run pytest -m window --no-cov` (Windows) |
 
 The marker, the `behind_a_fullscreen_app` fixture and the `on_the_desk` decorator arrive with this
 package, so a server adds only `not window` to its own `addopts` (`-m 'not live and not window'`).
@@ -152,7 +153,7 @@ command-line `-m` replaces the one in `addopts`.
 ## A new server
 
 [docs/new-emulator.md](docs/new-emulator.md) is the checklist, and `scry_core.conformance` holds
-the window contract a server's own `start` and `window` run against. [docs/katas.md](docs/katas.md)
+the contract a server's own `start`, `window`, `status` and `close` run against. [docs/katas.md](docs/katas.md)
 lists the demos and screen maps and which servers run each.
 
 ## Parallel live tiers

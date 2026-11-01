@@ -11,8 +11,8 @@ starts COMMAND with those words appended, detached, and prints `pid: <N>`, the p
 waits for the window PID itself owns (the emulator's own pid, not a launcher's) and prints
 `window: display=<i> bounds=<x>,<y>,<w>x<h> onscreen=<bool>`. Display 0, the main one, when omitted.
 
-Exit 0 done; 2 bad usage or a refused request; 3 the window is not as asked, or no display is
-online; 4 could not prove (the host failed). Nothing is stopped.
+Exit 0 done; 2 bad usage or a refused request; 3 the window is not as asked, no display is
+online, or the host refused the request; 4 could not prove (the host failed). Nothing is stopped.
 """
 
 from __future__ import annotations

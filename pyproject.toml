@@ -89,9 +89,10 @@ omit = ["src/scry_core/reply_shapes.py", "src/scry_core/window_tier.py",
 # It counts lines EXECUTED, not asserted: what proves a test bites is having seen it red.
 fail_under = 99.44
 # A branch or a test only Windows runs: the floor is judged on macOS, where neither can execute.
-# `# needs the desk` marks the two shims that move the owner's Space or front application
-# (`window_host.switch_space`, `activate_app`): a test of them runs only with SCRY_FOCUS_CONTROL=1,
-# like the focus control, so the default battery cannot execute them. The choices around them are
+# `# needs the desk` marks what moves the owner's Space or front application (the shims
+# `window_host.switch_space` and `activate_app`, the stand-in windows of `window_stand_ins` and
+# their tests): it runs only with SCRY_FOCUS_CONTROL=1, like the focus control, so the default
+# battery cannot execute it. The choices around them are
 # measured by the default battery.
 exclude_also = ['if sys\.platform == "win32":', '@WINDOWS_ONLY', '# needs the desk$']
 precision = 2

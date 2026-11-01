@@ -1,5 +1,5 @@
 """The window doubles servers run their `start` and `window` against: an emulator that opens its
-window where it was asked, and four ways the desk can differ."""
+window where it was asked, and seven ways the desk can differ."""
 
 from __future__ import annotations
 

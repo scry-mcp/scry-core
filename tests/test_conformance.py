@@ -1,4 +1,4 @@
-"""`scry_core.conformance`: the window contract every server runs against its own `start` and
+"""`scry_core.conformance`: the contract every server runs against its own `start` and
 `window`. A server with no emulator behind it passes; one that breaks a rule is told which."""
 
 from __future__ import annotations

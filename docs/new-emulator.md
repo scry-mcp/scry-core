@@ -21,9 +21,12 @@ Every watched `start` and the `window` tool call these of `scry_core.window`:
   mark a launch behind. `launched_behind` of `answer` is that decision, with no default, so a
   server that forgets it fails at the call.
 
-What stays the server's: the emulator's own argv for the display and for full screen, the
-refusal of a full screen its emulator cannot show, and refusing caller flags that retune a window
-the arguments own. The emulator centres its own window; a server never computes geometry.
+The emulator's own argv for the display and for full screen, and the refusal of a full screen it
+cannot show on macOS or Windows, are `scry_core.window_words` (`dosbox_x`, `mame`,
+`refuse_mame_fullscreen`): add the new emulator's words there, so `python -m scry_core.window_cli`
+places and proves its window from a shell too. What stays the server's: refusing caller flags that
+retune a window the arguments own, and the reasons its full screen cannot show that no platform
+test knows.  The emulator centres its own window; a server never computes geometry.
 
 `window.WAIT_S` is the one bound on waiting for the host's window list; a test lowers it with
 `monkeypatch.setattr(window, "WAIT_S", 0.0)`.
@@ -40,8 +43,8 @@ the arguments own. The emulator centres its own window; a server never computes 
    with `start(**arguments)`, `window(front=)`, `status()`, `close()`, `asked()` and `has_session()` over the
    server's own booted fake. `asked()` returns the pid and `WindowRequest` of the live session,
    which is what `window_stand_ins.hosts.Obeying` reads to open a window where it was asked.
-2. Keep in the server's own tests only what the contract cannot know: the argv, the owned flags,
-   the full screen the emulator cannot show.
+2. Keep in the server's own tests only what the contract cannot know: the owned flags and the full
+   screen the emulator cannot show for its own reasons; the words are tested in core.
 3. Put `not window` in `addopts` (`-m 'not live and not window'`); the marker, the fixture and the
    stand-in windows arrive with this package. The desk tier uses `under_a_cover` and
    `comes_forward` of `window_stand_ins`, so a server's tier test is its `start` and one line per
