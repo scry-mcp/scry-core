@@ -4,6 +4,8 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+## 0.82.0
+
 ### Added
 
 - `python -m scry_core.window_cli` (`displays`, `words mame|dosbox-x`, `launch`, `proof PID`): the display
