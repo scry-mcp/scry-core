@@ -125,9 +125,11 @@ def _holds(r: Rect, point: tuple[float, float]) -> bool:
 
 
 def above_in_order(listed: list[Seen]) -> Callable[[Seen], list[Seen]]:
-    """`Host.above` for a host whose list is already front to back (Windows)."""
+    """`Host.above` for a host whose list is already front to back (Windows). The window is
+    found by its handle: its bounds may have moved since the reading `window` came from."""
     def above(window: Seen) -> list[Seen]:
-        return [s for s in listed[:listed.index(window)] if s.onscreen] if window in listed else []
+        at = next((n for n, s in enumerate(listed) if s.number == window.number), None)
+        return [] if at is None else [s for s in listed[:at] if s.onscreen]
     return above
 
 

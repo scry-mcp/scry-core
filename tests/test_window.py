@@ -356,6 +356,13 @@ def test_a_window_gone_from_the_list_has_nothing_known_above_it() -> None:
     assert w.above_in_order([seen(OTHER, (0, 0, 2048, 1152), number=2)])(gone) == []
 
 
+def test_a_window_that_moved_between_two_readings_is_still_found_by_its_handle() -> None:
+    cover = seen(OTHER, (0, 0, 2048, 1152), number=2)
+    before = seen(PID, (100, 100, 400, 300), number=1)
+    after = seen(PID, (900, 500, 400, 300), number=1)
+    assert w.above_in_order([cover, after])(before) == [cover]
+
+
 def test_launched_behind_has_no_default_so_a_server_that_forgets_it_fails_aloud() -> None:
     clock = Clock()
     with pytest.raises(TypeError, match="launched_behind"):
