@@ -36,8 +36,8 @@ the arguments own. The emulator centres its own window; a server never computes 
 
 ## Tests
 
-1. Subclass `conformance.WindowContract` in one file and provide a `subject` fixture: an object
-   with `start(**arguments)`, `window(front=)`, `close()`, `asked()` and `has_session()` over the
+1. Subclass `conformance.SessionContract` in one file and provide a `subject` fixture: an object
+   with `start(**arguments)`, `window(front=)`, `status()`, `close()`, `asked()` and `has_session()` over the
    server's own booted fake. `asked()` returns the pid and `WindowRequest` of the live session,
    which is what `window_stand_ins.hosts.Obeying` reads to open a window where it was asked.
 2. Keep in the server's own tests only what the contract cannot know: the argv, the owned flags,

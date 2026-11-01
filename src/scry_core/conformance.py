@@ -1,6 +1,7 @@
-"""The window contract a server runs against its own `start` and `window`: subclass
-`WindowContract` in a test file and provide the `subject` fixture. The rules are those every
-server's replies are held to, so a server that passes them answers a caller as the others do."""
+"""The session contract a server runs against its own `start`, `window`, `status` and `close`:
+subclass `SessionContract` in a test file and provide the `subject` fixture. The rules are those
+every server's replies are held to, so a server that passes them answers a caller as the others
+do."""
 
 from __future__ import annotations
 
@@ -8,6 +9,7 @@ from typing import Any, Protocol
 
 import pytest
 
+from scry_core import session_block
 from scry_core import window as w
 from scry_core.window_stand_ins import hosts
 
@@ -26,7 +28,15 @@ class Subject(Protocol):
 
     def window(self, front: bool = False) -> Reply: ...
 
-    def close(self) -> None: ...
+    def close(self) -> Reply:
+        """With no session: `status` ok, `closed` False, `ended_by` "none", the note and summary of
+        `session_block`."""
+        ...
+
+    def status(self) -> Reply:
+        """With no session: `status` ok, `session.alive` False, no `system`, the summary of
+        `session_block`."""
+        ...
 
     def asked(self) -> tuple[int, w.WindowRequest] | None:
         """The pid and window request of the live session, None without a window or a session."""
@@ -39,7 +49,7 @@ def _on(monkeypatch: pytest.MonkeyPatch, host: hosts.Obeying) -> None:
     monkeypatch.setattr(w, "host", lambda _platform="": host)
 
 
-class WindowContract:
+class SessionContract:
     @pytest.fixture(autouse=True)
     def _desk(self, subject: Subject, monkeypatch: pytest.MonkeyPatch) -> Any:
         monkeypatch.setattr(w, "WAIT_S", 0.0)
@@ -108,6 +118,23 @@ class WindowContract:
     def test_window_with_no_session_is_no_session(self, subject: Subject) -> None:
         got = subject.window()
         assert got["status"] == "INVALID" and got["code"] == "no_session", got
+
+    def test_close_with_no_session_says_so_and_changes_nothing(self, subject: Subject) -> None:
+        got = subject.close()
+        assert got["status"] == "ok" and got["closed"] is False and got["ended_by"] == "none", got
+        assert got["note"] == session_block.NO_SESSION_CLOSE_NOTE, got
+        assert got["summary"] == session_block.NO_SESSION_CLOSE, got
+        assert not subject.has_session()
+
+    def test_status_with_a_session_says_it_is_alive(self, subject: Subject) -> None:
+        subject.start()
+        got = subject.status()
+        assert got["status"] == "ok" and got["session"]["alive"] is True, got
+
+    def test_status_with_no_session_says_so(self, subject: Subject) -> None:
+        got = subject.status()
+        assert got["status"] == "ok" and got["summary"] == session_block.NO_SESSION_STATUS, got
+        assert got["session"]["alive"] is False and "system" not in got, got
 
     def test_a_window_the_emulator_never_opened_refuses_the_start_and_leaves_the_session_to_close(
             self, subject: Subject, monkeypatch: pytest.MonkeyPatch) -> None:

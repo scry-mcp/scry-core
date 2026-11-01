@@ -18,14 +18,14 @@ from null_server import {server}
 from scry_core import conformance
 
 
-class TestWindowContract(conformance.WindowContract):
+class TestSessionContract(conformance.SessionContract):
     @pytest.fixture
     def subject(self):
         return {server}()
 """
 
 
-class TestNullServer(conformance.WindowContract):
+class TestNullServer(conformance.SessionContract):
     @pytest.fixture
     def subject(self) -> NullServer:
         return NullServer()
@@ -48,7 +48,7 @@ def _failed(server: str, pytester: pytest.Pytester) -> tuple[set[str], int]:
 
 
 def test_the_null_server_run_examines_something() -> None:
-    assert [n for n in dir(conformance.WindowContract) if n.startswith("test_")]
+    assert [n for n in dir(conformance.SessionContract) if n.startswith("test_")]
 
 
 def test_a_server_that_follows_every_rule_passes(pytester: pytest.Pytester) -> None:
@@ -81,3 +81,14 @@ def test_each_broken_server_is_caught_by_the_rule_that_names_its_defect(
         pytester: pytest.Pytester, server: str, rule: str) -> None:
     failed, passed = _failed(server, pytester)
     assert rule in failed and passed > 0, failed
+
+
+@pytest.mark.parametrize(("server", "rule"), [
+    ("RefusesToCloseNothing", "test_close_with_no_session_says_so_and_changes_nothing"),
+    ("StatusInventsASession", "test_status_with_no_session_says_so"),
+    ("StatusDeniesASession", "test_status_with_a_session_says_it_is_alive"),
+])
+def test_a_session_rule_is_broken_alone_by_its_own_defect(
+        pytester: pytest.Pytester, server: str, rule: str) -> None:
+    failed, passed = _failed(server, pytester)
+    assert failed == {rule} and passed > 0, failed

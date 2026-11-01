@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from scry_core import session_block
 from scry_core import window as w
 from scry_core.reply_contract import Invalid
 
@@ -49,8 +50,19 @@ class NullServer:
         except Invalid as refused:
             return refused.reply()
 
-    def close(self) -> None:
-        self.live, self.requested = False, None
+    def close(self) -> dict[str, Any]:
+        was, self.live, self.requested = self.live, False, None
+        if not was:
+            return {"status": "ok", "closed": False, "ended_by": "none",
+                    "note": session_block.NO_SESSION_CLOSE_NOTE,
+                    "summary": session_block.NO_SESSION_CLOSE}
+        return {"status": "ok", "closed": True, "ended_by": "quit"}
+
+    def status(self) -> dict[str, Any]:
+        if not self.live:
+            return {"status": "ok", "summary": session_block.NO_SESSION_STATUS,
+                    "session": {"alive": False}}
+        return {"status": "ok", "system": "null", "session": {"alive": True}}
 
 
 class WithoutWindowTool(NullServer):
@@ -102,3 +114,27 @@ class CachesStartBlock(NullServer):
     def window(self, front: bool = False) -> dict[str, Any]:
         return {"status": "ok", "window": self.block} if self.live and self.block else (
             super().window(front))
+
+
+class RefusesToCloseNothing(NullServer):
+    """Answers a `close` with no session as a refusal."""
+
+    def close(self) -> dict[str, Any]:
+        if not self.live:
+            return Invalid("no_session", "close: no session is live").reply()
+        return super().close()
+
+
+class StatusInventsASession(NullServer):
+    """Answers a `status` with no session as if one were alive."""
+
+    def status(self) -> dict[str, Any]:
+        return {"status": "ok", "system": "null", "session": {"alive": True}}
+
+
+class StatusDeniesASession(NullServer):
+    """Answers a `status` with a live session as if there were none."""
+
+    def status(self) -> dict[str, Any]:
+        return {"status": "ok", "summary": session_block.NO_SESSION_STATUS,
+                "session": {"alive": False}}

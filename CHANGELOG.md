@@ -29,8 +29,9 @@ What a server author notices. A client's view of each server is in that server's
 - `window.requested`, `prove`, `answer` and `summary`, `window.WAIT_S`, and
   `tool_replies.WindowRefusedFields`: the body of a server's `start` window half and of its
   `window` tool, which both servers had written once each.
-- `conformance.WindowContract`: the window rules a server runs against its own `start` and
-  `window` in one test file, and `window_stand_ins.hosts`, the window doubles its unit tests use.
+- `conformance.SessionContract`: the rules a server runs against its own `start`, `window`,
+  `status` and `close` (the window ones, and what `close` and `status` answer with and without a
+  session) in one test file, and `window_stand_ins.hosts`, the window doubles its unit tests use.
   `window_stand_ins` also holds the desk tier's shared steps (`under_a_cover`, `comes_forward`).
 - `docs/new-emulator.md` and `docs/katas.md`: what a server for another emulator takes from this
   package, and which demos exist and where.
