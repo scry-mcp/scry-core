@@ -475,7 +475,7 @@ def test_prove_and_answer_wait_for_the_one_bound_core_holds(
     _desk(monkeypatch, Host([]))
     monkeypatch.setattr(w, "WAIT_S", 7.5)
 
-    def waited(pid: int, display: int, bound_s: float, *_a: object) -> w.WindowState:
+    def waited(pid: int, display: int, bound_s: float, *_a: object, **_k: object) -> w.WindowState:
         bounds.append(bound_s)
         return w.WindowState(display, (0, 0, 1, 1), True, True, False)
 

@@ -4,6 +4,11 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+### Fixed
+
+- `window_cli proof` refused with the next step of a server's tools (`status`, `resume`, `close`),
+  which a shell does not have; `prove` and `wait_visible` take `shell=True` and word the step for it.
+
 ## 0.82.0
 
 ### Added

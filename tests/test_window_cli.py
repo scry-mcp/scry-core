@@ -135,6 +135,23 @@ def test_proof_of_full_screen_exits_3_when_the_window_does_not_fill_the_display(
     assert code == 3 and "does not fill" in err
 
 
+@pytest.mark.parametrize("arguments, listed", [
+    (("--seconds", "0"), []),
+    (("--display", "1", "--seconds", "0"),
+     [w.Seen(pid=7, number=1, bounds=(40, 40, 640, 512), onscreen=True)]),
+    (("--fullscreen", "--seconds", "0"),
+     [w.Seen(pid=7, number=1, bounds=(40, 40, 640, 512), onscreen=True)]),
+], ids=["never-opened", "other-display", "does-not-fill"])
+def test_a_refusal_at_a_shell_names_no_tool_of_a_server(
+        desk: Desk, capsys: pytest.CaptureFixture[str], arguments: tuple[str, ...],
+        listed: list[w.Seen]) -> None:
+    desk.listed = listed
+    code, _, err = run(capsys, "proof", "7", *arguments)
+    assert code == 3 and "window_not_visible" in err
+    assert not any(f"`{tool}`" in err for tool in ("status", "close", "resume", "window", "start"))
+    assert "session" not in err
+
+
 def test_proof_exits_4_when_the_host_has_no_display_to_prove_against(
         desk: Desk, capsys: pytest.CaptureFixture[str]) -> None:
     desk._displays = []
@@ -161,7 +178,7 @@ def test_words_exit_3_like_displays_when_no_display_is_online(
 
 def test_a_refusal_the_host_raises_during_proof_is_could_not_prove(
         desk: Desk, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    def broken(*_a: object) -> w.WindowState:
+    def broken(*_a: object, **_k: object) -> w.WindowState:
         raise Invalid("host_failed", "the window list cannot be read")
     monkeypatch.setattr(cli, "prove", broken)
     code, out, err = run(capsys, "proof", "7")

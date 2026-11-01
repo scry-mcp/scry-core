@@ -186,24 +186,29 @@ def _wait(pid: int, host: Host, bound_s: float, clock: Callable[[], float],
 
 def wait_visible(pid: int, display: int, bound_s: float, host: Host,
                  clock: Callable[[], float] = time.monotonic,
-                 sleep: Callable[[float], None] = time.sleep) -> WindowState:
+                 sleep: Callable[[float], None] = time.sleep, *,
+                 shell: bool = False) -> WindowState:
     """The window `pid` opened on `display`, waited for up to `bound_s` seconds.
 
     A window listed but not shown (`onscreen` false) is returned and says so; one that never
-    appears, or appears on another display, is `window_not_visible`."""
+    appears, or appears on another display, is `window_not_visible`. `shell` words the next step
+    for a caller with no server's tools (the `window_cli` program)."""
     state = _wait(pid, host, bound_s, clock, sleep,
                   lambda s: s is not None and s.display == display)
     if state is None:
         raise _not_visible(
             f"no window of pid {pid} appeared within {bound_s:g} s: the emulator did not open "
             f"one, or the host's window list cannot be read (a sleeping display lists none); "
-            f"call `status` and read the emulator's log", asked_display=display)
+            + ("read the emulator's own output" if shell
+               else "call `status` and read the emulator's log"), asked_display=display)
     if state.display != display:
         where = ("on none of the host's displays" if state.display == NO_DISPLAY
                  else f"on display {state.display}")
         raise _not_visible(
-            f"the window of pid {pid} opened {where}, not on display {display}: close the "
-            f"session and start again with `display` set to where it should be seen",
+            f"the window of pid {pid} opened {where}, not on display {display}: "
+            + ("stop the process and run again with the display it should be seen on" if shell
+               else "close the session and start again with `display` set to where it should "
+                    "be seen"),
             asked_display=display, seen=state.block())
     return state
 
@@ -243,14 +248,14 @@ def requested(shared: bool, display: int | None,
 
 
 def prove(pid: int, asked: WindowRequest, bound_s: float | None = None,
-          where: Host | None = None) -> WindowState:
+          where: Host | None = None, *, shell: bool = False) -> WindowState:
     """The window `pid` opened as `asked`, waited for up to `bound_s`; a `fullscreen` that does not
     fill its display is refused. The refusal leaves the session live, so `window` and `close`
-    still act."""
+    still act. `shell` words the next steps for a caller with no server's tools."""
     where = where or host()
     bound_s = WAIT_S if bound_s is None else bound_s
     began = time.monotonic()
-    proved = wait_visible(pid, asked.display, bound_s, where)
+    proved = wait_visible(pid, asked.display, bound_s, where, shell=shell)
     unfilled = asked.fullscreen and not proved.fullscreen
     if unfilled:
         # An emulator placed by position shows its window first and fills the display after.
@@ -264,8 +269,11 @@ def prove(pid: int, asked: WindowRequest, bound_s: float | None = None,
     if unfilled:
         raise _not_visible("the window opened on the asked display but does not fill it, which "
                            "`fullscreen` asked for. An emulator parked at its debugger fills the "
-                           "display only once it runs: `resume` it and read `window` again; if it "
-                           "still does not fill, `close` and start again with `fullscreen=false`",
+                           "display only once it runs: "
+                           + ("prove it again once it runs; if it still does not fill, run it "
+                              "again without `--fullscreen`" if shell else
+                              "`resume` it and read `window` again; if it still does not fill, "
+                              "`close` and start again with `fullscreen=false`"),
                            asked_display=asked.display, seen=proved.block())
     return proved
 

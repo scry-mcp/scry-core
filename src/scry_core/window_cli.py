@@ -135,7 +135,7 @@ def main(argv: Sequence[str]) -> int:
             cast(io.TextIOWrapper, sys.stdout).reconfigure(newline="\n")
             print("\n".join(EMULATORS[said.emulator](asked)))
             return 0
-        state = prove(said.pid, asked, said.seconds, host())
+        state = prove(said.pid, asked, said.seconds, host(), shell=True)
     except Invalid as e:
         return _refused(e, said.command)
     x, y, w, h = state.bounds
