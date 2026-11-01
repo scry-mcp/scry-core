@@ -240,22 +240,26 @@ def requested(shared: bool, display: int | None,
     return request(display, fullscreen, shared=shared, displays=host().displays() if shared else [])
 
 
-def prove(pid: int, asked: WindowRequest) -> WindowState:
-    """The window `pid` opened as `asked`, waited for up to `WAIT_S`; a `fullscreen` that does not
+def prove(pid: int, asked: WindowRequest, bound_s: float | None = None,
+          where: Host | None = None) -> WindowState:
+    """The window `pid` opened as `asked`, waited for up to `bound_s`; a `fullscreen` that does not
     fill its display is refused. The refusal leaves the session live, so `window` and `close`
     still act."""
+    where = where or host()
+    bound_s = WAIT_S if bound_s is None else bound_s
     began = time.monotonic()
-    proved = wait_visible(pid, asked.display, WAIT_S, host())
-    if asked.fullscreen and not proved.fullscreen:
+    proved = wait_visible(pid, asked.display, bound_s, where)
+    unfilled = asked.fullscreen and not proved.fullscreen
+    if unfilled:
         # An emulator placed by position shows its window first and fills the display after.
-        left = max(0.0, WAIT_S - (time.monotonic() - began))
+        left = max(0.0, bound_s - (time.monotonic() - began))
         def filled(s: WindowState | None) -> bool:
             return s is not None and s.display == asked.display and s.fullscreen
 
-        later = _wait(pid, host(), left, time.monotonic, time.sleep, filled)
+        later = _wait(pid, where, left, time.monotonic, time.sleep, filled)
         if later is not None and filled(later):
-            proved = later
-    if asked.fullscreen and not proved.fullscreen:
+            proved, unfilled = later, False
+    if unfilled:
         raise _not_visible("the window opened on the asked display but does not fill it, which "
                            "`fullscreen` asked for: `close` and start again with "
                            "`fullscreen=false`", asked_display=asked.display, seen=proved.block())

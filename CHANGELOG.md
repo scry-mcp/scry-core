@@ -2,6 +2,23 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+### Added
+
+- `python -m scry_core.window_cli` (`displays`, `words mame|dosbox-x`, `launch`, `proof PID`): the display
+  index, the emulator's placement words and the window proof a watched `start` uses, for a session
+  with only a shell, the same on macOS and Windows. `scry_core.window_words` is where a server's
+  `start` and the shell read those words from.
+
+### Changed
+
+- `WindowsHost` is per-monitor DPI aware: an unaware process reads the scaled desktop (1280x720
+  on a 4K panel at 300 %) while an emulator places its window in real pixels, so a second display's
+  origin would have been false. The taskbar, no longer under the minimum side, is listed by `above`.
+- `prove` takes the bound and the host to read; the default is still `WAIT_S` and the host the
+  platform's.
+
 ## 0.81.0
 
 ### Added
