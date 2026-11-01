@@ -4,6 +4,7 @@ forward from behind a full-screen application, with the activation by pid alone 
 
 from __future__ import annotations
 
+import ctypes
 import subprocess
 import sys
 import time
@@ -311,3 +312,58 @@ def test_the_shared_tier_helpers_bring_a_covered_window_forward(  # needs the de
     finally:
         target.terminate()
         target.wait(timeout=10)
+
+
+def _pseudo(handle: int) -> int | None:
+    """What `ctypes.c_void_p(handle).value` reads back: the unsigned form of a pseudo-handle."""
+    return ctypes.c_void_p(handle).value
+
+
+class _User32:
+    """A user32 whose DPI calls answer what the test says; a missing one is simply absent."""
+
+    def __init__(self, sets: int, held: int | None, *, same_as: tuple[int, ...] = (),
+                 absent: str = "") -> None:
+        self.calls: list[str] = []
+        if absent != "set":
+            self.SetProcessDpiAwarenessContext = self._set(sets)
+        if absent != "get":
+            self.GetThreadDpiAwarenessContext = self._get(held)
+        if absent != "equal":
+            self.AreDpiAwarenessContextsEqual = lambda a, b: int(
+                a == held and b.value in [_pseudo(c) for c in same_as])
+
+    def _set(self, answer: int) -> Any:
+        def set_context(context: Any) -> int:
+            self.calls.append(f"set {context.value}")
+            return answer
+        return set_context
+
+    def _get(self, held: int | None) -> Any:
+        def get_context() -> int | None:
+            self.calls.append("get")
+            return held
+        return get_context
+
+
+def test_a_process_that_becomes_per_monitor_aware_asks_nothing_more() -> None:
+    user32 = _User32(sets=1, held=None)
+    wh.require_per_monitor_aware(user32)
+    assert user32.calls == [f"set {_pseudo(-4)}"]
+
+
+def test_a_process_that_already_chose_per_monitor_awareness_is_accepted() -> None:
+    wh.require_per_monitor_aware(_User32(sets=0, held=7, same_as=(-3,)))
+
+
+def test_a_process_that_already_chose_to_be_unaware_is_refused_aloud() -> None:
+    with pytest.raises(Invalid, match="scaled") as e:
+        wh.require_per_monitor_aware(_User32(sets=0, held=7))
+    assert e.value.code == "host_failed"
+
+
+@pytest.mark.parametrize("absent", ["set", "get", "equal"])
+def test_a_windows_without_the_dpi_calls_is_refused_by_name(absent: str) -> None:
+    with pytest.raises(Invalid, match="1703") as e:
+        wh.require_per_monitor_aware(_User32(sets=0, held=7, absent=absent))
+    assert e.value.code == "host_failed"

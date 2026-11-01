@@ -120,3 +120,19 @@ def test_displays_are_in_the_pixels_an_emulator_places_its_window_in() -> None:
     read = subprocess.run([sys.executable, "-c", AWARE_DISPLAYS], capture_output=True, text=True,
                           timeout=BOUND_S, check=True).stdout.strip()
     assert str([(d.index, d.bounds) for d in WindowsHost().displays()]) == read
+
+
+def test_a_process_that_already_chose_to_be_unaware_is_refused_by_the_real_user32() -> None:
+    code = (
+        "import ctypes\n"
+        "u = ctypes.WinDLL('user32')\n"
+        "u.SetProcessDpiAwarenessContext(ctypes.c_void_p(-1))\n"
+        "from scry_core.reply_contract import Invalid\n"
+        "from scry_core.window_host import require_per_monitor_aware\n"
+        "try:\n"
+        "    require_per_monitor_aware(u)\n"
+        "except Invalid as e:\n"
+        "    print('REFUSED', e.code)\n")
+    run = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                         timeout=BOUND_S * 3)
+    assert run.stdout.strip() == "REFUSED host_failed", run.stdout + run.stderr

@@ -212,6 +212,30 @@ def activate_app(pid: int) -> str:  # needs the desk
         f"(first process whose unix id is {pid}) to true"))
 
 
+# `DPI_AWARENESS_CONTEXT` pseudo-handles: per-monitor v2, per-monitor.
+PER_MONITOR_CONTEXTS = (-4, -3)
+
+
+def require_per_monitor_aware(user32: Any) -> None:
+    """Make this process per-monitor DPI aware, or refuse: an unaware process is lied to in
+    scaled pixels (1280x720 on a 4K panel at 300 %) while an emulator places its window in real
+    ones. A process that already chose is accepted only if it chose per-monitor."""
+    try:
+        set_context = user32.SetProcessDpiAwarenessContext
+        held_context = user32.GetThreadDpiAwarenessContext
+        same = user32.AreDpiAwarenessContextsEqual
+    except AttributeError:
+        raise Invalid("host_failed", "this Windows is older than 10 version 1703 and cannot "
+                      "report real pixels: window placement is not supported on it") from None
+    if set_context(ctypes.c_void_p(PER_MONITOR_CONTEXTS[0])):
+        return
+    held = held_context()
+    if any(same(held, ctypes.c_void_p(c)) for c in PER_MONITOR_CONTEXTS):
+        return
+    raise Invalid("host_failed", "this process already chose a DPI awareness that is not "
+                  "per-monitor, so the displays and windows would be read in scaled pixels")
+
+
 class WindowsHost:
     """`scry_core.window.Host` on Windows: user32 through ctypes, in real pixels."""
 
@@ -233,9 +257,11 @@ if sys.platform == "win32":
 
     @functools.cache
     def _per_monitor_aware() -> None:
-        """An unaware process is lied to in scaled pixels (1280x720 on a 4K panel at 300 %), and
-        an emulator places its window in real ones. A refusal means the process already chose."""
-        ctypes.WinDLL("user32").SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+        user32 = ctypes.WinDLL("user32")
+        if hasattr(user32, "AreDpiAwarenessContextsEqual"):    # absent before 10 version 1703
+            user32.GetThreadDpiAwarenessContext.restype = ctypes.c_void_p
+            user32.AreDpiAwarenessContextsEqual.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        require_per_monitor_aware(user32)
 
     def _win_displays() -> list[Display]:
         _per_monitor_aware()
