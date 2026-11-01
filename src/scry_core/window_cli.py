@@ -125,9 +125,9 @@ def main(argv: Sequence[str]) -> int:
     except _Usage as e:
         print(f"window_cli: {e}", file=sys.stderr)
         return 2
-    if said.command == "displays":
-        return _displays()
     try:
+        if said.command == "displays":
+            return _displays()
         asked = _asked(said.display, said.fullscreen)
         if said.command == "launch":
             return _launch(command, EMULATORS[said.emulator](asked))

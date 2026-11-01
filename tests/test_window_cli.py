@@ -54,6 +54,17 @@ def test_displays_lists_each_index_with_its_bounds(desk: Desk,
                                 "display 1 bounds=2048,0,2048x1152"]
 
 
+def test_displays_exit_3_with_the_refusal_when_the_host_fails(
+        desk: Desk, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    def failing() -> list[w.Display]:
+        raise Invalid("host_failed", "this process already chose a DPI awareness")
+    monkeypatch.setattr(desk, "displays", failing)
+    code, out, err = run(capsys, "displays")
+    assert (code, out) == (3, "")
+    assert err.startswith("host_failed: this process already chose")
+
+
 def test_displays_exit_3_when_the_host_reports_none(desk: Desk,
                                                     capsys: pytest.CaptureFixture[str]) -> None:
     desk._displays = []
