@@ -263,8 +263,10 @@ def prove(pid: int, asked: WindowRequest, bound_s: float | None = None,
             proved, unfilled = later, False
     if unfilled:
         raise _not_visible("the window opened on the asked display but does not fill it, which "
-                           "`fullscreen` asked for: `close` and start again with "
-                           "`fullscreen=false`", asked_display=asked.display, seen=proved.block())
+                           "`fullscreen` asked for. An emulator parked at its debugger fills the "
+                           "display only once it runs: `resume` it and read `window` again; if it "
+                           "still does not fill, `close` and start again with `fullscreen=false`",
+                           asked_display=asked.display, seen=proved.block())
     return proved
 
 

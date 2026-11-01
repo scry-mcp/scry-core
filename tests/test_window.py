@@ -412,6 +412,15 @@ def test_prove_refuses_a_fullscreen_that_does_not_fill_the_display(
     assert e.value.fields["asked_display"] == 0 and e.value.fields["seen"]["fullscreen"] is False
 
 
+def test_the_unfilled_fullscreen_refusal_tries_resume_before_giving_up_the_flag(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    _desk(monkeypatch, Host([seen(PID, (100, 100, 400, 300))]))
+    with pytest.raises(Invalid) as e:
+        w.prove(PID, w.WindowRequest(0, True, (0, 0)))
+    text = str(e.value)
+    assert "`resume`" in text and text.index("`resume`") < text.index("`fullscreen=false`")
+
+
 def test_prove_accepts_a_fullscreen_that_fills_it(monkeypatch: pytest.MonkeyPatch) -> None:
     _desk(monkeypatch, Host([seen(PID, (0, 0, 2048, 1152))]))
     assert w.prove(PID, w.WindowRequest(0, True, (0, 0))).fullscreen is True
