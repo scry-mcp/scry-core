@@ -2,10 +2,24 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.81.0
+
+### Added
+
+- `WindowRequest.origin`: the asked display's top-left, read from the host's displays, for an
+  emulator that places a window by position and not by index. `request` takes the displays in
+  place of their count.
+- `WindowsHost` run on a real desktop for the first time (`tests/test_window_host_windows.py`,
+  `-m window`).
 
 ### Fixed
 
+- `WindowsHost` lists only windows that are shown or minimised: an application's hidden helper
+  windows (an IME or toolkit root, larger than the real one) made `main_window` pick a window
+  nobody sees. `activate` now gets the foreground from a process the task scheduler started, by
+  joining the foreground thread's input queue unless that thread is hung.
+- `prove` waits, within the one `WAIT_S`, for a full-screen window to fill the asked display
+  after its first sighting; a window that fills another display is still `window_not_visible`.
 - `MacHost.above` leaves out a window on a Space known to differ from the window's own: the window
   server keeps a full-screen application's window listed on screen, and above, while the display
   shows another Space, so a window brought back to its Space still read as covered (MAME's did).
