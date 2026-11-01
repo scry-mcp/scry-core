@@ -265,11 +265,14 @@ if sys.platform == "win32":
             user32.GetWindowRect(hwnd, ctypes.byref(rect))
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
             width, height = rect.right - rect.left, rect.bottom - rect.top
-            if min(width, height) >= MIN_SIDE and not user32.GetWindow(hwnd, 4):    # GW_OWNER
+            shown, iconic = bool(user32.IsWindowVisible(hwnd)), bool(user32.IsIconic(hwnd))
+            # A window neither shown nor minimised is a helper (IME, toolkit root), never one
+            # the owner could see: listing it would make `main_window` pick it by size.
+            if (min(width, height) >= MIN_SIDE and not user32.GetWindow(hwnd, 4)   # GW_OWNER
+                    and (shown or iconic)):
                 found.append(Seen(pid=pid.value, number=int(hwnd),
                                   bounds=(rect.left, rect.top, width, height),
-                                  onscreen=bool(user32.IsWindowVisible(hwnd))
-                                  and not user32.IsIconic(hwnd)))
+                                  onscreen=shown and not iconic))
             return 1
 
         user32.EnumWindows(callback(each), 0)         # top of the z-order first
@@ -277,13 +280,29 @@ if sys.platform == "win32":
 
     def _win_activate(number: int) -> str:
         user32 = ctypes.WinDLL("user32")
-        user32.ShowWindow(wintypes.HWND(number), 9)                 # SW_RESTORE
-        # Windows refuses a foreground change from a process that is not in the foreground
-        # unless an Alt key event has just passed through the input queue.
-        user32.keybd_event(0x12, 0, 0, 0)
-        user32.keybd_event(0x12, 0, 2, 0)
-        return "" if user32.SetForegroundWindow(wintypes.HWND(number)) else (
-            "SetForegroundWindow refused the window")
+        kernel32 = ctypes.WinDLL("kernel32")
+        user32.GetForegroundWindow.restype = wintypes.HWND
+        hwnd = wintypes.HWND(number)
+        user32.ShowWindow(hwnd, 9)                                  # SW_RESTORE
+        # Windows refuses a foreground change from a process that is not in the foreground, and
+        # a process started by the task scheduler never is. Joining the foreground thread's input
+        # queue lets it through, but blocks when that thread pumps no messages: skip a hung one.
+        front = user32.GetForegroundWindow()
+        theirs = (user32.GetWindowThreadProcessId(front, None)
+                  if front and not user32.IsHungAppWindow(front) else 0)
+        ours = kernel32.GetCurrentThreadId()
+        joined = bool(theirs) and theirs != ours and user32.AttachThreadInput(ours, theirs, True)
+        try:
+            user32.keybd_event(0x12, 0, 0, 0)                       # an Alt press lets it through
+            user32.keybd_event(0x12, 0, 2, 0)
+            user32.BringWindowToTop(hwnd)
+            user32.SwitchToThisWindow(hwnd, True)
+            user32.SetForegroundWindow(hwnd)
+        finally:
+            if joined:
+                user32.AttachThreadInput(ours, theirs, False)
+        return "" if (user32.GetForegroundWindow() or 0) == number else (
+            "the window did not become the foreground window")
 else:
     def _not_windows() -> NoReturn:
         raise AssertionError("the Windows host is built on Windows only")
