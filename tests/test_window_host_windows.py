@@ -21,7 +21,8 @@ pytestmark = [pytest.mark.window,
 # does not is treated as hung and never reordered). It reports its own pid: under a venv the
 # launcher is a different process from the interpreter that owns the window.
 OPENER = (
-    "import os, sys, threading, tkinter\n"
+    "import ctypes, os, sys, threading, tkinter\n"
+    "ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))\n"
     "root = tkinter.Tk()\n"
     "root.geometry('420x300+120+90')\n"
     "root.update()\n"
@@ -34,6 +35,13 @@ OPENER = (
     "root.mainloop()\n"
 )
 BOUND_S = 10.0
+# What an emulator reads: aware first, then the displays through the host.
+AWARE_DISPLAYS = (
+    "import ctypes\n"
+    "ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))\n"
+    "from scry_core.window_host import WindowsHost\n"
+    "print([(d.index, d.bounds) for d in WindowsHost().displays()])\n"
+)
 
 
 @pytest.fixture
@@ -89,15 +97,26 @@ def test_activating_a_covered_window_puts_it_in_front_of_what_covered_it(
     covered = _mine(host, under)
     _mine(host, over)
     # The interactive task's own console may sit above both; `over` must be among what covers it.
-    assert over in [s.pid for s in host.above(_mine(host, under))], "the control: it is covered"
+    def covering() -> list[int]:
+        return [s.pid for s in host.above(_mine(host, under))]
+
+    assert over in covering(), "the control: it is covered"
     assert host.activate(covered) == ""
     deadline = time.monotonic() + BOUND_S
-    while time.monotonic() < deadline and host.above(_mine(host, under)):
+    while time.monotonic() < deadline and over in covering():
         time.sleep(0.1)
-    assert host.above(_mine(host, under)) == []
+    # The topmost taskbar is always listed: only `over` must have gone below.
+    assert over not in covering()
 
 
 def test_a_pid_with_no_window_is_not_found() -> None:
     listed = WindowsHost().windows()
     assert listed, "the control: the desktop lists windows"
     assert w.main_window(2 ** 22 - 4, listed) is None
+
+
+def test_displays_are_in_the_pixels_an_emulator_places_its_window_in() -> None:
+    """An unaware host reads scaled pixels: its display origins would be false."""
+    read = subprocess.run([sys.executable, "-c", AWARE_DISPLAYS], capture_output=True, text=True,
+                          timeout=BOUND_S, check=True).stdout.strip()
+    assert str([(d.index, d.bounds) for d in WindowsHost().displays()]) == read

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.util
+import functools
 import subprocess
 import sys
 import time
@@ -212,8 +213,7 @@ def activate_app(pid: int) -> str:  # needs the desk
 
 
 class WindowsHost:
-    """`scry_core.window.Host` on Windows: user32 through ctypes. Written against the Win32
-    documentation and not yet run on Windows."""
+    """`scry_core.window.Host` on Windows: user32 through ctypes, in real pixels."""
 
     def displays(self) -> list[Display]:
         return _win_displays()
@@ -231,7 +231,14 @@ class WindowsHost:
 if sys.platform == "win32":
     from ctypes import wintypes
 
+    @functools.cache
+    def _per_monitor_aware() -> None:
+        """An unaware process is lied to in scaled pixels (1280x720 on a 4K panel at 300 %), and
+        an emulator places its window in real ones. A refusal means the process already chose."""
+        ctypes.WinDLL("user32").SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+
     def _win_displays() -> list[Display]:
+        _per_monitor_aware()
         user32 = ctypes.WinDLL("user32")
         found: list[tuple[bool, Rect]] = []
 
@@ -256,6 +263,7 @@ if sys.platform == "win32":
         return [Display(n, bounds) for n, (_, bounds) in enumerate(found)]
 
     def _win_windows() -> list[Seen]:
+        _per_monitor_aware()
         user32 = ctypes.WinDLL("user32")
         found: list[Seen] = []
         callback = ctypes.WINFUNCTYPE(ctypes.c_int, wintypes.HWND, wintypes.LPARAM)
@@ -279,6 +287,7 @@ if sys.platform == "win32":
         return found
 
     def _win_activate(number: int) -> str:
+        _per_monitor_aware()
         user32 = ctypes.WinDLL("user32")
         kernel32 = ctypes.WinDLL("kernel32")
         user32.GetForegroundWindow.restype = wintypes.HWND
