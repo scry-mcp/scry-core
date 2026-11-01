@@ -292,7 +292,8 @@ def _window_tool(pid: int) -> Any:  # needs the desk
     def tool(front: bool = False) -> dict[str, Any]:  # needs the desk
         try:
             return {"status": "ok",
-                    **w.answer(pid, w.WindowRequest(0, False), front=front, launched_behind=False)}
+                    **w.answer(pid, w.WindowRequest(0, False, (0, 0)), front=front,
+                               launched_behind=False)}
         except Invalid as refused:
             return {"status": "INVALID", "code": refused.code, "message": str(refused)}
     return tool

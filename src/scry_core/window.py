@@ -2,8 +2,8 @@
 (`state_of`), read as it stands (`observe`), waited for (`wait_visible`) and brought forward
 (`bring_front`).
 
-A server never computes geometry: the emulator centres its own window on the display index it is
-given, and this reads back where it landed. `WindowState.block()` is a reply's `window` block.
+A request carries the display's index and origin; this reads back where the window landed.
+`WindowState.block()` is a reply's `window` block.
 """
 
 from __future__ import annotations
@@ -63,6 +63,7 @@ class Host(Protocol):
 class WindowRequest:
     display: int
     fullscreen: bool
+    origin: tuple[int, int]
 
 
 def _count(n: int) -> str:
@@ -70,7 +71,7 @@ def _count(n: int) -> str:
 
 
 def request(display: int | None, fullscreen: bool | None, *, shared: bool,
-            display_count: int) -> WindowRequest | None:
+            displays: list[Display]) -> WindowRequest | None:
     """The window a `start` asked for, or None for a run nobody watches.
 
     An omitted display is the main one, so a stranger's watched start opens in front of them. The
@@ -85,15 +86,16 @@ def request(display: int | None, fullscreen: bool | None, *, shared: bool,
                           f"act with `shared=true`; leave {'it' if len(given) == 1 else 'them'} "
                           f"out for an unwatched run")
         return None
-    if display_count < 1:
+    if not displays:
         raise Invalid("host_failed",
                       "the host reports no display online, so there is nowhere to open a window: "
                       "wake the displays and ask again")
     chosen = 0 if display is None else display
-    if not 0 <= chosen < display_count:
+    where = next((d for d in displays if d.index == chosen), None)
+    if where is None:
         raise Invalid("bad_argument",
-                      f"`display` {chosen} does not exist: this host has {_count(display_count)}")
-    return WindowRequest(chosen, bool(fullscreen))
+                      f"`display` {chosen} does not exist: this host has {_count(len(displays))}")
+    return WindowRequest(chosen, bool(fullscreen), where.bounds[:2])
 
 
 @dataclass(frozen=True)
@@ -234,16 +236,25 @@ def bring_front(pid: int, host: Host, bound_s: float,
 
 def requested(shared: bool, display: int | None,
               fullscreen: bool | None) -> WindowRequest | None:
-    """`request` for a server's `start`; the host's display count is read only when watched."""
-    count = len(host().displays()) if shared else 0
-    return request(display, fullscreen, shared=shared, display_count=count)
+    """`request` for a server's `start`; the host's displays are read only when watched."""
+    return request(display, fullscreen, shared=shared, displays=host().displays() if shared else [])
 
 
 def prove(pid: int, asked: WindowRequest) -> WindowState:
     """The window `pid` opened as `asked`, waited for up to `WAIT_S`; a `fullscreen` that does not
     fill its display is refused. The refusal leaves the session live, so `window` and `close`
     still act."""
+    began = time.monotonic()
     proved = wait_visible(pid, asked.display, WAIT_S, host())
+    if asked.fullscreen and not proved.fullscreen:
+        # An emulator placed by position shows its window first and fills the display after.
+        left = max(0.0, WAIT_S - (time.monotonic() - began))
+        def filled(s: WindowState | None) -> bool:
+            return s is not None and s.display == asked.display and s.fullscreen
+
+        later = _wait(pid, host(), left, time.monotonic, time.sleep, filled)
+        if later is not None and filled(later):
+            proved = later
     if asked.fullscreen and not proved.fullscreen:
         raise _not_visible("the window opened on the asked display but does not fill it, which "
                            "`fullscreen` asked for: `close` and start again with "

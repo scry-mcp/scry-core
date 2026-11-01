@@ -66,15 +66,15 @@ class Clock:
 # ---- the request -------------------------------------------------------------------------------
 
 def test_a_watched_start_asking_nothing_opens_on_the_main_display_windowed() -> None:
-    assert w.request(None, None, shared=True, display_count=2) == w.WindowRequest(0, False)
+    assert w.request(None, None, shared=True, displays=TWO) == w.WindowRequest(0, False, (0, 0))
 
 
 def test_a_watched_start_keeps_what_it_asked() -> None:
-    assert w.request(1, True, shared=True, display_count=2) == w.WindowRequest(1, True)
+    assert w.request(1, True, shared=True, displays=TWO) == w.WindowRequest(1, True, (2048, 0))
 
 
 def test_an_unwatched_start_has_no_window_to_ask_for() -> None:
-    assert w.request(None, None, shared=False, display_count=2) is None
+    assert w.request(None, None, shared=False, displays=TWO) is None
 
 
 @pytest.mark.parametrize(("display", "fullscreen", "named"),
@@ -82,14 +82,14 @@ def test_an_unwatched_start_has_no_window_to_ask_for() -> None:
 def test_an_unwatched_start_refuses_a_window_argument_rather_than_ignoring_it(
         display: int | None, fullscreen: bool | None, named: str) -> None:
     with pytest.raises(Invalid) as e:
-        w.request(display, fullscreen, shared=False, display_count=2)
+        w.request(display, fullscreen, shared=False, displays=TWO)
     assert e.value.code == "bad_argument" and named in str(e.value) and "shared" in str(e.value)
 
 
 @pytest.mark.parametrize("display", [2, 7, -1])
 def test_a_display_the_host_lacks_is_refused_naming_how_many_it_has(display: int) -> None:
     with pytest.raises(Invalid) as e:
-        w.request(display, None, shared=True, display_count=2)
+        w.request(display, None, shared=True, displays=TWO)
     assert e.value.code == "bad_argument"
     message = str(e.value)
     assert "2 displays" in message and "0 to 1" in message and str(display) in message
@@ -97,13 +97,13 @@ def test_a_display_the_host_lacks_is_refused_naming_how_many_it_has(display: int
 
 def test_a_single_display_host_says_so_in_the_singular() -> None:
     with pytest.raises(Invalid) as e:
-        w.request(1, None, shared=True, display_count=1)
+        w.request(1, None, shared=True, displays=TWO[:1])
     assert "1 display (0)" in str(e.value)
 
 
 def test_a_host_with_no_display_online_is_a_host_failure_not_a_bad_argument() -> None:
     with pytest.raises(Invalid) as e:
-        w.request(None, None, shared=True, display_count=0)
+        w.request(None, None, shared=True, displays=[])
     assert e.value.code == "host_failed" and "display" in str(e.value)
 
 
@@ -370,7 +370,7 @@ def _desk(monkeypatch: pytest.MonkeyPatch, host: Host) -> None:
     monkeypatch.setattr(w, "WAIT_S", 0.0)
 
 
-def test_requested_reads_the_display_count_only_for_a_watched_start(
+def test_requested_reads_the_displays_only_for_a_watched_start(
         monkeypatch: pytest.MonkeyPatch) -> None:
     class Counting(Host):
         asked = 0
@@ -385,7 +385,7 @@ def test_requested_reads_the_display_count_only_for_a_watched_start(
     w.requested(True, None, None)
     assert counting.asked == 1
     _desk(monkeypatch, Host([]))
-    assert w.requested(True, 1, True) == w.WindowRequest(1, True)
+    assert w.requested(True, 1, True) == w.WindowRequest(1, True, (2048, 0))
     with pytest.raises(Invalid) as e:
         w.requested(True, 2, None)
     assert e.value.code == "bad_argument" and "2 displays" in str(e.value)
@@ -393,21 +393,64 @@ def test_requested_reads_the_display_count_only_for_a_watched_start(
 
 def test_prove_returns_the_window_on_the_asked_display(monkeypatch: pytest.MonkeyPatch) -> None:
     _desk(monkeypatch, Host([seen(PID, (2148, 100, 400, 300))]))
-    assert w.prove(PID, w.WindowRequest(1, False)).display == 1
+    assert w.prove(PID, w.WindowRequest(1, False, (2048, 0))).display == 1
 
 
 def test_prove_refuses_a_fullscreen_that_does_not_fill_the_display(
         monkeypatch: pytest.MonkeyPatch) -> None:
     _desk(monkeypatch, Host([seen(PID, (100, 100, 400, 300))]))
     with pytest.raises(Invalid) as e:
-        w.prove(PID, w.WindowRequest(0, True))
+        w.prove(PID, w.WindowRequest(0, True, (0, 0)))
     assert e.value.code == "window_not_visible" and "does not fill" in str(e.value)
     assert e.value.fields["asked_display"] == 0 and e.value.fields["seen"]["fullscreen"] is False
 
 
 def test_prove_accepts_a_fullscreen_that_fills_it(monkeypatch: pytest.MonkeyPatch) -> None:
     _desk(monkeypatch, Host([seen(PID, (0, 0, 2048, 1152))]))
-    assert w.prove(PID, w.WindowRequest(0, True)).fullscreen is True
+    assert w.prove(PID, w.WindowRequest(0, True, (0, 0))).fullscreen is True
+
+
+def test_prove_waits_for_a_fullscreen_window_to_fill_the_display_it_first_appeared_on(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """An emulator placed by position shows its window first and goes full screen after."""
+    class Growing(Host):
+        def windows(self) -> list[w.Seen]:
+            self.polls += 1
+            bounds = (2048, 0, 2048, 1152) if self.polls > 3 else (2088, 40, 640, 400)
+            return [seen(PID, bounds)]
+
+    _desk(monkeypatch, Growing([]))
+    monkeypatch.setattr(w, "WAIT_S", 5.0)
+    monkeypatch.setattr(w, "POLL_S", 0.0)
+    got = w.prove(PID, w.WindowRequest(1, True, (2048, 0)))
+    assert got.fullscreen is True and got.display == 1
+
+
+def test_prove_refuses_a_window_that_fills_a_different_display_than_the_one_asked(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    class Wanders(Host):
+        def windows(self) -> list[w.Seen]:
+            self.polls += 1
+            bounds = (0, 0, 2048, 1152) if self.polls > 2 else (2088, 40, 640, 400)
+            return [seen(PID, bounds)]
+
+    _desk(monkeypatch, Wanders([]))
+    monkeypatch.setattr(w, "WAIT_S", 0.01)
+    monkeypatch.setattr(w, "POLL_S", 0.0)
+    with pytest.raises(Invalid) as e:
+        w.prove(PID, w.WindowRequest(1, True, (2048, 0)))
+    assert e.value.code == "window_not_visible" and e.value.fields["asked_display"] == 1
+
+
+def test_prove_spends_one_bound_even_when_the_window_never_fills(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    host = Host([seen(PID, (2088, 40, 640, 400))], appears_after=12)
+    _desk(monkeypatch, host)
+    monkeypatch.setattr(w, "WAIT_S", 0.3)
+    monkeypatch.setattr(w, "POLL_S", 0.01)
+    with pytest.raises(Invalid):
+        w.prove(PID, w.WindowRequest(1, True, (2048, 0)))
+    assert host.polls <= 0.3 / 0.01 + 5
 
 
 def test_prove_and_answer_wait_for_the_one_bound_core_holds(
@@ -427,15 +470,15 @@ def test_prove_and_answer_wait_for_the_one_bound_core_holds(
 
     monkeypatch.setattr(w, "wait_visible", waited)
     monkeypatch.setattr(w, "bring_front", brought)
-    w.prove(PID, w.WindowRequest(0, False))
-    w.answer(PID, w.WindowRequest(0, False), front=True, launched_behind=False)
+    w.prove(PID, w.WindowRequest(0, False, (0, 0)))
+    w.answer(PID, w.WindowRequest(0, False, (0, 0)), front=True, launched_behind=False)
     assert bounds == [7.5, 7.5]
 
 
 def test_prove_refuses_a_window_that_never_appears(monkeypatch: pytest.MonkeyPatch) -> None:
     _desk(monkeypatch, Host([]))
     with pytest.raises(Invalid) as e:
-        w.prove(PID, w.WindowRequest(0, False))
+        w.prove(PID, w.WindowRequest(0, False, (0, 0)))
     assert e.value.code == "window_not_visible"
 
 
@@ -451,7 +494,7 @@ def test_answer_reports_the_window_and_front_brings_it_forward(
     cover = seen(OTHER, (0, 0, 2048, 1152), number=2)
     host = Host([cover, seen(PID, (100, 100, 400, 300))])
     _desk(monkeypatch, host)
-    asked = w.WindowRequest(0, False)
+    asked = w.WindowRequest(0, False, (0, 0))
     assert w.answer(PID, asked, front=False, launched_behind=False)["window"]["front"] is False
     assert host.activated == []
     assert w.answer(PID, asked, front=True, launched_behind=False)["window"]["front"] is True
@@ -462,7 +505,7 @@ def test_answer_passes_the_background_launch_to_the_refusal(
         monkeypatch: pytest.MonkeyPatch) -> None:
     _desk(monkeypatch, Host([seen(PID, (100, 100, 400, 300), onscreen=False)], brings=False))
     with pytest.raises(Invalid) as e:
-        w.answer(PID, w.WindowRequest(0, False), front=True, launched_behind=True)
+        w.answer(PID, w.WindowRequest(0, False, (0, 0)), front=True, launched_behind=True)
     assert "background=true" in str(e.value)
 
 
