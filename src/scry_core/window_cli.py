@@ -14,7 +14,7 @@ starts COMMAND with those words appended, detached, and prints `pid: <N>`, the p
 `window: display=<i> bounds=<x>,<y>,<w>x<h> onscreen=<bool>`, and with `--size` a second line
 `size: asked=WxH seen=WxH compared=client|outer matches=<bool>`. Display 0 when omitted.
 Use `--fullscreen` for a window somebody watches through a stream (it fills the display). Nothing
-is stopped: end the emulator by its pid (`kill`, or `taskkill /T /F /PID`) when done.
+is stopped: end the emulator by its pid when done (`kill`; `taskkill /T /F /PID` from cmd or PowerShell).
 
 Exit 0 done; 2 bad usage or a refused request; 3 the window is not as asked (size included), or
 `displays`, `words` and `launch` found no display online or the host refused; 4 `proof` could not
