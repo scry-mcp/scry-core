@@ -33,18 +33,27 @@ def test_mame_full_screen_is_the_words_alone_the_platform_rule_is_the_requests()
     assert words.mame(FULL) == ["-nowindow", "-screen0", "screen1"]
 
 
-def _sized(size: tuple[int, int], scale: float = 1.0) -> w.WindowRequest:
-    return w.WindowRequest(1, False, (2048, 0), size=size, scale=scale)
+def _sized(size: tuple[int, int], scale: float = 1.0,
+           height_free: bool = False) -> w.WindowRequest:
+    return w.WindowRequest(1, False, (2048, 0), size=size, scale=scale, height_free=height_free)
 
 
 def test_dosbox_x_sends_a_stated_size_after_its_position() -> None:
-    assert words.dosbox_x(_sized((1280, 960))) == [
+    assert words.dosbox_x(_sized((1280, 960)), "darwin") == [
         "-set", "sdl display=1", "-set", "sdl windowposition=2088,40", "-set",
         "sdl windowresolution=1280x960"]
 
 
-def test_dosbox_x_on_a_scaled_windows_display_is_told_logical_pixels() -> None:
-    assert words.dosbox_x(_sized((3840, 2880), 3.0))[-1] == "sdl windowresolution=1280x960"
+@pytest.mark.parametrize(("size", "scale", "platform", "sent"), [
+    ((3840, 2880), 3.0, "win32", "1280x960"),      # DOSBox-X stops being DPI aware from 200 %
+    ((2500, 1250), 2.5, "win32", "1000x500"),
+    ((1920, 1440), 1.5, "win32", "1920x1440"),     # below 200 % it stays aware: real pixels
+    ((1280, 960), 1.0, "win32", "1280x960"),
+    ((1280, 960), 2.0, "darwin", "1280x960"),      # high DPI is off on macOS: points
+])
+def test_dosbox_x_is_told_the_unit_it_reads_on_the_platform_and_scale(
+        size: tuple[int, int], scale: float, platform: str, sent: str) -> None:
+    assert words.dosbox_x(_sized(size, scale), platform)[-1] == f"sdl windowresolution={sent}"
 
 
 def test_dosbox_x_never_sends_a_size_with_full_screen() -> None:
@@ -52,19 +61,20 @@ def test_dosbox_x_never_sends_a_size_with_full_screen() -> None:
         1, True, (2048, 0), size=(1280, 960))))
 
 
-def test_mame_resolution_follows_the_stated_size_and_keeps_nomaximize_on_macos() -> None:
-    assert words.mame(_sized((744, 768)), platform="darwin") == [
+def test_mame_resolution_follows_the_stated_size_and_keeps_nomaximize_when_honoured() -> None:
+    assert words.mame(_sized((744, 768))) == [
         "-window", "-nomaximize", "-resolution", "744x768", "-screen0", "screen1"]
 
 
-def test_mame_on_windows_drops_nomaximize_for_a_stated_size_which_it_would_ignore() -> None:
-    assert words.mame(_sized((744, 768)), platform="win32") == [
+def test_mame_drops_nomaximize_for_a_stated_size_when_the_request_says_the_height_is_free() -> None:
+    assert words.mame(_sized((744, 768), height_free=True)) == [
         "-window", "-resolution", "744x768", "-screen0", "screen1"]
 
 
-def test_mame_on_windows_keeps_nomaximize_when_no_size_was_stated() -> None:
-    assert words.mame(WINDOWED, platform="win32")[:2] == ["-window", "-nomaximize"]
+def test_mame_keeps_nomaximize_when_no_size_was_stated() -> None:
+    assert words.mame(w.WindowRequest(1, False, (2048, 0), height_free=True))[:2] == [
+        "-window", "-nomaximize"]
 
 
 def test_a_stated_size_wins_over_a_resolution_a_server_passes_beside_it() -> None:
-    assert "744x768" in words.mame(_sized((744, 768)), "640x480", platform="darwin")
+    assert "744x768" in words.mame(_sized((744, 768)), "640x480")

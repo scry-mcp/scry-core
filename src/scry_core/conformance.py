@@ -89,7 +89,9 @@ class SessionContract:
         _on(monkeypatch, hosts.WithAuxiliary(subject.asked))
         subject.start(shared=True, display=1)
         got = subject.window()
-        assert got["window"]["bounds"]["width"] == hosts.SIZE[0], got
+        wanted = subject.asked()
+        assert wanted is not None
+        assert got["window"]["bounds"]["width"] == (wanted[1].size or hosts.SIZE)[0], got
         assert got["window"]["display"] == 1, got
 
     def test_an_unwatched_start_opens_no_window_and_window_is_no_channel(

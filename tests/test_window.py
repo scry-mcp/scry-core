@@ -66,11 +66,13 @@ class Clock:
 # ---- the request -------------------------------------------------------------------------------
 
 def test_a_watched_start_asking_nothing_opens_on_the_main_display_windowed() -> None:
-    assert w.request(None, None, shared=True, displays=TWO) == w.WindowRequest(0, False, (0, 0))
+    assert w.request(None, None, shared=True, displays=TWO) == w.WindowRequest(
+        0, False, (0, 0), usable=(0, 0, 2048, 1152))
 
 
 def test_a_watched_start_keeps_what_it_asked() -> None:
-    assert w.request(1, True, shared=True, displays=TWO) == w.WindowRequest(1, True, (2048, 0))
+    assert w.request(1, True, shared=True, displays=TWO) == w.WindowRequest(
+        1, True, (2048, 0), usable=(2048, 0, 2048, 1152))
 
 
 def test_an_unwatched_start_has_no_window_to_ask_for() -> None:
@@ -392,7 +394,8 @@ def test_requested_reads_the_displays_only_for_a_watched_start(
     w.requested(True, None, None)
     assert counting.asked == 1
     _desk(monkeypatch, Host([]))
-    assert w.requested(True, 1, True) == w.WindowRequest(1, True, (2048, 0))
+    assert w.requested(True, 1, True) == w.WindowRequest(1, True, (2048, 0),
+                                                         usable=(2048, 0, 2048, 1152))
     with pytest.raises(Invalid) as e:
         w.requested(True, 2, None)
     assert e.value.code == "bad_argument" and "2 displays" in str(e.value)
@@ -556,8 +559,9 @@ USABLE = [w.Display(0, (0, 0, 2048, 1152), usable=(0, 30, 2048, 1122)),
 
 
 def test_a_stated_size_rides_in_the_request_with_the_displays_scale() -> None:
-    got = w.request(1, None, shared=True, displays=USABLE, size="1280x960")
-    assert got == w.WindowRequest(1, False, (2048, 0), size=(1280, 960), scale=2.0)
+    got = w.request(1, None, shared=True, displays=USABLE, size="1280x960", platform="darwin")
+    assert got == w.WindowRequest(1, False, (2048, 0), size=(1280, 960), scale=2.0,
+                                usable=(2048, 0, 2048, 1152))
 
 
 @pytest.mark.parametrize(("kwargs", "why"), [
@@ -568,7 +572,8 @@ def test_a_stated_size_rides_in_the_request_with_the_displays_scale() -> None:
 ])
 def test_a_stated_size_is_refused_where_it_cannot_act_naming_why(
         kwargs: dict[str, object], why: str) -> None:
-    args: dict[str, object] = {"size": "640x480", "fullscreen": None, "shared": True, **kwargs}
+    args: dict[str, object] = {"size": "640x480", "fullscreen": None, "shared": True,
+                               "platform": "darwin", **kwargs}
     with pytest.raises(Invalid) as e:
         w.request(0, args.pop("fullscreen"), displays=USABLE, **args)  # type: ignore[arg-type]
     assert e.value.code == "bad_argument" and why in str(e.value)
@@ -627,3 +632,11 @@ def test_prove_does_not_judge_the_size_so_a_parked_start_is_not_refused_for_it()
     asked = w.WindowRequest(0, False, (0, 0), size=(1280, 960))
     parked = Host([seen(PID, (0, 30, 640, 432))], USABLE)
     assert w.prove(PID, asked, 1.0, parked).bounds == (0, 30, 640, 432)
+
+
+def test_a_size_the_server_chose_is_in_the_words_but_not_judged_by_the_window_tool(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    chosen = w.WindowRequest(0, False, (0, 0), size=(1280, 960), fitted=True)
+    listed = Host([seen(PID, (0, 30, 640, 512))], USABLE)
+    monkeypatch.setattr(w, "host", lambda platform=None: listed)
+    assert "size" not in w.answer(PID, chosen, front=False, launched_behind=False)

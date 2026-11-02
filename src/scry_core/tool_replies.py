@@ -63,6 +63,12 @@ class CommentWriteFields(TypedDict, total=False):
     unchanged: Annotated[int, When("`load`")]
 
 
+class WindowSizeField(TypedDict, total=False):
+    """The size verdict of a `window` answer, on both servers."""
+
+    size: Annotated[dict[str, Any], When("started", "stated")]
+
+
 class WindowRefusedFields(TypedDict, total=False):
     """What a `window_not_visible` refusal says of the window it looked for, on both servers."""
 

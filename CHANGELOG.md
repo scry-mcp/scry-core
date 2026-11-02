@@ -4,6 +4,27 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+### Added
+
+- `scry_core.window_size`: a stated window size (`WIDTHxHEIGHT`, in the host's unit) parsed, refused
+  naming the display's usable size when it does not fit, fitted (`integer_fit`, `aspect_fit`) and judged
+  against the host's window list (`judge`: the client area on Windows, the outer rectangle with a title
+  bar's height on macOS, with the tolerance named). `window.request` takes `size`, `emulator` and
+  `halted`; `Display` carries `usable` and `scale`, `Seen` the `client` area, `WindowRequest` the
+  `size`, `scale`, `usable`, `height_free` and `fitted`. `window.answer` adds `size` to a session
+  started with one, and `tool_replies.WindowSizeField` is its reply type. `window_cli` takes `--size`
+  on `words`, `launch` and `proof` (exit 3 when the window is another size).
+- The macOS host reads each display's visible frame and backing scale (`NSScreen`), the Windows host
+  `rcWork`, the monitor's DPI and `GetClientRect`.
+
+### Changed
+
+- The platform rule on full screen is judged once, in `window.request`, for both emulators
+  (`window_size.refuse_fullscreen`); `window_words.refuse_mame_fullscreen` is gone and
+  `window_words.mame` only builds words. A shell run is never halted, so `window_cli words dosbox-x
+  --fullscreen --display 1` prints its words on macOS. A stated size drops `-nomaximize` for MAME on
+  Windows, where it would ignore `-resolution`, and reaches DOSBox-X as logical pixels.
+
 ### Fixed
 
 - `window_cli proof` refused with the next step of a server's tools (`status`, `resume`, `close`),

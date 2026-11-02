@@ -1,18 +1,22 @@
 """The shell-side twin of a watched `start`, the same on macOS and Windows:
 
     python -m scry_core.window_cli displays
-    python -m scry_core.window_cli words mame|dosbox-x [--display N] [--fullscreen]
-    python -m scry_core.window_cli launch mame|dosbox-x [--display N] [--fullscreen] -- COMMAND...
-    python -m scry_core.window_cli proof PID [--display N] [--fullscreen] [--seconds S]
+    python -m scry_core.window_cli words mame|dosbox-x [--display N] [--fullscreen] [--size WxH]
+    python -m scry_core.window_cli launch mame|dosbox-x [--display N] [--fullscreen] [--size WxH]
+        -- COMMAND...
+    python -m scry_core.window_cli proof PID [--display N] [--fullscreen] [--size WxH]
+        [--emulator mame|dosbox-x] [--seconds S]
 
 `words` prints the placement words, one argv entry per line (a line may hold a space). `launch`
 starts COMMAND with those words appended, detached, and prints `pid: <N>`, the pid `proof` takes
 (no shell quoting, the same on both hosts). `proof`
 waits for the window PID itself owns (the emulator's own pid, not a launcher's) and prints
-`window: display=<i> bounds=<x>,<y>,<w>x<h> onscreen=<bool>`. Display 0, the main one, when omitted.
+`window: display=<i> bounds=<x>,<y>,<w>x<h> onscreen=<bool>`, and with `--size` a second line
+`size: asked=WxH seen=WxH compared=client|outer matches=<bool>`. Display 0 when omitted.
 
-Exit 0 done; 2 bad usage or a refused request; 3 the window is not as asked, no display is
-online, or the host refused the request; 4 could not prove (the host failed). Nothing is stopped.
+Exit 0 done; 2 bad usage or a refused request; 3 the window is not as asked (size included), or
+`displays`, `words` and `launch` found no display online or the host refused; 4 `proof` could not
+prove (no display online, or the host failed). Nothing is stopped.
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ from typing import Any, NoReturn, cast
 from scry_core import window_words
 from scry_core.reply_contract import Invalid
 from scry_core.window import WindowRequest, host, prove, request
+from scry_core.window_size import judge
 
 EMULATORS: dict[str, Callable[[WindowRequest], list[str]]] = {
     "mame": window_words.mame, "dosbox-x": window_words.dosbox_x}
@@ -60,15 +65,18 @@ def _parser() -> argparse.ArgumentParser:
         if name == "proof":
             one.add_argument("pid", type=int)
             one.add_argument("--seconds", type=_bound)
+            one.add_argument("--emulator", choices=sorted(EMULATORS))
         one.add_argument("--display", type=int)
         one.add_argument("--fullscreen", action="store_true")
+        one.add_argument("--size")
     return top
 
 
-def _asked(display: int | None, fullscreen: bool, emulator: str | None) -> WindowRequest:
+def _asked(display: int | None, fullscreen: bool, emulator: str | None,
+           size: str | None) -> WindowRequest:
     """A shell run is never halted at a debugger, so the halted-start rule does not apply."""
     asked = request(display, fullscreen, shared=True, displays=host().displays(),
-                    emulator=emulator, halted=False)
+                    emulator=emulator, halted=False, size=size)
     assert asked is not None    # `shared=True` always asks for a window
     return asked
 
@@ -130,7 +138,7 @@ def main(argv: Sequence[str]) -> int:
     try:
         if said.command == "displays":
             return _displays()
-        asked = _asked(said.display, said.fullscreen, getattr(said, "emulator", None))
+        asked = _asked(said.display, said.fullscreen, said.emulator, said.size)
         if said.command == "launch":
             return _launch(command, EMULATORS[said.emulator](asked))
         if said.command == "words":
@@ -143,7 +151,19 @@ def main(argv: Sequence[str]) -> int:
     x, y, w, h = state.bounds
     print(f"window: display={state.display} bounds={x},{y},{w}x{h} "
           f"onscreen={'true' if state.onscreen else 'false'}")
-    return 0
+    if asked.size is None:
+        return 0
+    verdict = judge(asked.size, state, asked.scale, height_free=asked.height_free)
+    asked_w, asked_h = asked.size
+    print(f"size: asked={asked_w}x{asked_h} seen={verdict['seen']['width']}x"
+          f"{verdict['seen']['height']} compared={verdict['compared']} "
+          f"matches={'true' if verdict['matches'] else 'false'}")
+    if verdict["matches"]:
+        return 0
+    print(f"window_not_visible: the window is not the size asked ({asked_w}x{asked_h}, compared "
+          f"on its {verdict['compared']} rectangle, within {verdict['tolerance_px']} px); the "
+          f"emulator did not take it", file=sys.stderr)
+    return 3
 
 
 if __name__ == "__main__":

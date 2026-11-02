@@ -274,6 +274,15 @@ def activate_app(pid: int) -> str:  # needs the desk
         f"(first process whose unix id is {pid}) to true"))
 
 
+def scale_from(hresult: int, dpi: int) -> float:
+    """The scale of a monitor from `GetDpiForMonitor`'s answer; a failed reading is `host_failed`,
+    never a scale of 1.0 that every size after it would trust."""
+    if hresult != 0 or dpi <= 0:
+        raise Invalid("host_failed", f"the monitor's DPI could not be read (HRESULT {hresult:#x}, "
+                      f"dpi {dpi}), so no size on it can be judged")
+    return dpi / 96
+
+
 # `DPI_AWARENESS_CONTEXT` pseudo-handles: per-monitor v2, per-monitor.
 PER_MONITOR_CONTEXTS = (-4, -3)
 
@@ -330,6 +339,7 @@ if sys.platform == "win32":
         user32 = ctypes.WinDLL("user32")
         shcore = ctypes.WinDLL("shcore")        # `GetDpiForMonitor`, 0 is MDT_EFFECTIVE_DPI
         found: list[tuple[bool, Rect, Rect, float]] = []
+        refused: list[Invalid] = []
 
         class Info(ctypes.Structure):
             _fields_ = [("size", wintypes.DWORD), ("monitor", wintypes.RECT),
@@ -344,15 +354,20 @@ if sys.platform == "win32":
             user32.GetMonitorInfoW(handle, ctypes.byref(info))
             r, k = info.monitor, info.work
             dpi_x, dpi_y = ctypes.c_uint(), ctypes.c_uint()
-            if shcore.GetDpiForMonitor(handle, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y)) != 0:
-                dpi_x.value = 96                    # S_OK is 0; anything else says nothing of scale
+            answer = shcore.GetDpiForMonitor(handle, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
+            try:
+                scale = scale_from(answer, dpi_x.value)
+            except Invalid as e:           # raised through a C callback it would be swallowed
+                refused.append(e)
+                scale = 1.0
             found.append((bool(info.flags & 1), (r.left, r.top, r.right - r.left,
                                                   r.bottom - r.top),
-                          (k.left, k.top, k.right - k.left, k.bottom - k.top),
-                          dpi_x.value / 96))
+                          (k.left, k.top, k.right - k.left, k.bottom - k.top), scale))
             return 1
 
         user32.EnumDisplayMonitors(None, None, callback(each), 0)
+        if refused:
+            raise refused[0]
         found.sort(key=lambda m: not m[0])          # the primary monitor first
         return [Display(n, bounds, work, scale)
                 for n, (_, bounds, work, scale) in enumerate(found)]

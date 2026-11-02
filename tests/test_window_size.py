@@ -27,35 +27,38 @@ def test_anything_else_is_refused_naming_the_format(text: str) -> None:
     assert e.value.code == "bad_argument" and "WIDTHxHEIGHT" in str(e.value)
 
 
-def test_a_size_that_fits_the_usable_area_is_kept_to_its_edge() -> None:
-    size.refuse_unfit((2048, 1122), MAC)
+def test_a_size_whose_window_fits_the_usable_area_with_its_frame_is_kept_to_the_edge() -> None:
+    size.refuse_unfit((2048, 1090), MAC.work, MAC.scale, "darwin")      # 1122 less a 32 title bar
+    size.refuse_unfit((3792, 1839), WIN.work, WIN.scale, "win32")       # less 16x59 per scale unit
 
 
-@pytest.mark.parametrize("asked", [(2049, 1122), (2048, 1123)])
-def test_a_size_beyond_the_usable_area_is_refused_naming_the_usable_size(
-        asked: size.Size) -> None:
+@pytest.mark.parametrize(("asked", "display", "platform"), [
+    ((2049, 1090), MAC, "darwin"), ((2048, 1091), MAC, "darwin"),
+    ((3793, 100), WIN, "win32"), ((100, 1840), WIN, "win32")])
+def test_a_size_beyond_what_the_usable_area_holds_is_refused_naming_it_and_the_frame(
+        asked: size.Size, display: w.Display, platform: str) -> None:
     with pytest.raises(Invalid) as e:
-        size.refuse_unfit(asked, MAC)
-    assert e.value.code == "bad_argument" and "2048x1122" in str(e.value)
-    assert "display 0" in str(e.value)
+        size.refuse_unfit(asked, display.work, display.scale, platform)
+    assert e.value.code == "bad_argument"
+    assert f"{display.work[2]}x{display.work[3]}" in str(e.value) and "frame" in str(e.value)
 
 
 def test_a_display_that_reports_no_usable_area_is_judged_by_its_bounds() -> None:
     bare = w.Display(1, (2048, 0, 1920, 1080))
     assert bare.work == (2048, 0, 1920, 1080)
     with pytest.raises(Invalid) as e:
-        size.refuse_unfit((1921, 100), bare)
+        size.refuse_unfit((1921, 100), bare.work, bare.scale, "darwin")
     assert "1920x1080" in str(e.value)
 
 
 @pytest.mark.parametrize(("display", "platform", "native", "fitted"), [
-    (MAC, "darwin", (320, 240), (1280, 960)),      # 6 across, 4 up: the title bar costs a row
+    (MAC, "darwin", (320, 240), (1280, 960)),
     (WIN, "win32", (320, 240), (2240, 1680)),      # the frame grows with the scale
     (MAC, "darwin", (3000, 2000), (3000, 2000)),   # never below the emulator's own scale 1
 ])
 def test_the_largest_whole_multiple_of_the_native_size_that_fits(
         display: w.Display, platform: str, native: size.Size, fitted: size.Size) -> None:
-    assert size.integer_fit(native, display, platform) == fitted
+    assert size.integer_fit(native, display.work, display.scale, platform) == fitted
 
 
 @pytest.mark.parametrize(("display", "platform", "fitted"), [
@@ -64,12 +67,12 @@ def test_the_largest_whole_multiple_of_the_native_size_that_fits(
 ])
 def test_the_largest_window_of_an_aspect_that_fits(
         display: w.Display, platform: str, fitted: size.Size) -> None:
-    assert size.aspect_fit((4, 3), display, platform) == fitted
+    assert size.aspect_fit((4, 3), display.work, display.scale, platform) == fitted
 
 
 def test_a_platform_the_hosts_do_not_cover_has_no_frame_to_allow() -> None:
     with pytest.raises(Invalid) as e:
-        size.integer_fit((320, 240), MAC, "linux")
+        size.integer_fit((320, 240), MAC.work, MAC.scale, "linux")
     assert e.value.code == "host_failed" and "linux" in str(e.value)
 
 

@@ -426,3 +426,16 @@ def test_a_desk_that_lists_no_screen_gives_no_usable_area(
     monkeypatch.setattr(wh, "_send", lambda obj, selector, restype, *a: 0)
     monkeypatch.setattr(ctypes, "CDLL", lambda name: None)
     assert wh.screens() == []
+
+
+@pytest.mark.parametrize(("hresult", "dpi", "scale"), [(0, 96, 1.0), (0, 288, 3.0), (0, 144, 1.5)])
+def test_a_monitors_scale_is_its_dpi_over_96(hresult: int, dpi: int, scale: float) -> None:
+    assert wh.scale_from(hresult, dpi) == scale
+
+
+@pytest.mark.parametrize(("hresult", "dpi"), [(-2147024809, 96), (1, 96), (0, 0)])
+def test_a_failed_dpi_reading_is_refused_never_taken_for_a_scale_of_one(
+        hresult: int, dpi: int) -> None:
+    with pytest.raises(Invalid) as e:
+        wh.scale_from(hresult, dpi)
+    assert e.value.code == "host_failed" and "DPI" in str(e.value)

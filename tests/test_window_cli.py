@@ -235,3 +235,50 @@ def test_a_shell_run_is_never_halted_so_dosbox_x_full_screen_on_a_second_display
     monkeypatch.setattr("sys.platform", "darwin")
     code, out, _ = run(capsys, "words", "dosbox-x", "--fullscreen", "--display", "1")
     assert code == 0 and out.splitlines() == ["-set", "sdl display=1", "-fullscreen"]
+
+
+def test_words_carry_a_stated_size(desk: Desk, monkeypatch: pytest.MonkeyPatch,
+                                   capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr("sys.platform", "darwin")
+    code, out, _ = run(capsys, "words", "dosbox-x", "--size", "1280x960")
+    assert code == 0 and out.splitlines()[-2:] == ["-set", "sdl windowresolution=1280x960"]
+    code, out, _ = run(capsys, "words", "mame", "--size", "744x768")
+    assert code == 0 and "744x768" in out.splitlines()
+
+
+@pytest.mark.parametrize(("argv", "why"), [
+    (("--size", "9999x9999"), "usable"), (("--size", "wide"), "WIDTHxHEIGHT"),
+    (("--size", "640x480", "--fullscreen"), "contradict")])
+def test_a_size_that_cannot_act_is_refused_with_exit_2(
+        desk: Desk, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+        argv: tuple[str, ...], why: str) -> None:
+    monkeypatch.setattr("sys.platform", "darwin")
+    code, out, err = run(capsys, "words", "dosbox-x", *argv)
+    assert code == 2 and out == "" and why in err
+
+
+def test_proof_of_a_size_exits_0_naming_both_sizes_when_the_window_matches(
+        desk: Desk, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr("sys.platform", "darwin")
+    desk.listed = [w.Seen(pid=7, number=1, bounds=(40, 70, 1280, 992), onscreen=True)]
+    code, out, _ = run(capsys, "proof", "7", "--size", "1280x960", "--seconds", "0")
+    assert code == 0
+    assert "size: asked=1280x960 seen=1280x992 compared=outer matches=true" in out
+
+
+def test_proof_of_a_size_exits_3_when_the_window_is_another_size(
+        desk: Desk, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr("sys.platform", "darwin")
+    desk.listed = [w.Seen(pid=7, number=1, bounds=(40, 70, 640, 432), onscreen=True)]
+    code, out, err = run(capsys, "proof", "7", "--size", "1280x960", "--seconds", "0")
+    assert code == 3 and "matches=false" in out and "1280x960" in err
+
+
+def test_proof_of_a_size_for_mame_on_windows_judges_the_width_alone(
+        desk: Desk, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr("sys.platform", "win32")
+    desk.listed = [w.Seen(pid=7, number=1, bounds=(40, 70, 780, 661), onscreen=True,
+                          client=(744, 558))]
+    code, out, _ = run(capsys, "proof", "7", "--size", "744x768", "--emulator", "mame",
+                       "--seconds", "0")
+    assert code == 0 and "matches=true" in out

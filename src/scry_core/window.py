@@ -30,9 +30,8 @@ WAIT_S = 10.0
 
 @dataclass(frozen=True)
 class Display:
-    """A display by the OS's index: 0 is the main display. `usable` is the part a window may
-    occupy (menu bar, Dock and taskbar excluded), None when the host did not say; `scale` is
-    the host's unit per logical pixel (the backing scale on macOS, dpi / 96 on Windows)."""
+    """A display by the OS's index (0 is the main one). `usable` excludes menu bar, Dock and
+    taskbar (None: the host did not say); `scale` is the host's unit per logical pixel."""
 
     index: int
     bounds: Rect
@@ -52,7 +51,7 @@ class Seen:
     number: int
     bounds: Rect
     onscreen: bool
-    #: Width and height inside the frame where the host has a client area (Windows); None on macOS.
+    #: Width and height inside the frame (Windows); None where there is no client area.
     client: tuple[int, int] | None = None
 
 
@@ -75,12 +74,14 @@ class WindowRequest:
     display: int
     fullscreen: bool
     origin: tuple[int, int]
-    #: The size asked for, in the host's unit; None leaves it to the emulator.
+    #: In the host's unit; None leaves it to the emulator.
     size: tuple[int, int] | None = None
-    #: The asked display's `Display.scale`.
     scale: float = 1.0
-    #: The emulator honours the width and fits the height to its aspect (MAME on Windows).
+    usable: Rect | None = None
+    #: The emulator fits the height to its aspect (MAME on Windows).
     height_free: bool = False
+    #: The server chose `size`: the words carry it, `window` does not judge it.
+    fitted: bool = False
 
 
 def _count(n: int) -> str:
@@ -89,13 +90,12 @@ def _count(n: int) -> str:
 
 def request(display: int | None, fullscreen: bool | None, *, shared: bool,
             displays: list[Display], size: str | None = None, emulator: str | None = None,
-            platform: str = sys.platform, halted: bool = True) -> WindowRequest | None:
+            platform: str | None = None, halted: bool = True) -> WindowRequest | None:
     """The window a `start` asked for, or None for a run nobody watches.
 
-    An omitted display is the main one, so a stranger's watched start opens in front of them. The
-    window arguments act only on a watched start, and are refused on any other rather than
-    ignored. Naming the `emulator` judges its full-screen rule for `platform` here, once;
-    `halted` is a start parked at its debugger."""
+    An omitted display is the main one. The window arguments act only on a watched start and are
+    refused on any other. Naming the `emulator` judges its full-screen rule for `platform` here,
+    once; `halted` is a start parked at its debugger."""
     if not shared:
         given = [name for name, value in (("display", display), ("fullscreen", fullscreen),
                                           ("size", size))
@@ -115,6 +115,7 @@ def request(display: int | None, fullscreen: bool | None, *, shared: bool,
     if where is None:
         raise Invalid("bad_argument",
                       f"`display` {chosen} does not exist: this host has {_count(len(displays))}")
+    platform = platform or sys.platform
     if emulator is not None and fullscreen:
         window_size.refuse_fullscreen(emulator, chosen, platform, halted=halted)
     asked = None if size is None else window_size.parse(size)
@@ -122,8 +123,9 @@ def request(display: int | None, fullscreen: bool | None, *, shared: bool,
         if fullscreen:
             raise Invalid("bad_argument", "`size` and `fullscreen` contradict: full screen is the "
                           "display's own size; leave one out")
-        window_size.refuse_unfit(asked, where)
+        window_size.refuse_unfit(asked, where.work, where.scale, platform)
     return WindowRequest(chosen, bool(fullscreen), where.bounds[:2], asked, where.scale,
+                         where.work,
                          window_size.height_free(emulator, platform) and asked is not None)
 
 
@@ -322,7 +324,7 @@ def answer(pid: int, asked: WindowRequest | None, *, front: bool,
     state = (bring_front(pid, where, WAIT_S, launched_behind=launched_behind) if front
              else observe(pid, where))
     reply: dict[str, Any] = {"window": state.block()}
-    if asked.size is not None:
+    if asked.size is not None and not asked.fitted:
         reply["size"] = window_size.judge(asked.size, state, asked.scale,
                                           height_free=asked.height_free)
     return reply

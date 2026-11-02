@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 from scry_core.reply_contract import Invalid
 
 if TYPE_CHECKING:
-    from scry_core.window import Display
+    from scry_core.window import Rect
 
 Size = tuple[int, int]
 
@@ -43,13 +43,16 @@ def parse(text: str) -> Size:
                   f"like 1280x960; got {text!r}")
 
 
-def refuse_unfit(asked: Size, display: Display) -> None:
-    """`bad_argument` naming the display's usable size when `asked` does not fit it."""
-    _, _, width, height = display.work
-    if asked[0] > width or asked[1] > height:
+def refuse_unfit(asked: Size, usable: Rect, scale: float, platform: str) -> None:
+    """`bad_argument` naming the usable size when `asked` plus the window's frame exceeds it."""
+    room = _room(usable, scale, platform)
+    if asked[0] > room[0] or asked[1] > room[1]:
+        frame = _frame(platform, scale)
         raise Invalid("bad_argument",
-                      f"`size` {asked[0]}x{asked[1]} does not fit display {display.index}, whose "
-                      f"usable area (menu bar, Dock and taskbar excluded) is {width}x{height}")
+                      f"`size` {asked[0]}x{asked[1]} does not fit: the usable area (menu bar, Dock "
+                      f"and taskbar excluded) is {usable[2]}x{usable[3]} and a window frame takes "
+                      f"up to {frame[0]}x{frame[1]} of it, so the largest size is "
+                      f"{room[0]}x{room[1]}")
 
 
 def _frame(platform: str, scale: float) -> Size:
@@ -60,21 +63,21 @@ def _frame(platform: str, scale: float) -> Size:
     raise Invalid("host_failed", f"a window is sized on macOS and Windows hosts, not {platform}")
 
 
-def _room(display: Display, platform: str) -> Size:
-    frame = _frame(platform, display.scale)
-    return display.work[2] - frame[0], display.work[3] - frame[1]
+def _room(usable: Rect, scale: float, platform: str) -> Size:
+    frame = _frame(platform, scale)
+    return usable[2] - frame[0], usable[3] - frame[1]
 
 
-def integer_fit(native: Size, display: Display, platform: str) -> Size:
+def integer_fit(native: Size, usable: Rect, scale: float, platform: str) -> Size:
     """The largest whole multiple of `native` that fits the usable area, never below `native`."""
-    width, height = _room(display, platform)
+    width, height = _room(usable, scale, platform)
     n = max(1, min(width // native[0], height // native[1]))
     return native[0] * n, native[1] * n
 
 
-def aspect_fit(aspect: Size, display: Display, platform: str) -> Size:
+def aspect_fit(aspect: Size, usable: Rect, scale: float, platform: str) -> Size:
     """The largest window of the `aspect` (width, height) that fits the usable area."""
-    width, height = _room(display, platform)
+    width, height = _room(usable, scale, platform)
     h = min(height, width * aspect[1] // aspect[0])
     return h * aspect[0] // aspect[1], h
 

@@ -9,7 +9,7 @@ how the two existing servers are wired.
 
 Every watched `start` and the `window` tool call these of `scry_core.window`:
 
-- `requested(shared, display, fullscreen)` in `start`, before anything launches: the validated
+- `requested(shared, display, fullscreen, size, emulator=, halted=)` in `start`, before anything launches: the validated
   `WindowRequest`, or None for a run nobody watches. Keep it with the session's own state;
   `window` needs it.
 - `prove(pid, asked)` once the emulator is up: the window as the host lists it, as the `window`
@@ -21,12 +21,15 @@ Every watched `start` and the `window` tool call these of `scry_core.window`:
   mark a launch behind. `launched_behind` of `answer` is that decision, with no default, so a
   server that forgets it fails at the call.
 
-The emulator's own argv for the display and for full screen, and the refusal of a full screen it
-cannot show on macOS or Windows, are `scry_core.window_words` (`dosbox_x`, `mame`,
-`refuse_mame_fullscreen`): add the new emulator's words there, so `python -m scry_core.window_cli`
-places and proves its window from a shell too. What stays the server's: refusing caller flags that
-retune a window the arguments own, and the reasons its full screen cannot show that no platform
-test knows.  The emulator centres its own window; a server never computes geometry.
+The emulator's own argv for the display, the size and full screen is `scry_core.window_words`
+(`dosbox_x`, `mame`); the refusal of a full screen it cannot show on macOS or Windows is
+`scry_core.window_size.refuse_fullscreen`, judged once inside `window.request(..., emulator=)`.
+Add the new emulator's words and rule there, so `python -m scry_core.window_cli` places and
+proves its window from a shell too. What stays the server's: refusing caller flags that retune a
+window the arguments own, and the reasons its full screen cannot show that no platform test knows
+(a conf's `output`). A server may fit a size to `WindowRequest.usable` with `window_size`'s
+`integer_fit` or `aspect_fit` and mark it `fitted=True`, which the `window` tool then does not
+judge; a size the caller stated is judged against what the host lists.
 
 `window.WAIT_S` is the one bound on waiting for the host's window list; a test lowers it with
 `monkeypatch.setattr(window, "WAIT_S", 0.0)`.
