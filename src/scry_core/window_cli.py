@@ -1,4 +1,5 @@
-"""The shell-side twin of a watched `start`, the same on macOS and Windows:
+"""The shell-side twin of a watched `start`, the same on macOS and Windows. Run it through a
+checkout's interpreter (`uv run python -m ...`): `python` may not be on the PATH.
 
     python -m scry_core.window_cli displays
     python -m scry_core.window_cli words mame|dosbox-x [--display N] [--fullscreen] [--size WxH]
@@ -8,16 +9,16 @@
         [--emulator mame|dosbox-x] [--seconds S]
 
 `words` prints the placement words, one argv entry per line (a line may hold a space). `launch`
-starts COMMAND with those words appended, detached, and prints `pid: <N>`, the pid `proof` takes
-(no shell quoting, the same on both hosts). `proof`
-waits for the window PID itself owns (the emulator's own pid, not a launcher's) and prints
-`window: display=<i> bounds=<x>,<y>,<w>x<h> onscreen=<bool>` (with `--size`, once the window has
-the size or the bound passes: an emulator may resize it after showing it), and with `--size` a
-second line `size: asked=WxH seen=WxH compared=client|outer matches=<bool>`. Display 0 when omitted.
+starts COMMAND with those words appended, detached, and prints `pid: <N>`, the pid `proof` takes.
+`proof` waits for the window PID itself owns (the emulator's own pid, not a launcher's) and prints
+`window: display=<i> bounds=<x>,<y>,<w>x<h> onscreen=<bool>`, and with `--size` a second line
+`size: asked=WxH seen=WxH compared=client|outer matches=<bool>`. Display 0 when omitted.
+Use `--fullscreen` for a window somebody watches through a stream (it fills the display). Nothing
+is stopped: end the emulator by its pid (`kill`, or `taskkill /T /F /PID`) when done.
 
 Exit 0 done; 2 bad usage or a refused request; 3 the window is not as asked (size included), or
 `displays`, `words` and `launch` found no display online or the host refused; 4 `proof` could not
-prove (no display online, or the host failed). Nothing is stopped.
+prove (no display online, or the host failed).
 """
 
 from __future__ import annotations
