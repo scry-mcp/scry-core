@@ -16,6 +16,17 @@ def test_dosbox_x_positions_a_windowed_run_inside_its_display() -> None:
                                         "sdl windowposition=2088,40"]
 
 
+@pytest.mark.parametrize(("origin", "position"), [
+    ((-2048, 0), "-2008,40"),
+    ((0, -1152), "40,-1112"),
+    ((-2048, -1152), "-2008,-1112"),
+])
+def test_dosbox_x_keeps_the_sign_of_a_display_left_of_or_above_the_main_one(
+        origin: tuple[int, int], position: str) -> None:
+    asked = w.WindowRequest(1, False, origin)
+    assert words.dosbox_x(asked)[-1] == f"sdl windowposition={position}"
+
+
 def test_dosbox_x_fills_the_display_in_full_screen_and_sends_no_position() -> None:
     assert words.dosbox_x(FULL) == ["-set", "sdl display=1", "-fullscreen"]
 
