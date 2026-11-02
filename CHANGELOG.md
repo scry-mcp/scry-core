@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.84.0
 
 ### Fixed
 
