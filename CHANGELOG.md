@@ -27,6 +27,7 @@ What a server author notices. A client's view of each server is in that server's
 
 ### Fixed
 
+- `WindowRequest.dpi_aware` and `window_words.dosbox_x`: the unit of a DOSBox-X size follows the conf's `dpi aware` (`true`: real pixels at any scale; `false`: logical pixels at any scale; unset: logical from 200 %), not the scale alone. A conf that states `dpi aware=true` at 200 % opened a window half the size asked.
 - `window.settle_size`, used by `window_cli proof --size`: an emulator that shows its window and resizes it a moment later (DOSBox-X on Windows) was judged on its first sighting and refused as the wrong size. The proof reads again until the window has the size or the bound passes.
 - `window.request` refuses a watched DOSBox-X window on macOS when its display sits left of or above the main one: DOSBox-X ignores a negative `windowposition` and would open the window on the main display. Full screen is not refused (it sends no position).
 - `window_cli proof` refused with the next step of a server's tools (`status`, `resume`, `close`),

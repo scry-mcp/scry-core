@@ -82,6 +82,8 @@ class WindowRequest:
     height_free: bool = False
     #: The server chose `size`: the words carry it, `window` does not judge it.
     fitted: bool = False
+    #: DOSBox-X's `[dosbox] dpi aware` as the conf states it: True, False, or None for auto.
+    dpi_aware: bool | None = None
 
 
 def _count(n: int) -> str:

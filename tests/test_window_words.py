@@ -67,6 +67,24 @@ def test_dosbox_x_is_told_the_unit_it_reads_on_the_platform_and_scale(
     assert words.dosbox_x(_sized(size, scale), platform)[-1] == f"sdl windowresolution={sent}"
 
 
+@pytest.mark.parametrize(("scale", "dpi_aware", "sent"), [
+    (2.0, True, "1280x960"), (3.0, True, "1280x960"),      # asked aware: real pixels at any scale
+    (1.5, False, "853x640"), (2.0, False, "640x480"),      # unaware: logical pixels at any scale
+    (1.0, False, "1280x960"),
+    (2.0, None, "640x480"), (1.5, None, "1280x960"),       # auto: unaware from 200 % only
+])
+def test_dosbox_x_reads_the_unit_from_the_conf_s_dpi_awareness_on_windows(
+        scale: float, dpi_aware: bool | None, sent: str) -> None:
+    asked = w.WindowRequest(1, False, (2048, 0), size=(1280, 960), scale=scale,
+                            dpi_aware=dpi_aware)
+    assert words.dosbox_x(asked, "win32")[-1] == f"sdl windowresolution={sent}"
+
+
+def test_dpi_awareness_changes_nothing_on_macos() -> None:
+    asked = w.WindowRequest(1, False, (2048, 0), size=(1280, 960), scale=2.0, dpi_aware=False)
+    assert words.dosbox_x(asked, "darwin")[-1] == "sdl windowresolution=1280x960"
+
+
 def test_dosbox_x_never_sends_a_size_with_full_screen() -> None:
     assert "windowresolution" not in " ".join(words.dosbox_x(w.WindowRequest(
         1, True, (2048, 0), size=(1280, 960))))

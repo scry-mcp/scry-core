@@ -9,15 +9,16 @@ from scry_core.window_size import WINDOW_MARGIN_PX
 
 
 def dosbox_x(asked: WindowRequest, platform: str | None = None) -> list[str]:
-    """A position places a macOS run. The size is in logical pixels from 200 % on Windows, where
-    DOSBox-X stops being DPI aware, and in points on macOS."""
+    """A position places a macOS run. The size is in logical pixels where DOSBox-X is not DPI
+    aware (on Windows, `dpi aware=false`, or `auto` from 200 %), and in points on macOS."""
     words = ["-set", f"sdl display={asked.display}"]
     if asked.fullscreen:
         return [*words, "-fullscreen"]
     x, y = asked.origin
     words += ["-set", f"sdl windowposition={x + WINDOW_MARGIN_PX},{y + WINDOW_MARGIN_PX}"]
     if asked.size is not None:
-        divisor = asked.scale if (platform or sys.platform) == "win32" and asked.scale >= 2 else 1
+        unaware = asked.dpi_aware is False or (asked.dpi_aware is None and asked.scale >= 2)
+        divisor = asked.scale if (platform or sys.platform) == "win32" and unaware else 1
         width, height = (round(side / divisor) for side in asked.size)
         words += ["-set", f"sdl windowresolution={width}x{height}"]
     return words
