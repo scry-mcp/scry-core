@@ -136,3 +136,31 @@ def test_a_process_that_already_chose_to_be_unaware_is_refused_by_the_real_user3
     run = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
                          timeout=BOUND_S * 3)
     assert run.stdout.strip() == "REFUSED host_failed", run.stdout + run.stderr
+
+
+def test_every_display_reports_a_work_area_inside_its_bounds_and_a_scale() -> None:
+    for d in WindowsHost().displays():
+        assert d.usable is not None and d.scale >= 1.0, d
+        bx, by, bw, bh = d.bounds
+        ux, uy, uw, uh = d.usable
+        assert bx <= ux and by <= uy and ux + uw <= bx + bw and uy + uh <= by + bh, d
+
+
+def test_the_scale_is_the_dpi_the_monitor_reports_over_96() -> None:
+    code = (
+        "import ctypes\n"
+        "ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))\n"
+        "from scry_core.window_host import WindowsHost\n"
+        "print(WindowsHost().displays()[0].scale)\n"
+        "dpi = ctypes.c_uint(); ctypes.windll.user32.GetDpiForSystem.restype = ctypes.c_uint\n"
+        "print(ctypes.windll.user32.GetDpiForSystem() / 96)\n")
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                         timeout=BOUND_S, check=True).stdout.split()
+    assert float(out[0]) == pytest.approx(float(out[1]), abs=0.01)
+
+
+def test_a_listed_window_carries_its_client_area_inside_its_frame(
+        opener: Callable[[], int]) -> None:
+    seen = _mine(WindowsHost(), opener())
+    assert seen.client is not None
+    assert 0 < seen.client[0] <= seen.bounds[2] and 0 < seen.client[1] < seen.bounds[3], seen

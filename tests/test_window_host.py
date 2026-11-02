@@ -367,3 +367,62 @@ def test_a_windows_without_the_dpi_calls_is_refused_by_name(absent: str) -> None
     with pytest.raises(Invalid, match="1703") as e:
         wh.require_per_monitor_aware(_User32(sets=0, held=7, absent=absent))
     assert e.value.code == "host_failed"
+
+
+# ---- the usable area and the scale -------------------------------------------------------------
+
+def test_a_screens_rectangle_is_flipped_from_the_bottom_left_origin_to_the_top_left_one() -> None:
+    # The main screen is 1152 high; its visible frame starts 0 above the bottom and is 30 short
+    # of the top (the menu bar): in the window list's coordinates it starts 30 down.
+    assert wh.cg_rect((0.0, 0.0, 2048.0, 1122.0), 1152.0) == (0, 30, 2048, 1122)
+    # A screen to the right and above the main one has a negative top.
+    assert wh.cg_rect((2048.0, 500.0, 1920.0, 1080.0), 1152.0) == (2048, -428, 1920, 1080)
+
+
+def test_each_display_takes_the_visible_frame_and_scale_of_the_screen_with_its_bounds() -> None:
+    plain = [w.Display(0, (0, 0, 2048, 1152)), w.Display(1, (2048, 0, 2048, 1152))]
+    screens = [((2048, 0, 2048, 1152), (2048, 0, 2048, 1152), 2.0),
+               ((0, 0, 2048, 1152), (0, 30, 2048, 1122), 1.0)]
+    got = wh.with_usable(plain, screens)
+    assert [(d.usable, d.scale) for d in got] == [((0, 30, 2048, 1122), 1.0),
+                                                  ((2048, 0, 2048, 1152), 2.0)]
+
+
+def test_a_display_no_screen_matches_keeps_no_usable_area_rather_than_a_guess() -> None:
+    lone = [w.Display(0, (0, 0, 2048, 1152))]
+    assert wh.with_usable(lone, [((5, 5, 10, 10), (5, 5, 10, 10), 1.0)]) == lone
+
+
+@DARWIN
+@DESKTOP
+def test_the_real_main_display_loses_at_most_its_menu_bar_and_dock_and_never_gains() -> None:
+    main = wh.MacHost().displays()[0]
+    assert main.usable is not None and main.scale >= 1.0
+    bx, by, bw, bh = main.bounds
+    ux, uy, uw, uh = main.usable
+    assert bx <= ux and by <= uy and uw <= bw and uh <= bh and uh < bh + 1
+
+
+def test_the_screens_are_read_through_the_runtime_in_the_right_order(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def send(obj: int, selector: str, restype: Any, *args: Any) -> Any:
+        calls.append(selector)
+        return {"screens": 7, "count": 2, "objectAtIndex:": 100 + args[0] if args else 0,
+                "frame": wh._NSRect(0, 0, 10, 10), "visibleFrame": wh._NSRect(0, 1, 10, 8),
+                "backingScaleFactor": 2.0}.get(selector, 0)
+
+    monkeypatch.setattr(wh, "_send", send)
+    monkeypatch.setattr(wh, "_class", lambda name: 1)
+    got = wh.screens()
+    assert got == [((0, 0, 10, 10), (0, 1, 10, 8), 2.0)] * 2
+    assert calls[:2] == ["screens", "count"]
+
+
+def test_a_desk_that_lists_no_screen_gives_no_usable_area(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(wh, "_class", lambda name: 1)
+    monkeypatch.setattr(wh, "_send", lambda obj, selector, restype, *a: 0)
+    monkeypatch.setattr(ctypes, "CDLL", lambda name: None)
+    assert wh.screens() == []

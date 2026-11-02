@@ -14,6 +14,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from scry_core import window_size
 from scry_core.live_host import BACKGROUND_VAR as BACKGROUND_VAR
 from scry_core.reply_contract import Invalid
 
@@ -29,10 +30,18 @@ WAIT_S = 10.0
 
 @dataclass(frozen=True)
 class Display:
-    """A display by the OS's index: 0 is the main display."""
+    """A display by the OS's index: 0 is the main display. `usable` is the part a window may
+    occupy (menu bar, Dock and taskbar excluded), None when the host did not say; `scale` is
+    the host's unit per logical pixel (the backing scale on macOS, dpi / 96 on Windows)."""
 
     index: int
     bounds: Rect
+    usable: Rect | None = None
+    scale: float = 1.0
+
+    @property
+    def work(self) -> Rect:
+        return self.bounds if self.usable is None else self.usable
 
 
 @dataclass(frozen=True)
@@ -43,6 +52,8 @@ class Seen:
     number: int
     bounds: Rect
     onscreen: bool
+    #: Width and height inside the frame where the host has a client area (Windows); None on macOS.
+    client: tuple[int, int] | None = None
 
 
 class Host(Protocol):
@@ -64,6 +75,12 @@ class WindowRequest:
     display: int
     fullscreen: bool
     origin: tuple[int, int]
+    #: The size asked for, in the host's unit; None leaves it to the emulator.
+    size: tuple[int, int] | None = None
+    #: The asked display's `Display.scale`.
+    scale: float = 1.0
+    #: The emulator honours the width and fits the height to its aspect (MAME on Windows).
+    height_free: bool = False
 
 
 def _count(n: int) -> str:
@@ -71,14 +88,17 @@ def _count(n: int) -> str:
 
 
 def request(display: int | None, fullscreen: bool | None, *, shared: bool,
-            displays: list[Display]) -> WindowRequest | None:
+            displays: list[Display], size: str | None = None, emulator: str | None = None,
+            platform: str = sys.platform, halted: bool = True) -> WindowRequest | None:
     """The window a `start` asked for, or None for a run nobody watches.
 
     An omitted display is the main one, so a stranger's watched start opens in front of them. The
     window arguments act only on a watched start, and are refused on any other rather than
-    ignored."""
+    ignored. Naming the `emulator` judges its full-screen rule for `platform` here, once;
+    `halted` is a start parked at its debugger."""
     if not shared:
-        given = [name for name, value in (("display", display), ("fullscreen", fullscreen))
+        given = [name for name, value in (("display", display), ("fullscreen", fullscreen),
+                                          ("size", size))
                  if value is not None]
         if given:
             raise Invalid("bad_argument",
@@ -95,7 +115,16 @@ def request(display: int | None, fullscreen: bool | None, *, shared: bool,
     if where is None:
         raise Invalid("bad_argument",
                       f"`display` {chosen} does not exist: this host has {_count(len(displays))}")
-    return WindowRequest(chosen, bool(fullscreen), where.bounds[:2])
+    if emulator is not None and fullscreen:
+        window_size.refuse_fullscreen(emulator, chosen, platform, halted=halted)
+    asked = None if size is None else window_size.parse(size)
+    if asked is not None:
+        if fullscreen:
+            raise Invalid("bad_argument", "`size` and `fullscreen` contradict: full screen is the "
+                          "display's own size; leave one out")
+        window_size.refuse_unfit(asked, where)
+    return WindowRequest(chosen, bool(fullscreen), where.bounds[:2], asked, where.scale,
+                         window_size.height_free(emulator, platform) and asked is not None)
 
 
 @dataclass(frozen=True)
@@ -108,6 +137,7 @@ class WindowState:
     onscreen: bool
     front: bool
     fullscreen: bool
+    client: tuple[int, int] | None = None
 
     def block(self) -> dict[str, Any]:
         x, y, width, height = self.bounds
@@ -152,7 +182,8 @@ def state_of(pid: int, listed: list[Seen], displays: list[Display],
         s.onscreen and s.pid != pid and _holds(s.bounds, centre) for s in above(window))
     return WindowState(display=NO_DISPLAY if on is None else on.index, bounds=window.bounds,
                        onscreen=window.onscreen, front=not covered,
-                       fullscreen=on is not None and window.bounds == on.bounds)
+                       fullscreen=on is not None and window.bounds == on.bounds,
+                       client=window.client)
 
 
 def _not_visible(message: str, **fields: Any) -> Invalid:
@@ -241,10 +272,11 @@ def bring_front(pid: int, host: Host, bound_s: float,
         f"Space that is not shown, or something is in front of it{cause}", seen=state.block())
 
 
-def requested(shared: bool, display: int | None,
-              fullscreen: bool | None) -> WindowRequest | None:
+def requested(shared: bool, display: int | None, fullscreen: bool | None, size: str | None = None,
+              emulator: str | None = None, halted: bool = True) -> WindowRequest | None:
     """`request` for a server's `start`; the host's displays are read only when watched."""
-    return request(display, fullscreen, shared=shared, displays=host().displays() if shared else [])
+    return request(display, fullscreen, shared=shared, size=size, emulator=emulator,
+                   halted=halted, displays=host().displays() if shared else [])
 
 
 def prove(pid: int, asked: WindowRequest, bound_s: float | None = None,
@@ -289,7 +321,11 @@ def answer(pid: int, asked: WindowRequest | None, *, front: bool,
     where = host()
     state = (bring_front(pid, where, WAIT_S, launched_behind=launched_behind) if front
              else observe(pid, where))
-    return {"window": state.block()}
+    reply: dict[str, Any] = {"window": state.block()}
+    if asked.size is not None:
+        reply["size"] = window_size.judge(asked.size, state, asked.scale,
+                                          height_free=asked.height_free)
+    return reply
 
 
 def summary(args: dict[str, Any], reply: dict[str, Any]) -> str:

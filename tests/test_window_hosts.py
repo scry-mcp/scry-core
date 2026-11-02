@@ -66,3 +66,15 @@ def test_with_auxiliary_lists_a_small_window_of_the_pid_before_its_main_one() ->
     assert [s.pid for s in listed] == [PID, PID]
     first, main = (s.bounds[2] * s.bounds[3] for s in listed)
     assert first < main
+
+
+def test_obeying_opens_the_window_at_the_size_it_was_asked() -> None:
+    sized = _asked(w.WindowRequest(1, False, (1920, 0), size=(1000, 700)))
+    assert sized.windows()[0].bounds[2:] == (1000, 700)
+    full = _asked(w.WindowRequest(1, True, (1920, 0), size=(1000, 700)))
+    assert full.windows()[0].bounds == (1920, 0, 1920, 1080)
+
+
+def test_undersized_ignores_the_size_asked() -> None:
+    ignoring = hosts.Undersized(lambda: (PID, w.WindowRequest(0, False, (0, 0), size=(1000, 700))))
+    assert ignoring.windows()[0].bounds[2:] == hosts.SIZE

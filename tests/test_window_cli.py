@@ -228,3 +228,10 @@ def test_launch_without_a_command_or_with_one_that_does_not_start_exits_2(
         desk: Desk, capsys: pytest.CaptureFixture[str], argv: list[str]) -> None:
     code, out, err = run(capsys, *argv)
     assert code == 2 and out == "" and err, (out, err)
+
+
+def test_a_shell_run_is_never_halted_so_dosbox_x_full_screen_on_a_second_display_prints_words(
+        desk: Desk, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr("sys.platform", "darwin")
+    code, out, _ = run(capsys, "words", "dosbox-x", "--fullscreen", "--display", "1")
+    assert code == 0 and out.splitlines() == ["-set", "sdl display=1", "-fullscreen"]

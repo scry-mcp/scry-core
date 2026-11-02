@@ -17,9 +17,11 @@ from __future__ import annotations
 import ctypes
 import ctypes.util
 import functools
+import platform
 import subprocess
 import sys
 import time
+from dataclasses import replace
 from typing import Any, NoReturn
 
 from scry_core import focus_watch
@@ -46,8 +48,67 @@ class _Rect(ctypes.Structure):
                 ("width", ctypes.c_double), ("height", ctypes.c_double)]
 
 
+_NSRect = _Rect         # AppKit's NSRect has the same layout: origin, then size, in doubles
+
+
 def _rounded(r: _Rect) -> Rect:
     return round(r.x), round(r.y), round(r.width), round(r.height)
+
+
+def cg_rect(ns: tuple[float, float, float, float], main_height: float) -> Rect:
+    """An AppKit rectangle (origin at the bottom left of the main screen) in the window list's
+    coordinates (origin at the top left)."""
+    x, y, width, height = ns
+    return round(x), round(main_height - (y + height)), round(width), round(height)
+
+
+def with_usable(displays: list[Display],
+                screens: list[tuple[Rect, Rect, float]]) -> list[Display]:
+    """`displays` carrying the visible frame and scale of the screen whose frame is their bounds;
+    one that no screen matches keeps no usable area, so nothing is guessed."""
+    found = {frame: (visible, scale) for frame, visible, scale in screens}
+    return [replace(d, usable=found[d.bounds][0], scale=found[d.bounds][1])
+            if d.bounds in found else d for d in displays]
+
+
+def _class(name: str) -> int:
+    objc = ctypes.CDLL(ctypes.util.find_library("objc"))
+    objc.objc_getClass.restype = ctypes.c_void_p
+    objc.objc_getClass.argtypes = [ctypes.c_char_p]
+    return int(objc.objc_getClass(name.encode()))
+
+
+def _send(obj: int, selector: str, restype: Any, *args: int) -> Any:  # needs AppKit
+    """`objc_msgSend(obj, selector, *args)`. A structure returned in memory goes through the
+    `_stret` entry on Intel; on Apple silicon the plain one returns it in registers."""
+    objc = ctypes.CDLL(ctypes.util.find_library("objc"))
+    objc.sel_registerName.restype = ctypes.c_void_p
+    objc.sel_registerName.argtypes = [ctypes.c_char_p]
+    in_memory = restype is _NSRect and platform.machine() != "arm64"
+    entry = getattr(objc, "objc_msgSend_stret" if in_memory else "objc_msgSend")
+    entry.restype = restype
+    entry.argtypes = [ctypes.c_void_p, ctypes.c_void_p, *([ctypes.c_long] * len(args))]
+    return entry(obj, objc.sel_registerName(selector.encode()), *args)
+
+
+def screens() -> list[tuple[Rect, Rect, float]]:
+    """Each AppKit screen as (frame, visible frame, backing scale), in the window list's
+    coordinates. The visible frame excludes the menu bar and the Dock."""
+    ctypes.CDLL(ctypes.util.find_library("AppKit"))          # registers NSScreen
+    listed = _send(_class("NSScreen"), "screens", ctypes.c_void_p)
+    count = _send(listed, "count", ctypes.c_ulong)
+    items = [_send(listed, "objectAtIndex:", ctypes.c_void_p, i) for i in range(count)]
+    if not items:
+        return []
+    main = _send(items[0], "frame", _NSRect)
+    found = []
+    for item in items:
+        frame, visible = _send(item, "frame", _NSRect), _send(item, "visibleFrame", _NSRect)
+        scale = float(_send(item, "backingScaleFactor", ctypes.c_double))
+        found.append((cg_rect((frame.x, frame.y, frame.width, frame.height), main.height),
+                      cg_rect((visible.x, visible.y, visible.width, visible.height), main.height),
+                      scale))
+    return found
 
 
 def plan_switch(spaces: list[int], managed: list[Any]) -> tuple[str, int] | None:
@@ -117,7 +178,8 @@ class MacHost:
         cg.CGGetActiveDisplayList(MAX_DISPLAYS, ids, ctypes.byref(count))     # a failure leaves 0
         main = cg.CGMainDisplayID()
         order = sorted(ids[:count.value], key=lambda i: i != main)          # the main one first
-        return [Display(n, _rounded(cg.CGDisplayBounds(i))) for n, i in enumerate(order)]
+        found = [Display(n, _rounded(cg.CGDisplayBounds(i))) for n, i in enumerate(order)]
+        return with_usable(found, screens()) if found else found
 
     def windows(self) -> list[Seen]:
         return seen_from(focus_watch.windows())
@@ -266,7 +328,8 @@ if sys.platform == "win32":
     def _win_displays() -> list[Display]:
         _per_monitor_aware()
         user32 = ctypes.WinDLL("user32")
-        found: list[tuple[bool, Rect]] = []
+        shcore = ctypes.WinDLL("shcore")        # `GetDpiForMonitor`, 0 is MDT_EFFECTIVE_DPI
+        found: list[tuple[bool, Rect, Rect, float]] = []
 
         class Info(ctypes.Structure):
             _fields_ = [("size", wintypes.DWORD), ("monitor", wintypes.RECT),
@@ -279,14 +342,20 @@ if sys.platform == "win32":
             info = Info()
             info.size = ctypes.sizeof(Info)
             user32.GetMonitorInfoW(handle, ctypes.byref(info))
-            r = info.monitor
+            r, k = info.monitor, info.work
+            dpi_x, dpi_y = ctypes.c_uint(), ctypes.c_uint()
+            if shcore.GetDpiForMonitor(handle, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y)) != 0:
+                dpi_x.value = 96                    # S_OK is 0; anything else says nothing of scale
             found.append((bool(info.flags & 1), (r.left, r.top, r.right - r.left,
-                                                  r.bottom - r.top)))
+                                                  r.bottom - r.top),
+                          (k.left, k.top, k.right - k.left, k.bottom - k.top),
+                          dpi_x.value / 96))
             return 1
 
         user32.EnumDisplayMonitors(None, None, callback(each), 0)
         found.sort(key=lambda m: not m[0])          # the primary monitor first
-        return [Display(n, bounds) for n, (_, bounds) in enumerate(found)]
+        return [Display(n, bounds, work, scale)
+                for n, (_, bounds, work, scale) in enumerate(found)]
 
     def _win_windows() -> list[Seen]:
         _per_monitor_aware()
@@ -295,8 +364,9 @@ if sys.platform == "win32":
         callback = ctypes.WINFUNCTYPE(ctypes.c_int, wintypes.HWND, wintypes.LPARAM)
 
         def each(hwnd: Any, _data: Any) -> int:
-            rect, pid = wintypes.RECT(), wintypes.DWORD()
+            rect, pid, inner = wintypes.RECT(), wintypes.DWORD(), wintypes.RECT()
             user32.GetWindowRect(hwnd, ctypes.byref(rect))
+            user32.GetClientRect(hwnd, ctypes.byref(inner))
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
             width, height = rect.right - rect.left, rect.bottom - rect.top
             shown, iconic = bool(user32.IsWindowVisible(hwnd)), bool(user32.IsIconic(hwnd))
@@ -306,7 +376,8 @@ if sys.platform == "win32":
                     and (shown or iconic)):
                 found.append(Seen(pid=pid.value, number=int(hwnd),
                                   bounds=(rect.left, rect.top, width, height),
-                                  onscreen=shown and not iconic))
+                                  onscreen=shown and not iconic,
+                                  client=(inner.right - inner.left, inner.bottom - inner.top)))
             return 1
 
         user32.EnumWindows(callback(each), 0)         # top of the z-order first

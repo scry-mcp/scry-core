@@ -65,8 +65,10 @@ def _parser() -> argparse.ArgumentParser:
     return top
 
 
-def _asked(display: int | None, fullscreen: bool) -> WindowRequest:
-    asked = request(display, fullscreen, shared=True, displays=host().displays())
+def _asked(display: int | None, fullscreen: bool, emulator: str | None) -> WindowRequest:
+    """A shell run is never halted at a debugger, so the halted-start rule does not apply."""
+    asked = request(display, fullscreen, shared=True, displays=host().displays(),
+                    emulator=emulator, halted=False)
     assert asked is not None    # `shared=True` always asks for a window
     return asked
 
@@ -128,7 +130,7 @@ def main(argv: Sequence[str]) -> int:
     try:
         if said.command == "displays":
             return _displays()
-        asked = _asked(said.display, said.fullscreen)
+        asked = _asked(said.display, said.fullscreen, getattr(said, "emulator", None))
         if said.command == "launch":
             return _launch(command, EMULATORS[said.emulator](asked))
         if said.command == "words":

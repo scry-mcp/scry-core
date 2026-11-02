@@ -32,6 +32,8 @@ class Obeying:
             return []
         pid, request = got
         bounds = DISPLAYS[request.display].bounds if request.fullscreen else _inset(request.display)
+        if request.size is not None and not request.fullscreen:
+            bounds = (*bounds[:2], *request.size)
         return [Seen(pid=pid, number=1, bounds=bounds, onscreen=True)]
 
     def above(self, window: Seen) -> list[Seen]:
@@ -105,3 +107,10 @@ class WithAuxiliary(Obeying):
         main = super().windows()
         return [Seen(s.pid, s.number + 1, (s.bounds[0], s.bounds[1], 200, 200), True)
                 for s in main] + main
+
+
+class Undersized(Obeying):
+    """The emulator opens its window but ignores the size it was told, at its own native one."""
+
+    def windows(self) -> list[Seen]:
+        return [Seen(s.pid, s.number, (*s.bounds[:2], *SIZE), True) for s in super().windows()]

@@ -547,3 +547,83 @@ def test_the_background_hint_is_set_or_removed_never_inherited() -> None:
     assert w.launch_environment(base, background=False) == {"PATH": "/bin"}
     assert w.launch_environment({"PATH": "/bin"}, background=True)[w.BACKGROUND_VAR] == "1"
     assert base[w.BACKGROUND_VAR] == "1"            # the caller's mapping is left as it was
+
+
+# ---- the size of a requested window ---------------------------------------------------------
+
+USABLE = [w.Display(0, (0, 0, 2048, 1152), usable=(0, 30, 2048, 1122)),
+          w.Display(1, (2048, 0, 2048, 1152), scale=2.0)]
+
+
+def test_a_stated_size_rides_in_the_request_with_the_displays_scale() -> None:
+    got = w.request(1, None, shared=True, displays=USABLE, size="1280x960")
+    assert got == w.WindowRequest(1, False, (2048, 0), size=(1280, 960), scale=2.0)
+
+
+@pytest.mark.parametrize(("kwargs", "why"), [
+    ({"shared": False}, "shared=true"),
+    ({"shared": True, "fullscreen": True}, "fullscreen"),
+    ({"shared": True, "size": "9999x9999"}, "2048x1122"),
+    ({"shared": True, "size": "wide"}, "WIDTHxHEIGHT"),
+])
+def test_a_stated_size_is_refused_where_it_cannot_act_naming_why(
+        kwargs: dict[str, object], why: str) -> None:
+    args: dict[str, object] = {"size": "640x480", "fullscreen": None, "shared": True, **kwargs}
+    with pytest.raises(Invalid) as e:
+        w.request(0, args.pop("fullscreen"), displays=USABLE, **args)  # type: ignore[arg-type]
+    assert e.value.code == "bad_argument" and why in str(e.value)
+
+
+@pytest.mark.parametrize(("emulator", "platform", "display", "halted", "refused"), [
+    ("mame", "darwin", 1, True, True), ("mame", "win32", 0, True, True),
+    ("mame", "darwin", 0, False, True),
+    ("dosbox-x", "darwin", 1, True, True), ("dosbox-x", "darwin", 0, True, False),
+    ("dosbox-x", "darwin", 1, False, False), ("dosbox-x", "win32", 1, True, False),
+])
+def test_the_full_screen_rule_of_each_emulator_is_judged_once_per_platform_in_the_request(
+        emulator: str, platform: str, display: int, halted: bool, refused: bool) -> None:
+    def ask() -> w.WindowRequest | None:
+        return w.request(display, True, shared=True, displays=USABLE, emulator=emulator,
+                         platform=platform, halted=halted)
+
+    if refused:
+        with pytest.raises(Invalid) as e:
+            ask()
+        assert e.value.code == "bad_argument" and "fullscreen" in str(e.value)
+    else:
+        assert ask() is not None
+
+
+def test_an_emulator_that_fits_the_height_to_its_aspect_says_so_in_the_request() -> None:
+    mame = w.request(0, None, shared=True, displays=USABLE, size="744x768", emulator="mame",
+                     platform="win32")
+    assert mame is not None and mame.height_free is True
+    for emulator, platform in (("mame", "darwin"), ("dosbox-x", "win32")):
+        got = w.request(0, None, shared=True, displays=USABLE, size="744x768",
+                        emulator=emulator, platform=platform)
+        assert got is not None and got.height_free is False
+
+
+def test_the_window_tool_judges_a_stated_size_against_what_the_host_lists(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    asked = w.WindowRequest(0, False, (0, 0), size=(1280, 960))
+    right = Host([seen(PID, (0, 30, 1280, 992))], USABLE)
+    monkeypatch.setattr(w, "host", lambda platform=None: right)
+    assert w.answer(PID, asked, front=False, launched_behind=False)["size"]["matches"] is True
+    wrong = Host([seen(PID, (0, 30, 640, 512))], USABLE)
+    monkeypatch.setattr(w, "host", lambda platform=None: wrong)
+    assert w.answer(PID, asked, front=False, launched_behind=False)["size"]["matches"] is False
+
+
+def test_the_window_tool_adds_no_size_verdict_to_a_request_that_stated_none(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    plain = Host([seen(PID, (0, 30, 640, 512))], USABLE)
+    monkeypatch.setattr(w, "host", lambda platform=None: plain)
+    got = w.answer(PID, w.WindowRequest(0, False, (0, 0)), front=False, launched_behind=False)
+    assert "size" not in got
+
+
+def test_prove_does_not_judge_the_size_so_a_parked_start_is_not_refused_for_it() -> None:
+    asked = w.WindowRequest(0, False, (0, 0), size=(1280, 960))
+    parked = Host([seen(PID, (0, 30, 640, 432))], USABLE)
+    assert w.prove(PID, asked, 1.0, parked).bounds == (0, 30, 640, 432)
