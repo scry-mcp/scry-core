@@ -9,16 +9,20 @@ from scry_core.window_size import WINDOW_MARGIN_PX
 
 
 def dosbox_x(asked: WindowRequest, platform: str | None = None) -> list[str]:
-    """The size is in logical pixels where DOSBox-X is not DPI aware (`dpi aware=false`, or `auto`
-    from 200 %, which it reads off the primary display: a mixed-scale desk is unmeasured)."""
+    """On Windows DOSBox-X is DPI unaware with `dpi aware=false`, or `auto` and the primary display
+    from 200 %: size and position are then logical pixels. Aware, they are real pixels and the
+    margin grows with the scale, or the title bar sits above the display."""
     words = ["-set", f"sdl display={asked.display}"]
     if asked.fullscreen:
         return [*words, "-fullscreen"]
+    windows = (platform or sys.platform) == "win32"
+    system = asked.scale if asked.system_scale is None else asked.system_scale
+    unaware = windows and (asked.dpi_aware is False or (asked.dpi_aware is None and system >= 2))
+    margin = round(WINDOW_MARGIN_PX * asked.scale) if windows and not unaware else WINDOW_MARGIN_PX
     x, y = asked.origin
-    words += ["-set", f"sdl windowposition={x + WINDOW_MARGIN_PX},{y + WINDOW_MARGIN_PX}"]
+    words += ["-set", f"sdl windowposition={x + margin},{y + margin}"]
     if asked.size is not None:
-        unaware = asked.dpi_aware is False or (asked.dpi_aware is None and asked.scale >= 2)
-        divisor = asked.scale if (platform or sys.platform) == "win32" and unaware else 1
+        divisor = asked.scale if unaware else 1
         width, height = (round(side / divisor) for side in asked.size)
         words += ["-set", f"sdl windowresolution={width}x{height}"]
     return words

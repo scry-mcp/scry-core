@@ -84,6 +84,8 @@ class WindowRequest:
     fitted: bool = False
     #: DOSBox-X's `[dosbox] dpi aware` as the conf states it: True, False, or None for auto.
     dpi_aware: bool | None = None
+    #: The primary display's scale, which DOSBox-X reads `dpi aware=auto` from; None: `scale`.
+    system_scale: float | None = None
 
 
 def _count(n: int) -> str:
@@ -129,9 +131,11 @@ def request(display: int | None, fullscreen: bool | None, *, shared: bool,
             raise Invalid("bad_argument", "`size` and `fullscreen` contradict: full screen is the "
                           "display's own size; leave one out")
         window_size.refuse_unfit(asked, where.work, where.scale, platform)
+    main = next((d for d in displays if d.index == 0), where)
     return WindowRequest(chosen, bool(fullscreen), where.bounds[:2], asked, where.scale,
                          where.work,
-                         window_size.height_free(emulator, platform) and asked is not None)
+                         window_size.height_free(emulator, platform) and asked is not None,
+                         system_scale=None if main.scale == where.scale else main.scale)
 
 
 @dataclass(frozen=True)

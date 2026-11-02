@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+### Fixed
+
+- `window_words.dosbox_x` on Windows: a DOSBox-X that reads real pixels (`dpi aware=true`, or `auto` below 200 %) gets a window margin that grows with the scale, so its title bar is on the display (at 300 % with `dpi aware=true` it was above it). `dpi aware=auto` is decided by the primary display's scale (`WindowRequest.system_scale`), as DOSBox-X reads it, not by the asked display's.
+
 ## 0.83.0
 
 ### Added

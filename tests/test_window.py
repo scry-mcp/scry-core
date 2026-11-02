@@ -607,7 +607,7 @@ USABLE = [w.Display(0, (0, 0, 2048, 1152), usable=(0, 30, 2048, 1122)),
 def test_a_stated_size_rides_in_the_request_with_the_displays_scale() -> None:
     got = w.request(1, None, shared=True, displays=USABLE, size="1280x960", platform="darwin")
     assert got == w.WindowRequest(1, False, (2048, 0), size=(1280, 960), scale=2.0,
-                                usable=(2048, 0, 2048, 1152))
+                                  usable=(2048, 0, 2048, 1152), system_scale=1.0)
 
 
 @pytest.mark.parametrize(("kwargs", "why"), [

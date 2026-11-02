@@ -80,6 +80,32 @@ def test_dosbox_x_reads_the_unit_from_the_conf_s_dpi_awareness_on_windows(
     assert words.dosbox_x(asked, "win32")[-1] == f"sdl windowresolution={sent}"
 
 
+@pytest.mark.parametrize(("scale", "system", "dpi_aware", "sent"), [
+    (2.0, 1.0, None, "1280x960"),     # the primary display decides `auto`, not the asked one
+    (1.5, 2.0, None, "853x640"),      # primary at 200 %: unaware, and the asked display scales it
+    (1.0, 2.0, None, "1280x960"),
+    (2.0, 1.0, False, "640x480"),     # an explicit setting ignores the primary display
+])
+def test_dosbox_x_reads_auto_off_the_primary_display_s_scale(
+        scale: float, system: float, dpi_aware: bool | None, sent: str) -> None:
+    asked = w.WindowRequest(1, False, (2048, 0), size=(1280, 960), scale=scale,
+                            system_scale=system, dpi_aware=dpi_aware)
+    assert words.dosbox_x(asked, "win32")[-1] == f"sdl windowresolution={sent}"
+
+
+@pytest.mark.parametrize(("scale", "dpi_aware", "position"), [
+    (3.0, True, "120,120"),           # real pixels: the margin grows with the scale
+    (1.5, None, "60,60"),             # auto below 200 % is aware too
+    (3.0, None, "40,40"),             # unaware: logical pixels, the margin as it is
+    (3.0, False, "40,40"),
+    (1.0, True, "40,40"),
+])
+def test_dosbox_x_keeps_its_title_bar_on_the_display_when_it_reads_real_pixels(
+        scale: float, dpi_aware: bool | None, position: str) -> None:
+    asked = w.WindowRequest(0, False, (0, 0), scale=scale, dpi_aware=dpi_aware)
+    assert f"sdl windowposition={position}" in words.dosbox_x(asked, "win32")
+
+
 def test_dpi_awareness_changes_nothing_on_macos() -> None:
     asked = w.WindowRequest(1, False, (2048, 0), size=(1280, 960), scale=2.0, dpi_aware=False)
     assert words.dosbox_x(asked, "darwin")[-1] == "sdl windowresolution=1280x960"
