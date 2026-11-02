@@ -111,16 +111,20 @@ def refuse_fullscreen(emulator: str, display: int, platform: str, *, halted: boo
 
 
 def refuse_dropped_position(emulator: str, display: int, origin: tuple[int, int],
-                            platform: str) -> None:
-    """DOSBox-X ignores a `windowposition` with a negative coordinate (sdlmain.cpp keeps only
-    `posx >= 0 && posy >= 0`) and centres the window on the main display."""
+                            platform: str, *, halted: bool) -> None:
+    """DOSBox-X ignores a `windowposition` with a negative coordinate (its source keeps only
+    `posx >= 0 && posy >= 0`) and centres the window on the main display. Measured on macOS; the
+    same guard is in its Windows code, which has not been measured. Full screen needs no position,
+    but a halted start refuses it off display 0, so it is advised only to a running one."""
     if (emulator == "dosbox-x" and platform == DOSBOX_X_DROPS_NEGATIVE_POSITION_ON
             and min(origin) + WINDOW_MARGIN_PX < 0):
+        way_out = ("use `display=0`, or a display at or right of and below the main one" if halted
+                   else f"use `fullscreen=true` on display {display}, or a display at or right "
+                        "of and below the main one")
         raise Invalid("bad_argument",
                       f"display {display} sits left of or above the main one, and DOSBox-X "
                       "ignores a negative window position, so its window would open on the main "
-                      f"display: use `fullscreen=true` on display {display}, or a display at or "
-                      "right of and below the main one")
+                      f"display: {way_out}")
 
 
 def judge(asked: Size, seen: Listed, scale: float, *,

@@ -121,7 +121,8 @@ def request(display: int | None, fullscreen: bool | None, *, shared: bool,
     if emulator is not None and fullscreen:
         window_size.refuse_fullscreen(emulator, chosen, platform, halted=halted)
     if emulator is not None and not fullscreen:
-        window_size.refuse_dropped_position(emulator, chosen, where.bounds[:2], platform)
+        window_size.refuse_dropped_position(emulator, chosen, where.bounds[:2], platform,
+                                            halted=halted)
     asked = None if size is None else window_size.parse(size)
     if asked is not None:
         if fullscreen:

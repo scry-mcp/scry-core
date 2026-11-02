@@ -27,6 +27,7 @@ import io
 import math
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Sequence
 from typing import Any, NoReturn, cast
 
@@ -37,6 +38,7 @@ from scry_core.window_size import judge
 
 #: How long a shell proof keeps reading a window that has not yet taken the size asked.
 SIZE_SETTLE_S = 3.0
+CLOCK = time.monotonic
 
 EMULATORS: dict[str, Callable[[WindowRequest], list[str]]] = {
     "mame": window_words.mame, "dosbox-x": window_words.dosbox_x}
@@ -150,9 +152,11 @@ def main(argv: Sequence[str]) -> int:
             print("\n".join(EMULATORS[said.emulator](asked)))
             return 0
         desk = host()
+        began = CLOCK()
         state = prove(said.pid, asked, said.seconds, desk, shell=True)
-        state = settle_size(said.pid, asked, state, SIZE_SETTLE_S if said.seconds is None
-                            else said.seconds, desk)
+        left = (SIZE_SETTLE_S if said.seconds is None
+                else max(0.0, said.seconds - (CLOCK() - began)))
+        state = settle_size(said.pid, asked, state, left, desk)
     except Invalid as e:
         return _refused(e, said.command)
     x, y, w, h = state.bounds

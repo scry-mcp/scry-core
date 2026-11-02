@@ -9,8 +9,8 @@ from scry_core.window_size import WINDOW_MARGIN_PX
 
 
 def dosbox_x(asked: WindowRequest, platform: str | None = None) -> list[str]:
-    """A position places a macOS run. The size is in logical pixels where DOSBox-X is not DPI
-    aware (on Windows, `dpi aware=false`, or `auto` from 200 %), and in points on macOS."""
+    """The size is in logical pixels where DOSBox-X is not DPI aware (`dpi aware=false`, or `auto`
+    from 200 %, which it reads off the primary display: a mixed-scale desk is unmeasured)."""
     words = ["-set", f"sdl display={asked.display}"]
     if asked.fullscreen:
         return [*words, "-fullscreen"]

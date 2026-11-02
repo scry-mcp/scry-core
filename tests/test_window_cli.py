@@ -277,6 +277,30 @@ def test_proof_of_a_size_waits_for_an_emulator_that_resizes_its_window_after_sho
     assert code == 0 and "matches=true" in out and "window: display=0 bounds=40,70,1280x992" in out
 
 
+def test_proof_of_a_size_spends_the_one_bound_it_was_given_not_two(
+        desk: Desk, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr("sys.platform", "darwin")
+    now = [100.0]
+    state = w.WindowState(display=0, bounds=(40, 70, 640, 432), onscreen=True, front=True,
+                          fullscreen=False)
+    bounds: list[float] = []
+
+    def slow_prove(*_a: object, **_k: object) -> w.WindowState:
+        now[0] += 1.5
+        return state
+
+    def record(_pid: int, _asked: object, got: w.WindowState, bound: float, _desk: object,
+               ) -> w.WindowState:
+        bounds.append(bound)
+        return got
+
+    monkeypatch.setattr(cli, "CLOCK", lambda: now[0])
+    monkeypatch.setattr(cli, "prove", slow_prove)
+    monkeypatch.setattr(cli, "settle_size", record)
+    run(capsys, "proof", "7", "--size", "1280x960", "--seconds", "2")
+    assert bounds == [pytest.approx(0.5)]
+
+
 def test_proof_of_a_size_exits_3_when_the_window_is_another_size(
         desk: Desk, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     monkeypatch.setattr("sys.platform", "darwin")

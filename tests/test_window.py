@@ -652,6 +652,7 @@ def test_the_full_screen_rule_of_each_emulator_is_judged_once_per_platform_in_th
     ("dosbox-x", "darwin", (2048, 0), False, False),
     ("dosbox-x", "darwin", (-2048, 0), True, False),
     ("mame", "darwin", (-2048, 0), False, False),
+    ("dosbox-x", "win32", (-2048, 0), False, False),
 ])
 def test_dosbox_x_is_not_asked_to_place_a_window_at_a_negative_position_it_drops(
         emulator: str, platform: str, origin: tuple[int, int], fullscreen: bool,
@@ -668,6 +669,16 @@ def test_dosbox_x_is_not_asked_to_place_a_window_at_a_negative_position_it_drops
         assert e.value.code == "bad_argument" and "left of or above" in str(e.value)
     else:
         assert ask() is not None
+
+
+@pytest.mark.parametrize(("halted", "advice"), [(True, False), (False, True)])
+def test_the_refusal_never_sends_the_caller_to_a_full_screen_the_start_would_refuse(
+        halted: bool, advice: bool) -> None:
+    left = [w.Display(0, (0, 0, 2048, 1152)), w.Display(1, (-2048, 0, 2048, 1152))]
+    with pytest.raises(Invalid) as e:
+        w.request(1, False, shared=True, displays=left, emulator="dosbox-x", platform="darwin",
+                  halted=halted)
+    assert ("fullscreen=true" in str(e.value)) is advice
 
 
 def test_an_emulator_that_fits_the_height_to_its_aspect_says_so_in_the_request() -> None:
