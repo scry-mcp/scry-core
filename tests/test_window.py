@@ -599,6 +599,31 @@ def test_the_full_screen_rule_of_each_emulator_is_judged_once_per_platform_in_th
         assert ask() is not None
 
 
+@pytest.mark.parametrize(("emulator", "platform", "origin", "fullscreen", "refused"), [
+    ("dosbox-x", "darwin", (-2048, 0), False, True),
+    ("dosbox-x", "darwin", (0, -1152), False, True),
+    ("dosbox-x", "darwin", (-41, 0), False, True), ("dosbox-x", "darwin", (-40, 0), False, False),
+    ("dosbox-x", "darwin", (2048, 0), False, False),
+    ("dosbox-x", "darwin", (-2048, 0), True, False),
+    ("mame", "darwin", (-2048, 0), False, False),
+])
+def test_dosbox_x_is_not_asked_to_place_a_window_at_a_negative_position_it_drops(
+        emulator: str, platform: str, origin: tuple[int, int], fullscreen: bool,
+        refused: bool) -> None:
+    left = [w.Display(0, (0, 0, 2048, 1152)), w.Display(1, (*origin, 2048, 1152))]
+
+    def ask() -> w.WindowRequest | None:
+        return w.request(1, fullscreen, shared=True, displays=left, emulator=emulator,
+                         platform=platform, halted=False)
+
+    if refused:
+        with pytest.raises(Invalid) as e:
+            ask()
+        assert e.value.code == "bad_argument" and "left of or above" in str(e.value)
+    else:
+        assert ask() is not None
+
+
 def test_an_emulator_that_fits_the_height_to_its_aspect_says_so_in_the_request() -> None:
     mame = w.request(0, None, shared=True, displays=USABLE, size="744x768", emulator="mame",
                      platform="win32")

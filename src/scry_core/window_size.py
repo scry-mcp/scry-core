@@ -21,6 +21,9 @@ WINDOWS_FRAME_PX = (16, 59)
 
 MAME_NO_FULLSCREEN_ON = ("darwin", "win32")
 DOSBOX_X_HALTED_MAIN_ONLY_ON = "darwin"
+DOSBOX_X_DROPS_NEGATIVE_POSITION_ON = "darwin"
+#: Where a window sits inside its display's corner, clear of the menu bar and the edge.
+WINDOW_MARGIN_PX = 40
 MAME_HEIGHT_FREE_ON = "win32"
 
 
@@ -105,6 +108,19 @@ def refuse_fullscreen(emulator: str, display: int, platform: str, *, halted: boo
                       "a start is halted at its first instruction, so the window would stay "
                       "windowed: use `display=0` for full screen, or `fullscreen=false` on "
                       f"display {display}")
+
+
+def refuse_dropped_position(emulator: str, display: int, origin: tuple[int, int],
+                            platform: str) -> None:
+    """DOSBox-X ignores a `windowposition` with a negative coordinate (sdlmain.cpp keeps only
+    `posx >= 0 && posy >= 0`) and centres the window on the main display."""
+    if (emulator == "dosbox-x" and platform == DOSBOX_X_DROPS_NEGATIVE_POSITION_ON
+            and min(origin) + WINDOW_MARGIN_PX < 0):
+        raise Invalid("bad_argument",
+                      f"display {display} sits left of or above the main one, and DOSBox-X "
+                      "ignores a negative window position, so its window would open on the main "
+                      f"display: use `fullscreen=true` on display {display}, or a display at or "
+                      "right of and below the main one")
 
 
 def judge(asked: Size, seen: Listed, scale: float, *,

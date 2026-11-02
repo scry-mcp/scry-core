@@ -27,6 +27,7 @@ What a server author notices. A client's view of each server is in that server's
 
 ### Fixed
 
+- `window.request` refuses a watched DOSBox-X window on macOS when its display sits left of or above the main one: DOSBox-X ignores a negative `windowposition` and would open the window on the main display. Full screen is not refused (it sends no position).
 - `window_cli proof` refused with the next step of a server's tools (`status`, `resume`, `close`),
   which a shell does not have; `prove` and `wait_visible` take `shell=True` and word the step for it.
 

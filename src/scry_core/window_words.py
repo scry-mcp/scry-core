@@ -5,8 +5,7 @@ from __future__ import annotations
 import sys
 
 from scry_core.window import WindowRequest
-
-WINDOW_MARGIN_PX = 40
+from scry_core.window_size import WINDOW_MARGIN_PX
 
 
 def dosbox_x(asked: WindowRequest, platform: str | None = None) -> list[str]:
