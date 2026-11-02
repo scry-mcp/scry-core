@@ -266,6 +266,17 @@ def test_proof_of_a_size_exits_0_naming_both_sizes_when_the_window_matches(
     assert "size: asked=1280x960 seen=1280x992 compared=outer matches=true" in out
 
 
+def test_proof_of_a_size_waits_for_an_emulator_that_resizes_its_window_after_showing_it(
+        desk: Desk, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr("sys.platform", "darwin")
+    first = [w.Seen(pid=7, number=1, bounds=(40, 70, 1968, 1317), onscreen=True)]
+    later = [w.Seen(pid=7, number=1, bounds=(40, 70, 1280, 992), onscreen=True)]
+    polls = iter([first, later])
+    desk.windows = lambda: next(polls, later)  # type: ignore[method-assign]
+    code, out, _ = run(capsys, "proof", "7", "--size", "1280x960", "--seconds", "2")
+    assert code == 0 and "matches=true" in out and "window: display=0 bounds=40,70,1280x992" in out
+
+
 def test_proof_of_a_size_exits_3_when_the_window_is_another_size(
         desk: Desk, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     monkeypatch.setattr("sys.platform", "darwin")

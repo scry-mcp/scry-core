@@ -11,8 +11,9 @@
 starts COMMAND with those words appended, detached, and prints `pid: <N>`, the pid `proof` takes
 (no shell quoting, the same on both hosts). `proof`
 waits for the window PID itself owns (the emulator's own pid, not a launcher's) and prints
-`window: display=<i> bounds=<x>,<y>,<w>x<h> onscreen=<bool>`, and with `--size` a second line
-`size: asked=WxH seen=WxH compared=client|outer matches=<bool>`. Display 0 when omitted.
+`window: display=<i> bounds=<x>,<y>,<w>x<h> onscreen=<bool>` (with `--size`, once the window has
+the size or the bound passes: an emulator may resize it after showing it), and with `--size` a
+second line `size: asked=WxH seen=WxH compared=client|outer matches=<bool>`. Display 0 when omitted.
 
 Exit 0 done; 2 bad usage or a refused request; 3 the window is not as asked (size included), or
 `displays`, `words` and `launch` found no display online or the host refused; 4 `proof` could not
@@ -31,8 +32,11 @@ from typing import Any, NoReturn, cast
 
 from scry_core import window_words
 from scry_core.reply_contract import Invalid
-from scry_core.window import WindowRequest, host, prove, request
+from scry_core.window import WindowRequest, host, prove, request, settle_size
 from scry_core.window_size import judge
+
+#: How long a shell proof keeps reading a window that has not yet taken the size asked.
+SIZE_SETTLE_S = 3.0
 
 EMULATORS: dict[str, Callable[[WindowRequest], list[str]]] = {
     "mame": window_words.mame, "dosbox-x": window_words.dosbox_x}
@@ -145,7 +149,10 @@ def main(argv: Sequence[str]) -> int:
             cast(io.TextIOWrapper, sys.stdout).reconfigure(newline="\n")
             print("\n".join(EMULATORS[said.emulator](asked)))
             return 0
-        state = prove(said.pid, asked, said.seconds, host(), shell=True)
+        desk = host()
+        state = prove(said.pid, asked, said.seconds, desk, shell=True)
+        state = settle_size(said.pid, asked, state, SIZE_SETTLE_S if said.seconds is None
+                            else said.seconds, desk)
     except Invalid as e:
         return _refused(e, said.command)
     x, y, w, h = state.bounds

@@ -202,6 +202,52 @@ def test_a_window_that_appears_late_is_waited_for() -> None:
     assert state.onscreen and host.polls == 4 and len(clock.slept) == 3
 
 
+class Resizing(Host):
+    """A window listed at one rectangle for `steady` polls, then at another: an emulator shows its
+    window and resizes it a moment later."""
+
+    def __init__(self, first: w.Rect, later: w.Rect, steady: int) -> None:
+        super().__init__([seen(PID, first)])
+        self.later, self.steady = later, steady
+
+    def windows(self) -> list[w.Seen]:
+        self.polls += 1
+        return [seen(PID, self.later if self.polls > self.steady else self.listed[0].bounds)]
+
+
+SIZED = w.WindowRequest(0, False, (0, 0), (1280, 960))
+
+
+def settle(host: Host, bound_s: float = 3.0) -> tuple[w.WindowState, Clock]:
+    clock = Clock()
+    first = w.observe(PID, host)
+    return w.settle_size(PID, SIZED, first, bound_s, host, clock, clock.sleep), clock
+
+
+def test_a_window_that_already_has_its_size_is_not_waited_on() -> None:
+    state, clock = settle(Host([seen(PID, (40, 70, 1280, 992))]))
+    assert state.bounds == (40, 70, 1280, 992) and clock.slept == []
+
+
+def test_a_window_resized_after_its_first_sighting_is_read_again_until_it_has_the_size() -> None:
+    state, clock = settle(Resizing((40, 70, 1968, 1317), (40, 70, 1280, 992), steady=3))
+    assert state.bounds == (40, 70, 1280, 992) and 0 < len(clock.slept) <= 4
+
+
+def test_a_window_that_never_takes_the_size_is_read_as_it_is_after_the_bound() -> None:
+    state, clock = settle(Host([seen(PID, (40, 70, 640, 432))]), bound_s=1.0)
+    assert state.bounds == (40, 70, 640, 432) and clock.now >= 1.0
+
+
+def test_no_stated_size_means_no_waiting() -> None:
+    clock = Clock()
+    host = Host([seen(PID, (40, 70, 640, 432))])
+    first = w.observe(PID, host)
+    plain = w.WindowRequest(0, False, (0, 0))
+    assert w.settle_size(PID, plain, first, 3.0, host, clock, clock.sleep) is first
+    assert clock.slept == []
+
+
 def test_a_window_that_never_appears_is_a_refusal_after_the_bound_not_before() -> None:
     clock = Clock()
     host = Host([], appears_after=0)

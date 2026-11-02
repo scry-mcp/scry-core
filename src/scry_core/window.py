@@ -314,6 +314,25 @@ def prove(pid: int, asked: WindowRequest, bound_s: float | None = None,
     return proved
 
 
+def settle_size(pid: int, asked: WindowRequest, state: WindowState, bound_s: float,
+                where: Host, clock: Callable[[], float] = time.monotonic,
+                sleep: Callable[[float], None] = time.sleep) -> WindowState:
+    """`state`, or the later reading that has the size asked: an emulator shows its window first
+    and resizes it a moment after. A window that never takes the size is read as it is at the
+    bound, for the caller to judge."""
+    wanted = asked.size
+    if wanted is None:
+        return state
+
+    def sized(s: WindowState | None) -> bool:
+        return (s is not None and s.display == asked.display and window_size.judge(
+            wanted, s, asked.scale, height_free=asked.height_free)["matches"])
+
+    if sized(state):
+        return state
+    return _wait(pid, where, bound_s, clock, sleep, sized) or state
+
+
 def answer(pid: int, asked: WindowRequest | None, *, front: bool,
            launched_behind: bool) -> dict[str, Any]:
     """The `window` tool's reply fields: where the window is, brought forward on `front`;
