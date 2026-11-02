@@ -415,6 +415,7 @@ def test_the_screens_are_read_through_the_runtime_in_the_right_order(
 
     monkeypatch.setattr(wh, "_send", send)
     monkeypatch.setattr(wh, "_class", lambda name: 1)
+    monkeypatch.setattr(ctypes, "CDLL", lambda name: None)
     got = wh.screens()
     assert got == [((0, 0, 10, 10), (0, 1, 10, 8), 2.0)] * 2
     assert calls[:2] == ["screens", "count"]
