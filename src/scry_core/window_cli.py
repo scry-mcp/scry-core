@@ -61,21 +61,25 @@ def _bound(text: str) -> float:
     return seconds
 
 
+def _placement(one: argparse.ArgumentParser) -> None:
+    one.add_argument("--display", type=int)
+    one.add_argument("--fullscreen", action="store_true")
+    one.add_argument("--size")
+
+
 def _parser() -> argparse.ArgumentParser:
     top = _Parser(prog="window_cli", add_help=False, allow_abbrev=False)
     sub = top.add_subparsers(dest="command", required=True, parser_class=_Parser)
     sub.add_parser("displays", add_help=False, allow_abbrev=False)
-    for name in ("words", "launch", "proof"):
+    for name in ("words", "launch"):
         one = sub.add_parser(name, add_help=False, allow_abbrev=False)
-        if name != "proof":
-            one.add_argument("emulator", choices=sorted(EMULATORS))
-        if name == "proof":
-            one.add_argument("pid", type=int)
-            one.add_argument("--seconds", type=_bound)
-            one.add_argument("--emulator", choices=sorted(EMULATORS))
-        one.add_argument("--display", type=int)
-        one.add_argument("--fullscreen", action="store_true")
-        one.add_argument("--size")
+        one.add_argument("emulator", choices=sorted(EMULATORS))
+        _placement(one)
+    proof = sub.add_parser("proof", add_help=False, allow_abbrev=False)
+    proof.add_argument("pid", type=int)
+    proof.add_argument("--seconds", type=_bound)
+    proof.add_argument("--emulator", choices=sorted(EMULATORS))
+    _placement(proof)
     return top
 
 
