@@ -35,6 +35,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.signalled_end` | how a server ends on SIGTERM, SIGHUP or Ctrl-C: the emulator closed under the lock or past its wait, the scratch removed, the process left |
 | `scry_core.state_files` | a saved state's name (its alphabet and its bound), what sits under it and holds no state (a dangling link, a directory, a FIFO), said instead of opened, and the load's refusal of it |
 | `scry_core.value_format` | how a watched value is typed: the format of its bytes (scalars, arrays, strings, structs, pointers; a NaN or infinite float read as the text `nan`, `inf` or `-inf`), the `types` file naming one per symbol, and the pointer ref read through one |
+| `scry_core.reply_differences` | the advance tools' reply fields of the two servers side by side, read off their generated reference pages into `docs/advance-differences.md`, which a test holds to the run |
 | `scry_core.reply_shapes` | the pytest plugin running the test-time guard (`reply_shapes_guard`) that holds one word to one shape in every reply |
 | `scry_core.reply_shapes_guard` | what that plugin runs: every key of a reply in the one shape the table gives it, no null anywhere, and the reply held to its tool's declared model (`reply_schema.check`) |
 | `scry_core.verdict` | what every instrument here answers when it has no verdict (the probe, the cap check, the live bench, the demo, the replay, the hook): `Invalid` and the exit codes 0, 1 and 3 |

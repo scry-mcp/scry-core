@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+### Added
+
+- `scry_core.reply_differences`: the advance tools' reply fields of the two servers side by side, read off their
+  generated reference pages into `docs/advance-differences.md`; a test holds the page to the run.
+
 ## 0.84.0
 
 ### Fixed
