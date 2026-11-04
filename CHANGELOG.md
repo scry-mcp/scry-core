@@ -2,6 +2,29 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.87.0
+
+### Added
+
+- `prose.picture`, `log_marks.tail`, `narrowing.last_words` and `window.fit_size`: the picture line of a view,
+  the last characters of a log read from its end, the close reply's last words, and a fitted window size, each
+  written once for both servers. `focus_watch.graphics` and `focus_watch.managed` are public, as `window_host`
+  already used them.
+
+### Fixed
+
+- `window_words.dosbox_x`: a window as wide as the usable area is placed so its right edge stays on the display
+  (it started at the margin and ran past it). On Windows the whole outer window, its borders, title bar and
+  menu included, stays inside the usable area whatever the scale and `dpi aware` setting; at 300 % the title
+  bar used to start above the display.
+- `window.prove`: the refusal of a full-screen window that does not fill its display reports the last reading,
+  not the first.
+- `reply_differences`: a reply table with no block marker before it is an invalid page (exit 3), not a traceback.
+
+### Removed
+
+- `window_words.mame`'s `resolution` argument, which no caller passed.
+
 ## 0.86.0
 
 ### Added
