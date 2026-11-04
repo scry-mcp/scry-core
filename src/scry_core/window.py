@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
 from scry_core import window_size
@@ -86,6 +86,16 @@ class WindowRequest:
     dpi_aware: bool | None = None
     #: The primary display's scale, which DOSBox-X reads `dpi aware=auto` from; None: `scale`.
     system_scale: float | None = None
+
+
+def fit_size(asked: WindowRequest, fit: Callable[[Rect, float], window_size.Size],
+             **changes: Any) -> WindowRequest:
+    """`asked` with `fit(usable, scale)` as its size and the server's own choice marked, `changes`
+    beside it; unchanged where a size was stated, the window fills the display or the usable
+    area is not known."""
+    if asked.size is not None or asked.fullscreen or not asked.usable:
+        return asked
+    return replace(asked, fitted=True, size=fit(asked.usable, asked.scale), **changes)
 
 
 def _count(n: int) -> str:
@@ -317,7 +327,7 @@ def prove(pid: int, asked: WindowRequest, bound_s: float | None = None,
                               "again without `--fullscreen`" if shell else
                               "`resume` it and read `window` again; if it still does not fill, "
                               "`close` and start again with `fullscreen=false`"),
-                           asked_display=asked.display, seen=proved.block())
+                           asked_display=asked.display, seen=(later or proved).block())
     return proved
 
 

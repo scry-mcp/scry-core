@@ -64,15 +64,18 @@ def test_write_then_check_agree_and_a_changed_page_is_drift(
     assert rd.main(args) == 1
 
 
-@pytest.mark.parametrize("damage", ["missing", "no tool"])
+@pytest.mark.parametrize("damage", ["missing", "no tool", "table without a block"])
 def test_a_page_that_cannot_be_compared_is_invalid_not_agreement(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
         damage: str) -> None:
     mame, dosbox = _servers(tmp_path, monkeypatch)
     if damage == "missing":
         (mame / rd.SERVER_PAGE).unlink()
-    else:
+    elif damage == "no tool":
         (mame / rd.SERVER_PAGE).write_text("no blocks here", encoding="utf-8")
+    else:
+        (mame / rd.SERVER_PAGE).write_text(
+            "| reply field | type |\n|---|---|\n| `pc` | s |\n", encoding="utf-8")
     assert rd.main(["--mame", str(mame), "--dosbox-x", str(dosbox)]) == 3
     assert "INVALID" in capsys.readouterr().err
 

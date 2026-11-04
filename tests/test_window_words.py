@@ -31,13 +31,8 @@ def test_dosbox_x_fills_the_display_in_full_screen_and_sends_no_position() -> No
     assert words.dosbox_x(FULL) == ["-set", "sdl display=1", "-fullscreen"]
 
 
-@pytest.mark.parametrize(("resolution", "flags"), [
-    (None, ["-window", "-nomaximize"]),
-    ("640x480", ["-window", "-nomaximize", "-resolution", "640x480"]),
-])
-def test_mame_windows_the_run_on_the_asked_display(resolution: str | None,
-                                                   flags: list[str]) -> None:
-    assert words.mame(WINDOWED, resolution) == [*flags, "-screen0", "screen1"]
+def test_mame_windows_the_run_on_the_asked_display() -> None:
+    assert words.mame(WINDOWED) == ["-window", "-nomaximize", "-screen0", "screen1"]
 
 
 def test_mame_full_screen_is_the_words_alone_the_platform_rule_is_the_requests() -> None:
@@ -47,6 +42,34 @@ def test_mame_full_screen_is_the_words_alone_the_platform_rule_is_the_requests()
 def _sized(size: tuple[int, int], scale: float = 1.0,
            height_free: bool = False) -> w.WindowRequest:
     return w.WindowRequest(1, False, (2048, 0), size=size, scale=scale, height_free=height_free)
+
+
+def test_dosbox_x_pulls_the_position_back_so_the_width_stays_inside_the_usable_area() -> None:
+    usable = (0, 30, 2048, 1122)
+    wide = w.WindowRequest(0, False, (0, 0), size=(2048, 1090), usable=usable)
+    assert words.dosbox_x(wide, "darwin")[3] == "sdl windowposition=0,40"
+    narrow = w.WindowRequest(0, False, (0, 0), size=(1453, 1090), usable=usable)
+    assert words.dosbox_x(narrow, "darwin")[3] == "sdl windowposition=40,40"
+
+
+@pytest.mark.parametrize(("size", "position"), [
+    ((3792, 1839), "24,153"),      # fills the usable area: the outer window starts at its corner
+    ((2452, 1839), "120,153"),     # the title bar and menu sit above the client, on the display
+    (None, "120,153"),
+])
+def test_dosbox_x_on_windows_keeps_the_whole_window_on_the_display_at_300_percent(
+        size: tuple[int, int] | None, position: str) -> None:
+    asked = w.WindowRequest(0, False, (0, 0), size=size, scale=3.0, dpi_aware=True,
+                            usable=(0, 0, 3840, 2016))
+    assert words.dosbox_x(asked, "win32")[3] == f"sdl windowposition={position}"
+
+
+@pytest.mark.parametrize(("size", "position"), [
+    ((3792, 1839), "8,51"), ((2452, 1839), "40,51"), (None, "40,51")])
+def test_dosbox_x_on_windows_without_dpi_awareness_keeps_the_window_on_the_display(
+        size: tuple[int, int] | None, position: str) -> None:
+    asked = w.WindowRequest(0, False, (0, 0), size=size, scale=3.0, usable=(0, 0, 3840, 2016))
+    assert words.dosbox_x(asked, "win32")[3] == f"sdl windowposition={position}"
 
 
 def test_dosbox_x_sends_a_stated_size_after_its_position() -> None:
@@ -129,7 +152,3 @@ def test_mame_drops_nomaximize_for_a_stated_size_when_the_request_says_the_heigh
 def test_mame_keeps_nomaximize_when_no_size_was_stated() -> None:
     assert words.mame(w.WindowRequest(1, False, (2048, 0), height_free=True))[:2] == [
         "-window", "-nomaximize"]
-
-
-def test_a_stated_size_wins_over_a_resolution_a_server_passes_beside_it() -> None:
-    assert "744x768" in words.mame(_sized((744, 768)), "640x480")

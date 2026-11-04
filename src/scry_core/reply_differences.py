@@ -39,7 +39,7 @@ def reply_fields(page: str) -> dict[str, list[str]]:
             tools[tool] = []
         elif line.startswith("| reply field"):
             reading = True
-        elif reading and (row := _ROW.match(line)):
+        elif reading and tool and (row := _ROW.match(line)):
             tools[tool].append(row[1])
         elif reading and not line.startswith("|"):
             reading = False

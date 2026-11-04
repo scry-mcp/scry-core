@@ -4,6 +4,9 @@ has its own tests in `test_window_host.py`."""
 
 from __future__ import annotations
 
+from dataclasses import replace
+from typing import Any
+
 import pytest
 
 from scry_core import window as w
@@ -505,6 +508,7 @@ def test_prove_refuses_a_window_that_fills_a_different_display_than_the_one_aske
     with pytest.raises(Invalid) as e:
         w.prove(PID, w.WindowRequest(1, True, (2048, 0)))
     assert e.value.code == "window_not_visible" and e.value.fields["asked_display"] == 1
+    assert e.value.fields["seen"]["bounds"]["width"] == 2048
 
 
 def test_prove_spends_one_bound_even_when_the_window_never_fills(
@@ -602,6 +606,21 @@ def test_the_background_hint_is_set_or_removed_never_inherited() -> None:
 
 USABLE = [w.Display(0, (0, 0, 2048, 1152), usable=(0, 30, 2048, 1122)),
           w.Display(1, (2048, 0, 2048, 1152), scale=2.0)]
+
+
+@pytest.mark.parametrize(("changes", "fitted"), [
+    ({}, True), ({"size": (640, 480)}, False), ({"fullscreen": True}, False),
+    ({"usable": None}, False)])
+def test_a_size_is_fitted_only_where_none_was_stated_and_the_usable_area_is_known(
+        changes: dict[str, Any], fitted: bool) -> None:
+    asked = w.WindowRequest(0, False, (0, 0), scale=2.0, usable=(0, 30, 2048, 1122))
+    asked = replace(asked, **changes)
+    got = w.fit_size(asked, lambda usable, scale: (usable[2] // 4 * int(scale), 100),
+                     height_free=True)
+    if fitted:
+        assert got == replace(asked, fitted=True, size=(1024, 100), height_free=True)
+    else:
+        assert got is asked
 
 
 def test_a_stated_size_rides_in_the_request_with_the_displays_scale() -> None:
