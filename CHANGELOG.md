@@ -2,6 +2,15 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.88.0
+
+### Changed
+
+- `conformance.Subject` has `takes_fullscreen`, whether the server's `start` has a `fullscreen`
+  argument at all, and the contract skips its full-screen rules for one that has none: MAME's
+  `start` dropped the argument because no supported host shows a full-screen window. A server
+  built on the contract adds the attribute to its `subject`.
+
 ## 0.87.0
 
 ### Added
