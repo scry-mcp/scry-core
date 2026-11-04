@@ -273,12 +273,12 @@ def test_an_osascript_that_never_answers_is_an_error(monkeypatch: pytest.MonkeyP
 
 
 def test_no_coregraphics_means_no_pointer(monkeypatch: pytest.MonkeyPatch) -> None:
-    fw._graphics.cache_clear()
+    fw.graphics.cache_clear()
     monkeypatch.setattr(ctypes.util, "find_library", lambda _name: None)
     try:
         assert fw._pointer() is None
     finally:
-        fw._graphics.cache_clear()
+        fw.graphics.cache_clear()
 
 
 def _on(ms: int, *spaces: int) -> fw.Sample:
@@ -368,12 +368,12 @@ def test_spaces_that_cannot_be_read_make_the_sample_an_error(
 
 
 def test_no_coregraphics_means_no_spaces(monkeypatch: pytest.MonkeyPatch) -> None:
-    fw._graphics.cache_clear()
+    fw.graphics.cache_clear()
     monkeypatch.setattr(ctypes.util, "find_library", lambda _name: None)
     try:
         assert fw.spaces() is None and fw.spaces_missing() == ""
     finally:
-        fw._graphics.cache_clear()
+        fw.graphics.cache_clear()
 
 
 def test_a_host_without_the_space_symbols_samples_without_spaces_and_says_which(
@@ -384,7 +384,7 @@ def test_a_host_without_the_space_symbols_samples_without_spaces_and_says_which(
     monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.setattr(fw, "_MACOS", True)
     monkeypatch.setattr(subprocess, "run", _fake_run("Finder\t9\n"))
-    monkeypatch.setattr(fw, "_graphics", lambda: (Bare(), Bare()))
+    monkeypatch.setattr(fw, "graphics", lambda: (Bare(), Bare()))
     monkeypatch.setattr(fw, "_pointer", lambda: (1, 2))
     s = fw.sample_host()
     assert (s.error, s.spaces, s.app) == ("", (), "Finder")
@@ -438,7 +438,7 @@ def test_spaces_reads_the_window_server_s_list_and_releases_what_it_was_handed(
         monkeypatch: pytest.MonkeyPatch, managed: int, data: int, raw: bytes,
         want: tuple[tuple[str, int], ...] | None, released: list[int]) -> None:
     g = _Graphics(managed, data, raw)
-    monkeypatch.setattr(fw, "_graphics", lambda: (g, g))
+    monkeypatch.setattr(fw, "graphics", lambda: (g, g))
     assert fw.spaces() == want
     assert g.released == released, "every reference handed over is released, once"
 
@@ -449,7 +449,7 @@ def test_spaces_reads_a_capture_of_the_window_server_s_own_list(
     on a Space of its own), anonymised: the shape the double above stands in for."""
     raw = (CAPTURE.parent / "managed-display-spaces.plist").read_bytes()
     g = _Graphics(7, 8, raw)
-    monkeypatch.setattr(fw, "_graphics", lambda: (g, g))
+    monkeypatch.setattr(fw, "graphics", lambda: (g, g))
     assert fw.spaces() == (("00000000-0000-0000-0000-000000000004", 1),
                            ("00000000-0000-0000-0000-000000000007", 4))
 
@@ -485,17 +485,17 @@ def test_binding_a_coregraphics_without_the_space_symbols_binds_the_rest_and_rai
     cg_names = ("CGEventCreate", "CGEventGetLocation", "CGWindowListCopyWindowInfo")
     cf_names = ("CFPropertyListCreateData", "CFDataGetLength", "CFDataGetBytePtr", "CFRelease")
     made = iter([Library(cg_names), Library(cf_names)])
-    fw._graphics.cache_clear()
+    fw.graphics.cache_clear()
     monkeypatch.setattr(ctypes.util, "find_library", lambda name: name)
     monkeypatch.setattr(ctypes, "CDLL", lambda _path: next(made))
     try:
-        libs = fw._graphics()
+        libs = fw.graphics()
         assert libs is not None
         cg = libs[0]
         assert cg.CGEventCreate.restype is ctypes.c_void_p
         assert fw.spaces_missing(cg) == "CGSMainConnectionID" and fw.spaces() is None
     finally:
-        fw._graphics.cache_clear()
+        fw.graphics.cache_clear()
 
 
 def test_a_property_list_that_will_not_serialise_is_none_and_still_released() -> None:
@@ -512,17 +512,17 @@ def test_a_property_list_that_will_not_serialise_is_none_and_still_released() ->
 
 
 def test_space_counts_reads_each_displays_spaces(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(fw, "_managed", lambda: [{"Spaces": [1, 2, 3]}, {"Spaces": [4]}])
+    monkeypatch.setattr(fw, "managed", lambda: [{"Spaces": [1, 2, 3]}, {"Spaces": [4]}])
     assert fw.space_counts() == (3, 1)
-    monkeypatch.setattr(fw, "_managed", lambda: [{"no": 1}])
+    monkeypatch.setattr(fw, "managed", lambda: [{"no": 1}])
     assert fw.space_counts() is None
-    monkeypatch.setattr(fw, "_managed", lambda: None)
+    monkeypatch.setattr(fw, "managed", lambda: None)
     assert fw.space_counts() is None
 
 
 def test_no_windows_and_no_spaces_where_the_host_cannot_be_asked(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(fw, "_graphics", lambda: None)
+    monkeypatch.setattr(fw, "graphics", lambda: None)
     assert fw.windows() == []
-    monkeypatch.setattr(fw, "_managed", lambda: [{"Display Identifier": "A"}])
+    monkeypatch.setattr(fw, "managed", lambda: [{"Display Identifier": "A"}])
     assert fw.spaces() is None

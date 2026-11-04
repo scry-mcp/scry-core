@@ -92,6 +92,10 @@ def _asked(display: int | None, fullscreen: bool, emulator: str | None,
     return asked
 
 
+def _rect(r: tuple[int, int, int, int]) -> str:
+    return f"{r[0]},{r[1]},{r[2]}x{r[3]}"
+
+
 def _displays() -> int:
     shown = host().displays()
     if not shown:
@@ -99,8 +103,7 @@ def _displays() -> int:
               file=sys.stderr)
         return 3
     for d in shown:
-        x, y, w, h = d.bounds
-        print(f"display {d.index} bounds={x},{y},{w}x{h}")
+        print(f"display {d.index} bounds={_rect(d.bounds)}")
     return 0
 
 
@@ -164,8 +167,7 @@ def main(argv: Sequence[str]) -> int:
         state = settle_size(said.pid, asked, state, left, desk)
     except Invalid as e:
         return _refused(e, said.command)
-    x, y, w, h = state.bounds
-    print(f"window: display={state.display} bounds={x},{y},{w}x{h} "
+    print(f"window: display={state.display} bounds={_rect(state.bounds)} "
           f"onscreen={'true' if state.onscreen else 'false'}")
     if asked.size is None:
         return 0

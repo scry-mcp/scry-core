@@ -27,6 +27,7 @@ from typing import Any, NoReturn
 from scry_core import focus_watch
 from scry_core.reply_contract import Invalid
 from scry_core.window import Display, Rect, Seen, above_in_order
+from scry_core.window_size import unsupported_platform
 
 # CoreGraphics' limit on active displays read at once.
 MAX_DISPLAYS = 16
@@ -165,7 +166,7 @@ class MacHost:
     """`scry_core.window.Host` on macOS."""
 
     def displays(self) -> list[Display]:
-        libs = focus_watch._graphics()
+        libs = focus_watch.graphics()
         if libs is None:
             return []
         cg = libs[0]
@@ -188,7 +189,7 @@ class MacHost:
         """The windows over `window` on the Space it is on. The window server lists a full-screen
         application's window on screen, and above, for as long as the application lives, though the
         display shows another Space: only a Space known to differ clears a window."""
-        known = _space_ids(focus_watch._managed())
+        known = _space_ids(focus_watch.managed())
         mine = known.intersection(self.spaces_of(window))
         return [s for s in self._over(window)
                 if not mine or not (theirs := known.intersection(self.spaces_of(s)))
@@ -196,7 +197,7 @@ class MacHost:
 
     def _over(self, window: Seen) -> list[Seen]:
         """The windows the window server says are on screen over `window`, on any Space."""
-        libs = focus_watch._graphics()
+        libs = focus_watch.graphics()
         if libs is None:
             return []
         cg, cf = libs
@@ -207,7 +208,7 @@ class MacHost:
 
     def spaces_of(self, window: Seen) -> list[int]:
         """Every Space the window server says holds `window`; none when it will not say."""
-        libs = focus_watch._graphics()
+        libs = focus_watch.graphics()
         if libs is None or focus_watch.spaces_missing(libs[0]):
             return []
         cg, cf = libs
@@ -230,7 +231,7 @@ class MacHost:
     def activate(self, window: Seen) -> str:
         """Switch to the window's Space, then make its application frontmost; why not, or ''."""
         spaces = self.spaces_of(window)
-        managed = focus_watch._managed()
+        managed = focus_watch.managed()
         if not spaces or managed is None:
             return ("the window server would not say which Space holds the window "
                     f"(missing: {focus_watch.spaces_missing() or 'the listing itself'})")
@@ -251,7 +252,7 @@ class MacHost:
 
 
 def switch_space(display_identifier: str, space: int) -> None:  # needs the desk
-    cg, cf = focus_watch._graphics()    # type: ignore[misc]
+    cg, cf = focus_watch.graphics()    # type: ignore[misc]
     cf.CFStringCreateWithCString.restype = ctypes.c_void_p
     cf.CFStringCreateWithCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
     cg.CGSManagedDisplaySetCurrentSpace.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_uint64]
@@ -444,5 +445,4 @@ def for_platform(platform: str) -> MacHost | WindowsHost:
         return MacHost()
     if platform == "win32":
         return WindowsHost()
-    raise Invalid("host_failed", f"a window is read and placed on macOS and Windows hosts, not "
-                  f"{platform}")
+    raise unsupported_platform("read and placed", platform)

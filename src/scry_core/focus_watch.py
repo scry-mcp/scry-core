@@ -118,7 +118,7 @@ SPACE_SYMBOLS = ("CGSMainConnectionID", "CGSCopyManagedDisplaySpaces")
 def spaces_missing(cg: object | None = None) -> str:
     """The first of `SPACE_SYMBOLS` CoreGraphics lacks, or ""."""
     if cg is None:
-        libs = _graphics()
+        libs = graphics()
         if libs is None:
             return ""
         cg = libs[0]
@@ -126,7 +126,7 @@ def spaces_missing(cg: object | None = None) -> str:
 
 
 @functools.cache
-def _graphics() -> tuple[ctypes.CDLL, ctypes.CDLL] | None:
+def graphics() -> tuple[ctypes.CDLL, ctypes.CDLL] | None:
     """CoreGraphics and CoreFoundation, typed once, or None."""
     graphics = ctypes.util.find_library("CoreGraphics")
     foundation = ctypes.util.find_library("CoreFoundation")
@@ -156,7 +156,7 @@ def _graphics() -> tuple[ctypes.CDLL, ctypes.CDLL] | None:
 
 def _pointer() -> tuple[int, int] | None:
     """The host pointer, or None where it cannot be asked."""
-    libs = _graphics()
+    libs = graphics()
     if libs is None:
         return None
     cg, cf = libs
@@ -193,7 +193,7 @@ def plist_of(cf: ctypes.CDLL, ref: int) -> Any:
 
 def windows() -> list[dict[str, Any]]:
     """Every window the window server lists, on screen or not; none if unaskable."""
-    libs = _graphics()
+    libs = graphics()
     if libs is None:
         return []
     cg, cf = libs
@@ -204,7 +204,7 @@ def windows() -> list[dict[str, Any]]:
 
 def spaces() -> tuple[tuple[str, int], ...] | None:
     """The current Space of each display, keyed by `Display Identifier`; None if unreadable."""
-    listed = _managed()
+    listed = managed()
     if listed is None:
         return None
     try:
@@ -214,9 +214,9 @@ def spaces() -> tuple[tuple[str, int], ...] | None:
         return None
 
 
-def _managed() -> list[Any] | None:
+def managed() -> list[Any] | None:
     """The window server's displays and Spaces, or None."""
-    libs = _graphics()
+    libs = graphics()
     if libs is None or spaces_missing(libs[0]):
         return None
     cg, cf = libs
@@ -227,7 +227,7 @@ def _managed() -> list[Any] | None:
 
 def space_counts() -> tuple[int, ...] | None:
     """How many Spaces each display holds, or None."""
-    listed = _managed()
+    listed = managed()
     if listed is None:
         return None
     try:

@@ -47,3 +47,10 @@ def hex_clipped(hex_text: str) -> str:
     shown = hex_text[:HEX_BYTES_SHOWN * 2]
     rest = (len(hex_text) - len(shown)) // 2
     return shown + (f"... ({rest} more bytes in `hex`)" if rest else "")
+
+
+def picture(reply: Mapping[str, Any]) -> str:
+    """The picture's half of a view's line: its size, its scale and whether it is attached."""
+    image = reply.get("image") or {}
+    shown = "inline" if image.get("inline") else "not inlined"
+    return f"{image.get('width')}x{image.get('height')} PNG x{image.get('scale')}, {shown}"

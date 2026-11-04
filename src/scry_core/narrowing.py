@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from typing import Any
 
 from scry_core.reply_contract import Invalid
@@ -13,6 +13,12 @@ def omission(omitted: Sequence[str], how: str) -> dict[str, Any]:
     if isinstance(omitted, str) or not how.strip():
         raise ValueError("an omission is a list of names and a sentence saying how to ask")
     return {"omitted": list(omitted), "how": how} if omitted else {}
+
+
+def last_words(tails: Mapping[str, Any], *, clean: bool, detail: bool, how: str) -> dict[str, Any]:
+    """The emulator's last words as a `close` reply carries them: kept when asked for or when the
+    end was not a clean quit, else named as omitted with `how` to ask."""
+    return dict(tails) if detail or not clean else omission(list(tails), how)
 
 
 def sections(asked: Sequence[str] | None, known: Sequence[str],

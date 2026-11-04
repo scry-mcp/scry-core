@@ -39,3 +39,10 @@ def test_an_ambiguous_name_is_refused_naming_every_address_in_the_files_order() 
     said = prose.ambiguous_name("COUNT", ["0x10", "0x30", "0x50"], "cpu :maincpu's table")
     assert said.startswith("'COUNT' names 3 symbols in cpu :maincpu's table (0x10, 0x30, 0x50)")
     assert "use the address of the one meant" in said
+
+
+def test_a_pictures_line_says_its_size_its_scale_and_whether_it_is_attached() -> None:
+    reply = {"image": {"width": 640, "height": 400, "scale": 2, "inline": True}}
+    assert prose.picture(reply) == "640x400 PNG x2, inline"
+    reply["image"]["inline"] = False
+    assert prose.picture(reply).endswith(", not inlined")

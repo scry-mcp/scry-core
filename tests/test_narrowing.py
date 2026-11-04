@@ -21,6 +21,16 @@ def test_a_short_reply_names_what_it_left_out_and_how_to_ask() -> None:
     assert isinstance(note["omitted"], list)
 
 
+@pytest.mark.parametrize(("clean", "detail", "kept"), [
+    (True, False, False), (True, True, True), (False, False, True), (False, True, True)])
+def test_the_last_words_of_a_close_are_kept_unless_the_quit_was_clean_and_none_were_asked(
+        clean: bool, detail: bool, kept: bool) -> None:
+    tails = {"stdout_tail": "out", "errorlog_tail": "err"}
+    got = narrowing.last_words(tails, clean=clean, detail=detail, how="close(detail=True)")
+    assert got == (tails if kept else {"omitted": ["stdout_tail", "errorlog_tail"],
+                                       "how": "close(detail=True)"})
+
+
 def test_a_whole_reply_carries_no_omission() -> None:
     assert narrowing.omission([], "pass sections=[...]") == {}
 

@@ -58,12 +58,17 @@ def refuse_unfit(asked: Size, usable: Rect, scale: float, platform: str) -> None
                       f"{room[0]}x{room[1]}")
 
 
+def unsupported_platform(verb: str, platform: str) -> Invalid:
+    """The refusal of a host that is neither macOS nor Windows, said once for every module."""
+    return Invalid("host_failed", f"a window is {verb} on macOS and Windows hosts, not {platform}")
+
+
 def _frame(platform: str, scale: float) -> Size:
     if platform == "darwin":
         return 0, TITLE_BAR_PX
     if platform == "win32":
         return (math.ceil(WINDOWS_FRAME_PX[0] * scale), math.ceil(WINDOWS_FRAME_PX[1] * scale))
-    raise Invalid("host_failed", f"a window is sized on macOS and Windows hosts, not {platform}")
+    raise unsupported_platform("sized", platform)
 
 
 def _room(usable: Rect, scale: float, platform: str) -> Size:

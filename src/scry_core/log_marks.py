@@ -3,6 +3,7 @@ log block."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from pydantic import Field
@@ -42,6 +43,14 @@ def check_since_mark(since_mark: int, end: int, channel: str) -> None:
 STOP_LINES_SHOWN = 8
 #: The last lines are where a fatal error lands; a whole boot log is not.
 TAIL_CHARS = 1500
+
+
+def tail(path: Path, chars: int = TAIL_CHARS) -> str:
+    """The last `chars` of a log, read from its end: a log can run to hundreds of megabytes, and
+    four bytes cover any UTF-8 character. Raises OSError when it cannot be read."""
+    with path.open("rb") as f:
+        f.seek(max(f.seek(0, 2) - 4 * chars, 0))
+        return f.read().decode("utf-8", errors="replace")[-chars:]
 
 
 def stop_block(lines: list[str], mark: int, channel: str, limit_max: int) -> dict[str, Any]:

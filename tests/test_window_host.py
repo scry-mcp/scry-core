@@ -36,7 +36,7 @@ def _desktop() -> bool:
 
 #: A logged-in desktop with a display awake; a host without one cannot list what is asked here.
 DESKTOP = pytest.mark.skipif(not _desktop(), reason="no desktop session: no display or no window")
-SPACES = pytest.mark.skipif(sys.platform == "darwin" and fw._managed() is None,
+SPACES = pytest.mark.skipif(sys.platform == "darwin" and fw.managed() is None,
                             reason="the window server's Space listing is unavailable")
 
 
@@ -113,7 +113,7 @@ def _host(monkeypatch: pytest.MonkeyPatch, spaces: list[int], desk: list[Any] | 
     calls: list[Any] = []
     host = wh.MacHost()
     monkeypatch.setattr(host, "spaces_of", lambda _w: spaces)
-    monkeypatch.setattr(fw, "_managed", lambda: desk)
+    monkeypatch.setattr(fw, "managed", lambda: desk)
     def switch(ident: str, space: int) -> None:
         calls.append(("switch", ident, space))
 
@@ -187,7 +187,7 @@ def test_a_window_the_server_lists_is_listed_here_with_the_space_that_holds_it()
     shown = [s for s in host.windows() if s.onscreen]
     mine = fw.windows()
     assert {s.number for s in shown} <= {x["kCGWindowNumber"] for x in mine}
-    desk = fw._managed() or []
+    desk = fw.managed() or []
     held = {int(s["ManagedSpaceID"]) for d in desk for s in d["Spaces"]}
     assert set(host.spaces_of(shown[0])) <= held
 
@@ -207,7 +207,7 @@ def _above_host(monkeypatch: pytest.MonkeyPatch, over: list[w.Seen],
     host = wh.MacHost()
     monkeypatch.setattr(host, "_over", lambda _w: over)
     monkeypatch.setattr(host, "spaces_of", lambda s: spaces[s.number])
-    monkeypatch.setattr(fw, "_managed", lambda: [managed(1, [1, 4891, 3938])])
+    monkeypatch.setattr(fw, "managed", lambda: [managed(1, [1, 4891, 3938])])
     return host
 
 
@@ -235,7 +235,7 @@ def test_a_window_on_every_space_or_of_an_unknown_one_still_covers(
 @DARWIN
 def test_a_host_without_coregraphics_lists_nothing_and_knows_no_space(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(fw, "_graphics", lambda: None)
+    monkeypatch.setattr(fw, "graphics", lambda: None)
     host = wh.MacHost()
     assert host.displays() == [] and host.above(WINDOW) == [] and host.spaces_of(WINDOW) == []
 

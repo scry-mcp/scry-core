@@ -3,6 +3,8 @@ negative one and one past the end are refused naming the channel."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from scry_core import log_marks
@@ -58,3 +60,18 @@ def test_a_stops_block_shows_the_newest_lines_and_the_mark_they_start_at() -> No
     assert many["how"].endswith("limit=400)` reads the newest 400"), many["how"]
     assert log_marks.stop_block([], 0, "emulator", 400) == {"lines_total": 0, "truncated": False,
                                                             "lines": [], "mark": 0}
+
+
+def test_a_logs_tail_is_its_last_characters_and_a_short_log_is_whole(tmp_path: Path) -> None:
+    short = tmp_path / "short.log"
+    short.write_text("boot\nfatal\n", encoding="utf-8")
+    assert log_marks.tail(short) == "boot\nfatal\n"
+    long = tmp_path / "long.log"
+    long.write_text("a" * 5000 + "é" * 2000 + "end", encoding="utf-8")
+    assert log_marks.tail(long) == ("é" * 2000 + "end")[-log_marks.TAIL_CHARS:]
+    assert log_marks.tail(long, 10) == "ééééééé" + "end"
+
+
+def test_a_log_that_cannot_be_read_raises_for_its_caller_to_say_why(tmp_path: Path) -> None:
+    with pytest.raises(OSError):
+        log_marks.tail(tmp_path / "missing.log")
