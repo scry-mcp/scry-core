@@ -45,7 +45,9 @@ judge; a size the caller stated is judged against what the host lists.
 1. Subclass `conformance.SessionContract` in one file and provide a `subject` fixture: an object
    with `start(**arguments)`, `window(front=)`, `status()`, `close()`, `asked()` and `has_session()` over the
    server's own booted fake. `asked()` returns the pid and `WindowRequest` of the live session,
-   which is what `window_stand_ins.hosts.Obeying` reads to open a window where it was asked.
+   which is what `window_stand_ins.hosts.Obeying` reads to open a window where it was asked. The
+   subject also says `shows_fullscreen` and `takes_fullscreen` (whether `start` has the argument at
+   all); the full-screen rules are skipped for a server whose `start` has none.
 2. Keep in the server's own tests only what the contract cannot know: the owned flags and the full
    screen the emulator cannot show for its own reasons; the words are tested in core.
 3. Put `not window` in `addopts` (`-m 'not live and not window'`); the marker, the fixture and the

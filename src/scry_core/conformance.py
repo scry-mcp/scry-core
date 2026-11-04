@@ -18,9 +18,11 @@ Reply = dict[str, Any]
 
 class Subject(Protocol):
     """A server on a booted fake, with no emulator behind it. `shows_fullscreen` is whether its
-    emulator can show a full-screen window on this host; a server that cannot refuses it by name."""
+    emulator can show a full-screen window on this host; a server that cannot refuses it by name.
+    `takes_fullscreen` is whether its `start` has the argument at all."""
 
     shows_fullscreen: bool
+    takes_fullscreen: bool
 
     def start(self, **arguments: Any) -> Reply:
         """`start(shared, display, fullscreen, background)`; the fake's window opens as asked."""
@@ -49,6 +51,11 @@ def _on(monkeypatch: pytest.MonkeyPatch, host: hosts.Obeying) -> None:
     monkeypatch.setattr(w, "host", lambda _platform="": host)
 
 
+def _needs_fullscreen(subject: Subject) -> None:
+    if not subject.takes_fullscreen:
+        pytest.skip("this server's `start` has no `fullscreen` argument")
+
+
 class SessionContract:
     @pytest.fixture(autouse=True)
     def _desk(self, subject: Subject, monkeypatch: pytest.MonkeyPatch) -> Any:
@@ -60,6 +67,8 @@ class SessionContract:
     @pytest.mark.parametrize("asked", [{}, {"display": 1}, {"fullscreen": False}])
     def test_a_watched_start_proves_the_window_on_the_asked_display(
             self, subject: Subject, asked: dict[str, Any]) -> None:
+        if "fullscreen" in asked:
+            _needs_fullscreen(subject)
         got = subject.start(shared=True, **asked)
         assert got["status"] == "ok", got
         window = got["window"]
@@ -68,6 +77,7 @@ class SessionContract:
 
     def test_a_full_screen_start_fills_the_asked_display_or_is_refused_by_name(
             self, subject: Subject) -> None:
+        _needs_fullscreen(subject)
         got = subject.start(shared=True, display=1, fullscreen=True)
         if subject.shows_fullscreen:
             assert got["status"] == "ok", got
@@ -106,6 +116,8 @@ class SessionContract:
                                        {"display": 1, "fullscreen": False}])
     def test_the_window_arguments_without_shared_are_refused_not_ignored(
             self, subject: Subject, asked: dict[str, Any]) -> None:
+        if "fullscreen" in asked:
+            _needs_fullscreen(subject)
         got = subject.start(**asked)
         assert got["status"] == "INVALID" and got["code"] == "bad_argument", got
         assert "shared=true" in got["message"], got

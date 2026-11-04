@@ -14,6 +14,7 @@ PID = 4242
 
 class NullServer:
     shows_fullscreen = True
+    takes_fullscreen = True
 
     def __init__(self) -> None:
         self.live = False
@@ -63,6 +64,19 @@ class NullServer:
             return {"status": "ok", "summary": session_block.NO_SESSION_STATUS,
                     "session": {"alive": False}}
         return {"status": "ok", "system": "null", "session": {"alive": True}}
+
+
+class NoFullscreenServer(NullServer):
+    """Its `start` has no `fullscreen` argument, because no host of its emulator shows one."""
+
+    takes_fullscreen = False
+    shows_fullscreen = False
+
+    # The missing argument is what this server models.
+    def start(  # type: ignore[override]
+            self, shared: bool = False, display: int | None = None,
+            background: bool | None = None) -> dict[str, Any]:
+        return super().start(shared, display, None, background)
 
 
 class WithoutWindowTool(NullServer):

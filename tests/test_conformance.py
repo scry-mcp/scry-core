@@ -56,6 +56,12 @@ def test_a_server_that_follows_every_rule_passes(pytester: pytest.Pytester) -> N
     assert failed == set() and passed > 0
 
 
+def test_a_server_whose_start_has_no_fullscreen_argument_passes_the_rest(
+        pytester: pytest.Pytester) -> None:
+    failed, passed = _failed("NoFullscreenServer", pytester)
+    assert failed == set() and passed > 0
+
+
 def test_a_server_with_no_window_tool_fails_the_rules_that_call_it(
         pytester: pytest.Pytester) -> None:
     failed, passed = _failed("WithoutWindowTool", pytester)
