@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+### Added
+
+- `screen_map.Maps.set_pointer`, `check_pointer`, `pointer_line` and the `MAP_POINTER` description: the program's own
+  pointer declared by a call, kept by `save`, for a server's `screen_map_write` to offer as a `pointer` method.
+
 ## 0.85.0
 
 ### Added

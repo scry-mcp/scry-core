@@ -125,6 +125,10 @@ DOC_VALUES = {
                  "made the file\nlayer, in the loaded map's `mode` (`verified` when none was "
                  "loaded). Reply: `path`,\n`application`, `mode`, `screens`, `controls`, "
                  "`promoted`."),
+    "MAP_POINTER": ("`pointer`: the program's own pointer as an object, `{\"x\": ref, \"y\": ref, "
+                    "\"bytes\": 2}` (a symbol or\n`SEG:OFF` for each axis; `bytes` 1, 2 or 4), "
+                    "as a map file declares it; kept by `save`, replaced by a `load`; a misshapen "
+                    "object is `bad_argument`. Reply: `pointer`."),
     "MAP_CELLS": ("`add`'s `cells` `index` (a pixel screen; default\n`rgb`) signs the palette "
                   "indices drawn, not the colours shown, so one map knows a program\n"
                   "shown through two palettes; a screen with no palette refuses it "
@@ -345,6 +349,17 @@ class Maps:
                 "screens": len(screens),
                 "controls": sum(len(s.controls) for s in screens.values()),
                 **({"pointer": pointer.doc()} if pointer else {})}
+
+    def set_pointer(self, pointer: object) -> dict[str, Any]:
+        """The program's own pointer declared by a call, replacing any loaded one, kept by the
+        next `save`."""
+        declared = check_pointer(pointer)
+        if self.view.scale != 1 or any(self.view.margin):
+            raise Invalid("bad_argument", "pointer: the program's pointer is read in the "
+                          "program's units: load the map at scale 1 and no margin, since a view "
+                          "aims in the machine's")
+        self.pointer = declared
+        return {"pointer": declared.doc()}
 
     def add(self, name: object, match: object, controls: object, read: Read,
             cells: object = "rgb", anchor: object = "") -> dict[str, Any]:
@@ -866,6 +881,16 @@ def check_add(screen: object, match: object, controls: object = None,
              "match": [{"crop": c, "signature": "0" * 16} for c in match],
              "controls": controls if controls is not None else [],
              **({"anchor": anchor} if anchor else {})}, "the screen", 0, "match")
+
+
+def check_pointer(pointer: object) -> Pointer:
+    """The `pointer` method's machine-independent half: the declaration's shape, judged."""
+    return _pointer(pointer, "pointer")
+
+
+def pointer_line(args: dict[str, Any], reply: dict[str, Any]) -> str:
+    p = reply["pointer"]
+    return f"the program's pointer at {p['x']} and {p['y']}, {p['bytes']} bytes each"
 
 
 def check_save(dest: object, overwrite: object) -> None:

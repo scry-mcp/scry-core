@@ -581,6 +581,8 @@ def test_the_summary_lines() -> None:
     assert screen_map.save_line({}, {"screens": 2, "path": "/x/demo.screen-map.json",
                                      "promoted": ["a"]}) == (
         "2 screens to demo.screen-map.json, 1 promoted from the session")
+    assert screen_map.pointer_line({}, {"pointer": {"x": "a", "y": "b", "bytes": 2}}) == (
+        "the program's pointer at a and b, 2 bytes each")
 
 
 def test_the_odd_shapes_of_a_map_file_are_refused_by_name(tmp_path: Path) -> None:
@@ -1054,6 +1056,44 @@ def test_a_map_declares_where_the_program_keeps_its_pointer(tmp_path: Path) -> N
     plain = Maps()
     got = plain.load(_file(tmp_path / "plain", _doc()))
     assert plain.pointer is None and "pointer" not in got, got
+
+
+def test_a_pointer_is_declared_by_a_call_and_saved_with_the_map(tmp_path: Path) -> None:
+    maps = Maps()
+    got = maps.set_pointer({"x": "1A2B:0010", "y": "_pointer_y", "bytes": 4})
+    assert got == {"pointer": {"x": "1A2B:0010", "y": "_pointer_y", "bytes": 4}}, got
+    assert maps.pointer == screen_map.Pointer("1A2B:0010", "_pointer_y", 4)
+    maps.add("extra", [[0, 0, 1, 1]], [], Reads(TITLE))
+    maps.save(str(tmp_path / "declared.screen-map.json"), False)
+    doc = json.loads((tmp_path / "declared.screen-map.json").read_text())
+    assert doc["pointer"] == {"x": "1A2B:0010", "y": "_pointer_y", "bytes": 4}, doc
+    assert Maps().load(str(tmp_path / "declared.screen-map.json"))["pointer"] == doc["pointer"]
+
+
+@pytest.mark.parametrize("pointer, said", [
+    ("here", "`pointer` is an object"),
+    ({"x": "a"}, "`pointer` needs `x` and `y`"),
+    ({"x": "a", "y": "b", "bytes": 3}, "`pointer.bytes` is 1, 2 or 4"),
+])
+def test_a_misshapen_declared_pointer_is_refused_and_changes_nothing(
+        pointer: object, said: str) -> None:
+    maps = Maps()
+    maps.set_pointer({"x": "a", "y": "b"})
+    with pytest.raises(Invalid, match=said) as e:
+        maps.set_pointer(pointer)
+    assert e.value.code == "bad_argument"
+    assert maps.pointer == screen_map.Pointer("a", "b", 2)
+    with pytest.raises(Invalid, match=said):
+        screen_map.check_pointer(pointer)
+
+
+def test_a_declared_pointer_is_refused_under_a_view_that_is_not_the_programs_own(
+        tmp_path: Path) -> None:
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()), scale=2)
+    with pytest.raises(Invalid, match="scale 1 and no margin") as e:
+        maps.set_pointer({"x": "a", "y": "b"})
+    assert e.value.code == "bad_argument" and maps.pointer is None
 
 
 @pytest.mark.parametrize("ref, screen, said", [
