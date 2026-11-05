@@ -46,6 +46,8 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.probe_checks` | what each server's suite checks on its own probe surface: tasks, captures, the cap and its margins |
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
 | `scry_core.live_host` | the host a live tier runs on: a canary that refuses one which cannot start the emulator, the ledger that proves no emulator outlived a run, and the run's scratch left as its verdict says |
+| `scry_core.live_ledger` | the bookkeeping a live matrix keeps: the sections it plans and the cells each promises, the calls it records, the tally, the transcript, the evidence a FAIL leaves, and the jobs it pools |
+| `scry_core.live_focus` | the focus section both live matrices run: the control that opens a run and the verdict that closes it, judged into the ledger that ran them |
 | `scry_core.binaries` | which emulator a session runs: the caller's `binary`, else the server's variable, else the PATH's, and what the build says it is |
 | `scry_core.hook` | the pre-commit every pinning repository runs: new duplication, the probe's tasks, the prose ceiling, and the tree typed as Windows sees it |
 | `scry_core.host_program` | a test double's program and a path as the host runs and spells them, and the markers that skip a case only one host can hold |
