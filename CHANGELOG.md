@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.89.2
+
+### Added
+
+- `screen_map.Maps.check_known`: the refusal for a name no layer maps, so a wait can refuse it
+  before it steps the machine.
+
 ## 0.89.1
 
 ### Added
