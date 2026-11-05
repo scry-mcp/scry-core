@@ -2,6 +2,24 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.89.1
+
+### Added
+
+- `app_launch`: an emulator launched as an `.app` bundle through `open`: the executable its
+  `Info.plist` names, the command that connects the process log, the console's FIFO, the
+  environment and the working directory, the pid found by a token the session alone carries, and
+  a handle that reports the exit status it never reaped as `unavailable`.
+- `binaries.Ladder` lands a rung naming a `.app` on the executable inside it and says so in
+  `Resolved.bundle`; `guardian.spawn` watches a detached pid only when the handle says
+  `pid_is_ours`.
+
+### Fixed
+
+- `window_capture.window_of` takes the largest layer-0 window the host has **on screen**, not
+  merely the largest: an app bundle owns more than the machine's window (MAME as a `.app` has a
+  500x500 blank one beside a 320x272 emulator), and the capture read the blank one.
+
 ## 0.89.0
 
 ### Added
