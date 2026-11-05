@@ -113,8 +113,8 @@ DOC_VALUES = {
                 "`shadows_file`, `anchor` (when given)."),
     "MAP_REFUSED": ("Refused: an argument the method does not take; a misshapen name, crop, "
                     "control, view or file; an `add` without an `anchor` to a consolidated map, "
-                    "and a save of one holding a screen with none (`bad_argument`); nothing "
-                    "mapped to save (`needs_call`)"),
+                    "and a save of one holding a screen with none (`bad_argument`); neither a "
+                    "screen nor a `pointer` to save (`needs_call`)"),
     "MAP_LOAD": (f"`load`: `path` (`<application>{SUFFIX}`, absolute or `~`-led) as the file "
                  "layer, held by the\nserver; nothing is written to disk. `scale` (1..8) and "
                  "`margin` [x, y] (machine pixels on\neach side) say how the program's picture "
@@ -455,9 +455,10 @@ class Maps:
         check_save(dest, overwrite)
         path = _map_path("dest", dest)
         merged = {**self.file, **self.session}
-        if not merged:
+        if not merged and self.pointer is None:
             raise Invalid("needs_call", "no screen is mapped: `screen_map_write` the screen in "
-                          "front of you (`add`), or a map (`load`), before saving one")
+                          "front of you (`add`), a map (`load`) or the `pointer`, before saving "
+                          "one")
         application = _application(path)
         doc = {"format": FORMAT, "application": application, "mode": self.mode,
                **({"pointer": self.pointer.doc()} if self.pointer else {}),
@@ -686,8 +687,10 @@ def parse(doc: object, where: str) -> tuple[str, str, dict[str, Screen], Pointer
         raise Invalid("bad_argument", f"{where}: `application` is a name of 1..{_NAME_MAX} "
                       "characters")
     screens = doc.get("screens")
-    if not isinstance(screens, list) or not screens:
-        raise Invalid("bad_argument", f"{where}: `screens` is a list of at least one screen")
+    if not isinstance(screens, list) or (not screens and "pointer" not in doc):
+        raise Invalid("bad_argument",
+                      f"{where}: `screens` is a list of at least one screen, or empty for a map "
+                      "that declares only the `pointer`")
     if len(screens) > SCREENS_MAX:
         raise Invalid("bad_argument", f"{where}: {len(screens)} screens; a map holds at most "
                       f"{SCREENS_MAX}")

@@ -1058,6 +1058,20 @@ def test_a_map_declares_where_the_program_keeps_its_pointer(tmp_path: Path) -> N
     assert plain.pointer is None and "pointer" not in got, got
 
 
+def test_a_map_that_declares_only_the_pointer_is_a_map(tmp_path: Path) -> None:
+    """A program with a pointer and no screen mapped yet has a file form: the map names the
+    pointer and no screen, and one naming neither is still refused."""
+    only = {**_doc(), "screens": [], "pointer": {"x": "1A2B:0010", "y": "_pointer_y"}}
+    maps = Maps()
+    got = maps.load(_file(tmp_path, only))
+    assert got["screens"] == 0, got
+    assert maps.pointer == screen_map.Pointer("1A2B:0010", "_pointer_y", 2)
+    saved = maps.save(str(tmp_path / "pointer-only.screen-map.json"), False)
+    assert saved["screens"] == 0, saved
+    assert json.loads((tmp_path / "pointer-only.screen-map.json").read_text())["pointer"] == \
+        {"x": "1A2B:0010", "y": "_pointer_y", "bytes": 2}
+
+
 def test_a_pointer_is_declared_by_a_call_and_saved_with_the_map(tmp_path: Path) -> None:
     maps = Maps()
     got = maps.set_pointer({"x": "1A2B:0010", "y": "_pointer_y", "bytes": 4})
