@@ -2,6 +2,21 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.89.0
+
+### Added
+
+- `live_ledger`: the bookkeeping both live matrices keep — the sections a run plans and the cells
+  each promises, the calls it records, the tally and the transcript, the evidence a FAIL leaves,
+  and the jobs it pools — with `Cell`, `Section`, `Blocked`, `chosen_sections`,
+  `cannot_be_judged` and `Ledger`, whose `run(..., name=)` speaks the verdict of the run it ran.
+- `live_focus`: the focus section both matrices run, judged into the ledger that ran them.
+
+### Fixed
+
+- `screen_map`: a map that declares only the `pointer` and no screen has a file form again. It
+  loads and saves, and one naming neither a screen nor a pointer is still refused.
+
 ## 0.88.0
 
 ### Changed
