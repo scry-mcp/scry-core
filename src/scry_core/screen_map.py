@@ -489,6 +489,10 @@ class Maps:
         raise Invalid("unknown_ref", f"screen={screen!r}: no screen {screen!r}; mapped: "
                       f"{names or 'none'}")
 
+    def check_known(self, screen: str) -> None:
+        """Refuse a name no layer maps, before a wait runs a frame on it."""
+        self._named(screen)
+
     def anchor(self, screen: str) -> str:
         """The symbol `screen` is whole after, which `run_to(screen=)` runs to."""
         _, found = self._named(screen)

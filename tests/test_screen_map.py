@@ -232,6 +232,16 @@ def test_the_anchor_of_an_unknown_or_unanchored_screen_is_refused(tmp_path: Path
     assert e.value.code == "needs_call"
 
 
+def test_a_name_no_layer_maps_is_refused_before_a_wait_runs_a_frame(tmp_path: Path) -> None:
+    """`check_known`: what a wait asks before stepping the machine on a name it may never see."""
+    maps = Maps()
+    maps.load(_file(tmp_path, _doc()))
+    maps.check_known("play")
+    with pytest.raises(Invalid, match="no screen 'menu'; mapped: title, play") as e:
+        maps.check_known("menu")
+    assert e.value.code == "unknown_ref"
+
+
 def test_a_session_screen_shadows_the_files_anchor_too(tmp_path: Path) -> None:
     maps = Maps()
     maps.load(_file(tmp_path, _anchored("consolidated")))
