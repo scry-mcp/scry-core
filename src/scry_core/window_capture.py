@@ -22,7 +22,12 @@ class Blocked(Exception):
 
 
 def window_of(pid: int) -> int | None:
-    """The window number of the largest layer-0 window `pid` owns, or None."""
+    """The window number of the largest layer-0 window `pid` owns that the host has on screen,
+    or of the largest when it holds none; None when it owns none at all.
+
+    An app bundle owns more than the machine's window: MAME as a `.app` also has a 500x500
+    layer-0 window of one colour, larger than a 320x272 emulator, and only the one the host
+    shows is the machine."""
     def area(w: dict[str, object]) -> float:
         bounds = w.get("kCGWindowBounds")
         return (float(bounds["Width"]) * float(bounds["Height"])
@@ -31,7 +36,8 @@ def window_of(pid: int) -> int | None:
             if w.get("kCGWindowOwnerPID") == pid and w.get("kCGWindowLayer") == 0]
     if not mine:
         return None
-    number = max(mine, key=area).get("kCGWindowNumber")
+    shown = [w for w in mine if w.get("kCGWindowIsOnscreen") is True]
+    number = max(shown or mine, key=area).get("kCGWindowNumber")
     return int(number) if isinstance(number, int) else None
 
 

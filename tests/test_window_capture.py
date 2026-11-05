@@ -132,6 +132,33 @@ def test_the_window_of_a_pid_is_its_largest_ordinary_one(monkeypatch: pytest.Mon
     assert wc.window_of(7) == 2 and wc.window_of(9) is None
 
 
+def test_an_apps_on_screen_window_wins_over_a_larger_blank_one(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """MAME launched as a `.app` owns a 500x500 layer-0 window of one colour beside the
+    emulator's 320x272; the largest is not the machine's, the on-screen one is."""
+    listed = [
+        {"kCGWindowOwnerPID": 7, "kCGWindowLayer": 0, "kCGWindowNumber": 11,
+         "kCGWindowBounds": {"Width": 500, "Height": 500}},
+        {"kCGWindowOwnerPID": 7, "kCGWindowLayer": 0, "kCGWindowNumber": 12,
+         "kCGWindowIsOnscreen": True,
+         "kCGWindowBounds": {"Width": 320, "Height": 272}},
+    ]
+    monkeypatch.setattr(fw, "windows", lambda: listed)
+    assert wc.window_of(7) == 12
+
+
+def test_with_no_on_screen_window_the_largest_ordinary_one_is_taken(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    listed = [
+        {"kCGWindowOwnerPID": 7, "kCGWindowLayer": 0, "kCGWindowNumber": 21,
+         "kCGWindowBounds": {"Width": 500, "Height": 500}},
+        {"kCGWindowOwnerPID": 7, "kCGWindowLayer": 0, "kCGWindowNumber": 22,
+         "kCGWindowBounds": {"Width": 320, "Height": 272}},
+    ]
+    monkeypatch.setattr(fw, "windows", lambda: listed)
+    assert wc.window_of(7) == 21
+
+
 @pytest.mark.skipif(sys.platform != "darwin", reason="the window server is macOS's")
 def test_the_window_server_lists_windows() -> None:
     assert isinstance(fw.windows(), list)
