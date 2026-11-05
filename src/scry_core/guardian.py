@@ -66,9 +66,20 @@ class Job:
         return 0
 
 
-def spawn(child: object, server: str, deadline: float = 0.0) -> Guard | None:
-    """The guardian for `child`: a watcher on POSIX, a job on Windows; None for a non-child."""
-    if not isinstance(child, _POPEN):
+class Watchable(Protocol):
+    """What the watcher asks about: a child of this server, or an app launch's detached pid."""
+
+    pid: int
+
+    def poll(self) -> int | None: ...
+
+
+def spawn(child: Watchable, server: str, deadline: float = 0.0) -> Guard | None:
+    """The guardian for `child`: a watcher on POSIX, a job on Windows.
+
+    None for a process this server cannot vouch for. A `Popen` is one it made; an app route's
+    handle says `pid_is_ours`, its pid found by a token only that session carries."""
+    if not isinstance(child, _POPEN) and not getattr(child, "pid_is_ours", False):
         return None
     if sys.platform == "win32":
         try:

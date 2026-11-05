@@ -14,7 +14,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import IO, Any
 
-from scry_core import judges, process_tree
+from scry_core import app_launch, judges, process_tree
 from scry_core.reply_contract import Code, Invalid
 
 ARGUMENT = "argument"
@@ -28,6 +28,8 @@ VERSION_READ_MAX = 4096
 class Resolved:
     path: str
     origin: str
+    #: The `.app` the binary lives in, when the rung named a bundle instead of an executable.
+    bundle: str | None = None
 
 
 @dataclass(frozen=True)
@@ -45,6 +47,7 @@ class Ladder:
         on_path = shutil.which(self.executable)
         # The variable gets the argument's rule: a relative path would resolve against the
         # server's working directory.
+        bundle: str | None = None
         if binary:
             try:
                 given = judges.absolute("binary", binary)
@@ -52,10 +55,11 @@ class Ladder:
                 raise Invalid(e.code, f"{e}; or leave `binary` empty, and the ladder climbs to "
                               f"{self.variable}, then the PATH's `{self.executable}`",
                               **e.fields) from None
-            origin, found = ARGUMENT, shutil.which(str(given))
+            origin = ARGUMENT
+            found, bundle = _land(str(given))
         elif held:
-            origin, found = self.variable, shutil.which(str(judges.absolute(self.variable,
-                                                                             held)))
+            origin = self.variable
+            found, bundle = _land(str(judges.absolute(self.variable, held)))
         else:
             origin, found = PATH_RUNG, on_path
         if found is None:
@@ -71,7 +75,18 @@ class Ladder:
         # `abspath` collapses `..` by spelling and through a symlinked directory would name
         # another file, so a relative PATH entry is joined, not normalised.
         return Resolved(found if os.path.isabs(found) else os.path.join(os.getcwd(), found),
-                        origin)
+                        origin, bundle)
+
+
+def _land(path: str) -> tuple[str | None, str | None]:
+    """What a rung's value lands on: an executable, and the bundle it named when it named one."""
+    found = shutil.which(path)
+    if found is not None:
+        return found, None
+    inner = app_launch.executable_of(path)
+    if inner is not None and os.path.isfile(inner) and os.access(inner, os.X_OK):
+        return inner, path
+    return None, None
 
 
 def why_not(path: str) -> str:
@@ -79,6 +94,8 @@ def why_not(path: str) -> str:
     if not os.path.exists(path):        # a dangling link included: nothing there to run
         return "no such file"
     if os.path.isdir(path):
+        if str(path).endswith(app_launch.BUNDLE_SUFFIX):
+            return "a bundle whose Info.plist names no executable that runs"
         return "a directory"
     return "not executable"
 

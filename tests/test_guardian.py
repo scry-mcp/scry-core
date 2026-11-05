@@ -137,6 +137,9 @@ def test_no_guardian_for_a_process_this_server_did_not_spawn() -> None:
     class Double:
         pid = 1
 
+        def poll(self) -> int | None:
+            return None
+
     assert guardian.spawn(Double(), "x") is None
 
 

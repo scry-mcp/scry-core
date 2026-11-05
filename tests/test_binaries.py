@@ -4,6 +4,7 @@ and who is answerable when nothing resolves."""
 from __future__ import annotations
 
 import os
+import plistlib
 import subprocess
 import sys
 import time
@@ -47,6 +48,34 @@ def test_the_first_rung_holding_a_value_is_taken_and_named(
     assert LADDER.resolve("").origin == "PATH"
     assert Path(LADDER.resolve("").path).parent == tmp_path / "path"
     assert binaries.facts(LADDER.resolve(""))["version"] == "Emu 1.0"
+
+
+def _bundle(where: Path, executable: str = "emu") -> Path:
+    """A minimal `.app` whose executable is a program of this host."""
+    bundle = where / "Probe.app"
+    macos = bundle / "Contents" / "MacOS"
+    macos.mkdir(parents=True)
+    (bundle / "Contents" / "Info.plist").write_bytes(
+        plistlib.dumps({"CFBundleExecutable": executable}))
+    host_program.write(macos / executable, "print('Emu 1.0')\n")
+    return bundle
+
+
+def test_a_bundle_lands_on_the_executable_inside_it_and_names_the_bundle_it_came_from(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("EMU_BINARY", raising=False)
+    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    bundle = _bundle(tmp_path)
+    assert LADDER.resolve(str(bundle)) == binaries.Resolved(
+        str(bundle / "Contents" / "MacOS" / "emu"), "argument", str(bundle))
+    monkeypatch.setenv("EMU_BINARY", str(bundle))
+    assert LADDER.resolve("").bundle == str(bundle)
+
+
+def test_a_bundle_with_no_usable_executable_is_refused_in_those_words(tmp_path: Path) -> None:
+    (tmp_path / "Broken.app").mkdir()
+    with pytest.raises(Invalid, match="a bundle whose Info.plist names no executable that runs"):
+        LADDER.resolve(str(tmp_path / "Broken.app"))
 
 
 def test_why_a_path_is_no_executable_is_said_in_its_owners_words(tmp_path: Path) -> None:
