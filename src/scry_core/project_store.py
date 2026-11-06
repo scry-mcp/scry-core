@@ -51,7 +51,7 @@ def root(starting: Iterable[str | Path]) -> Path | None:
 def locate(starting: Iterable[str | Path], name: str, kind: str = "start") -> Path:
     """`.scry/<kind>/<name>.json` found by walking up from each starting point in order, or the
     refusal naming the directories searched."""
-    _check_name(name)
+    entry_name(name)
     if kind not in KINDS:
         raise Invalid("bad_argument", f"a store holds {', '.join(KINDS)}; {kind!r} is not one")
     starts = list(starting)
@@ -126,7 +126,7 @@ def applied(profile: str, *, starting: Iterable[str | Path], keys: Collection[st
             environ: Mapping[str, str] | None = None) -> Applied:
     """`arguments` with the profile `profile` names (or paths) filling only the names `given`
     does not carry; `keys` and `path_keys` are what the reading server hands in."""
-    entry = Path(os.path.expanduser(profile)) if _absolute(profile) else locate(starting, profile)
+    entry = Path(os.path.expanduser(profile)) if absolute(profile) else locate(starting, profile)
     values = read(entry, keys, path_keys, state=state, environ=environ)
     fill = {name: value for name, value in values.items() if name not in set(given)}
     call, _ = precedence(arguments, fill)
@@ -141,11 +141,13 @@ def demanded(arguments: Mapping[str, object], names: Iterable[str], *, tool: str
                       f"profile gave it. Pass it, or name a {STORE}/start profile")
 
 
-def _check_name(name: str) -> None:
+def entry_name(name: str) -> str:
+    """`name` as a store entry is named by it: a plain file stem, refused by name otherwise."""
     if (not name or "/" in name or "\\" in name or "\x00" in name or name in (".", "..")
             or name.endswith(".json")):
-        raise Invalid("bad_argument", f"{name!r} is not a profile name: a plain file stem, with "
-                      "no directory part and no `.json`, which the store adds")
+        raise Invalid("bad_argument", f"{name!r} is not an entry name: a plain file stem, with "
+                      "no directory part and no extension, which the store adds")
+    return name
 
 
 def _above(start: Path) -> Iterator[Path]:
@@ -242,7 +244,7 @@ def _paths(value: object, base: Path) -> object:
     """`value`'s paths: a relative one resolves against the base, a list of them each, anything
     else as it came."""
     if isinstance(value, str):
-        return value if _absolute(value) else os.path.join(str(base), value)
+        return value if absolute(value) else os.path.join(str(base), value)
     if isinstance(value, list):
         return [_paths(item, base) for item in value]
     if isinstance(value, dict):
@@ -250,7 +252,7 @@ def _paths(value: object, base: Path) -> object:
     return value
 
 
-def _absolute(value: str) -> bool:
+def absolute(value: str) -> bool:
     """Whether `value` is a path of its own on either host, read as a string: a POSIX root, a
     Windows drive, a rooted or UNC path, or `~`, which a server's own path judge expands."""
     return value.startswith(("/", "\\", "~")) or _DRIVE.match(value) is not None

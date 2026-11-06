@@ -111,7 +111,8 @@ DOC_VALUES = {
                 "signing each `match` crop ([x, y, width, height], 1..16), `controls` "
                 "([{\"name\", \"rect\"}]) {ADD_PLACES}; needs the machine stopped. Reply: "
                 "`screen`, `kind`, `size`, `cells`, `match`, `controls`, `replaced`, "
-                "`shadows_file`, `anchor` (when given)."),
+                "`shadows_file`, `anchor` (when given), `kept` (a complete map is kept for "
+                "`promote`)."),
     "MAP_REFUSED": ("Refused: an argument the method does not take; a misshapen name, crop, "
                     "control, view or file; an `add` without an `anchor` to a consolidated map, "
                     "and a save of one holding a screen with none (`bad_argument`); neither a "
@@ -303,12 +304,17 @@ class Maps:
     mode: str = "verified"
     view: View = View()
     pointer: Pointer | None = None
+    #: The application this session loaded or saved, which names what it adds next; cleared by a
+    #: `start`, so a map learned afterwards is named after the machine that showed it.
+    session_application: str = ""
 
     def started(self) -> None:
         """A `start` succeeded: the session layer and the last identification were the old
-        run's, the file layer stays."""
+        run's, the file layer stays, and an entry this session loaded or saved is no longer the
+        one it is working against."""
         self.session.clear()
         self.found = None
+        self.session_application = ""
 
     def load(self, path_arg: object, scale: object = 1,
              margin: object = None) -> dict[str, Any]:
@@ -345,6 +351,7 @@ class Maps:
                           "`start` again")
         self.file, self.application, self.path = screens, application, path
         self.mode, self.view, self.pointer = mode, seen, pointer
+        self.session_application = application
         self.found = None
         return {"path": str(path), "application": application, "mode": mode,
                 "screens": len(screens),
@@ -450,6 +457,15 @@ class Maps:
                 "screens_tried": tried, "screens_unjudged": unjudged,
                 "screens_mapped": len(candidates)}
 
+    def document(self, application: str = "") -> dict[str, Any]:
+        """The two layers as one map document, the session winning, as `save` writes it and as
+        the draft a promotion keeps holds it."""
+        merged = {**self.file, **self.session}
+        return {"format": FORMAT, "application": application or self.application,
+                "mode": self.mode,
+                **({"pointer": self.pointer.doc()} if self.pointer else {}),
+                "screens": [s.doc() for s in merged.values()]}
+
     def save(self, dest: object, overwrite: bool) -> dict[str, Any]:
         """The file layer and the session layer written as one map to `dest`, the session
         winning, and made the file layer."""
@@ -461,9 +477,7 @@ class Maps:
                           "front of you (`add`), a map (`load`) or the `pointer`, before saving "
                           "one")
         application = _application(path)
-        doc = {"format": FORMAT, "application": application, "mode": self.mode,
-               **({"pointer": self.pointer.doc()} if self.pointer else {}),
-               "screens": [s.doc() for s in merged.values()]}
+        doc = self.document(application)
         _consolidated_anchored(self.mode, merged.values(), str(path),
                                "`add` it again with one")
         data = (json.dumps(doc, indent=1) + "\n").encode()
@@ -473,6 +487,7 @@ class Maps:
             fresh.create(path, data, "the map", named_by_caller=True)
         promoted = sorted(self.session)
         self.file, self.application, self.path = merged, application, path
+        self.session_application = application
         self.session.clear()
         if self.found is not None and self.found.layer == "session":
             self.found = Found(self.found.screen, "file", self.found.stop)

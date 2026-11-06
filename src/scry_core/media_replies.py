@@ -8,7 +8,7 @@ from typing import Annotated, Any, Required
 
 from typing_extensions import TypedDict
 
-from scry_core.reply_contract import When
+from scry_core.reply_contract import OmitEmpty, When
 from scry_core.reply_schema import ReplyEnvelope
 
 
@@ -28,6 +28,8 @@ class PerformExportFields(TypedDict, total=False):
     path: Required[str]
     replay: Required[str]
     steps: Required[int]
+    #: The one line a reply that kept a candidate says (`scry_core.promote`).
+    kept: Annotated[str, OmitEmpty]
 
 
 class ImageCompareReply(ReplyEnvelope, total=False):

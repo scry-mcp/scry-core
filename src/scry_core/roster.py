@@ -86,6 +86,7 @@ SHARED_FAMILIES: Mapping[str, str] = {
     **dict.fromkeys(("palette", "screen_view", "screen_signature"), "Screen"),
     **dict.fromkeys(("write", "set_register", "debug"), "Write"),
     "scan": "Scan",
+    "promote": "Store",
     **dict.fromkeys(("comment_list", "comment_write"), "Comments"),
     **dict.fromkeys(("state_list", "state_write"), "States"),
     **dict.fromkeys(("record", "audio_record", "series_capture", "snapshot", "captures"),

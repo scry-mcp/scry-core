@@ -1254,3 +1254,10 @@ def test_each_frame_is_given_the_time_left_and_not_the_whole_bound(
     got = screen_map.run_until(maps, "play", step, machine.read, 10.0)
     assert got["verdict"] == "TIMEOUT", got
     assert asked == [10.0, 6.0, 2.0], asked
+
+
+def test_a_session_s_entry_is_forgotten_by_a_start() -> None:
+    maps = screen_map.Maps()
+    maps.session_application = "lineup"
+    maps.started()
+    assert maps.session_application == ""

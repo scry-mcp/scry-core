@@ -8,8 +8,9 @@ are the battery, run directly. Skipping is git's own `--no-verify`.
 DUPLICATION: jscpd against the baseline, read through its JSON reporter, never its table. A run
 that analysed no file is INVALID.
 
-PROBE: `python -m scry_core.probe all --check`, which asks no model. A 1 is a refusal only when
-it prints `REFUSED ...`, a 0 a pass only when it covered a server (`OK ...`).
+PROBE: `python -m scry_core.probe all --check`, which asks no model, where the repository holds
+`mcp_probe/servers.py`; one that holds none declares no server and the step says so. A 1 is a
+refusal only when it prints `REFUSED ...`, a 0 a pass only when it covered a server (`OK ...`).
 
 PROSE: per tracked or untracked `*.py`, symlinks aside, the bytes of its comments and docstrings
 over its bytes, against a quarter, or a sixth under `tests/`. A registered tool's docstring is
@@ -130,9 +131,12 @@ def duplication(root: Path, scratch: Path) -> str:
 
 
 def probe_fit(root: Path) -> str:
-    """The probe check's own lines for a covered task set; `Refused` on a refusal it names,
-    `Invalid` on anything else."""
+    """The probe check's own lines for a covered task set; a repository that holds no server
+    file and names no program of its own says so; `Refused` on a refusal it names, `Invalid` on
+    anything else."""
     seam = os.environ.get("PRECOMMIT_PROBE")
+    if not seam and not (root / SERVERS_FILE).is_file():
+        return f"   skipped: no {SERVERS_FILE}, so this repository declares no MCP server"
     rc, said = _run([seam] if seam else [sys.executable, *PROBE_CHECK], "the probe check", root,
                     "PRECOMMIT_PROBE")
     lines = said.splitlines()

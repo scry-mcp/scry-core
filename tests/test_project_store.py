@@ -98,7 +98,7 @@ def test_a_directory_two_starts_share_is_searched_once(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("name", ["", "a/b", "a\\b", ".", "..", "dos.json", "a\x00b"])
 def test_a_name_that_is_not_one_is_refused(tmp_path: Path, name: str) -> None:
-    with pytest.raises(Invalid, match="is not a profile name"):
+    with pytest.raises(Invalid, match="is not an entry name"):
         ps.locate([tmp_path], name)
 
 

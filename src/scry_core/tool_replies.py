@@ -18,6 +18,8 @@ class MapWriteFields(TypedDict, total=False):
     cells: str
     controls: int
     kind: Annotated[str, When("`add`")]
+    #: The one line a reply that kept a candidate says (`scry_core.promote`).
+    kept: Annotated[str, When("`add`")]
     match: list[Any]
     mode: Annotated[str, When("`load`", "`save`")]
     path: str

@@ -182,13 +182,25 @@ def test_anything_else_that_stops_it_is_invalid_and_never_a_traceback(
     assert "Traceback" not in said
 
 
-def test_the_real_probe_check_is_what_runs_without_its_seam(
+def test_a_repository_with_no_server_skips_the_probe_and_reaches_the_steps_after(
         repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
-    """Without `PRECOMMIT_PROBE` the hook runs the probe module itself on the repository's own
-    servers file: here there is none, so the real check answers INVALID about it."""
-    monkeypatch.delenv("PRECOMMIT_PROBE")
+    """A repository that holds no MCP server says so and is judged by the steps after it; the
+    two steps that answer about the tree as a whole must still run."""
+    monkeypatch.delenv("PRECOMMIT_PROBE", raising=False)
     rc, said = _hook(capsys)
-    assert rc == verdict.EXIT_INVALID and str(SERVERS_FILE) in said, said
+    assert rc == verdict.EXIT_PASS, said
+    assert f"skipped: no {SERVERS_FILE}" in said
+    assert "prose: 1 files within the ceiling" in said, said
+    assert "win32: 1 files clean on win32" in said, said
+
+
+def test_a_seam_still_runs_where_the_repository_names_no_server(
+        repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """`PRECOMMIT_PROBE` is a program the repository names, not a by-product of a file it
+    holds: the clean run's own seam is what answers here."""
+    rc, said = _hook(capsys)
+    assert rc == verdict.EXIT_PASS and "OK mame: 4 tasks cover 2 tools" in said, said
+    assert "skipped" not in said, said
 
 
 def test_an_unknown_option_is_usage() -> None:
