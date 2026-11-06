@@ -13,7 +13,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult, TextContent
 from pydantic import ValidationError
 
-from scry_core import picture
+from scry_core import given, picture
 from scry_core import strict_arguments as strict
 
 #: Takes the tool name, the arguments as given and the SDK's validation error; returns the whole
@@ -49,19 +49,20 @@ class Envelope(MCPServer):
 
     async def call_tool(self, name: str, arguments: dict[str, Any],
                         context: Context[Any, Any] | None = None) -> Any:
-        try:
-            result = await super().call_tool(name, arguments, context)
-            return _strict(name, picture.attached(result))
-        except ToolError as e:
-            cause = strict.refused_by_schema(e)
-            if cause is None:
-                raise
-            # Off the event loop: the refusal takes the server's lock, held by the worker thread
-            # running a sync tool body that reports progress through the loop; a loop parked on
-            # the lock would deadlock both.
-            body = await anyio.to_thread.run_sync(self._refusal, name, arguments, cause)
-        text = TextContent(type="text", text=json.dumps(body, indent=2, allow_nan=False))
-        return CallToolResult(content=[text], structured_content=body)
+        with given.remembered(arguments):
+            try:
+                result = await super().call_tool(name, arguments, context)
+                return _strict(name, picture.attached(result))
+            except ToolError as e:
+                cause = strict.refused_by_schema(e)
+                if cause is None:
+                    raise
+                # Off the event loop: the refusal takes the server's lock, held by the worker
+                # thread running a sync tool body that reports progress through the loop; a loop
+                # parked on the lock would deadlock both.
+                body = await anyio.to_thread.run_sync(self._refusal, name, arguments, cause)
+            text = TextContent(type="text", text=json.dumps(body, indent=2, allow_nan=False))
+            return CallToolResult(content=[text], structured_content=body)
 
 
 def _strict(name: str, result: Any) -> Any:

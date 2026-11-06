@@ -9,7 +9,8 @@ A profile is `{"format": "scry-start/1", ...}` whose keys are `start`'s own argu
 reading server hands in with the pre-gate that judges them, and whose paths resolve against one
 base: the directory that holds `.scry/`, never the file's own. `${root}`, `${home}`, `${state}`
 and `${env:NAME}` stand for what a tracked file must not carry, and an unset one is refused by
-name. The caller's own argument wins over the profile's (`precedence`)."""
+name. The caller's own argument wins over the profile's (`precedence`); `applied` is the one call
+a server makes."""
 
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ import json
 import os
 import re
 from collections.abc import Collection, Iterable, Iterator, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 
 from scry_core.reply_contract import Invalid
@@ -102,6 +104,41 @@ def precedence(values: Mapping[str, object],
     """The call's arguments: the caller's `given` over the profile's `values`, and the names the
     profile supplied, sorted."""
     return {**values, **given}, sorted(set(values) - set(given))
+
+
+@dataclass(frozen=True)
+class Applied:
+    """What a profile filled in one call, and the file it was read from."""
+
+    name: str
+    file: Path
+    supplied: list[str]
+    arguments: dict[str, object]
+
+    def shown(self) -> dict[str, object]:
+        """The reply's `profile` block."""
+        return {"name": self.name, "file": str(self.file), "supplied": self.supplied}
+
+
+def applied(profile: str, *, starting: Iterable[str | Path], keys: Collection[str],
+            path_keys: Collection[str], given: Collection[str],
+            arguments: Mapping[str, object], state: str = "",
+            environ: Mapping[str, str] | None = None) -> Applied:
+    """`arguments` with the profile `profile` names (or paths) filling only the names `given`
+    does not carry; `keys` and `path_keys` are what the reading server hands in."""
+    entry = Path(os.path.expanduser(profile)) if _absolute(profile) else locate(starting, profile)
+    values = read(entry, keys, path_keys, state=state, environ=environ)
+    fill = {name: value for name, value in values.items() if name not in set(given)}
+    call, _ = precedence(arguments, fill)
+    return Applied(profile, entry, sorted(fill), call)
+
+
+def demanded(arguments: Mapping[str, object], names: Iterable[str], *, tool: str) -> None:
+    """Refuse the arguments of `names` a call leaves empty, naming them."""
+    empty = [name for name in names if arguments.get(name) in ("", None)]
+    if empty:
+        raise Invalid("bad_argument", f"{tool} needs {_listed(empty)}: neither the call nor a "
+                      f"profile gave it. Pass it, or name a {STORE}/start profile")
 
 
 def _check_name(name: str) -> None:
@@ -208,6 +245,8 @@ def _paths(value: object, base: Path) -> object:
         return value if _absolute(value) else os.path.join(str(base), value)
     if isinstance(value, list):
         return [_paths(item, base) for item in value]
+    if isinstance(value, dict):
+        return {key: _paths(item, base) for key, item in value.items()}
     return value
 
 

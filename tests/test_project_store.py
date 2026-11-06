@@ -153,9 +153,10 @@ def test_each_path_of_a_list_resolves(tmp_path: Path) -> None:
                                                        "C:\\two.bin"]
 
 
-def test_an_object_under_a_path_key_is_left_alone(tmp_path: Path) -> None:
-    path = stored(tmp_path, {"symbols": {"0x100": "main"}})
-    assert ps.read(path, KEYS, PATH_KEYS)["symbols"] == {"0x100": "main"}
+def test_a_path_key_holding_a_table_resolves_every_entry(tmp_path: Path) -> None:
+    path = stored(tmp_path, {"symbols": {"0x100": "maps/main.map"}})
+    assert ps.read(path, KEYS, PATH_KEYS)["symbols"] == {
+        "0x100": str(tmp_path / "maps" / "main.map")}
 
 
 def test_home_resolves_to_the_users_home(tmp_path: Path,
@@ -277,3 +278,75 @@ def test_nothing_given_leaves_the_profile_whole() -> None:
 def test_a_key_only_the_caller_gives_is_not_the_profiles() -> None:
     values, from_profile = ps.precedence({"program": "p"}, {"shared": True})
     assert values == {"program": "p", "shared": True} and from_profile == ["program"]
+
+
+def test_a_profile_fills_only_the_names_the_caller_did_not_give(tmp_path: Path) -> None:
+    stored(tmp_path, {"conf": "boot.conf", "program": "GAME.EXE", "shared": True})
+    found = ps.applied("dos", starting=[tmp_path], keys=KEYS, path_keys=PATH_KEYS,
+                       given={"conf"}, arguments={"conf": "/given/boot.conf", "program": "",
+                                                  "shared": False})
+    assert found.arguments == {"conf": "/given/boot.conf", "program": "GAME.EXE",
+                               "shared": True}
+    assert found.supplied == ["program", "shared"]
+    assert found.file == tmp_path / ps.STORE / "start" / "dos.json"
+    assert found.name == "dos"
+
+
+def test_the_profiles_paths_resolve_against_the_base_of_its_store(tmp_path: Path) -> None:
+    stored(tmp_path, {"conf": "cfg/boot.conf", "cwd": "guest"})
+    below = tmp_path / "a"
+    below.mkdir()
+    found = ps.applied("dos", starting=[below], keys=KEYS, path_keys=PATH_KEYS, given=set(),
+                       arguments={"conf": "", "cwd": ""})
+    assert found.arguments == {"conf": str(tmp_path / "cfg" / "boot.conf"),
+                               "cwd": str(tmp_path / "guest")}
+
+
+def test_a_profile_named_by_its_path_is_read_there(tmp_path: Path) -> None:
+    entry = stored(tmp_path, {"program": "GAME.EXE"})
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    found = ps.applied(str(entry), starting=[elsewhere], keys=KEYS, path_keys=PATH_KEYS,
+                       given=set(), arguments={"program": ""})
+    assert found.arguments["program"] == "GAME.EXE"
+    assert found.file == entry
+
+
+def test_the_names_the_profile_did_not_fill_are_none_supplied(tmp_path: Path) -> None:
+    stored(tmp_path, {"shared": True})
+    found = ps.applied("dos", starting=[tmp_path], keys=KEYS, path_keys=PATH_KEYS,
+                       given={"shared"}, arguments={"shared": False})
+    assert found.supplied == []
+    assert found.arguments == {"shared": False}
+
+
+def test_the_reply_block_names_the_profile_its_file_and_what_it_supplied(tmp_path: Path) -> None:
+    entry = stored(tmp_path, {"program": "GAME.EXE"})
+    found = ps.applied("dos", starting=[tmp_path], keys=KEYS, path_keys=PATH_KEYS, given=set(),
+                       arguments={"program": ""})
+    assert found.shown() == {"name": "dos", "file": str(entry), "supplied": ["program"]}
+
+
+def test_a_profile_found_nowhere_is_refused_naming_the_directories_searched(
+        tmp_path: Path) -> None:
+    with pytest.raises(Invalid, match="searched"):
+        ps.applied("nowhere", starting=[tmp_path], keys=KEYS, path_keys=PATH_KEYS, given=set(),
+                   arguments={})
+
+
+def test_a_key_no_server_takes_is_refused_by_name(tmp_path: Path) -> None:
+    stored(tmp_path, {"steps": []})
+    with pytest.raises(Invalid, match="steps"):
+        ps.applied("dos", starting=[tmp_path], keys=KEYS, path_keys=PATH_KEYS, given=set(),
+                   arguments={})
+
+
+def test_a_required_argument_the_call_and_the_profile_both_lack_is_refused_by_name() -> None:
+    with pytest.raises(Invalid, match="conf"):
+        ps.demanded({"conf": "", "cwd": "/guest", "session_seconds": None},
+                    ("conf", "cwd", "session_seconds"), tool="start")
+
+
+def test_a_required_argument_the_call_gives_is_taken() -> None:
+    ps.demanded({"conf": "/boot.conf", "cwd": "/guest", "session_seconds": 30},
+                ("conf", "cwd", "session_seconds"), tool="start")

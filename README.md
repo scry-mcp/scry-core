@@ -27,6 +27,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.progress` | the progress line of a bounded wait: one a second, one short line, never backwards, none once the call is cancelled, bridged from the tool's worker thread to the request |
 | `scry_core.cancel` | a cancelled call: the poll every bounded wait makes, the shield its end runs under, how each tool declares it ends, and the record the next reply carries |
 | `scry_core.strict_arguments` | the schema as part of a tool's contract: what it does not declare is refused |
+| `scry_core.given` | the arguments a call was given, before the schema fills the defaults: what the MCP boundary read from the client, or what a call in process passed, held for the tool's body so a profile fills only the rest |
 | `scry_core.methods` | a tool whose operation is a `method` argument: the method dispatched, an argument it does not take refused naming it, and the fold's pre-gate judge and summary line |
 | `scry_core.prose` | how a count is said in a summary, a note or a refusal: the one plural rule, and the verb that agrees with it; and the one summary line every tool answers for a refusal |
 | `scry_core.declaration_file` | the file both servers keep their declarations in: read whole, a key's rows judged by shape, one key written atomically |

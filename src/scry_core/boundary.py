@@ -20,7 +20,7 @@ from typing import Any, Protocol
 
 from mcp.types import ToolAnnotations
 
-from scry_core import cancel, picture
+from scry_core import cancel, given, picture
 from scry_core import reply_schema as schema
 from scry_core import session_block as blocks
 from scry_core import strict_arguments as strict
@@ -125,6 +125,14 @@ class Boundary:
                 for t in strict.registered(self.mcp)
                 if hasattr(t.fn, ON_CANCEL_ATTR)}
 
+    def _invoked(self, fn: Callable[..., Any], bound: inspect.BoundArguments) -> Reply:
+        """The body, with the names this call was given held for it: the client's, where the MCP
+        boundary already read them, or else the ones a call in process passed."""
+        if given.names() is not None:
+            return self._invoke(fn, bound)
+        with given.remembered(name for name in bound.arguments if name != "ctx"):
+            return self._invoke(fn, bound)
+
     def line(self, name: str, args: dict[str, Any], reply: Reply) -> str:
         """The refusal line for a reply that is not `ok`, the tool's own otherwise."""
         if reply.get("status") != "ok":
@@ -191,7 +199,7 @@ class Boundary:
                     try:
                         if parent is None and self._listener is not None:
                             self._listener.began(fn.__name__)
-                        reply = self._invoke(fn, bound)
+                        reply = self._invoked(fn, bound)
                         if parent is not None:
                             reply = picture.unattached_below(reply, top=False)
                         if self.nested == 1:

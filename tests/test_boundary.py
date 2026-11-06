@@ -13,7 +13,7 @@ from typing import Annotated, Any
 import pytest
 from mcp.server.mcpserver import Context
 
-from scry_core import boundary, cancel, reply_schema
+from scry_core import boundary, cancel, given, reply_schema
 from scry_core.envelope import Envelope
 from scry_core.reply_contract import OmitEmpty
 
@@ -704,3 +704,17 @@ def test_the_closed_reply_leaves_out_a_marked_field_that_is_empty() -> None:
     finally:
         reply_schema._JUDGES.pop("count", None)
         reply_schema._OMIT_EMPTY.pop("count", None)
+
+
+def test_a_tool_called_directly_knows_the_names_it_was_passed() -> None:
+    s = _Server()
+    seen: list[Any] = []
+
+    @s.tool("Peek")
+    def peek(x: int = 1, y: str = "d") -> dict[str, Any]:
+        seen.append(given.names())
+        return {"status": "ok"}
+
+    peek(3)
+    assert seen == [frozenset({"x"})]
+    assert given.names() is None                 # the names end with the call
