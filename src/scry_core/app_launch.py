@@ -10,6 +10,7 @@ import os
 import plistlib
 import signal
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import IO, Any, Protocol
@@ -30,6 +31,12 @@ WAIT_POLL_S = 0.1
 UNKNOWN_EXIT_WHY = (
     "the emulator was launched as an app, so this server is not its parent and nothing here "
     "reaps it: its exit status is not known")
+
+#: The route is `open`'s: launchd starts the bundle, `pgrep -f -u` finds its pid, and a FIFO
+#: carries its console. Windows has none of the three, and starts an emulator as a program.
+NOT_HERE_WHY = (
+    "an app bundle is launched by `open`, which Windows does not have: start the emulator as a "
+    "program there")
 
 
 def executable_of(bundle: str | Path) -> str | None:
@@ -89,19 +96,22 @@ def run_open(cmd: list[str]) -> subprocess.CompletedProcess[str]:
 
 def find_pid(token: str, timeout: float) -> int | None:
     """The pid whose command line carries `token`, or None within `timeout` (`pgrep -f`)."""
-    deadline = time.monotonic() + timeout
-    while True:
-        run = subprocess.run([PGREP, "-f", "-u", str(os.getuid()), "--", token],
-                             capture_output=True, text=True, check=False)
-        said = run.stdout.split()
-        if said:
-            try:
-                return int(said[0])
-            except ValueError:
-                pass
-        if time.monotonic() >= deadline:
-            return None
-        time.sleep(FIND_POLL_S)
+    if sys.platform == "win32":
+        raise Invalid("host_failed", NOT_HERE_WHY)
+    else:
+        deadline = time.monotonic() + timeout
+        while True:
+            run = subprocess.run([PGREP, "-f", "-u", str(os.getuid()), "--", token],
+                                 capture_output=True, text=True, check=False)
+            said = run.stdout.split()
+            if said:
+                try:
+                    return int(said[0])
+                except ValueError:
+                    pass
+            if time.monotonic() >= deadline:
+                return None
+            time.sleep(FIND_POLL_S)
 
 
 class AppProcess:
@@ -142,8 +152,11 @@ class AppProcess:
             time.sleep(WAIT_POLL_S)
 
     def kill(self) -> None:
-        with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.kill(self.pid, signal.SIGKILL)
+        if sys.platform == "win32":
+            raise Invalid("host_failed", NOT_HERE_WHY)
+        else:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.kill(self.pid, signal.SIGKILL)
 
 
 def launch(bundle: str | Path, argv: list[str], *, stdout: str | None = None,
@@ -154,31 +167,35 @@ def launch(bundle: str | Path, argv: list[str], *, stdout: str | None = None,
 
     The FIFO is opened read-write first, so launchd finds a reader and a dead emulator is a
     liveness question, never an `EPIPE`."""
-    stdin = None
-    if stdin_fifo:
-        with contextlib.suppress(FileExistsError):
-            os.mkfifo(stdin_fifo, 0o600)
-        stdin = os.fdopen(os.open(stdin_fifo, os.O_RDWR), "wb", buffering=0)
-    try:
-        cmd = open_argv(bundle, argv, stdout=stdout, stdin_fifo=stdin_fifo, env=env,
-                       cwd=cwd)
-        run = run_open(cmd)
-        if run.returncode != 0:
-            said = (run.stderr or run.stdout).strip() or "it said nothing"
+    if sys.platform == "win32":
+        raise Invalid("host_failed", NOT_HERE_WHY)
+    else:
+        stdin = None
+        if stdin_fifo:
+            with contextlib.suppress(FileExistsError):
+                os.mkfifo(stdin_fifo, 0o600)
+            stdin = os.fdopen(os.open(stdin_fifo, os.O_RDWR), "wb", buffering=0)
+        try:
+            cmd = open_argv(bundle, argv, stdout=stdout, stdin_fifo=stdin_fifo, env=env,
+                            cwd=cwd)
+            run = run_open(cmd)
+            if run.returncode != 0:
+                said = (run.stderr or run.stdout).strip() or "it said nothing"
+                raise Invalid("host_failed",
+                              f"open refused the app bundle {bundle} (rc {run.returncode}): "
+                              f"{said}")
+            pid = find_pid(token, timeout)
+        except BaseException:
+            if stdin is not None:
+                stdin.close()
+            raise
+        if pid is None:
+            assert stdin is not None or not stdin_fifo
             raise Invalid("host_failed",
-                          f"open refused the app bundle {bundle} (rc {run.returncode}): {said}")
-        pid = find_pid(token, timeout)
-    except BaseException:
-        if stdin is not None:
-            stdin.close()
-        raise
-    if pid is None:
-        assert stdin is not None or not stdin_fifo
-        raise Invalid("host_failed",
-                      f"open accepted {bundle} but no process carrying {token!r} appeared in "
-                      f"{timeout:g} s: the app may have quit, or another user's process holds "
-                      "the same command line")
-    return AppProcess(pid, stdin)
+                          f"open accepted {bundle} but no process carrying {token!r} appeared "
+                          f"in {timeout:g} s: the app may have quit, or another user's process "
+                          "holds the same command line")
+        return AppProcess(pid, stdin)
 
 
 def exit_status(proc: Any, code: int) -> int | dict[str, Any]:

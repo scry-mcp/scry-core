@@ -7,6 +7,7 @@ import os
 import plistlib
 import signal
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,11 @@ import pytest
 
 from scry_core import app_launch
 from scry_core.reply_contract import Invalid
+
+#: The route is `open`'s and its calls are POSIX's: Windows skips the module, and the cases that
+#: read `os.getuid`, `SIGKILL` or `O_NONBLOCK` guard that line so `mypy --platform win32` reads
+#: only the reachable half.
+pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="the app route is `open`'s")
 
 
 def _bundle(where: Path, executable: str = "emu", info: dict[str, Any] | None = None) -> Path:
@@ -141,8 +147,9 @@ def test_find_pid_polls_the_session_itself_until_pgrep_names_one(
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(time, "sleep", lambda s: None)
     assert app_launch.find_pid("-debugger_port 5000", 1.0) == 4321
-    assert runs[0] == ["/usr/bin/pgrep", "-f", "-u", str(os.getuid()), "--",
-                       "-debugger_port 5000"]
+    if sys.platform != "win32":
+        assert runs[0] == ["/usr/bin/pgrep", "-f", "-u", str(os.getuid()), "--",
+                           "-debugger_port 5000"]
 
 
 def test_find_pid_gives_up_at_its_bound(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -183,7 +190,8 @@ def test_kill_signals_the_pid_and_a_process_already_gone_is_no_error(
     seen: list[tuple[int, int]] = []
     monkeypatch.setattr(os, "kill", lambda pid, sig: seen.append((pid, sig)))
     app_launch.AppProcess(77).kill()
-    assert seen == [(77, signal.SIGKILL)]
+    if sys.platform != "win32":
+        assert seen == [(77, signal.SIGKILL)]
     monkeypatch.setattr(os, "kill",
                         lambda pid, sig: (_ for _ in ()).throw(ProcessLookupError))
     app_launch.AppProcess(78).kill()
@@ -239,8 +247,9 @@ def test_a_refused_open_does_not_leave_the_console_held(
     with pytest.raises(Invalid):
         app_launch.launch(_bundle(tmp_path), ["emu", "x"], stdout=str(tmp_path / "o.log"),
                           stdin_fifo=str(fifo), token="tok")
-    with pytest.raises(OSError):
-        os.open(fifo, os.O_WRONLY | os.O_NONBLOCK)
+    if sys.platform != "win32":
+        with pytest.raises(OSError):
+            os.open(fifo, os.O_WRONLY | os.O_NONBLOCK)
 
 
 def test_the_working_directory_rides_as_its_own_variable(tmp_path: Path) -> None:
