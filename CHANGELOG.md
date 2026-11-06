@@ -2,6 +2,14 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.91.2
+
+### Added
+
+- `recording.check_perform_arguments`: `perform`'s two arguments judged without reading anything,
+  so a server's pre-gate can refuse them before it asks for the document; `steps_to_replay` reads
+  it after that judgement.
+
 ## 0.91.1
 
 ### Added
