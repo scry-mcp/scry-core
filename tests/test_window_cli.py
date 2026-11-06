@@ -18,6 +18,10 @@ from scry_core.reply_contract import Invalid
 
 TWO = [w.Display(0, (0, 0, 2048, 1152)), w.Display(1, (2048, 0, 2048, 1152))]
 
+#: Where the second display puts a 4:3 window: macOS keeps it under the menu bar, Windows inside
+#: the usable area with its frame's border and title bar above.
+POSITION = "2088,51" if sys.platform == "win32" else "2088,40"
+
 
 class Desk:
     def __init__(self, displays: list[w.Display], listed: list[w.Seen] | None = None) -> None:
@@ -76,7 +80,8 @@ def test_words_prints_one_word_per_line_for_the_asked_display(
         desk: Desk, capsys: pytest.CaptureFixture[str]) -> None:
     code, out, _ = run(capsys, "words", "dosbox-x", "--display", "1")
     assert code == 0
-    assert out.splitlines() == ["-set", "sdl display=1", "-set", "sdl windowposition=2088,40"]
+    assert out.splitlines() == ["-set", "sdl display=1", "-set",
+                                f"sdl windowposition={POSITION}"]
 
 
 def test_words_default_to_the_main_display(desk: Desk,
@@ -207,11 +212,11 @@ def test_launch_starts_the_command_with_the_placement_words_and_prints_its_pid(
     try:
         assert code == 0 and err == ""
         deadline = time.monotonic() + 10
-        while (not (record.exists() and record.read_text().endswith("2088,40"))
+        while (not (record.exists() and record.read_text().endswith(POSITION))
                and time.monotonic() < deadline):
             time.sleep(0.02)
         assert record.read_text().splitlines() == ["-set", "sdl display=1", "-set",
-                                                   "sdl windowposition=2088,40"]
+                                                   f"sdl windowposition={POSITION}"]
     finally:
         os.kill(pid, signal.SIGTERM)
 

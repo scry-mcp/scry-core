@@ -64,7 +64,7 @@ def test_a_stops_block_shows_the_newest_lines_and_the_mark_they_start_at() -> No
 
 def test_a_logs_tail_is_its_last_characters_and_a_short_log_is_whole(tmp_path: Path) -> None:
     short = tmp_path / "short.log"
-    short.write_text("boot\nfatal\n", encoding="utf-8")
+    short.write_bytes(b"boot\nfatal\n")     # the tail is bytes: text mode would write \r\n here
     assert log_marks.tail(short) == "boot\nfatal\n"
     long = tmp_path / "long.log"
     long.write_text("a" * 5000 + "é" * 2000 + "end", encoding="utf-8")
