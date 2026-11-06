@@ -63,3 +63,23 @@ def test_a_path_that_is_not_there_is_refused(tmp_path: Path) -> None:
 def test_a_relative_path_is_refused(tmp_path: Path) -> None:
     with pytest.raises(Invalid, match="absolute path"):
         recording.read_document("session.json")
+
+
+def test_the_steps_a_perform_replays_are_the_callers_or_the_documents() -> None:
+    mine = [{"op": "status"}]
+    assert recording.steps_to_replay(mine, "") is mine
+
+
+def test_both_a_step_list_and_a_path_are_refused_naming_both() -> None:
+    with pytest.raises(Invalid, match="steps and path name two lists of steps"):
+        recording.steps_to_replay([{"op": "status"}], "~/.scry/perform/dos.json")
+
+
+def test_neither_a_step_list_nor_a_path_is_refused() -> None:
+    with pytest.raises(Invalid, match="give steps, or path to a `perform` document"):
+        recording.steps_to_replay(None, "")
+
+
+def test_a_path_gives_the_steps_of_the_document(tmp_path: Path) -> None:
+    path = _doc(tmp_path)
+    assert recording.steps_to_replay(None, str(path)) == [{"op": "status"}]

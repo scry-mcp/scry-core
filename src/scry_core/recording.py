@@ -37,7 +37,7 @@ import shlex
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, Protocol, get_args
+from typing import Any, Literal, Protocol, cast, get_args
 
 from scry_core import fresh, judges, prose
 from scry_core.reply_contract import Invalid, unavailable
@@ -533,6 +533,18 @@ def read_document(path_arg: object) -> dict[str, Any]:
         raise Invalid("bad_argument", f"path: {path} holds no steps, or one that is not an "
                       "object, so a replay would run nothing")
     return doc
+
+
+def steps_to_replay(steps: list[dict[str, Any]] | None, path: object) -> list[dict[str, Any]]:
+    """`perform`'s list: the caller's own, or the steps of the document it names, never both."""
+    if path:
+        if steps is not None:
+            raise Invalid("bad_argument", "steps and path name two lists of steps: give one, "
+                                         "never both")
+        return cast(list[dict[str, Any]], read_document(path)["steps"])
+    if steps is None:
+        raise Invalid("bad_argument", "give steps, or path to a `perform` document")
+    return steps
 
 
 def diverged(recorded: Mapping[str, Any], reply: Mapping[str, Any]
