@@ -17,7 +17,9 @@ import posixpath
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated, Any, Required, TypedDict
+from typing import Annotated, Any, Required
+
+from typing_extensions import TypedDict
 
 from scry_core import fresh, project_store, prose, recording, screen_map
 from scry_core.reply_contract import Invalid, When
