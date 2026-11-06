@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.92.1
+
+### Fixed
+
+- `promote.PromoteFields` is a `typing_extensions.TypedDict`, as the servers' own models are:
+  a `typing` one gave every model that inherits it a metaclass conflict at import.
+
 ## 0.92.0
 
 ### Added
