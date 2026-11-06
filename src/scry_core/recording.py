@@ -510,6 +510,31 @@ def export(recorder: Recorder, dest: str, overwrite: bool = False) -> dict[str, 
             "replay": f"uv run python -m scry_core.replay {shlex.quote(str(target))}"}
 
 
+def read_document(path_arg: object) -> dict[str, Any]:
+    """The `perform` document a caller names by path, judged before a step runs: JSON, a version
+    this module writes, and a list of step objects. `path` is absolute or led by `~`."""
+    path = judges.absolute("path", path_arg)
+    text = judges.read_text("path", path_arg, "`perform` document")
+    try:
+        doc = json.loads(text)
+    except (ValueError, RecursionError) as e:      # JSONDecodeError is a ValueError
+        raise Invalid("bad_argument", f"path: {path} is not a JSON `perform` document: "
+                      f"{e}") from None
+    if not isinstance(doc, dict):
+        raise Invalid("bad_argument", f"path: {path} holds {type(doc).__name__}, not a "
+                      "`perform` document")
+    version = doc.get("version")
+    if version != DOCUMENT_VERSION:
+        raise Invalid("bad_argument", f"path: {path} is a `perform` document version "
+                      f"{version!r}, and this reader takes version {DOCUMENT_VERSION}: export "
+                      "it again")
+    steps = doc.get("steps")
+    if not isinstance(steps, list) or not steps or not all(isinstance(s, dict) for s in steps):
+        raise Invalid("bad_argument", f"path: {path} holds no steps, or one that is not an "
+                      "object, so a replay would run nothing")
+    return doc
+
+
 def diverged(recorded: Mapping[str, Any], reply: Mapping[str, Any]
              ) -> tuple[str, Any, Any] | None:
     """The first recorded field the reply does not hold to: (field, recorded, got), or None.
