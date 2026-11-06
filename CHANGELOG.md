@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.91.1
+
+### Added
+
+- `recording.steps_to_replay`: `perform`'s list, the caller's own or the steps of the document it
+  names, refused beside each other, so both servers enforce one rule in one place.
+
 ## 0.91.0
 
 ### Added
