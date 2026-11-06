@@ -6,7 +6,7 @@ about a single program stays in the server that runs it.
 
 | Kata | Servers | Lives in | Screen map |
 |---|---|---|---|
-| lineup | DOSBox-X, MAME | the game's script and map in `scry_core/games/`; each server binds its inputs in `demos/lineup/demo.py` | `scry_core/games/lineup.screen-map.json` |
+| lineup | DOSBox-X, MAME | the arcade's script in `scry_core/games/` and the PC port's in its own `.scry/perform/`; each server binds its inputs in `demos/lineup/demo.py` | `lineup.screen-map.json`, in each port's `.scry/maps/` |
 | bricks | DOSBox-X | `scry-dosbox-x/demos/bricks/` | `bricks.screen-map.json` |
 | mines | DOSBox-X | `scry-dosbox-x/demos/mines/` | `mines.screen-map.json` |
 | dpaint | DOSBox-X | `scry-dosbox-x/demos/dpaint/` | `dpaint.screen-map.json` |

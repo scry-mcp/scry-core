@@ -1,22 +1,27 @@
-"""LineUp's script: what it asks of a binding, and the one map it ships."""
+"""LineUp's script: what it asks of a binding, and the screens it asks its map for."""
 
 from __future__ import annotations
 
-import json
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
-from scry_core import screen_map
 from scry_core.demo import Reply, Run, Step, StepFailed
 from scry_core.game_demo import Binding, Press
 from scry_core.games import lineup
 
 
-def _binding(actions: tuple[str, ...] = lineup.ACTIONS) -> Binding:
+def _map(run: Run) -> Path:
+    return Path("/game/.scry/maps/lineup.screen-map.json")
+
+
+def _binding(actions: tuple[str, ...] = lineup.ACTIONS,
+             map_at: Callable[[Run], Path] = _map) -> Binding:
     boot = [Step("start", "start", {}, lambda r, run: "")]
     return Binding("board", boot, {a: Press("input", {"field": a}) for a in actions}, 50.0,
-                   Path("/music.wav"))
+                   Path("/music.wav"), map_at)
 
 
 def test_the_script_starts_with_the_binding_and_ends_by_closing() -> None:
@@ -37,21 +42,25 @@ def test_a_binding_missing_an_action_is_refused_before_anything_runs() -> None:
         lineup.steps(_binding(tuple(a for a in lineup.ACTIONS if a != "UP")))
 
 
-def test_the_script_checks_only_screens_its_map_holds_and_the_map_signs_indices() -> None:
-    application, mode, screens, _ = screen_map.parse(json.loads(lineup.MAP.read_text()),
-                                                     str(lineup.MAP))
-    assert application == "lineup" and mode == "verified"
-    assert all(s.cells == "index" and s.size == (320, 200) for s in screens.values())
-    steps = lineup.steps(_binding())
-    asked = {s.name.removeprefix("is ") for s in steps if s.tool == "screen_map_find"}
-    assert asked == set(screens)
-    order = list(screens)
-    assert order.index("insert") < order.index("hiscores"), (
-        "insert is the high-score table plus a banner, so it must be tried first")
+def test_the_script_asks_the_screens_the_game_has() -> None:
+    asked = [s.name.removeprefix("is ") for s in lineup.steps(_binding())
+             if s.tool == "screen_map_find"]
+    assert asked == ["hiscores", "insert", "level", "play"]
     run = Run(dir=Path("/unused"))
-    for step in (s for s in steps if s.tool == "screen_map_find"):
+    for step in (s for s in lineup.steps(_binding()) if s.tool == "screen_map_find"):
         name = step.name.removeprefix("is ")
         assert step.check(Reply({"matched": True, "screen": name, "controls": []}), run)
+
+
+def test_the_map_is_the_binding_s_and_a_copy_of_it_goes_into_the_run(tmp_path: Path) -> None:
+    shared = tmp_path / "lineup.screen-map.json"
+    shared.write_text("{}", encoding="utf-8")
+    step = next(s for s in lineup.steps(_binding(map_at=lambda run: shared)) if s.name == "map")
+    run = Run(dir=tmp_path / "run")
+    run.dir.mkdir()
+    args = cast(Callable[[Run], dict[str, Any]], step.args)(run)
+    assert Path(args["path"]) == run.dir / shared.name
+    assert (run.dir / shared.name).read_text() == "{}"
 
 
 def test_a_read_of_player1_names_the_fields_it_wants_and_what_they_held(tmp_path: Path) -> None:

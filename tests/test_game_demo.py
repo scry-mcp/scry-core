@@ -27,7 +27,8 @@ COIN = Press("input", {"port": ":P1", "field": "Coin 1"})
 
 def _binding(rate_hz: float = 50.0, **over: object) -> Binding:
     return Binding(platform="board", boot=[], inputs={"COIN": COIN}, rate_hz=rate_hz,
-                   sound=Path("/ref.wav"), **over)  # type: ignore[arg-type]
+                   sound=Path("/ref.wav"), map=lambda run: Path("/game.screen-map.json"),
+                   **over)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(("rate_hz", "ms", "frames"), [
@@ -85,7 +86,7 @@ def test_the_map_is_loaded_from_a_copy_in_the_run(tmp_path: Path) -> None:
     shared.write_text("{}", encoding="utf-8")
     run = Run(dir=tmp_path / "run")
     run.dir.mkdir()
-    step = map_load("map", shared)
+    step = map_load("map", lambda run: shared)
     assert callable(step.args)
     args = step.args(run)
     assert args == {"method": "load", "path": run.dir / "game.screen-map.json"}
@@ -105,7 +106,8 @@ def _wav(path: Path) -> Path:
 
 def test_the_sound_records_into_the_run_then_holds_it_to_the_reference(tmp_path: Path) -> None:
     reference = _wav(tmp_path / "ref.wav")
-    binding = Binding("board", [], {}, 50.0, reference)
+    binding = Binding("board", [], {}, 50.0, reference,
+                      lambda run: Path("/game.screen-map.json"))
     steps: list[Step] = sound(binding, 2000, "music.wav")
     assert [(s.name, s.tool) for s in steps] == [
         ("record", "audio_record"), ("heard", "audio_compare"), ("exact", "audio_compare")]

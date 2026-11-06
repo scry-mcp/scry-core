@@ -3,8 +3,9 @@ caller names a control instead of a coordinate and a screen is recognised withou
 crossing the conversation. No emulator here: a server hands in one read of its screen.
 
 THE FILE is JSON, `"format": "scry-screen-map/1"`, named `<application>.screen-map.json` and kept
-beside the program in the application's own repository (a game both servers run keeps one, beside
-its script in `scry_core.games`):
+in the application's own store, `.scry/maps/<application>.screen-map.json`, beside its run recipe
+and its scripts (a game both servers run keeps one in each port's repository: the same screens,
+the same map):
 
     {"format": "scry-screen-map/1", "application": "bricks", "mode": "verified",
      "screens": [{"name": "play", "kind": "pixel", "size": [320, 200], "anchor": "DrawPlay",
@@ -661,7 +662,7 @@ def _map_path(name: str, value: object) -> Path:
     if not path.name.endswith(SUFFIX) or not _name(_application(path)):
         raise Invalid("bad_argument", f"{name}: {path} is not named `<application>{SUFFIX}`, "
                       f"the application a name of 1..{_NAME_MAX} characters: the name a map is "
-                      "kept by beside its program")
+                      "kept by in `.scry/maps/`")
     return path
 
 

@@ -14,7 +14,6 @@ and the VGA's 6-bit DAC show the same index in different colours. `insert` is li
 from __future__ import annotations
 
 from collections.abc import Callable
-from pathlib import Path
 
 from scry_core.demo import Reply, Run, Step, expect
 from scry_core.game_demo import (
@@ -29,7 +28,6 @@ from scry_core.game_demo import (
     words,
 )
 
-MAP = Path(__file__).with_name("lineup.screen-map.json")
 #: The game's actions as its source names them (`J_*`): what every platform binds.
 ACTIONS = ("COIN", "START", "RIGHT", "FIRE1", "UP")
 #: Run on every tick of the game's 50 Hz interrupt, the attract included.
@@ -67,7 +65,7 @@ def steps(binding: Binding) -> list[Step]:
     pressed = {a: binding.press(f"press {a.lower()}", a, said(f"{a} pressed")) for a in ACTIONS}
     return [
         *binding.boot,
-        map_load("map", MAP),
+        map_load("map", binding.map),
         Step("to the high scores", "run_to",
              {"ref": "Draw_High_Scores_Screen", "control": CONTROL, "seconds": WAIT_S},
              arrived("Draw_High_Scores_Screen"),
@@ -110,8 +108,15 @@ def steps(binding: Binding) -> list[Step]:
         pressed["UP"],
         wait("shot", 100, "the shot launched"),
         player({"S_Column": START_COLUMN + 1, "S_Block": START_BLOCK + 1}, "a shot of it"),
-        *sound(binding, MUSIC_MS, "music.wav"),
-        Step("screen", "screen_view", lambda run: {"dest": run.dir / "screen.png", "attach": False},
-             lambda reply, run: f"the board, {reply['width']}x{reply['height']}"),
-        Step("close", "close", {}, lambda reply, run: f"closed: {reply['ended_by']}"),
+        *epilogue(binding),
     ]
+
+
+def epilogue(binding: Binding) -> list[Step]:
+    """What follows the script on every platform: its sound held to the platform's recording, a
+    picture of the board, and the close."""
+    return [*sound(binding, MUSIC_MS, "music.wav"),
+            Step("screen", "screen_view",
+                 lambda run: {"dest": run.dir / "screen.png", "attach": False},
+                 lambda reply, run: f"the board, {reply['width']}x{reply['height']}"),
+            Step("close", "close", {}, lambda reply, run: f"closed: {reply['ended_by']}")]

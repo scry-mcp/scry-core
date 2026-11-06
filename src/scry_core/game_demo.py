@@ -32,14 +32,15 @@ class Press:
 class Binding:
     """What one platform answers for a script: `boot` leaves the machine stopped with the game's
     symbols loaded, `inputs` fires each of the game's actions, `rate_hz` is the screen's refresh,
-    `sound` the recording the script's sound is held to, `volatile` what its input replies vary
-    in between two honest runs."""
+    `sound` the recording the script's sound is held to, `map` the game's screen map in the
+    checkout the run reads, `volatile` what its input replies vary in between two honest runs."""
 
     platform: str
     boot: Sequence[Step]
     inputs: Mapping[str, Press]
     rate_hz: float
     sound: Path
+    map: Callable[[Run], Path]
     volatile: Mapping[str, str] = field(default_factory=dict)
 
     def frames(self, milliseconds: int) -> int:
@@ -94,9 +95,10 @@ def elapsed(what: str) -> Callable[[Reply, Run], str]:
     return check
 
 
-def map_load(name: str, shared: Path) -> Step:
-    """The shared map, loaded from a copy in the run: the transcript names no install path."""
+def map_load(name: str, at: Callable[[Run], Path]) -> Step:
+    """The game's map, loaded from a copy in the run: the transcript names no install path."""
     def args(run: Run) -> dict[str, Any]:
+        shared = at(run)
         copy = run.dir / shared.name
         shutil.copyfile(shared, copy)
         return {"method": "load", "path": copy}
