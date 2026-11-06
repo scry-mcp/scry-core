@@ -2,6 +2,23 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.90.0
+
+### Added
+
+- `project_store`: the store a repository declares for its own program (`.scry/`): the root
+  found by walking up from a starting directory, a `start` profile (`scry-start/1`) read against
+  it with an unknown version or key refused by name, `${root}`, `${home}`, `${state}` and
+  `${env:NAME}` resolved against the one base, the caps, and `precedence`, the caller's argument
+  winning.
+- `project_store.applied` and `Applied`: the profile found by name (or read where a path names
+  it), filling only the names the call did not give, and the reply's `profile` block.
+- `project_store.demanded`: the refusal of an argument neither the call nor a profile gave.
+- `given`: the names a call was given, before the schema fills the defaults, held for the tool's
+  body from the MCP boundary or the call boundary, so a profile never overrides a caller's own
+  value whether the call came from a client or in process.
+- A path key holding a table (`{"cpu": "maps/x.map"}`) resolves each entry against the base.
+
 ## 0.89.2
 
 ### Added
