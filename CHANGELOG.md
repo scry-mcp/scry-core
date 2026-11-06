@@ -2,6 +2,28 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.92.0
+
+### Added
+
+- `promote`: the session's draft and the promotion that writes it into a repository's `.scry/`.
+  One candidate per (kind, name), complete only with what the reader of its kind accepts; a name
+  the store already holds is an update shown as its diff; `dry_run` reviews and `entries` writes,
+  creating the store only then, under the caps `project_store` declares. A declared path is
+  written as `${root}`, `${home}`, `${state}` or `${env:NAME}`, and one that would leave them is
+  refused.
+- `promote.after_export`, `after_close`, `kept_line` and `promote_line`: the reply, the unkept
+  list and the summary line both servers say, written once.
+- `screen_map.Maps.session_application`: the entry this session loaded or saved, which names what
+  it adds next; a `start` forgets it, so a map learned afterwards is named after the machine.
+
+### Changed
+
+- `scry_core.hook`'s probe step runs where a repository holds `mcp_probe/servers.py` and says it
+  skipped where one holds none, so the steps after it run in this repository.
+- `project_store.entry_name` is public and its refusal no longer calls every entry a profile.
+- `project_store.absolute` is the public name of what the store reads paths with.
+
 ## 0.91.2
 
 ### Added
