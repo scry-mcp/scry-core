@@ -83,3 +83,28 @@ def test_neither_a_step_list_nor_a_path_is_refused() -> None:
 def test_a_path_gives_the_steps_of_the_document(tmp_path: Path) -> None:
     path = _doc(tmp_path)
     assert recording.steps_to_replay(None, str(path)) == [{"op": "status"}]
+
+
+def test_a_document_led_by_a_tilde_is_read_from_the_home(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    (tmp_path / "session.json").write_text(json.dumps(
+        {"version": recording.DOCUMENT_VERSION, "steps": [{"op": "status"}]}), encoding="utf-8")
+    assert recording.steps_to_replay(None, "~/session.json") == [{"op": "status"}]
+
+
+
+def test_the_package_ships_no_program_s_map() -> None:
+    """A game's map lives in its own repository: a stale copy here would be invisible."""
+    from scry_core import games
+    package = Path(games.__file__).parent
+    assert not list(package.glob("*.screen-map.json"))
+
+
+def test_the_arguments_are_judged_without_reading_anything(tmp_path: Path) -> None:
+    """A gate that runs before the session asks for the arguments only."""
+    recording.check_perform_arguments(None, str(tmp_path / "not-there.json"))
+    with pytest.raises(Invalid, match="steps and path"):
+        recording.check_perform_arguments([{"op": "status"}], str(tmp_path / "not-there.json"))
+    with pytest.raises(Invalid, match="give steps"):
+        recording.check_perform_arguments(None, "")

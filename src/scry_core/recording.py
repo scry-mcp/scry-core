@@ -535,16 +535,24 @@ def read_document(path_arg: object) -> dict[str, Any]:
     return doc
 
 
-def steps_to_replay(steps: list[dict[str, Any]] | None, path: object) -> list[dict[str, Any]]:
-    """`perform`'s list: the caller's own, or the steps of the document it names, never both."""
+def check_perform_arguments(steps: list[dict[str, Any]] | None, path: object) -> None:
+    """`perform`'s two arguments: a step list, or the document it names, never both and never
+    neither. It reads nothing, so a caller's gate may judge it before it asks for anything."""
     if path:
         if steps is not None:
             raise Invalid("bad_argument", "steps and path name two lists of steps: give one, "
                                          "never both")
-        return cast(list[dict[str, Any]], read_document(path)["steps"])
+        return
     if steps is None:
         raise Invalid("bad_argument", "give steps, or path to a `perform` document")
-    return steps
+
+
+def steps_to_replay(steps: list[dict[str, Any]] | None, path: object) -> list[dict[str, Any]]:
+    """`perform`'s list: the caller's own, or the steps of the document it names."""
+    check_perform_arguments(steps, path)
+    if path:
+        return cast(list[dict[str, Any]], read_document(path)["steps"])
+    return cast(list[dict[str, Any]], steps)
 
 
 def diverged(recorded: Mapping[str, Any], reply: Mapping[str, Any]

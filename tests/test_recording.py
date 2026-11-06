@@ -398,6 +398,8 @@ def test_the_export_writes_the_document_and_accounts_for_it(tmp_path: Path) -> N
     assert got["dropped"][-1]["call"] == 45 and got["cut"]["available"] is False, got
     assert shlex.split(got["replay"]) == ["uv", "run", "python", "-m", "scry_core.replay",
                                           str(path)]
+    assert recording.steps_to_replay(None, str(path)) == json.loads(
+        path.read_text(encoding="utf-8"))["steps"]
     assert json.loads(path.read_text())["steps"][0]["frames"] == 3
     assert s.recorder.recording is not None
     assert all(c.op != recording.EXPORT_TOOL for c in s.recorder.recording.calls)
