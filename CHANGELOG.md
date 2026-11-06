@@ -2,6 +2,21 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.91.0
+
+### Added
+
+- `recording.read_document`: the `perform` document a caller names by path, judged before a step
+  runs (JSON, a version this module writes, a list of step objects), so a server replays the
+  script a repository declares in `.scry/perform/`.
+
+### Changed
+
+- `game_demo.Binding` names the game's `map` and `map_load` asks the run for it: a game's map
+  lives in its own repository (`.scry/maps/`), not in this package.
+- `screen_map`'s file prose places a map in the application's store,
+  `.scry/maps/<application>.screen-map.json`.
+
 ## 0.90.0
 
 ### Added
