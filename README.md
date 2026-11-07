@@ -144,8 +144,7 @@ desk of whoever is working, so they run only with `SCRY_FOCUS_CONTROL=1` on an i
 unset, those two cells are BLOCKED and the verdict says it is unproven (a stolen focus still
 fails it); run while somebody works, the control takes their desk and its start-in-front cell
 fails anyway, since macOS keeps focus with the app in use. The two module docstrings are the contract. The watch is a sampler: it sees what stays
-in front at its instants, and a theft between two samples leaves no trace in it (a bare emulator
-binary left none in an activation log either). A green focus cell reads "nothing stayed in
+in front at its instants, and a theft between two samples leaves no trace in it. A green focus cell reads "nothing stayed in
 front", never "nothing took focus"; when the person at the machine says they lost focus, that is
 the fact, and the cause is read off the process tree while it happens.
 
@@ -191,8 +190,7 @@ A live tier whose jobs share nothing runs them as child processes of its own scr
 
 A child launched with `sys.executable`, the usual `Job`, imports whatever `scry_core` the environment
 holds at that moment, not what the parent imported: a parent started on a checkout newer than the
-pin runs while its children die at import once `uv run` has put the pinned wheel back (a
-`--no-sync` has been seen not to prevent it). The pool
+pin runs while its children die at import once `uv run` has put the pinned wheel back. The pool
 reports a child that exited without its summary as a FAIL of every cell that child planned, so
 the run reads as a few cells failing in one section and says nothing about an import. The evidence
 is the job's own log in the pool's output directory (`<job>.log`, an `ImportError` on its last
