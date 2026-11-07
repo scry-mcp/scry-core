@@ -142,7 +142,12 @@ judges the run after it with `focus_gate.verdict`; each outcome is OK, FAIL or B
 `live_pool`'s words, put on the tier's own cells. The start in front and the Space move take the
 desk of whoever is working, so they run only with `SCRY_FOCUS_CONTROL=1` on an idle machine;
 unset, those two cells are BLOCKED and the verdict says it is unproven (a stolen focus still
-fails it). The two module docstrings are the contract.
+fails it); run while somebody works, the control takes their desk and its start-in-front cell
+fails anyway, since macOS keeps focus with the app in use. The two module docstrings are the contract. The watch is a sampler: it sees what stays
+in front at its instants, and a theft between two samples leaves no trace in it (a bare emulator
+binary left none in an activation log either). A green focus cell reads "nothing stayed in
+front", never "nothing took focus"; when the person at the machine says they lost focus, that is
+the fact, and the cause is read off the process tree while it happens.
 
 ## On-demand tiers
 
@@ -156,7 +161,21 @@ out of the default run by `addopts` and run by naming it:
 The marker, the `behind_a_fullscreen_app` fixture and the `on_the_desk` decorator arrive with this
 package, so a server adds only `not window` to its own `addopts` (`-m 'not live and not window'`).
 `--no-cov` because a partial run cannot judge a floor that belongs to the whole tree, and a
-command-line `-m` replaces the one in `addopts`.
+command-line `-m` replaces the one in `addopts`. A run with `-o addopts=` drops the deselection
+altogether, so it names `-m window` explicitly and keeps `-p pytester`, which that override drops
+too and without which the conformance tests error. Before the tier, check that nobody else is
+using the screen: a peer's run on the same machine loses its desk the same way.
+
+On Windows the tier runs on an interactive desktop, and three things there look like bugs in the
+code under test. A process started by the task scheduler is refused `SetForegroundWindow`, and the
+Alt key plus `SwitchToThisWindow` alone is not enough: `WindowsHost.activate` joins the foreground
+thread's input queue, and only while `IsHungAppWindow` is false, because `AttachThreadInput` to a
+thread that pumps no messages blocks. A window that pumps nothing stays under the others even
+after a successful activation, so a test's stand-in window runs a message loop (`mainloop`, a
+stdin read in a thread). And Windows lists a toolkit's hidden helper windows (a Tk root larger
+than the real window), so the listing keeps only shown or minimised ones. A test asserts the cover
+it expects as a control with `over in above(...)`, because the task's own console may be above as
+well.
 
 ## A new server
 
@@ -169,6 +188,16 @@ lists the demos and screen maps and which servers run each.
 A live tier whose jobs share nothing runs them as child processes of its own script through
 `scry_core.live_pool.run_pool`, each child writing its summary with `write_summary`, and passes
 `default_workers()` to keep half the host free. The module docstring is the contract.
+
+A child launched with `sys.executable`, the usual `Job`, imports whatever `scry_core` the environment
+holds at that moment, not what the parent imported: a parent started on a checkout newer than the
+pin runs while its children die at import once `uv run` has put the pinned wheel back (a
+`--no-sync` has been seen not to prevent it). The pool
+reports a child that exited without its summary as a FAIL of every cell that child planned, so
+the run reads as a few cells failing in one section and says nothing about an import. The evidence
+is the job's own log in the pool's output directory (`<job>.log`, an `ImportError` on its last
+lines): read it before believing the cells, and point the whole tree at the source with
+`PYTHONPATH=<core checkout>/src` on the command, which the pool's environment hands to every child.
 
 ## Demos
 
@@ -240,6 +269,15 @@ uv run pytest -q
 
 On Windows the same, with `uv run pytest -q --no-cov`: the coverage floor is judged on macOS,
 since Windows skips by design the cases that need what it lacks (a FIFO, a mode bit).
+
+Each repository runs `jscpd` on itself only, so a shape both servers print (an address's width,
+an unknown op's refusal, a timestamp) can be written once per server with every battery green,
+and the two copies diverge while each keeps passing its own tests. Before writing a formatter, a
+parser or a reply helper in one server, search this package and the other server for it: a shape
+both servers need lives here from the second server on, never as two copies. At a review of work
+that touched both servers, run `jscpd` over the three trees together as a report (it refuses
+nothing) and read its JSON beside the diff: a new cross-repository clone is a finding like any
+other, and so are a helper with one caller, a wrapper and a parameter nobody passes.
 
 Licence: MIT.
 
