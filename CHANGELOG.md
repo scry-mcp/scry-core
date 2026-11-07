@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.92.2
+
+### Fixed
+
+- `promote`'s description names the kinds an entry may be of (`start`, `maps`, `perform`): a
+  model asked to approve a map candidate could not choose the one spelling the store refuses.
+
 ## 0.92.1
 
 ### Fixed
