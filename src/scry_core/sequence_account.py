@@ -123,6 +123,16 @@ class SequenceRun(TypedDict, total=False):
     steps_completed: Required[int]
 
 
+class PerformFields(TypedDict, total=False):
+    """What `perform` adds to a sequence's reply, on both servers."""
+
+    failed: Annotated[dict[str, Any], When("`step_failed`")]
+    verdict: Annotated[str, When("once the list waited")]
+    frame_reached: Annotated[int | dict[str, Any], When("with `until_frame`")]
+    operations: list[Any]
+    until_frame: int
+
+
 def looked(channel: str, since: list[str], mark: int, rx: re.Pattern[str],
            limit: int) -> dict[str, Any]:
     """`drive`'s look after its act: the last `limit` matching lines since the mark."""

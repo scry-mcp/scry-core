@@ -15,7 +15,7 @@ import json
 import os
 import posixpath
 import re
-from collections.abc import Collection, Iterable, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Any, Required
@@ -39,6 +39,8 @@ WRITERS = {"start": (2, True), "maps": (1, False), "perform": (2, False)}
 #: a `perform` document's steps are a program and their order is part of it.
 NAMED = frozenset({"screens", "controls"})
 CHANGES_SHOWN = 20
+#: The arguments of a `perform` step that name a file; any other string may be text to type.
+STEP_PATHS = frozenset({"path", "dest"})
 
 #: What a tool's description fills from here (`scry_core.docs.filled`), in the words both
 #: servers say it.
@@ -51,15 +53,16 @@ DOC_VALUES = {
         "with a check), and a reply that keeps one says `kept N (promote to review)`. The\n"
         "identity is (kind, name): an entry a call loaded (`start(profile=)`,\n"
         "`screen_map_write` `load`, `perform(path=)`) names what is learned next, and a name\n"
-        "the store already holds is an update, which keeps the keys a run owns (`logfile`) as the\n"
+        "the store already holds is an update, which keeps the keys a run owns as the\n"
         "store has them, and one that changes nothing is named in `unchanged`, not offered.\n"
-        "`dry_run=true` lists every candidate with its\n"
+        "`dry_run=true` lists every other candidate with its\n"
         "file, its size and whether it is new or an update, an update with its diff; `entries`\n"
         "(`<kind>/<name>`, the kind one of `start`, `maps`, `perform`) writes only those,\n"
         "`names` renames one as it is written, and only\n"
         "that approved call creates `.scry/`. `root` names the repository the store is in or\n"
-        "becomes; without it the nearest `.scry/` above the draft's paths, then above this\n"
-        "server's directory, is used, and a promotion that finds none is refused. Every path is\n"
+        "becomes; without it the first `.scry/` found walking up from the file a loaded recipe\n"
+        "came from, the draft's paths, then this server's directory, is used, and a promotion\n"
+        "that finds none is refused. Every path is\n"
         "written as a `project_store` placeholder; one that would leave them is refused, since a\n"
         "tracked file carries no path of this machine. Reply: `store`, `candidates` and\n"
         "`unchanged` (a review), `written` and `draft` (an approval), `total_bytes`,\n"
@@ -98,18 +101,22 @@ class Candidate:
 @dataclass
 class Drafts:
     """What the session kept, for the server's life: one candidate per (kind, name), and the
-    name of the file each kind was last read from, which keys what that read learns."""
+    name of the file each kind was last read from, which keys what that read learns, and where
+    that file is, which says whose store it belongs to."""
 
     kept: dict[tuple[str, str], Candidate] = field(default_factory=dict)
     loaded: dict[str, str] = field(default_factory=dict)
+    sources: dict[str, str] = field(default_factory=dict)
 
     def __len__(self) -> int:
         return len(self.kept)
 
-    def loaded_entry(self, kind: str, name: str) -> None:
-        """`kind` was read from the entry `name`: what the session learns of it is that entry."""
+    def loaded_entry(self, kind: str, name: str, source: str = "") -> None:
+        """`kind` was read from the entry `name`, in the file `source`: what the session learns
+        of it is that entry."""
         if kind in KINDS and name:
             self.loaded[kind] = name
+            self.sources[kind] = source
 
     def loaded_name(self, kind: str) -> str:
         """The entry `kind` was last read from, or "" when it was read from none."""
@@ -118,6 +125,7 @@ class Drafts:
     def forget(self, kind: str) -> None:
         """`kind` is being learned from no entry now: what comes next names its own."""
         self.loaded.pop(kind, None)
+        self.sources.pop(kind, None)
 
     def keep(self, kind: str, name: str, document: dict[str, Any], *,
              needs: Collection[str] = (), path_keys: Collection[str] = (),
@@ -163,6 +171,24 @@ def unkept(drafts: Drafts) -> list[str]:
     return drafts.entries()
 
 
+def only_the_run(names: frozenset[str] | None, run_own: frozenset[str]) -> bool:
+    """Whether the caller gave `start` nothing but `run_own`; names it cannot tell: never."""
+    return names is not None and names <= run_own
+
+
+def starting(drafts: Drafts, paths: Callable[[Mapping[str, Any]], Iterable[str]]) -> list[str]:
+    """Where the store is looked for: the files this session loaded, the paths `paths` reads from
+    each recipe the draft holds, then this process's directory."""
+    starts = [source for source in drafts.sources.values() if source]
+    for candidate in drafts.kept.values():
+        block = (candidate.document if candidate.kind == "start"
+                 else candidate.document.get("start"))
+        if candidate.kind != "maps" and isinstance(block, Mapping):
+            starts += [os.path.expanduser(part.strip()) for part in paths(block)
+                       if project_store.absolute(part.strip())]
+    return [*starts, os.getcwd()]
+
+
 def kept_line(drafts: Drafts) -> str:
     """The one line a reply that kept a candidate says."""
     return f"kept {len(drafts)} (promote to review)"
@@ -188,6 +214,9 @@ def store(starting: Iterable[str | Path], root: str = "") -> Path:
                           f"root=<the repository>, and an approved promotion creates it there")
         base = found
     store_dir = base / STORE
+    if store_dir.is_symlink():
+        raise Invalid("bad_argument", f"{store_dir} is a link: a store is the repository's own, "
+                      "and its caps cannot see through one")
     if store_dir.exists() and not store_dir.is_dir():
         raise Invalid("bad_argument", f"{store_dir} is there and is not a directory: a store "
                       "is one, and a promotion does not write through a file")
@@ -213,8 +242,8 @@ def promote(drafts: Drafts, *, dry_run: bool = False,
 
 def review(drafts: Drafts, *, starting: Iterable[str | Path] = (), root: str = "",
            state: str = "", environ: Mapping[str, str] | None = None) -> dict[str, Any]:
-    """Every candidate as it would be written: its target, its size, and for an update what
-    changes. Nothing is written and no directory is made."""
+    """Each candidate that would change the store as it would be written: its target, its size,
+    and for an update what changes; the others are named. Nothing is written or made."""
     store_dir = store(starting, root)
     if not drafts:
         raise Invalid("needs_call", "nothing is kept: a `start`, a map's `add` and a "
@@ -253,7 +282,7 @@ def write(drafts: Drafts, *, entries: Sequence[str], names: Mapping[str, str] | 
     planned = [planned_entry(candidate, store_dir, state, environ, entry=entry,
                              name=(names or {}).get(entry, candidate.name))
                for entry, candidate in chosen]
-    targets = [str(target) for _candidate, target, _data, _item in planned]
+    targets = [str(target).casefold() for _candidate, target, _data, _item in planned]
     repeated = sorted({target for target in targets if targets.count(target) > 1})
     if repeated:
         raise Invalid("bad_argument", f"{_listed(repeated)} would be written twice: `names` "
@@ -434,17 +463,19 @@ def _rewrite(document: dict[str, Any], keys: Collection[str], base: Path, state:
 
 
 def _steps(value: Any, base: Path, state: str, environ: Mapping[str, str],
-           candidate: Candidate) -> Any:
+           candidate: Candidate, key: str = "") -> Any:
     """`value` with every absolute path one of the store's placeholders covers written as it,
     which is what a step's argument can be rewritten without guessing what it means."""
     where = f"the candidate perform/{candidate.name}'s steps"
     if isinstance(value, str):
+        if value.lstrip().startswith("~") and key not in STEP_PATHS:
+            return value
         return _one(value, base, state, environ, where, step=True)
     if isinstance(value, list):
-        return [_steps(item, base, state, environ, candidate) for item in value]
+        return [_steps(item, base, state, environ, candidate, key) for item in value]
     if isinstance(value, dict):
-        return {key: _steps(item, base, state, environ, candidate)
-                for key, item in value.items()}
+        return {name: _steps(item, base, state, environ, candidate, name)
+                for name, item in value.items()}
     return value
 
 
@@ -475,7 +506,11 @@ def _one(part: str, base: Path, state: str, environ: Mapping[str, str], where: s
         if normal == "~":
             return "${home}"
         if normal.startswith("~/"):
-            return "${home}" + normal[1:]
+            inside = _norm(normal[2:])
+            if inside == ".." or inside.startswith("../"):
+                raise Invalid("bad_argument", f"{where} names {part!r}, which climbs out of the "
+                              "home: a tracked file carries no path of this machine")
+            return "${home}/" + inside
         if "/" in normal:
             raise Invalid("bad_argument", f"{where} names {part!r}, a `~user` path this store "
                           "cannot express: write `${home}` or a path inside the repository")

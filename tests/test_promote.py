@@ -860,8 +860,15 @@ def test_a_posix_path_at_another_case_is_written_only_where_it_is_the_same_direc
         with pytest.raises(Invalid, match="rompath"):
             promote.tracked(candidate, root)
 
-    monkeypatch.setattr(os.path, "samefile", lambda first, second: True)
+    asked: list[tuple[str, str]] = []
+
+    def same(first: str, second: str) -> bool:
+        asked.append((first, second))
+        return True
+
+    monkeypatch.setattr(os.path, "samefile", same)
     assert promote.tracked(candidate, root)["rompath"] == "${root}/roms"
+    assert asked == [(str(root).swapcase(), str(root))]
     monkeypatch.setattr(os.path, "samefile", lambda first, second: False)
     refuses()
 
@@ -884,3 +891,176 @@ def test_a_steps_tilde_user_path_is_refused_by_name(tmp_path: Path) -> None:
     document["steps"].append({"op": "symbols_load", "path": "~bob/x.yaml"})
     with pytest.raises(Invalid, match="steps.*~bob/x.yaml"):
         review(drafted("perform", "lineup", document), repo(tmp_path))
+
+
+@pytest.mark.parametrize("path", ["c:/repository/roms", "c:/repo2"])
+def test_a_windows_path_at_another_case_is_held_to_the_roots_own_segment(path: str) -> None:
+    candidate = promote.Candidate("start", "x", start_doc(system="x", rompath=path), ("rompath",))
+    with pytest.raises(Invalid, match="rompath"):
+        promote.tracked(candidate, Path("C:/repo"))
+
+
+def test_the_root_itself_at_another_case_is_the_root() -> None:
+    candidate = promote.Candidate("start", "x", start_doc(system="x", rompath="c:/repo"),
+                                  ("rompath",))
+    assert promote.tracked(candidate, Path("C:/repo"))["rompath"] == "${root}"
+
+
+def test_a_host_directory_at_another_case_is_asked_of_the_real_filesystem(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    (root / "roms").mkdir()
+    spelled = str(root).swapcase()
+    candidate = promote.Candidate("start", "x", start_doc(system="x", rompath=spelled + "/roms"),
+                                  ("rompath",))
+    if Path(spelled).exists():
+        assert promote.tracked(candidate, root)["rompath"] == "${root}/roms"
+    else:
+        with pytest.raises(Invalid, match="rompath"):
+            promote.tracked(candidate, root)
+
+
+def test_a_key_the_run_owns_that_the_store_lacks_is_not_invented(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    (root / ".scry" / "start").mkdir(parents=True)
+    stored = start_doc(system="lineup", logfile="${root}/run.log")
+    target = root / ".scry" / "start" / "lineup.json"
+    target.write_text(json.dumps(stored))
+    own = ("logfile", "size")
+    drafts = drafted("start", "lineup", start_doc(system="lineup"), needs=("system",), own=own)
+    assert review(drafts, root)["unchanged"] == ["start/lineup"]
+    drafts = drafted("start", "lineup", start_doc(system="lineup", boot_seconds=3.0),
+                     needs=("system",), own=own)
+    write(drafts, root, ["start/lineup"])
+    assert "size" not in json.loads(target.read_text())
+
+
+def test_a_stored_entry_that_is_no_object_is_shown_replaced(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    (root / ".scry" / "start").mkdir(parents=True)
+    (root / ".scry" / "start" / "lineup.json").write_text("[]")
+    drafts = drafted("start", "lineup", start_doc(system="lineup"), needs=("system",),
+                     own=("logfile",))
+    entry = review(drafts, root)["candidates"][0]
+    assert entry["change"] == "update" and entry["diff"]["changed"][0]["was"] == []
+
+
+def test_a_review_bills_only_what_it_offers(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    (root / ".scry" / "start").mkdir(parents=True)
+    stored = start_doc(system="same")
+    (root / ".scry" / "start" / "same.json").write_text(json.dumps(stored))
+    drafts = drafted("start", "same", start_doc(system="same"), needs=("system",))
+    drafts.keep("start", "fresh", start_doc(system="fresh"), needs=("system",))
+    seen = review(drafts, root)
+    assert seen["unchanged"] == ["start/same"]
+    assert [item["entry"] for item in seen["candidates"]] == ["start/fresh"]
+    assert seen["total_bytes"] == seen["candidates"][0]["bytes"]
+
+
+def test_a_symlinked_kind_directory_is_never_written_through(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (root / ".scry").mkdir()
+    (root / ".scry" / "maps").symlink_to(elsewhere, target_is_directory=True)
+    with pytest.raises(Invalid, match="maps.*link"):
+        write(drafted("maps", "lineup", map_doc("insert")), root, ["maps/lineup"])
+    assert list(elsewhere.iterdir()) == []
+
+
+def test_a_store_that_is_a_link_is_refused_by_name(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (root / ".scry").symlink_to(elsewhere, target_is_directory=True)
+    with pytest.raises(Invalid, match=r"\.scry.*link"):
+        write(drafted("maps", "lineup", map_doc("insert")), root, ["maps/lineup"])
+    assert list(elsewhere.iterdir()) == []
+
+
+@pytest.mark.parametrize("text", ["~3/4 done", "~/not a path", "~bob/x"])
+def test_a_steps_free_text_starting_with_a_tilde_is_left_alone(tmp_path: Path, text: str) -> None:
+    document = perform_doc()
+    document["steps"].append({"op": "send_keys", "keys": text})
+    candidate = promote.Candidate("perform", "x", document)
+    assert promote.tracked(candidate, repo(tmp_path))["steps"][-1]["keys"] == text
+
+
+def test_a_steps_home_path_is_still_written_as_the_home(tmp_path: Path) -> None:
+    document = perform_doc()
+    document["steps"].append({"op": "symbols_load", "path": "~/x.yaml"})
+    candidate = promote.Candidate("perform", "x", document)
+    assert promote.tracked(candidate, repo(tmp_path))["steps"][-1]["path"] == "${home}/x.yaml"
+
+
+def test_a_home_path_that_climbs_out_of_the_home_is_refused(tmp_path: Path) -> None:
+    candidate = promote.Candidate("start", "x", start_doc(system="x", rompath="~/../other"),
+                                  ("rompath",))
+    with pytest.raises(Invalid, match="rompath"):
+        promote.tracked(candidate, repo(tmp_path))
+
+
+def test_two_entries_differing_only_in_case_are_one_file_and_refused(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    drafts = drafted("start", "lineup", start_doc(system="a"), needs=("system",))
+    drafts.keep("start", "Lineup", start_doc(system="b"), needs=("system",))
+    with pytest.raises(Invalid, match="twice"):
+        write(drafts, root, ["start/lineup", "start/Lineup"])
+
+
+def test_only_the_run_is_a_subset_and_unknown_names_are_never_it() -> None:
+    own = frozenset({"profile", "state_dir"})
+    assert promote.only_the_run(frozenset({"profile"}), own)
+    assert not promote.only_the_run(frozenset({"profile", "system"}), own)
+    assert not promote.only_the_run(None, own)
+
+
+def rom_paths(block: Any) -> list[str]:
+    return str(block.get("rompath") or "").split(";")
+
+
+def test_the_store_is_looked_for_from_the_loaded_file_first_even_with_no_recipe_kept(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    source = tmp_path / "game" / ".scry" / "start" / "x.json"
+    drafts = Drafts()
+    drafts.loaded_entry("start", "x", source=str(source))
+    drafts.keep("maps", "x", map_doc("insert"))
+    assert promote.starting(drafts, rom_paths) == [str(source), os.getcwd()]
+    drafts.forget("start")
+    assert promote.starting(drafts, rom_paths) == [os.getcwd()]
+
+
+def test_the_store_is_looked_for_from_a_perform_documents_start_block(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    document = perform_doc()
+    document["start"] = {"rompath": "/game/roms;/game/more"}
+    drafts = drafted("perform", "x", document)
+    assert promote.starting(drafts, rom_paths) == ["/game/roms", "/game/more", os.getcwd()]
+
+
+def test_the_stores_starting_points_are_absolute_and_stripped(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    drafts = drafted("start", "x", start_doc(system="x", rompath="~/g;roms; /abs/a;"),
+                     needs=("system",))
+    assert promote.starting(drafts, rom_paths) == [str(tmp_path / "g"), "/abs/a", os.getcwd()]
+
+
+def test_a_found_store_is_the_one_a_write_lands_in_with_the_recipe_elsewhere(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "here").mkdir()
+    (tmp_path / "game").mkdir()
+    here = repo(tmp_path / "here")
+    (here / ".scry").mkdir()
+    game = repo(tmp_path / "game")
+    (game / ".scry" / "start").mkdir(parents=True)
+    monkeypatch.chdir(here)
+    source = game / ".scry" / "start" / "x.json"
+    drafts = Drafts()
+    drafts.loaded_entry("start", "x", source=str(source))
+    drafts.keep("maps", "x", map_doc("insert", application="x"))
+    seen = promote.review(drafts, starting=promote.starting(drafts, rom_paths))
+    assert Path(seen["store"]).resolve() == (game / ".scry").resolve()

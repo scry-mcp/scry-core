@@ -621,7 +621,18 @@ EXPORT_REPLY = ("`dest` absolute or `~`-led, ending `.json`; refused if it is th
                 "`cut` (`call`, `op`, `why`, or unavailable) and `replay`, the runner's command "
                 "line. `no_recording` before a `start` succeeded, after one was cancelled, or when "
                 "no recorded call is a step a replay could take.")
-DOC_VALUES = {"EXPORTS": EXPORTS, "EXPORT_REPLY": EXPORT_REPLY}
+#: What both servers' `perform` and `perform_export` say in the same words.
+PERFORM_SOURCE = ("`path`: a `perform` document (absolute or `~`-led:\n"
+                  "`.scry/perform/<name>.json`, or a file `perform_export` wrote) whose steps are "
+                  "replayed; give\n`steps` or `path`, never both.")
+PERFORM_REPLY = ("Reply: `ran`, `steps_completed`, `held`, `failed_at`, `failed` (INVALID "
+                 "`step_failed`),\n`verdict` (once the list waited; `TARGET` adds `stopped`, "
+                 "`TIMEOUT` `note`), else\n`still_running`; `frame_reached` (with `until_frame`).")
+EXPORT_KEPT = ("`dest` (`.json`) is refused if present unless `overwrite`. Reply: `path`, "
+               "`steps`,\n`checks`, `dropped`, `dropped_total`, `cut`, `replay`, and `kept` when "
+               "the document is kept\nfor `promote`; `no_recording` if empty.")
+DOC_VALUES = {"EXPORTS": EXPORTS, "EXPORT_REPLY": EXPORT_REPLY, "PERFORM_SOURCE": PERFORM_SOURCE,
+              "PERFORM_REPLY": PERFORM_REPLY, "EXPORT_KEPT": EXPORT_KEPT}
 
 
 def export_summary(args: dict[str, Any], reply: dict[str, Any]) -> str:
