@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -155,8 +155,8 @@ def test_each_path_of_a_list_resolves(tmp_path: Path) -> None:
 
 def test_a_path_key_holding_a_table_resolves_every_entry(tmp_path: Path) -> None:
     path = stored(tmp_path, {"symbols": {"0x100": "maps/main.map"}})
-    assert ps.read(path, KEYS, PATH_KEYS)["symbols"] == {
-        "0x100": str(tmp_path / "maps" / "main.map")}
+    symbols = cast(dict[str, str], ps.read(path, KEYS, PATH_KEYS)["symbols"])
+    assert list(symbols) == ["0x100"] and Path(symbols["0x100"]) == tmp_path / "maps" / "main.map"
 
 
 def test_home_resolves_to_the_users_home(tmp_path: Path,
@@ -298,8 +298,8 @@ def test_the_profiles_paths_resolve_against_the_base_of_its_store(tmp_path: Path
     below.mkdir()
     found = ps.applied("dos", starting=[below], keys=KEYS, path_keys=PATH_KEYS, given=set(),
                        arguments={"conf": "", "cwd": ""})
-    assert found.arguments == {"conf": str(tmp_path / "cfg" / "boot.conf"),
-                               "cwd": str(tmp_path / "guest")}
+    assert {key: Path(str(value)) for key, value in found.arguments.items()} == {
+        "conf": tmp_path / "cfg" / "boot.conf", "cwd": tmp_path / "guest"}
 
 
 def test_a_profile_named_by_its_path_is_read_there(tmp_path: Path) -> None:

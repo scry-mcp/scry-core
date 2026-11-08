@@ -538,7 +538,7 @@ def test_a_path_that_climbs_out_of_the_root_is_refused(tmp_path: Path) -> None:
     drafts = drafted("start", "x", start_doc(system="x", rompath=f"{root}/../shared/roms"),
                      needs=("system",), path_keys=("rompath",))
     with pytest.raises(Invalid, match="rompath"):
-        review(drafts, root)
+        review(drafts, root, environ={})
 
 
 def test_a_relative_path_is_resolved_against_the_root(tmp_path: Path) -> None:
@@ -547,7 +547,7 @@ def test_a_relative_path_is_resolved_against_the_root(tmp_path: Path) -> None:
                                              cfg="../outside.cfg"),
                      needs=("system",), path_keys=("rompath", "cfg"))
     with pytest.raises(Invalid, match="cfg"):
-        review(drafts, root)
+        review(drafts, root, environ={})
     drafts = drafted("start", "x", start_doc(system="x", rompath="roms"), needs=("system",),
                      path_keys=("rompath",))
     write(drafts, root, ["start/x"])
@@ -567,6 +567,7 @@ def test_a_tilde_user_path_is_refused_and_a_tilde_name_is_a_relative_file(
     assert json.loads((root / ".scry" / "start" / "x.json").read_text())["cfg"] == "~draft.cfg"
 
 
+@pytest.mark.skipif(os.sep != "/", reason="a backslash is a separator here")
 def test_a_backslash_in_a_posix_name_is_the_name(tmp_path: Path) -> None:
     root = repo(tmp_path)
     drafts = drafted("start", "x", start_doc(system="x", rompath=f"{root}/a\\b"),
@@ -849,6 +850,7 @@ def test_a_windows_path_at_another_case_is_written_against_the_root() -> None:
     assert document["rompath"] == "${root}/roms"
 
 
+@pytest.mark.skipif(os.sep != "/", reason="a drive path is read as Windows reads it")
 def test_a_posix_path_at_another_case_is_written_only_where_it_is_the_same_directory(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = repo(tmp_path)
@@ -897,7 +899,7 @@ def test_a_steps_tilde_user_path_is_refused_by_name(tmp_path: Path) -> None:
 def test_a_windows_path_at_another_case_is_held_to_the_roots_own_segment(path: str) -> None:
     candidate = promote.Candidate("start", "x", start_doc(system="x", rompath=path), ("rompath",))
     with pytest.raises(Invalid, match="rompath"):
-        promote.tracked(candidate, Path("C:/repo"))
+        promote.tracked(candidate, Path("C:/repo"), environ={})
 
 
 def test_the_root_itself_at_another_case_is_the_root() -> None:
@@ -1044,9 +1046,11 @@ def test_the_stores_starting_points_are_absolute_and_stripped(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     drafts = drafted("start", "x", start_doc(system="x", rompath="~/g;roms; /abs/a;"),
                      needs=("system",))
-    assert promote.starting(drafts, rom_paths) == [str(tmp_path / "g"), "/abs/a", os.getcwd()]
+    starts = promote.starting(drafts, rom_paths)
+    assert [Path(start) for start in starts] == [tmp_path / "g", Path("/abs/a"), Path.cwd()]
 
 
 def test_a_found_store_is_the_one_a_write_lands_in_with_the_recipe_elsewhere(

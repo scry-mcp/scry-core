@@ -88,6 +88,7 @@ def test_a_path_gives_the_steps_of_the_document(tmp_path: Path) -> None:
 def test_a_document_led_by_a_tilde_is_read_from_the_home(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     (tmp_path / "session.json").write_text(json.dumps(
         {"version": recording.DOCUMENT_VERSION, "steps": [{"op": "status"}]}), encoding="utf-8")
     assert recording.steps_to_replay(None, "~/session.json") == [{"op": "status"}]
