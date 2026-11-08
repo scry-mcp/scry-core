@@ -525,7 +525,7 @@ def _one(part: str, base: Path, state: str, environ: Mapping[str, str], where: s
         if _under(target, value):
             return placeholder + target[len(value):]
     for var in sorted(environ, key=lambda name: (-len(environ[name]), name)):
-        if _under(target, environ[var]):
+        if not _names_a_root(environ[var]) and _under(target, environ[var]):
             return f"${{env:{var}}}" + target[len(_norm(_slashed(environ[var]))):]
     if step:
         return part
@@ -560,6 +560,11 @@ def _alike(first: str, second: str) -> bool:
         return os.path.samefile(first, second)
     except OSError:
         return False
+
+
+def _names_a_root(value: str) -> bool:
+    """Whether `value` is a filesystem root, which would cover every path of the machine."""
+    return re.fullmatch(r"(?:[A-Za-z]:)?", value.replace("\\", "/").rstrip("/")) is not None
 
 
 def _norm(text: str) -> str:

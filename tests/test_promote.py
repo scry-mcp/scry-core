@@ -1068,3 +1068,12 @@ def test_a_found_store_is_the_one_a_write_lands_in_with_the_recipe_elsewhere(
     drafts.keep("maps", "x", map_doc("insert", application="x"))
     seen = promote.review(drafts, starting=promote.starting(drafts, rom_paths))
     assert Path(seen["store"]).resolve() == (game / ".scry").resolve()
+
+
+@pytest.mark.parametrize("root_value", ["/", "C:", "C:/", "C:\\"])
+def test_a_variable_holding_a_filesystem_root_covers_no_path(
+        tmp_path: Path, root_value: str) -> None:
+    drive = "C:/elsewhere/roms" if root_value.startswith("C") else "/elsewhere/roms"
+    candidate = promote.Candidate("start", "x", start_doc(system="x", rompath=drive), ("rompath",))
+    with pytest.raises(Invalid, match="rompath"):
+        promote.tracked(candidate, repo(tmp_path), environ={"OLDPWD": root_value})
