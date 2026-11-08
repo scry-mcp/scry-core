@@ -17,6 +17,9 @@ launched is left for its owner) and killed after `STOP_GRACE_S`, or at once on a
 interrupt. Each child runs in its own process group, so a Ctrl-C at the terminal reaches the
 parent alone and the child gets exactly one interrupt; the price is that a parent killed outright
 does not reach its children.
+
+A child imports the environment's `scry_core`; its import error shows as FAIL cells: read
+`<job>.log`, set `PYTHONPATH=<checkout>/src`.
 """
 
 from __future__ import annotations

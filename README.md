@@ -165,16 +165,8 @@ altogether, so it names `-m window` explicitly and keeps `-p pytester`, which th
 too and without which the conformance tests error. Before the tier, check that nobody else is
 using the screen: a peer's run on the same machine loses its desk the same way.
 
-On Windows the tier runs on an interactive desktop, and three things there look like bugs in the
-code under test. A process started by the task scheduler is refused `SetForegroundWindow`, and the
-Alt key plus `SwitchToThisWindow` alone is not enough: `WindowsHost.activate` joins the foreground
-thread's input queue, and only while `IsHungAppWindow` is false, because `AttachThreadInput` to a
-thread that pumps no messages blocks. A window that pumps nothing stays under the others even
-after a successful activation, so a test's stand-in window runs a message loop (`mainloop`, a
-stdin read in a thread). And Windows lists a toolkit's hidden helper windows (a Tk root larger
-than the real window), so the listing keeps only shown or minimised ones. A test asserts the cover
-it expects as a control with `over in above(...)`, because the task's own console may be above as
-well.
+On Windows the tier runs on an interactive desktop, and what looks like a bug in the code under
+test is usually the desktop: `WindowsHost.activate` says what it takes to bring a window to the front.
 
 ## A new server
 
@@ -188,14 +180,8 @@ A live tier whose jobs share nothing runs them as child processes of its own scr
 `scry_core.live_pool.run_pool`, each child writing its summary with `write_summary`, and passes
 `default_workers()` to keep half the host free. The module docstring is the contract.
 
-A child launched with `sys.executable`, the usual `Job`, imports whatever `scry_core` the environment
-holds at that moment, not what the parent imported: a parent started on a checkout newer than the
-pin runs while its children die at import once `uv run` has put the pinned wheel back. The pool
-reports a child that exited without its summary as a FAIL of every cell that child planned, so
-the run reads as a few cells failing in one section and says nothing about an import. The evidence
-is the job's own log in the pool's output directory (`<job>.log`, an `ImportError` on its last
-lines): read it before believing the cells, and point the whole tree at the source with
-`PYTHONPATH=<core checkout>/src` on the command, which the pool's environment hands to every child.
+A child that dies at import, because the environment holds another `scry_core` than the parent's,
+reads as cells failing: `live_pool`'s docstring says how to see it and what to set.
 
 ## Demos
 

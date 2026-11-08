@@ -321,6 +321,11 @@ class WindowsHost:
         return above_in_order(_win_windows())(window)
 
     def activate(self, window: Seen) -> str:
+        """Bring the window to the front; a task-scheduler process is refused, so it needs the desktop.
+
+        It joins the foreground thread's input queue only while `IsHungAppWindow` is false
+        (`AttachThreadInput` to a thread pumping no messages blocks); a stand-in window must pump.
+        """
         return _win_activate(window.number)
 
 
