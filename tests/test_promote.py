@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -777,7 +778,7 @@ def test_a_perform_document_with_no_steps_is_written_as_it_is(tmp_path: Path) ->
     assert "steps" not in json.loads((root / ".scry" / "perform" / "dos.json").read_text())
 
 
-def test_a_tilde_alone_is_the_home_and_a_step_s_own_paths_are_left_alone(
+def test_a_tilde_alone_is_the_home_and_a_step_s_own_relative_paths_are_left_alone(
         tmp_path: Path) -> None:
     root = repo(tmp_path)
     drafts = drafted("start", "x", start_doc(system="x", cfg="~"), needs=("system",),
@@ -786,7 +787,7 @@ def test_a_tilde_alone_is_the_home_and_a_step_s_own_paths_are_left_alone(
     assert json.loads((root / ".scry" / "start" / "x.json").read_text())["cfg"] == "${home}"
     document = perform_doc()
     document["start"] = {"rompath": f"{root}/roms"}
-    document["steps"] = [{"op": "symbols_load", "path": "~bob/x.yaml",
+    document["steps"] = [{"op": "symbols_load", "path": "relative/x.yaml",
                           "recorded": {"placed": True}},
                          {"op": "guest_file", "path": "/opt/x.bin", "recorded": {}},
                          {"op": "memdump", "ref": "0x0"},
@@ -795,7 +796,7 @@ def test_a_tilde_alone_is_the_home_and_a_step_s_own_paths_are_left_alone(
     drafts = drafted("perform", "dos", document, path_keys=("rompath",))
     write(drafts, root, ["perform/dos"])
     steps = json.loads((root / ".scry" / "perform" / "dos.json").read_text())["steps"]
-    assert steps[0]["path"] == "~bob/x.yaml" and steps[1]["path"] == "/opt/x.bin"
+    assert steps[0]["path"] == "relative/x.yaml" and steps[1]["path"] == "/opt/x.bin"
     assert steps[3]["pattern"] == 3
 
 
@@ -807,3 +808,79 @@ def test_an_export_with_no_check_is_kept_as_nothing(tmp_path: Path) -> None:
     drafts = Drafts()
     assert promote.after_export(drafts, {"path": str(path)}, ()) == {"path": str(path)}
     assert drafts.entries() == []
+
+
+def test_an_update_keeps_the_keys_the_run_owns_and_proposes_nothing_when_only_those_differ(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    (root / ".scry" / "start").mkdir(parents=True)
+    stored = start_doc(system="lineup", logfile="${root}/TMP/run.log", boot_seconds=8.0)
+    (root / ".scry" / "start" / "lineup.json").write_text(json.dumps(stored))
+    drafts = drafted("start", "lineup", start_doc(system="lineup", boot_seconds=8.0),
+                     needs=("system",), own=("logfile",))
+    seen = review(drafts, root)
+    assert seen["candidates"] == [] and seen["unchanged"] == ["start/lineup"]
+    drafts = drafted("start", "lineup", start_doc(system="lineup", boot_seconds=30.0),
+                     needs=("system",), own=("logfile",))
+    entry = review(drafts, root)["candidates"][0]
+    assert entry["diff"]["removed"] == []
+    assert entry["diff"]["changed"] == [{"path": "boot_seconds", "was": 8.0, "now": 30.0}]
+    write(drafts, root, ["start/lineup"])
+    written = json.loads((root / ".scry" / "start" / "lineup.json").read_text())
+    assert written["logfile"] == "${root}/TMP/run.log" and written["boot_seconds"] == 30.0
+
+
+def test_a_symlinked_kind_directory_is_refused_by_name(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (root / ".scry").mkdir()
+    (root / ".scry" / "maps").symlink_to(elsewhere, target_is_directory=True)
+    drafts = drafted("maps", "lineup", map_doc("insert"))
+    with pytest.raises(Invalid, match="maps.*link"):
+        review(drafts, root)
+    assert list(elsewhere.iterdir()) == []
+
+
+def test_a_windows_path_at_another_case_is_written_against_the_root() -> None:
+    candidate = promote.Candidate("start", "x", start_doc(system="x", rompath="c:/repo/roms"),
+                                  ("rompath",))
+    document = promote.tracked(candidate, Path("C:/repo"))
+    assert document["rompath"] == "${root}/roms"
+
+
+def test_a_posix_path_at_another_case_is_written_only_where_it_is_the_same_directory(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = repo(tmp_path)
+    candidate = promote.Candidate(
+        "start", "x", start_doc(system="x", rompath=str(root).swapcase() + "/roms"),
+        ("rompath",))
+
+    def refuses() -> None:
+        with pytest.raises(Invalid, match="rompath"):
+            promote.tracked(candidate, root)
+
+    monkeypatch.setattr(os.path, "samefile", lambda first, second: True)
+    assert promote.tracked(candidate, root)["rompath"] == "${root}/roms"
+    monkeypatch.setattr(os.path, "samefile", lambda first, second: False)
+    refuses()
+
+    def gone(first: str, second: str) -> bool:
+        raise FileNotFoundError(first)
+
+    monkeypatch.setattr(os.path, "samefile", gone)
+    refuses()
+
+
+def test_an_empty_variable_covers_no_path(tmp_path: Path) -> None:
+    candidate = promote.Candidate("start", "x", start_doc(system="x", rompath="/elsewhere/roms"),
+                                  ("rompath",))
+    with pytest.raises(Invalid, match="rompath"):
+        promote.tracked(candidate, repo(tmp_path), environ={"EMPTY": ""})
+
+
+def test_a_steps_tilde_user_path_is_refused_by_name(tmp_path: Path) -> None:
+    document = perform_doc()
+    document["steps"].append({"op": "symbols_load", "path": "~bob/x.yaml"})
+    with pytest.raises(Invalid, match="steps.*~bob/x.yaml"):
+        review(drafted("perform", "lineup", document), repo(tmp_path))

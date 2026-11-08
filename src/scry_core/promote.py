@@ -14,6 +14,7 @@ import copy
 import json
 import os
 import posixpath
+import re
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -50,17 +51,20 @@ DOC_VALUES = {
         "with a check), and a reply that keeps one says `kept N (promote to review)`. The\n"
         "identity is (kind, name): an entry a call loaded (`start(profile=)`,\n"
         "`screen_map_write` `load`, `perform(path=)`) names what is learned next, and a name\n"
-        "the store already holds is an update. `dry_run=true` lists every candidate with its\n"
+        "the store already holds is an update, which keeps the keys a run owns (`logfile`) as the\n"
+        "store has them, and one that changes nothing is named in `unchanged`, not offered.\n"
+        "`dry_run=true` lists every candidate with its\n"
         "file, its size and whether it is new or an update, an update with its diff; `entries`\n"
         "(`<kind>/<name>`, the kind one of `start`, `maps`, `perform`) writes only those,\n"
         "`names` renames one as it is written, and only\n"
         "that approved call creates `.scry/`. `root` names the repository the store is in or\n"
-        "becomes; without it the nearest `.scry/` above this server's directory or the draft's\n"
-        "paths is used, and a promotion that finds none is refused. Every path is written as a\n"
-        "`project_store` placeholder; one that would leave them is refused, since a tracked\n"
-        "file carries no path of this machine. Reply: `store`, `candidates` (a review), `written`\n"
-        "and `draft` (an approval), `total_bytes`, `store_bytes`; `close` names what was left\n"
-        "unkept. Refused: nothing kept (`needs_call`); an entry the draft does not hold; two\n"
+        "becomes; without it the nearest `.scry/` above the draft's paths, then above this\n"
+        "server's directory, is used, and a promotion that finds none is refused. Every path is\n"
+        "written as a `project_store` placeholder; one that would leave them is refused, since a\n"
+        "tracked file carries no path of this machine. Reply: `store`, `candidates` and\n"
+        "`unchanged` (a review), `written` and `draft` (an approval), `total_bytes`,\n"
+        "`store_bytes`; `close` names what was left unkept, which stays in the draft until the\n"
+        "server ends. Refused: nothing kept (`needs_call`); an entry the draft does not hold; two\n"
         "entries written to one file; a candidate the caps cannot hold; an entry that is there\n"
         "and cannot be read as JSON."),
 }
@@ -71,6 +75,7 @@ class PromoteFields(TypedDict, total=False):
     the draft still holds."""
 
     candidates: Annotated[list[Any], When("a review")]
+    unchanged: Annotated[list[str], When("a review")]
     written: Annotated[list[Any], When("an approval")]
     draft: Annotated[list[str], When("an approval")]
     total_bytes: Annotated[int, When("a review")]
@@ -87,6 +92,7 @@ class Candidate:
     name: str
     document: dict[str, Any]
     path_keys: tuple[str, ...] = ()
+    own: tuple[str, ...] = ()
 
 
 @dataclass
@@ -114,10 +120,12 @@ class Drafts:
         self.loaded.pop(kind, None)
 
     def keep(self, kind: str, name: str, document: dict[str, Any], *,
-             needs: Collection[str] = (), path_keys: Collection[str] = ()) -> bool:
+             needs: Collection[str] = (), path_keys: Collection[str] = (),
+             own: Collection[str] = ()) -> bool:
         """`document` as the candidate (kind, name), replacing an earlier one, and whether it
         entered; an incomplete act proposes nothing and leaves what was kept. `needs` names the
-        keys a `start` recipe cannot do without."""
+        keys a `start` recipe cannot do without; `own` the keys the run owns, which a candidate
+        leaves out and an update therefore keeps as the store holds them."""
         if kind not in KINDS:
             raise Invalid("bad_argument", f"{kind!r} is not a kind: a store holds "
                           f"{', '.join(KINDS)}")
@@ -127,7 +135,7 @@ class Drafts:
                           f"{type(document).__name__}, not a document")
         if not complete(kind, document, needs):
             return False
-        self.kept[kind, name] = Candidate(kind, name, document, tuple(path_keys))
+        self.kept[kind, name] = Candidate(kind, name, document, tuple(path_keys), tuple(own))
         return True
 
     def entries(self) -> list[str]:
@@ -215,8 +223,10 @@ def review(drafts: Drafts, *, starting: Iterable[str | Path] = (), root: str = "
     planned = [planned_entry(candidate, store_dir, state, environ)
                for _, candidate in sorted(drafts.kept.items())]
     _within(planned, store_dir)
-    return {"store": str(store_dir), "candidates": [item for *_, item in planned],
-            "total_bytes": sum(len(data) for _, _, data, _ in planned),
+    changed = [entry for entry in planned if not _unchanged(entry[3])]
+    return {"store": str(store_dir), "candidates": [item for *_, item in changed],
+            "unchanged": [str(item["entry"]) for *_, item in planned if _unchanged(item)],
+            "total_bytes": sum(len(data) for _, _, data, _ in changed),
             "store_bytes": _store_bytes(store_dir, planned)}
 
 
@@ -276,7 +286,6 @@ def planned_entry(candidate: Candidate, store_dir: Path, state: str,
     if candidate.kind == "maps":
         document["application"] = named
         screen_map.parse(document, f"the candidate {entry or f'{candidate.kind}/{named}'}")
-    data = serialised(candidate.kind, document)
     target = store_dir / candidate.kind / file_name(candidate.kind, named)
     if target.is_symlink():
         raise Invalid("bad_argument", f"{target} is a link: a store entry is a file the "
@@ -284,12 +293,17 @@ def planned_entry(candidate: Candidate, store_dir: Path, state: str,
     if target.is_dir():
         raise Invalid("bad_argument", f"{target} is a directory: a store entry is a file")
     change = "update" if target.is_file() else "new"
+    old = _existing(target) if change == "update" else None
+    if isinstance(old, dict):
+        document.update({key: old[key] for key in candidate.own
+                         if key in old and key not in document})
+    data = serialised(candidate.kind, document)
     item: dict[str, Any] = {
         "entry": entry or f"{candidate.kind}/{candidate.name}", "kind": candidate.kind,
         "name": named, "file": f"{STORE}/{candidate.kind}/{file_name(candidate.kind, named)}",
         "bytes": len(data), "change": change}
     if change == "update":
-        item["diff"] = difference(_existing(target), document)
+        item["diff"] = difference(old, document)
     return candidate, target, data, item
 
 
@@ -463,8 +477,6 @@ def _one(part: str, base: Path, state: str, environ: Mapping[str, str], where: s
         if normal.startswith("~/"):
             return "${home}" + normal[1:]
         if "/" in normal:
-            if step:
-                return part
             raise Invalid("bad_argument", f"{where} names {part!r}, a `~user` path this store "
                           "cannot express: write `${home}` or a path inside the repository")
         return part             # a file whose name begins with a tilde, which is relative
@@ -497,7 +509,22 @@ def _options(base: Path, state: str) -> list[tuple[str, str]]:
 
 def _under(target: str, value: str) -> bool:
     base = _norm(_slashed(value))
-    return bool(base) and (target == base or target.startswith(base.rstrip("/") + "/"))
+    if target == base or target.startswith(base.rstrip("/") + "/"):
+        return True
+    head = target[:len(base)]
+    return (head.lower() == base.lower() and target[len(base):len(base) + 1] in ("", "/")
+            and _alike(head, base))
+
+
+def _alike(first: str, second: str) -> bool:
+    """Whether two spellings that differ only in case name one directory: a drive path is read
+    as Windows reads it, any other is asked of the host's own filesystem."""
+    if re.match(r"^[A-Za-z]:/", first):
+        return True
+    try:
+        return os.path.samefile(first, second)
+    except OSError:
+        return False
 
 
 def _norm(text: str) -> str:
@@ -507,6 +534,13 @@ def _norm(text: str) -> str:
 def _slashed(text: str) -> str:
     """`text` with this host's separator as `/`; on a POSIX host a backslash is a name's own."""
     return text.replace(os.sep, "/") if os.sep != "/" else text
+
+
+def _unchanged(item: Mapping[str, Any]) -> bool:
+    """An update whose document equals the entry it replaces: nothing was learned."""
+    diff = item.get("diff")
+    return item["change"] == "update" and isinstance(diff, dict) and not any(
+        diff.get(key) for key in ("added", "removed", "changed"))
 
 
 def _within(planned: Sequence[tuple[Candidate, Path, bytes, dict[str, Any]]],
@@ -521,6 +555,9 @@ def _within(planned: Sequence[tuple[Candidate, Path, bytes, dict[str, Any]]],
     for _candidate, _target, _data, item in planned:
         by_kind.setdefault(str(item["kind"]), set()).add(str(item["name"]))
     for kind, names in sorted(by_kind.items()):
+        if (store_dir / kind).is_symlink():
+            raise Invalid("bad_argument", f"{store_dir / kind} is a link: a kind directory is "
+                          "the repository's own, and the store's caps cannot see through one")
         present = {_stem(path, kind) for path in (store_dir / kind).glob("*.json")}
         if len(present | names) > project_store.ENTRIES_MAX:
             raise Invalid("bad_argument", f"{STORE}/{kind}/ would hold "
