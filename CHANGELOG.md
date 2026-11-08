@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.94.1
+
+### Fixed
+
+- A variable holding a filesystem root (`/`, `C:`) no longer covers every path in `promote`: a
+  path of the machine could reach a tracked file as `${env:OLDPWD}...`.
+
 ## 0.94.0
 
 `promote`:
