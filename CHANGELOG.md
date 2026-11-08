@@ -2,6 +2,20 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.94.0
+
+`promote`:
+
+- A draft holding only a map or a script looks for the store from the file the session loaded, and a
+  `perform` document's `start` block counts as a recipe. `~`-led and relative paths are handled the
+  same way as everywhere else in the store.
+- Free text in a `perform` step that begins with `~` is left alone: only a step's `path` and `dest`
+  are read as paths.
+- A `.scry` that is a link, a `~/..` path and two entries that differ only in case are refused by
+  name.
+- `only_the_run` and `starting` are shared by both servers; `PerformFields` and `perform`'s
+  description halves are too.
+
 ## 0.93.0
 
 ### Changed
