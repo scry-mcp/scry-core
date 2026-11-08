@@ -2,6 +2,22 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.93.0
+
+### Changed
+
+- `promote`'s review names under `unchanged` the entries a promotion would write unchanged,
+  and offers only what differs. An update keeps the keys a run owns (`logfile`) as the store
+  has them, so a recipe loaded and run as it is is neither offered nor stripped of one.
+
+### Fixed
+
+- A symlinked kind directory of the store is refused by name: its byte cap could not see
+  through it.
+- A path whose case differs from the store's or the home's is written against the placeholder
+  where the host says it names the same directory; a drive path is read as Windows reads it.
+- A `~user` path inside a `perform` step is refused by name, as a declared key's is.
+
 ## 0.92.2
 
 ### Fixed
