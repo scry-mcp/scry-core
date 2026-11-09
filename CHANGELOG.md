@@ -2,6 +2,15 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.95.1
+
+An app bundle's launch:
+
+- The console no longer blocks its writer: a FIFO holds 8 KiB and a stopped emulator reads
+  nothing, so a server could hang writing to it. `app_launch.QueuedConsole` queues what the
+  emulator cannot take yet.
+- Finding the app's pid no longer fails because another process has an undecodable command line.
+
 ## 0.95.0
 
 `promote`:
