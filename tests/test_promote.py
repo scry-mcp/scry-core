@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from scry_core import fresh, project_store, promote, screen_map
+from scry_core import fresh, project_store, promote, promote_diff, screen_map
 from scry_core.promote import Drafts
 from scry_core.reply_contract import Invalid
 
@@ -47,6 +48,13 @@ def drafted(kind: str, name: str, document: dict[str, Any], **keep: Any) -> Draf
 
 def review(drafts: Drafts, root: Path, **values: Any) -> dict[str, Any]:
     return promote.promote(drafts, dry_run=True, starting=[root], root=str(root), **values)
+
+
+def refused(drafts: Drafts, root: Path, **values: Any) -> str:
+    """The reason a review gives for the one entry it cannot write."""
+    reply = review(drafts, root, **values)
+    assert reply["candidates"] == [] and len(reply["unwritable"]) == 1
+    return str(reply["unwritable"][0]["reason"])
 
 
 def write(drafts: Drafts, root: Path, entries: list[str], **values: Any) -> dict[str, Any]:
@@ -268,11 +276,33 @@ def test_a_path_under_the_state_or_a_variable_is_written_against_it(
     assert document["reference_rom"] == "${env:SCRY_PROMOTE_BENCH}/r.bin"
 
 
-def test_a_path_of_this_machine_is_refused_by_name(tmp_path: Path) -> None:
-    drafts = drafted("start", "x", start_doc(system="x", rompath="/opt/somewhere/roms"),
-                     needs=("system",), path_keys=("rompath",))
+def test_a_path_of_this_machine_is_listed_apart_and_refused_when_approved(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    drafts = Drafts()
+    drafts.keep("start", "lost", start_doc(system="x", rompath="/opt/somewhere/roms"),
+                needs=("system",), path_keys=("rompath",))
+    drafts.keep("start", "good", start_doc(system="y", rompath=f"{root}/roms"),
+                needs=("system",), path_keys=("rompath",))
+    reply = review(drafts, root, environ={})
+    assert [item["entry"] for item in reply["candidates"]] == ["start/good"]
+    assert reply["total_bytes"] == reply["candidates"][0]["bytes"]
+    assert [item["entry"] for item in reply["unwritable"]] == ["start/lost"]
+    assert "rompath" in reply["unwritable"][0]["reason"]
+    assert "unwritable" not in review(
+        drafted("start", "y", start_doc(system="y"), needs=("system",)), root)
     with pytest.raises(Invalid, match="rompath"):
-        review(drafts, repo(tmp_path))
+        write(drafts, root, ["start/lost"], environ={})
+    assert write(drafts, root, ["start/good"], environ={})["draft"] == ["start/lost"]
+
+
+def test_a_review_of_nothing_writable_names_each_entry_and_its_line_says_so(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    drafts = drafted("start", "lost", start_doc(system="x", rompath="/opt/somewhere/roms"),
+                     needs=("system",), path_keys=("rompath",))
+    reply = review(drafts, root, environ={})
+    assert reply["candidates"] == [] and reply["total_bytes"] == 0
+    assert promote.promote_line({}, reply).endswith("1 entry cannot be written")
 
 
 def test_a_list_of_paths_is_each_written(tmp_path: Path) -> None:
@@ -297,8 +327,7 @@ def test_a_perform_document_s_paths_are_written_against_the_root(tmp_path: Path)
 def test_a_profile_past_its_cap_is_refused(tmp_path: Path) -> None:
     drafts = drafted("start", "x", start_doc(system="x", view="v" * (64 * 1024)),
                      needs=("system",))
-    with pytest.raises(Invalid, match="start/x"):
-        review(drafts, repo(tmp_path))
+    assert re.search("start/x", refused(drafts, repo(tmp_path)))
 
 
 def test_a_kind_directory_past_its_entries_is_refused(tmp_path: Path) -> None:
@@ -327,8 +356,8 @@ def test_an_existing_entry_the_reader_cannot_parse_is_never_overwritten(
     root = repo(tmp_path)
     (root / ".scry" / "start").mkdir(parents=True)
     (root / ".scry" / "start" / "x.json").write_text("not json")
-    with pytest.raises(Invalid, match="x.json"):
-        review(drafted("start", "x", start_doc(system="x"), needs=("system",)), root)
+    drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
+    assert re.search("x.json", refused(drafts, root))
 
 
 def test_the_same_candidate_is_written_as_the_same_bytes(tmp_path: Path) -> None:
@@ -354,7 +383,7 @@ def test_what_is_left_unkept_is_named_for_close() -> None:
     drafts.keep("start", "lineup", start_doc(system="lineup"), needs=("system",))
     drafts.keep("maps", "lineup", map_doc("play"))
     drafts.loaded_entry("perform", "dos")
-    assert promote.unkept(drafts) == ["maps/lineup", "start/lineup"]
+    assert promote.unkept(drafts, lambda: []) == ["maps/lineup", "start/lineup"]
 
 
 def test_a_map_document_is_written_the_way_its_own_save_writes_it(tmp_path: Path) -> None:
@@ -421,7 +450,7 @@ def test_a_long_diff_says_how_many_changes_it_shows(tmp_path: Path) -> None:
     after = start_doc(system="x", **{f"k{n}": n + 1 for n in range(25)})
     (root / ".scry" / "start" / "x.json").write_text(json.dumps(before))
     entry = review(drafted("start", "x", after, needs=("system",)), root)["candidates"][0]
-    assert len(entry["diff"]["changed"]) == promote.CHANGES_SHOWN
+    assert len(entry["diff"]["changed"]) == promote_diff.CHANGES_SHOWN
     assert entry["diff"]["changed_total"] == 25
 
 
@@ -471,8 +500,7 @@ def test_a_path_key_may_hold_a_table_and_a_list(tmp_path: Path) -> None:
 def test_a_path_key_that_is_no_path_is_refused_by_name(tmp_path: Path) -> None:
     drafts = drafted("start", "x", start_doc(system="x", boot_seconds=8),
                      needs=("system",), path_keys=("boot_seconds",))
-    with pytest.raises(Invalid, match="boot_seconds"):
-        review(drafts, repo(tmp_path))
+    assert re.search("boot_seconds", refused(drafts, repo(tmp_path)))
 
 
 def test_a_tilde_and_a_relative_path_are_written_as_they_resolve(tmp_path: Path) -> None:
@@ -537,8 +565,7 @@ def test_a_path_that_climbs_out_of_the_root_is_refused(tmp_path: Path) -> None:
     root = repo(tmp_path)
     drafts = drafted("start", "x", start_doc(system="x", rompath=f"{root}/../shared/roms"),
                      needs=("system",), path_keys=("rompath",))
-    with pytest.raises(Invalid, match="rompath"):
-        review(drafts, root, environ={})
+    assert re.search("rompath", refused(drafts, root, environ={}))
 
 
 def test_a_relative_path_is_resolved_against_the_root(tmp_path: Path) -> None:
@@ -546,8 +573,7 @@ def test_a_relative_path_is_resolved_against_the_root(tmp_path: Path) -> None:
     drafts = drafted("start", "x", start_doc(system="x", rompath="roms",
                                              cfg="../outside.cfg"),
                      needs=("system",), path_keys=("rompath", "cfg"))
-    with pytest.raises(Invalid, match="cfg"):
-        review(drafts, root, environ={})
+    assert re.search("cfg", refused(drafts, root, environ={}))
     drafts = drafted("start", "x", start_doc(system="x", rompath="roms"), needs=("system",),
                      path_keys=("rompath",))
     write(drafts, root, ["start/x"])
@@ -558,13 +584,95 @@ def test_a_relative_path_is_resolved_against_the_root(tmp_path: Path) -> None:
 def test_a_tilde_user_path_is_refused_and_a_tilde_name_is_a_relative_file(
         tmp_path: Path) -> None:
     root = repo(tmp_path)
-    with pytest.raises(Invalid, match="rompath"):
-        review(drafted("start", "x", start_doc(system="x", rompath="~bob/roms"),
-                       needs=("system",), path_keys=("rompath",)), root)
+    tilde = drafted("start", "x", start_doc(system="x", rompath="~bob/roms"),
+                    needs=("system",), path_keys=("rompath",))
+    assert re.search("rompath", refused(tilde, root))
     drafts = drafted("start", "x", start_doc(system="x", cfg="~draft.cfg"),
                      needs=("system",), path_keys=("cfg",))
     write(drafts, root, ["start/x"])
     assert json.loads((root / ".scry" / "start" / "x.json").read_text())["cfg"] == "~draft.cfg"
+
+
+def test_close_leaves_out_what_the_store_already_holds_unchanged(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    write(drafted("start", "same", start_doc(system="s"), needs=("system",)), root,
+          ["start/same"])
+    drafts = drafted("start", "same", start_doc(system="s"), needs=("system",))
+    assert "draft" not in promote.after_close(drafts, {}, starting=lambda: [root])
+    drafts.keep("start", "other", start_doc(system="o"), needs=("system",))
+    assert promote.after_close(drafts, {}, starting=lambda: [root])["draft"] == ["start/other"]
+
+
+def test_close_with_no_store_to_compare_names_the_whole_draft(tmp_path: Path) -> None:
+    drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
+    assert promote.after_close(drafts, {}, starting=lambda: [tmp_path])["draft"] == ["start/x"]
+
+
+def test_close_outlives_a_working_directory_that_is_gone() -> None:
+    def gone() -> list[str]:
+        raise FileNotFoundError("the working directory")
+    drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
+    assert promote.after_close(drafts, {}, starting=gone)["draft"] == ["start/x"]
+
+
+def stored(root: Path, name: str, document: dict[str, Any]) -> Path:
+    target = root / ".scry" / "start" / f"{name}.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(document))
+    return target
+
+
+@pytest.mark.parametrize("spelling", ["roms", "./roms", "sub/../roms"])
+def test_a_stored_relative_path_that_resolves_the_same_is_unchanged(
+        tmp_path: Path, spelling: str) -> None:
+    root = repo(tmp_path)
+    stored(root, "x", start_doc(system="x", rompath=spelling))
+    drafts = drafted("start", "x", start_doc(system="x", rompath=f"{root}/roms"),
+                     needs=("system",), path_keys=("rompath",))
+    reply = review(drafts, root, environ={})
+    assert reply["candidates"] == [] and reply["unchanged"] == ["start/x"]
+
+
+def test_an_update_keeps_the_authors_spelling_of_an_equivalent_path(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    target = stored(root, "x", start_doc(system="x", rompath="roms"))
+    drafts = drafted("start", "x", start_doc(system="x", rompath=f"{root}/roms", speed=2),
+                     needs=("system",), path_keys=("rompath",))
+    candidate = review(drafts, root, environ={})["candidates"][0]
+    assert candidate["diff"] == {"added": ["speed"], "removed": [], "changed": []}
+    write(drafts, root, ["start/x"], environ={})
+    assert json.loads(target.read_text())["rompath"] == "roms"
+
+
+def test_a_stored_absolute_path_is_rewritten_never_kept_as_the_authors(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    target = stored(root, "x", start_doc(system="x", rompath=f"{root}/roms"))
+    drafts = drafted("start", "x", start_doc(system="x", rompath=f"{root}/roms"),
+                     needs=("system",), path_keys=("rompath",))
+    assert review(drafts, root, environ={})["unchanged"] == []
+    write(drafts, root, ["start/x"], environ={})
+    assert json.loads(target.read_text())["rompath"] == "${root}/roms"
+
+
+def test_a_stored_path_that_resolves_elsewhere_is_still_a_change(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    stored(root, "x", start_doc(system="x", rompath="other"))
+    drafts = drafted("start", "x", start_doc(system="x", rompath=f"{root}/roms"),
+                     needs=("system",), path_keys=("rompath",))
+    assert review(drafts, root, environ={})["candidates"][0]["diff"]["changed"] == [
+        {"path": "rompath", "was": "other", "now": "${root}/roms"}]
+
+
+def test_a_perform_start_block_keeps_the_authors_spelling_too(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    document = perform_doc()
+    document["start"]["rompath"] = "roms"
+    target = root / ".scry" / "perform" / "dos.json"
+    target.parent.mkdir(parents=True)
+    target.write_text(json.dumps(document))
+    drafts = drafted("perform", "dos", perform_doc(), path_keys=("rompath",))
+    drafts.kept["perform", "dos"].document["start"]["rompath"] = f"{root}/roms"
+    assert review(drafts, root, environ={})["unchanged"] == ["perform/dos"]
 
 
 @pytest.mark.skipif(os.sep != "/", reason="a backslash is a separator here")
@@ -638,8 +746,7 @@ def test_a_map_without_its_format_proposes_nothing() -> None:
 def test_a_map_the_reader_refuses_is_refused_by_name(tmp_path: Path) -> None:
     document = map_doc("play")
     document["screens"][0]["match"][0]["signature"] = "not-a-signature"
-    with pytest.raises(Invalid, match="maps/lineup"):
-        review(drafted("maps", "lineup", document), repo(tmp_path))
+    assert re.search("maps/lineup", refused(drafted("maps", "lineup", document), repo(tmp_path)))
 
 
 def test_a_renamed_map_is_written_under_its_new_application(tmp_path: Path) -> None:
@@ -725,9 +832,10 @@ def test_kept_line_and_the_close_and_summary_helpers_say_what_they_mean() -> Non
     drafts = Drafts()
     drafts.keep("start", "x", start_doc(system="x"), needs=("system",))
     assert promote.kept_line(drafts) == "kept 1 (promote to review)"
-    reply = promote.after_close(drafts, {"closed": True})
+    reply = promote.after_close(drafts, {"closed": True}, starting=lambda: [])
     assert reply["draft"] == ["start/x"]
-    assert promote.after_close(Drafts(), {"closed": False}) == {"closed": False}
+    empty = promote.after_close(Drafts(), {"closed": False}, starting=lambda: [])
+    assert empty == {"closed": False}
     assert promote.promote_line({}, {"store": "/s", "candidates": [1, 2]}) == \
         "promote: 2 candidates in /s"
     assert promote.promote_line({}, {"store": "/s", "written": [1], "draft": []}) == \
@@ -891,8 +999,8 @@ def test_an_empty_variable_covers_no_path(tmp_path: Path) -> None:
 def test_a_steps_tilde_user_path_is_refused_by_name(tmp_path: Path) -> None:
     document = perform_doc()
     document["steps"].append({"op": "symbols_load", "path": "~bob/x.yaml"})
-    with pytest.raises(Invalid, match="steps.*~bob/x.yaml"):
-        review(drafted("perform", "lineup", document), repo(tmp_path))
+    drafts = drafted("perform", "lineup", document)
+    assert re.search("steps.*~bob/x.yaml", refused(drafts, repo(tmp_path)))
 
 
 @pytest.mark.parametrize("path", ["c:/repository/roms", "c:/repo2"])

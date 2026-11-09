@@ -864,15 +864,11 @@ def test_the_exports_line_says_what_it_holds_and_where_it_was_cut() -> None:
         "perform_export: 3 steps, 1 check, 2 dropped, cut at call 7 to /x.json"
     whole = {**reply, "cut": {"available": False, "why": "nothing was cut"}}
     assert recording.export_summary({}, whole).endswith("2 dropped to /x.json")
-    assert str(recording.DROPPED_SHOWN) in recording.DOC_VALUES["EXPORT_REPLY"]
 
 
 def test_perform_export_names_the_file_it_writes_dest(tmp_path: Path) -> None:
     with pytest.raises(Invalid, match=r"^dest='.*x\.txt' must end in `\.json`"):
         recording.export(_Server().recorder, str(tmp_path / "x.txt"))
-    assert recording.EXPORTS.startswith("Write what this session did since its `start` to "
-                                        "`dest`")
-    assert recording.EXPORT_REPLY.startswith("`dest` absolute")
 
 
 def test_a_tool_declares_its_export_per_method() -> None:

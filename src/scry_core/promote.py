@@ -4,8 +4,8 @@ A `start`, a map's `add` and a `perform_export` keep what they learned, keyed by
 `promote(dry_run)` reviews those against the store and `promote(entries)` writes the ones chosen,
 creating `.scry/` only then. A candidate is complete only with what the reader of its kind
 accepts, and a name the store already holds is an update, shown as its diff. A path a candidate
-declares is written as `project_store`'s own placeholders; one that would leave them is refused
-(`tracked`).
+declares is written as `project_store`'s own placeholders; a review lists apart one that would
+leave them, and an approval refuses it (`tracked`).
 """
 
 from __future__ import annotations
@@ -13,8 +13,6 @@ from __future__ import annotations
 import copy
 import json
 import os
-import posixpath
-import re
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,25 +20,18 @@ from typing import Annotated, Any, Required
 
 from typing_extensions import TypedDict
 
-from scry_core import fresh, project_store, prose, recording, screen_map
+from scry_core import fresh, project_store, promote_paths, prose, recording, screen_map
+from scry_core.promote_diff import difference
+from scry_core.promote_paths import LISTS, Places
 from scry_core.reply_contract import Invalid, When
 
 KINDS = project_store.KINDS
 STORE = project_store.STORE
 #: What each kind's file name adds to its entry's name: a map is named by its application.
 SUFFIXES = {"maps": screen_map.SUFFIX}
-#: A path key whose one string holds several paths, and the separator between them.
-LISTS = {"rompath": ";"}
 #: How each kind is written: the indentation and whether its keys are sorted, the way the
 #: reader's own writer writes it, so a promotion and an explicit save produce the same bytes.
 WRITERS = {"start": (2, True), "maps": (1, False), "perform": (2, False)}
-#: The lists whose items are identified by their `name`, and the changes one diff shows: a map
-#: of many screens would otherwise fill a reply. Every other list is compared by index, because
-#: a `perform` document's steps are a program and their order is part of it.
-NAMED = frozenset({"screens", "controls"})
-CHANGES_SHOWN = 20
-#: The arguments of a `perform` step that name a file; any other string may be text to type.
-STEP_PATHS = frozenset({"path", "dest"})
 
 #: What a tool's description fills from here (`scry_core.docs.filled`), in the words both
 #: servers say it.
@@ -63,13 +54,14 @@ DOC_VALUES = {
         "becomes; without it the first `.scry/` found walking up from the file a loaded recipe\n"
         "came from, the draft's paths, then this server's directory, is used, and a promotion\n"
         "that finds none is refused. Every path is\n"
-        "written as a `project_store` placeholder; one that would leave them is refused, since a\n"
-        "tracked file carries no path of this machine. Reply: `store`, `candidates` and\n"
-        "`unchanged` (a review), `written` and `draft` (an approval), `total_bytes`,\n"
+        "written as a `project_store` placeholder, since a tracked file carries no path of this\n"
+        "machine; an approval of an entry a review calls unwritable is refused. Reply: `store`,\n"
+        "`candidates` and `unchanged` (a review), `unwritable`, each entry with its reason\n"
+        "(a review holding an entry it cannot write), `written` and `draft` (an approval),\n"
+        "`total_bytes`,\n"
         "`store_bytes`; `close` names what was left unkept, which stays in the draft until the\n"
         "server ends. Refused: nothing kept (`needs_call`); an entry the draft does not hold; two\n"
-        "entries written to one file; a candidate the caps cannot hold; an entry that is there\n"
-        "and cannot be read as JSON."),
+        "entries written to one file; a kind or a store past its cap."),
 }
 
 
@@ -79,6 +71,7 @@ class PromoteFields(TypedDict, total=False):
 
     candidates: Annotated[list[Any], When("a review")]
     unchanged: Annotated[list[str], When("a review")]
+    unwritable: Annotated[list[Any], When("a review holding an entry it cannot write")]
     written: Annotated[list[Any], When("an approval")]
     draft: Annotated[list[str], When("an approval")]
     total_bytes: Annotated[int, When("a review")]
@@ -166,9 +159,18 @@ def complete(kind: str, document: Mapping[str, Any], needs: Collection[str]) -> 
         isinstance(step, dict) and step.get("recorded") for step in steps)
 
 
-def unkept(drafts: Drafts) -> list[str]:
-    """What `close` names: every entry the session left waiting for an approval."""
-    return drafts.entries()
+def unkept(drafts: Drafts, starting: Callable[[], Iterable[str | Path]],
+           state: str = "") -> list[str]:
+    """What `close` names: the entries left waiting for an approval, less any the store already
+    holds as they are. With no store to compare, or one that cannot be reviewed, all of them:
+    the session has already closed, and this must not cost the reply."""
+    if not drafts:
+        return []
+    try:
+        same = review(drafts, starting=starting(), state=state)["unchanged"]
+    except (Invalid, OSError):
+        same = []
+    return [entry for entry in drafts.entries() if entry not in same]
 
 
 def only_the_run(names: frozenset[str] | None, run_own: frozenset[str]) -> bool:
@@ -249,14 +251,23 @@ def review(drafts: Drafts, *, starting: Iterable[str | Path] = (), root: str = "
         raise Invalid("needs_call", "nothing is kept: a `start`, a map's `add` and a "
                       "`perform_export` keep what they learn, and a complete one is a recipe "
                       "of what it boots with, a map its reader parses or a script with a check")
-    planned = [planned_entry(candidate, store_dir, state, environ)
-               for _, candidate in sorted(drafts.kept.items())]
+    planned = []
+    unwritable = []
+    for (kind, name), candidate in sorted(drafts.kept.items()):
+        try:
+            planned.append(planned_entry(candidate, store_dir, state, environ))
+        except Invalid as exc:
+            unwritable.append({"entry": f"{kind}/{name}", "reason": str(exc)})
     _within(planned, store_dir)
     changed = [entry for entry in planned if not _unchanged(entry[3])]
-    return {"store": str(store_dir), "candidates": [item for *_, item in changed],
-            "unchanged": [str(item["entry"]) for *_, item in planned if _unchanged(item)],
-            "total_bytes": sum(len(data) for _, _, data, _ in changed),
-            "store_bytes": _store_bytes(store_dir, planned)}
+    reply: dict[str, Any] = {
+        "store": str(store_dir), "candidates": [item for *_, item in changed],
+        "unchanged": [str(item["entry"]) for *_, item in planned if _unchanged(item)],
+        "total_bytes": sum(len(data) for _, _, data, _ in changed),
+        "store_bytes": _store_bytes(store_dir, planned)}
+    if unwritable:
+        reply["unwritable"] = unwritable
+    return reply
 
 
 def write(drafts: Drafts, *, entries: Sequence[str], names: Mapping[str, str] | None = None,
@@ -324,11 +335,17 @@ def planned_entry(candidate: Candidate, store_dir: Path, state: str,
     change = "update" if target.is_file() else "new"
     old = _existing(target) if change == "update" else None
     if isinstance(old, dict):
+        _keep_spelling(candidate, document, old, store_dir.parent, state, environ)
         document.update({key: old[key] for key in candidate.own
                          if key in old and key not in document})
     data = serialised(candidate.kind, document)
+    shown = entry or f"{candidate.kind}/{candidate.name}"
+    if candidate.kind == "start" and len(data) > project_store.PROFILE_BYTES_MAX:
+        raise Invalid("bad_argument", f"{shown} is {len(data)} bytes, past the "
+                      f"{project_store.PROFILE_BYTES_MAX} a start profile holds: a profile "
+                      "is start's arguments, and anything larger is data")
     item: dict[str, Any] = {
-        "entry": entry or f"{candidate.kind}/{candidate.name}", "kind": candidate.kind,
+        "entry": shown, "kind": candidate.kind,
         "name": named, "file": f"{STORE}/{candidate.kind}/{file_name(candidate.kind, named)}",
         "bytes": len(data), "change": change}
     if change == "update":
@@ -343,16 +360,17 @@ def tracked(candidate: Candidate, base: Path, state: str = "",
     document's `start` block the same, and its steps' absolute paths are rewritten where one of
     those covers them, since a step's argument is the tool's and only a path can be."""
     document = copy.deepcopy(candidate.document)
-    env = os.environ if environ is None else environ
+    places = _places(base, state, environ)
     if candidate.kind == "start":
-        _rewrite(document, candidate.path_keys, base, state, env, candidate)
+        _rewrite(document, candidate, places)
     elif candidate.kind == "perform":
         start = document.get("start")
         if isinstance(start, dict):
-            _rewrite(start, candidate.path_keys, base, state, env, candidate)
+            _rewrite(start, candidate, places)
         steps = document.get("steps")
         if isinstance(steps, list):
-            document["steps"] = _steps(steps, base, state, env, candidate)
+            document["steps"] = promote_paths.steps(
+                steps, places, f"the candidate perform/{candidate.name}'s steps")
     return document
 
 
@@ -367,20 +385,6 @@ def serialised(kind: str, document: Mapping[str, Any]) -> bytes:
     return (json.dumps(document, indent=indent, sort_keys=sorted_keys) + "\n").encode()
 
 
-def difference(old: Any, new: Any) -> dict[str, Any]:
-    """What an update changes: the paths it adds, removes and changes, with both values. A map's
-    screens and its controls are changed whole by name, and a reordering of them is a change; a
-    `perform` document's steps are compared by index, because their order is the program."""
-    added: list[str] = []
-    removed: list[str] = []
-    changed: list[dict[str, Any]] = []
-    _walk("", old, new, added, removed, changed)
-    shown = {"added": added, "removed": removed, "changed": changed[:CHANGES_SHOWN]}
-    if len(changed) > CHANGES_SHOWN:
-        shown["changed_total"] = len(changed)
-    return shown
-
-
 def after_export(drafts: Drafts, reply: dict[str, Any],
                  path_keys: Collection[str]) -> dict[str, Any]:
     """The document an export wrote is a candidate, named by the entry this session replayed or
@@ -393,9 +397,10 @@ def after_export(drafts: Drafts, reply: dict[str, Any],
     return reply
 
 
-def after_close(drafts: Drafts, reply: dict[str, Any]) -> dict[str, Any]:
+def after_close(drafts: Drafts, reply: dict[str, Any], *,
+                starting: Callable[[], Iterable[str | Path]], state: str = "") -> dict[str, Any]:
     """`close` names what the session left waiting for an approval."""
-    if draft := unkept(drafts):
+    if draft := unkept(drafts, starting, state):
         reply["draft"] = draft
     return reply
 
@@ -406,174 +411,52 @@ def promote_line(args: Mapping[str, Any], reply: Mapping[str, Any]) -> str:
         return (f"promote: {prose.counted(len(reply['written']), 'entry', 'entries')} written "
                 f"to {reply['store']}, "
                 f"{prose.counted(len(reply['draft']), 'entry', 'entries')} still kept")
-    return f"promote: {prose.counted(len(reply['candidates']), 'candidate')} in {reply['store']}"
+    line = f"promote: {prose.counted(len(reply['candidates']), 'candidate')} in {reply['store']}"
+    if unwritable := reply.get("unwritable"):
+        line += f", {prose.counted(len(unwritable), 'entry', 'entries')} cannot be written"
+    return line
 
 
-def _walk(path: str, old: Any, new: Any, added: list[str], removed: list[str],
-          changed: list[dict[str, Any]]) -> None:
-    if isinstance(old, dict) and isinstance(new, dict):
-        removed.extend(_join(path, key) for key in sorted(old.keys() - new.keys()))
-        added.extend(_join(path, key) for key in sorted(new.keys() - old.keys()))
-        for key in sorted(old.keys() & new.keys()):
-            _walk(_join(path, key), old[key], new[key], added, removed, changed)
-        return
-    if isinstance(old, list) and isinstance(new, list):
-        if _key(path) in NAMED and _named(old) and _named(new):
-            before = {item["name"]: item for item in old}
-            after = {item["name"]: item for item in new}
-            removed.extend(_join(path, name) for name in sorted(before.keys() - after.keys()))
-            added.extend(_join(path, name) for name in sorted(after.keys() - before.keys()))
-            for name in sorted(before.keys() & after.keys()):
-                if before[name] != after[name]:
-                    changed.append({"path": _join(path, name), "was": before[name],
-                                    "now": after[name]})
-            order_old = [item["name"] for item in old]
-            order_new = [item["name"] for item in new]
-            if order_old != order_new and sorted(order_old) == sorted(order_new):
-                changed.append({"path": f"{path}[order]", "was": order_old, "now": order_new})
-            return
-        if all(isinstance(item, dict) for item in (*old, *new)):
-            for i in range(min(len(old), len(new))):
-                _walk(f"{path}[{i}]", old[i], new[i], added, removed, changed)
-            added.extend(f"{path}[{i}]" for i in range(len(old), len(new)))
-            removed.extend(f"{path}[{i}]" for i in range(len(new), len(old)))
-            return
-        if old != new:
-            changed.append({"path": path, "was": old, "now": new})
-        return
-    if old != new:
-        changed.append({"path": path, "was": old, "now": new})
+def _relative(value: Any, separator: str) -> bool:
+    """Whether a stored value is relative spellings only: an absolute one is this machine's."""
+    parts = value.split(separator) if separator and isinstance(value, str) else [value]
+    return all(isinstance(part, str) and not project_store.absolute(part.strip())
+               for part in parts)
 
 
-def _named(items: list[Any]) -> bool:
-    """Whether `items` is a list of objects each named: the unit a diff changes whole."""
-    names = [item.get("name") for item in items if isinstance(item, dict)]
-    if len(names) != len(items) or not all(isinstance(name, str) and name for name in names):
-        return False
-    return len(set(names)) == len(names)
+def _places(base: Path, state: str, environ: Mapping[str, str] | None) -> Places:
+    return Places(base, state, os.environ if environ is None else environ)
 
 
-def _rewrite(document: dict[str, Any], keys: Collection[str], base: Path, state: str,
-             environ: Mapping[str, str], candidate: Candidate) -> None:
-    for key in keys:
+def _rewrite(document: dict[str, Any], candidate: Candidate, places: Places) -> None:
+    for key in candidate.path_keys:
         if key in document:
             where = f"the candidate {candidate.kind}/{candidate.name}'s `{key}`"
-            document[key] = _placeholders(document[key], base, state, environ, where,
-                                          LISTS.get(key, ""), step=False)
+            document[key] = promote_paths.placeholders(document[key], places, where,
+                                                       LISTS.get(key, ""))
 
 
-def _steps(value: Any, base: Path, state: str, environ: Mapping[str, str],
-           candidate: Candidate, key: str = "") -> Any:
-    """`value` with every absolute path one of the store's placeholders covers written as it,
-    which is what a step's argument can be rewritten without guessing what it means."""
-    where = f"the candidate perform/{candidate.name}'s steps"
-    if isinstance(value, str):
-        if value.lstrip().startswith("~") and key not in STEP_PATHS:
-            return value
-        return _one(value, base, state, environ, where, step=True)
-    if isinstance(value, list):
-        return [_steps(item, base, state, environ, candidate, key) for item in value]
-    if isinstance(value, dict):
-        return {name: _steps(item, base, state, environ, candidate, name)
-                for name, item in value.items()}
-    return value
-
-
-def _placeholders(value: Any, base: Path, state: str, environ: Mapping[str, str], where: str,
-                  separator: str, *, step: bool) -> Any:
-    if isinstance(value, str):
-        parts = value.split(separator) if separator else [value]
-        return separator.join(_one(part, base, state, environ, where, step=step)
-                              for part in parts)
-    if isinstance(value, list):
-        return [_placeholders(item, base, state, environ, where, separator, step=step)
-                for item in value]
-    if isinstance(value, dict):
-        return {key: _placeholders(item, base, state, environ, where, separator, step=step)
-                for key, item in value.items()}
-    raise Invalid("bad_argument", f"{where} is a {type(value).__name__}, not a path or a table "
-                  "of them")
-
-
-def _one(part: str, base: Path, state: str, environ: Mapping[str, str], where: str, *,
-         step: bool) -> str:
-    """`part` as a placeholder path: a declared key's value must resolve under the root, the
-    home, the state or a variable, and a step's absolute path is rewritten when one covers it."""
-    normal = _slashed(part.strip())
-    if not normal:
-        return part
-    if normal.startswith("~"):
-        if normal == "~":
-            return "${home}"
-        if normal.startswith("~/"):
-            inside = _norm(normal[2:])
-            if inside == ".." or inside.startswith("../"):
-                raise Invalid("bad_argument", f"{where} names {part!r}, which climbs out of the "
-                              "home: a tracked file carries no path of this machine")
-            return "${home}/" + inside
-        if "/" in normal:
-            raise Invalid("bad_argument", f"{where} names {part!r}, a `~user` path this store "
-                          "cannot express: write `${home}` or a path inside the repository")
-        return part             # a file whose name begins with a tilde, which is relative
-    if project_store.absolute(normal):
-        target = _norm(normal)
-    elif step:
-        return part             # a step's argument that is no path to begin with
-    else:
-        target = _norm(_slashed(str(base)).rstrip("/") + "/" + normal)
-    for placeholder, value in _options(base, state):
-        if _under(target, value):
-            return placeholder + target[len(value):]
-    for var in sorted(environ, key=lambda name: (-len(environ[name]), name)):
-        if not _names_a_root(environ[var]) and _under(target, environ[var]):
-            return f"${{env:{var}}}" + target[len(_norm(_slashed(environ[var]))):]
-    if step:
-        return part
-    raise Invalid("bad_argument", f"{where} names {part!r}, which is not under the repository "
-                  f"({base}), the home, the session's state or a variable of the server's "
-                  "environment: a tracked file carries no path of this machine")
-
-
-def _options(base: Path, state: str) -> list[tuple[str, str]]:
-    options = [("${root}", _norm(_slashed(str(base)))),
-               ("${home}", _norm(_slashed(str(Path.home()))))]
-    if state:
-        options.append(("${state}", _norm(_slashed(state))))
-    return sorted(options, key=lambda option: -len(option[1]))
-
-
-def _under(target: str, value: str) -> bool:
-    base = _norm(_slashed(value))
-    if target == base or target.startswith(base.rstrip("/") + "/"):
-        return True
-    head = target[:len(base)]
-    return (head.lower() == base.lower() and target[len(base):len(base) + 1] in ("", "/")
-            and _alike(head, base))
-
-
-def _alike(first: str, second: str) -> bool:
-    """Whether two spellings that differ only in case name one directory: a drive path is read
-    as Windows reads it, any other is asked of the host's own filesystem."""
-    if re.match(r"^[A-Za-z]:/", first):
-        return True
-    try:
-        return os.path.samefile(first, second)
-    except OSError:
-        return False
-
-
-def _names_a_root(value: str) -> bool:
-    """Whether `value` is a filesystem root, which would cover every path of the machine."""
-    return re.fullmatch(r"(?:[A-Za-z]:)?", value.replace("\\", "/").rstrip("/")) is not None
-
-
-def _norm(text: str) -> str:
-    return posixpath.normpath(text)
-
-
-def _slashed(text: str) -> str:
-    """`text` with this host's separator as `/`; on a POSIX host a backslash is a name's own."""
-    return text.replace(os.sep, "/") if os.sep != "/" else text
+def _keep_spelling(candidate: Candidate, document: dict[str, Any], old: dict[str, Any],
+                   base: Path, state: str, environ: Mapping[str, str] | None) -> None:
+    """Leave as the store has it each path that resolves to what `document` now says: an
+    equivalent spelling is the author's, and neither a change nor something to rewrite."""
+    places = _places(base, state, environ)
+    new: Any = document
+    held: Any = old
+    if candidate.kind == "perform":
+        new, held = document.get("start"), old.get("start")
+    if candidate.kind == "maps" or not isinstance(new, dict) or not isinstance(held, dict):
+        return
+    for key in set(candidate.path_keys) & new.keys() & held.keys():
+        if not _relative(held[key], LISTS.get(key, "")):
+            continue
+        try:
+            resolved = promote_paths.placeholders(held[key], places, f"the stored `{key}`",
+                                                  LISTS.get(key, ""))
+        except Invalid:
+            continue
+        if resolved == new[key]:
+            new[key] = held[key]
 
 
 def _unchanged(item: Mapping[str, Any]) -> bool:
@@ -586,11 +469,6 @@ def _unchanged(item: Mapping[str, Any]) -> bool:
 def _within(planned: Sequence[tuple[Candidate, Path, bytes, dict[str, Any]]],
             store_dir: Path) -> None:
     """Refuse a promotion the store's caps cannot hold, naming the entries that would exceed."""
-    for candidate, _target, data, item in planned:
-        if candidate.kind == "start" and len(data) > project_store.PROFILE_BYTES_MAX:
-            raise Invalid("bad_argument", f"{item['entry']} is {len(data)} bytes, past the "
-                          f"{project_store.PROFILE_BYTES_MAX} a start profile holds: a profile "
-                          "is start's arguments, and anything larger is data")
     by_kind: dict[str, set[str]] = {}
     for _candidate, _target, _data, item in planned:
         by_kind.setdefault(str(item["kind"]), set()).add(str(item["name"]))
@@ -657,15 +535,6 @@ def _stem(path: Path, kind: str) -> str:
     """The entry name a file of `kind` holds."""
     suffix = SUFFIXES.get(kind, ".json")
     return path.name[:-len(suffix)] if path.name.endswith(suffix) else path.name
-
-
-def _key(path: str) -> str:
-    """The document key a diff path ends in, its indices cut."""
-    return path.rsplit(".", 1)[-1].split("[", 1)[0]
-
-
-def _join(path: str, key: str) -> str:
-    return f"{path}.{key}" if path else key
 
 
 def _listed(values: Iterable[Any]) -> str:

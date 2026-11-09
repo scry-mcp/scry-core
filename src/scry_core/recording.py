@@ -610,17 +610,6 @@ class Unrecorded:
         """No recording to add to."""
 
 
-#: `perform_export`'s description halves both servers share (`docs.filled`).
-EXPORTS = ("Write what this session did since its `start` to `dest` as `perform`'s own document, "
-           "so an investigation becomes a bench: `uv run python -m scry_core.replay <dest>`, from "
-           "this server's repository, plays it with no model and exits 0 when every step held. "
-           "Answers in any state, a closed session's included.")
-EXPORT_REPLY = ("`dest` absolute or `~`-led, ending `.json`; refused if it is there unless "
-                "`overwrite`. Reply: `path` (the file written), `steps`, `checks`, `dropped` "
-                f"(the last {DROPPED_SHOWN}, each `call`, `op`, `why`) and `dropped_total`, "
-                "`cut` (`call`, `op`, `why`, or unavailable) and `replay`, the runner's command "
-                "line. `no_recording` before a `start` succeeded, after one was cancelled, or when "
-                "no recorded call is a step a replay could take.")
 #: What both servers' `perform` and `perform_export` say in the same words.
 PERFORM_SOURCE = ("`path`: a `perform` document (absolute or `~`-led:\n"
                   "`.scry/perform/<name>.json`, or a file `perform_export` wrote) whose steps are "
@@ -631,8 +620,8 @@ PERFORM_REPLY = ("Reply: `ran`, `steps_completed`, `held`, `failed_at`, `failed`
 EXPORT_KEPT = ("`dest` (`.json`) is refused if present unless `overwrite`. Reply: `path`, "
                "`steps`,\n`checks`, `dropped`, `dropped_total`, `cut`, `replay`, and `kept` when "
                "the document is kept\nfor `promote`; `no_recording` if empty.")
-DOC_VALUES = {"EXPORTS": EXPORTS, "EXPORT_REPLY": EXPORT_REPLY, "PERFORM_SOURCE": PERFORM_SOURCE,
-              "PERFORM_REPLY": PERFORM_REPLY, "EXPORT_KEPT": EXPORT_KEPT}
+DOC_VALUES = {"PERFORM_SOURCE": PERFORM_SOURCE, "PERFORM_REPLY": PERFORM_REPLY,
+              "EXPORT_KEPT": EXPORT_KEPT}
 
 
 def export_summary(args: dict[str, Any], reply: dict[str, Any]) -> str:
