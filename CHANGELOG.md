@@ -2,6 +2,21 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.95.0
+
+`promote`:
+
+- A review lists apart, in `unwritable` with its reason, each entry it cannot write, instead of
+  refusing the whole review at the first. An approval of one is still refused.
+- `close` no longer names an entry the store already holds as it is.
+- A stored relative path that resolves to the same place counts as unchanged and keeps its
+  spelling; a stored absolute path is rewritten as a placeholder.
+- `after_close` takes `starting` as a callable, so a working directory that is gone cannot cost
+  `close` its reply.
+
+The module is split: `scry_core.promote_paths` and `scry_core.promote_diff`. `recording.EXPORTS`
+and `recording.EXPORT_REPLY`, which nothing read, are gone.
+
 ## 0.94.1
 
 ### Fixed
