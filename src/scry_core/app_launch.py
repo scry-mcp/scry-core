@@ -8,12 +8,15 @@ from __future__ import annotations
 import contextlib
 import os
 import plistlib
+import select
 import signal
 import subprocess
 import sys
+import threading
 import time
+from collections import deque
 from pathlib import Path
-from typing import IO, Any, Protocol
+from typing import IO, Any, Protocol, cast
 
 from scry_core.reply_contract import Invalid, unavailable
 
@@ -27,6 +30,8 @@ PGREP = "/usr/bin/pgrep"
 FIND_TIMEOUT_S = 10.0
 FIND_POLL_S = 0.05
 WAIT_POLL_S = 0.1
+CONSOLE_POLL_S = 0.05
+CONSOLE_CLOSE_S = 1.0
 
 UNKNOWN_EXIT_WHY = (
     "the emulator was launched as an app, so this server is not its parent and nothing here "
@@ -57,6 +62,81 @@ def is_bundle(path: str | Path) -> bool:
     """Whether `path` is a `.app` whose plist names an executable."""
     return (str(path).endswith(BUNDLE_SUFFIX) and Path(path).is_dir()
             and executable_of(path) is not None)
+
+
+def _not_blocking(fd: int) -> None:
+    if sys.platform == "win32":
+        raise Invalid("host_failed", NOT_HERE_WHY)
+    else:
+        os.set_blocking(fd, False)
+
+
+class QueuedConsole:
+    """A FIFO's write end that never blocks its writer: a FIFO holds 8 KiB here, a child's pipe 64,
+    and an emulator stopped at its debugger reads neither, so what it cannot take yet waits."""
+
+    def __init__(self, fd: int) -> None:
+        _not_blocking(fd)
+        self._fd = fd
+        self._chunks: deque[bytes] = deque()
+        self._ready = threading.Condition()
+        self._closed = False
+        self._failure: OSError | None = None
+        self._thread = threading.Thread(target=self._pump, name="app-console", daemon=True)
+        self._thread.start()
+
+    def write(self, data: bytes) -> int:
+        with self._ready:
+            if self._closed:
+                raise ValueError("write to a closed console")
+            if self._failure is not None:
+                raise self._failure
+            self._chunks.append(bytes(data))
+            self._ready.notify()
+        return len(data)
+
+    def flush(self) -> None:
+        with self._ready:
+            if self._failure is not None:
+                raise self._failure
+
+    def close(self) -> None:
+        with self._ready:
+            if self._closed:
+                return
+            self._closed = True
+            self._ready.notify()
+        self._thread.join(CONSOLE_CLOSE_S)
+        os.close(self._fd)
+
+    def _pump(self) -> None:
+        while True:
+            with self._ready:
+                while not self._chunks and not self._closed:
+                    self._ready.wait()
+                if self._closed:
+                    return
+                chunk = self._chunks.popleft()
+            if not self._send(chunk):
+                return
+
+    def _send(self, chunk: bytes) -> bool:
+        """`chunk` written whole as the reader makes room; False once closed or failed."""
+        while chunk:
+            with self._ready:
+                if self._closed:
+                    return False
+            if not select.select([], [self._fd], [], CONSOLE_POLL_S)[1]:
+                continue
+            try:
+                chunk = chunk[os.write(self._fd, chunk):]
+            except BlockingIOError:
+                time.sleep(CONSOLE_POLL_S)
+            except OSError as exc:
+                with self._ready:
+                    self._failure = exc
+                return False
+        return True
 
 
 class Spawned(Protocol):
@@ -101,8 +181,10 @@ def find_pid(token: str, timeout: float) -> int | None:
     else:
         deadline = time.monotonic() + timeout
         while True:
+            # In a UTF-8 locale one process's undecodable argv makes pgrep fail for all of them.
             run = subprocess.run([PGREP, "-f", "-u", str(os.getuid()), "--", token],
-                                 capture_output=True, text=True, check=False)
+                                 capture_output=True, text=True, check=False,
+                                 env={**os.environ, "LC_ALL": "C"})
             said = run.stdout.split()
             if said:
                 try:
@@ -136,6 +218,8 @@ class AppProcess:
             os.kill(self.pid, 0)
         except ProcessLookupError:
             self._gone = True
+            if self.stdin is not None:
+                self.stdin.close()
             return 0
         except PermissionError:
             return None
@@ -174,7 +258,7 @@ def launch(bundle: str | Path, argv: list[str], *, stdout: str | None = None,
         if stdin_fifo:
             with contextlib.suppress(FileExistsError):
                 os.mkfifo(stdin_fifo, 0o600)
-            stdin = os.fdopen(os.open(stdin_fifo, os.O_RDWR), "wb", buffering=0)
+            stdin = cast(IO[bytes], QueuedConsole(os.open(stdin_fifo, os.O_RDWR)))
         try:
             cmd = open_argv(bundle, argv, stdout=stdout, stdin_fifo=stdin_fifo, env=env,
                             cwd=cwd)
@@ -190,7 +274,8 @@ def launch(bundle: str | Path, argv: list[str], *, stdout: str | None = None,
                 stdin.close()
             raise
         if pid is None:
-            assert stdin is not None or not stdin_fifo
+            if stdin is not None:
+                stdin.close()
             raise Invalid("host_failed",
                           f"open accepted {bundle} but no process carrying {token!r} appeared "
                           f"in {timeout:g} s: the app may have quit, or another user's process "
