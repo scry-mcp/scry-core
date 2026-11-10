@@ -23,6 +23,19 @@ from scry_core.reply_contract import Invalid
 #: only the reachable half.
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="the app route is `open`'s")
 
+def _fifo(where: Path) -> Path:
+    fifo = where / "console"
+    if sys.platform != "win32":
+        os.mkfifo(fifo)
+    return fifo
+
+
+def _reader(fifo: Path) -> int:
+    flags = os.O_RDONLY
+    if sys.platform != "win32":
+        flags |= os.O_NONBLOCK
+    return os.open(fifo, flags)
+
 
 def _bundle(where: Path, executable: str = "emu", info: dict[str, Any] | None = None) -> Path:
     """A minimal `.app` whose `Contents/MacOS/<executable>` exists."""
@@ -269,7 +282,7 @@ def test_finding_the_pid_reads_argvs_as_bytes(monkeypatch: pytest.MonkeyPatch) -
         seen.update(kw["env"])
         return subprocess.CompletedProcess(cmd, 0, "4242\n", "")
 
-    monkeypatch.setattr(app_launch.subprocess, "run", run)
+    monkeypatch.setattr(subprocess, "run", run)
     assert app_launch.find_pid("mcp_server=1", 0.0) == 4242
     assert seen["LC_ALL"] == "C"
 
@@ -277,10 +290,9 @@ def test_finding_the_pid_reads_argvs_as_bytes(monkeypatch: pytest.MonkeyPatch) -
 @pytest.mark.skipif(sys.platform == "win32", reason="a FIFO is macOS's route")
 def test_the_console_takes_more_than_a_fifo_holds_without_blocking_and_delivers_it(
         tmp_path: Path) -> None:
-    fifo = tmp_path / "console"
-    os.mkfifo(fifo)
+    fifo = _fifo(tmp_path)
     fd = os.open(fifo, os.O_RDWR)
-    reader = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
+    reader = _reader(fifo)
     console = app_launch.QueuedConsole(fd)
     payload = b"x" * 100_000
     began = time.monotonic()
@@ -303,8 +315,7 @@ def test_the_console_takes_more_than_a_fifo_holds_without_blocking_and_delivers_
 
 @pytest.mark.skipif(sys.platform == "win32", reason="a FIFO is macOS's route")
 def test_closing_the_console_releases_a_writer_nobody_reads(tmp_path: Path) -> None:
-    fifo = tmp_path / "console"
-    os.mkfifo(fifo)
+    fifo = _fifo(tmp_path)
     console = app_launch.QueuedConsole(os.open(fifo, os.O_RDWR))
     console.write(b"x" * 100_000)
     time.sleep(0.2)
@@ -317,14 +328,13 @@ def test_closing_the_console_releases_a_writer_nobody_reads(tmp_path: Path) -> N
 @pytest.mark.skipif(sys.platform == "win32", reason="a FIFO is macOS's route")
 def test_a_console_write_that_fails_is_raised_to_the_next_caller(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    fifo = tmp_path / "console"
-    os.mkfifo(fifo)
+    fifo = _fifo(tmp_path)
     console = app_launch.QueuedConsole(os.open(fifo, os.O_RDWR))
 
     def refused(_fd: int, _data: bytes) -> int:
         raise OSError(32, "gone")
 
-    monkeypatch.setattr(app_launch.os, "write", refused)
+    monkeypatch.setattr(os, "write", refused)
     console.write(b"x")
     deadline = time.monotonic() + 3.0
     while console._failure is None and time.monotonic() < deadline:
@@ -351,8 +361,7 @@ def test_a_launch_with_no_pid_leaves_no_console_behind(
 @pytest.mark.skipif(sys.platform == "win32", reason="a FIFO is macOS's route")
 def test_the_console_closes_when_the_process_is_gone(tmp_path: Path) -> None:
     before = threading.enumerate()
-    fifo = tmp_path / "console"
-    os.mkfifo(fifo)
+    fifo = _fifo(tmp_path)
     console = app_launch.QueuedConsole(os.open(fifo, os.O_RDWR))
     process = app_launch.AppProcess(2**30, cast(IO[bytes], console))
     assert process.poll() == 0

@@ -8,6 +8,8 @@ import ctypes
 import sys
 from ctypes import wintypes
 
+assert sys.platform == "win32"
+
 STEPS = [100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500]
 user32 = ctypes.windll.user32
 
@@ -37,7 +39,7 @@ class Path(ctypes.Structure):
     _fields_ = [("raw", ctypes.c_byte * 72)]
 
 
-def primary_target():
+def primary_target() -> tuple[Luid, int]:
     n_paths, n_modes = wintypes.UINT(), wintypes.UINT()
     assert user32.GetDisplayConfigBufferSizes(2, ctypes.byref(n_paths), ctypes.byref(n_modes)) == 0
     paths = (Path * n_paths.value)()
