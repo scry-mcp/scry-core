@@ -47,7 +47,7 @@ from typing import (
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.tools import Tool
 
-from scry_core import demo
+from scry_core import demo, file_names, reply_contract
 from scry_core.reply_schema import model_gap, own_fields
 from scry_core.roster import Roster
 from scry_core.strict_arguments import refused, registered
@@ -87,7 +87,10 @@ class Registry:
 
 
 def _page(family: str) -> str:
-    return f"{PAGES_DIR}/{re.sub('[^a-z0-9]+', '-', family.lower()).strip('-')}.md"
+    try:
+        return f"{PAGES_DIR}/{file_names.name(file_names.word(family, 'family'), extension='md')}"
+    except reply_contract.Invalid as e:
+        raise Invalid(str(e)) from None
 
 
 # ======================================================================== rendering

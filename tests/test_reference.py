@@ -266,6 +266,7 @@ def test_a_registry_with_no_tool_compares_nothing_and_is_invalid(tmp_path: Path)
     ((("Read", ("peek", "gone")), ("Write memory", ("poke",))), "not registered: gone"),
     ((("Read", ("peek",)),), "in no family: poke"),
     ((("Read", ("peek",)), ("read", ("poke",))), "two families share a page"),
+    ((("Read", ("peek",)), ("!!!", ("poke",))), "^family: '!!!' holds no letter or digit"),
 ])
 def test_a_roster_that_is_not_the_registry_is_invalid(
         tmp_path: Path, families: tuple[tuple[str, tuple[str, ...]], ...], named: str) -> None:
