@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.99.0
 
 - `scry_core.focus_listener`: every application that comes to the front, heard as it happens
   by a listener built with `swiftc` beside the record. `focus_watch` runs one, so a stay in
