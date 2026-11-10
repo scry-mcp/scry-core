@@ -2,6 +2,34 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.97.0
+
+The files this package names or judges follow the one rule
+([docs/file-names.md](docs/file-names.md)). A file kept under a retired spelling (a state or a
+store entry with uppercase or `_`, `<application>.screen-map.json`) is no longer found until it
+is renamed:
+
+- `judges.writable_file` and `judges.fresh_file` return the path under the name it is written
+  as, settled before the place is looked at; a name with no extension is refused. A server
+  writes the path the judge returns. `judges.fresh_folder` judges a directory to make and asks
+  no extension.
+- `state_files.check_state_name` returns the name a state is written and read under (`Boss_1`
+  and `boss-1` are one state); `STATE_NAME` and `STATE_NAME_MAX` are gone.
+- `project_store.entry_name` returns the name a store entry is kept under, and `locate` looks
+  for that one.
+- A screen map is `<application>-screen-map.json`, and its `application` field is the name its
+  file carries.
+- A list's files are `batch-<n>-ran.jsonl` and `batch-<n>-replies.jsonl`.
+- `file_names.word` refuses a value past `WORD_MAX`, and `file_names.stamp` spells an instant as
+  one word.
+- A replay document's `needs.states` names each state as it is written.
+- The probe keeps a capture under its task's id as `file_names.word` spells it, refuses two
+  tasks whose ids spell one file, and names its run directories and the traffic tables with
+  `file_names.stamp`.
+- The demo runner writes `transcript-normalised.md`, `transcript-flow.md` and
+  `transcript-story.md`; a live matrix keeps a failed cell's evidence under its label as words,
+  the log's tail as the log's name in words and `-tail.txt`.
+
 ## 0.96.0
 
 `scry_core.file_names`, the one rule for the names of the files a server writes
