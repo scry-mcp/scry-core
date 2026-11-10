@@ -75,12 +75,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
-from scry_core import file_names, fresh, judges, prose, raster
+from scry_core import file_names, fresh, judges, project_store, prose, raster
 from scry_core import vocabulary as vocab
 from scry_core.reply_contract import Invalid, or_unavailable
 
 FORMAT = "scry-screen-map/1"
-SUFFIX = "-screen-map.json"
+SUFFIX = project_store.SUFFIXES["maps"]
 KINDS = ("text", "pixel")
 MODES = ("verified", "consolidated")
 #: The largest scale a view declares: past any picture a machine shows enlarged.

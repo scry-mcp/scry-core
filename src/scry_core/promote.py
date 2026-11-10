@@ -27,8 +27,6 @@ from scry_core.reply_contract import Invalid, When
 
 KINDS = project_store.KINDS
 STORE = project_store.STORE
-#: What each kind's file name adds to its entry's name: a map is named by its application.
-SUFFIXES = {"maps": screen_map.SUFFIX}
 #: How each kind is written: the indentation and whether its keys are sorted, the way the
 #: reader's own writer writes it, so a promotion and an explicit save produce the same bytes.
 WRITERS = {"start": (2, True), "maps": (1, False), "perform": (2, False)}
@@ -325,7 +323,7 @@ def planned_entry(candidate: Candidate, store_dir: Path, state: str,
     if candidate.kind == "maps":
         document["application"] = named
         screen_map.parse(document, f"the candidate {entry or f'{candidate.kind}/{named}'}")
-    target = store_dir / candidate.kind / file_name(candidate.kind, named)
+    target = store_dir / candidate.kind / project_store.file_name(candidate.kind, named)
     if target.is_symlink():
         raise Invalid("bad_argument", f"{target} is a link: a store entry is a file the "
                       "repository holds, and a promotion never replaces a link")
@@ -345,7 +343,8 @@ def planned_entry(candidate: Candidate, store_dir: Path, state: str,
                       "is start's arguments, and anything larger is data")
     item: dict[str, Any] = {
         "entry": shown, "kind": candidate.kind,
-        "name": named, "file": f"{STORE}/{candidate.kind}/{file_name(candidate.kind, named)}",
+        "name": named,
+        "file": f"{STORE}/{candidate.kind}/{project_store.file_name(candidate.kind, named)}",
         "bytes": len(data), "change": change}
     if change == "update":
         item["diff"] = difference(old, document)
@@ -371,11 +370,6 @@ def tracked(candidate: Candidate, base: Path, state: str = "",
             document["steps"] = promote_paths.steps(
                 steps, places, f"the candidate perform/{candidate.name}'s steps")
     return document
-
-
-def file_name(kind: str, name: str) -> str:
-    """The file an entry of `kind` named `name` is written to."""
-    return f"{name}{SUFFIXES.get(kind, '.json')}"
 
 
 def serialised(kind: str, document: Mapping[str, Any]) -> bytes:
@@ -477,7 +471,8 @@ def _within(planned: Sequence[tuple[Candidate, Path, bytes, dict[str, Any]]],
         if (store_dir / kind).is_symlink():
             raise Invalid("bad_argument", f"{store_dir / kind} is a link: a kind directory is "
                           "the repository's own, and the store's caps cannot see through one")
-        present = {_stem(path, kind) for path in (store_dir / kind).glob("*.json")}
+        present = {project_store.entry_of(path, kind)
+                   for path in (store_dir / kind).glob("*.json")}
         if len(present | names) > project_store.ENTRIES_MAX:
             raise Invalid("bad_argument", f"{STORE}/{kind}/ would hold "
                           f"{len(present | names)} entries after {_entries(planned, kind)}, "
@@ -529,12 +524,6 @@ def _split(entry: str) -> tuple[str, str]:
         raise Invalid("bad_argument", f"entry={entry!r} is `<kind>/<name>`, a kind of "
                       f"{', '.join(KINDS)}")
     return kind, project_store.entry_name(name)
-
-
-def _stem(path: Path, kind: str) -> str:
-    """The entry name a file of `kind` holds."""
-    suffix = SUFFIXES.get(kind, ".json")
-    return path.name[:-len(suffix)] if path.name.endswith(suffix) else path.name
 
 
 def _listed(values: Iterable[Any]) -> str:

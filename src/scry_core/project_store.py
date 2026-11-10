@@ -26,6 +26,8 @@ from scry_core.reply_contract import Invalid
 
 STORE = ".scry"
 KINDS = ("start", "maps", "perform")
+#: What a kind's file name adds to its entry's name.
+SUFFIXES = {"maps": "-screen-map.json"}
 FORMAT = "scry-start/1"
 
 #: A profile of `start`'s arguments is a few hundred bytes; past this it is not arguments but
@@ -50,7 +52,7 @@ def root(starting: Iterable[str | Path]) -> Path | None:
 
 
 def locate(starting: Iterable[str | Path], name: str, kind: str = "start") -> Path:
-    """`.scry/<kind>/<name>.json` found by walking up from each starting point in order, or the
+    """The entry `name` of `kind` found by walking up from each starting point in order, or the
     refusal naming the directories searched."""
     name = entry_name(name)
     if kind not in KINDS:
@@ -67,11 +69,11 @@ def locate(starting: Iterable[str | Path], name: str, kind: str = "start") -> Pa
                 continue
             seen.add(above)
             searched.append(above)
-            found = above / STORE / kind / f"{name}.json"
+            found = above / STORE / kind / file_name(kind, name)
             if found.is_file():
                 return found
-    raise Invalid("bad_argument", f"no {STORE}/{kind}/{name}.json above {_listed(starts)}: "
-                  f"searched {_listed(searched)}")
+    raise Invalid("bad_argument", f"no {STORE}/{kind}/{file_name(kind, name)} above "
+                  f"{_listed(starts)}: searched {_listed(searched)}")
 
 
 def read(entry: Path, keys: Collection[str], path_keys: Collection[str] = (), *,
@@ -150,6 +152,15 @@ def entry_name(name: str) -> str:
         raise Invalid("bad_argument", f"{name!r} is not an entry name: a plain file stem, with "
                       "no directory part and no extension, which the store adds")
     return file_names.word(name, "entry")
+
+
+def file_name(kind: str, name: str) -> str:
+    return f"{name}{SUFFIXES.get(kind, '.json')}"
+
+
+def entry_of(path: Path, kind: str) -> str:
+    suffix = SUFFIXES.get(kind, ".json")
+    return path.name[:-len(suffix)] if path.name.endswith(suffix) else path.name
 
 
 def _above(start: Path) -> Iterator[Path]:

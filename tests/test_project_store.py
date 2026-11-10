@@ -108,10 +108,15 @@ def test_a_kind_the_store_does_not_hold_is_refused(tmp_path: Path) -> None:
 
 
 def test_another_kind_is_found_in_its_own_directory(tmp_path: Path) -> None:
-    path = tmp_path / ps.STORE / "maps" / "lineup.json"
+    path = tmp_path / ps.STORE / "maps" / "lineup-screen-map.json"
     path.parent.mkdir(parents=True)
     path.write_text("{}", encoding="utf-8")
-    assert ps.locate([tmp_path], "lineup", kind="maps") == path
+    (path.parent / "lineup.json").write_text("{}", encoding="utf-8")
+    assert ps.locate([tmp_path], "LINEUP", kind="maps") == path
+    with pytest.raises(Invalid, match=r"no \.scry/maps/other-screen-map\.json above"):
+        ps.locate([tmp_path], "other", kind="maps")
+    assert ps.entry_of(path, "maps") == "lineup" and ps.file_name("start", "dos") == "dos.json"
+    assert ps.entry_of(path.parent / "lineup.json", "maps") == "lineup.json"
 
 
 def test_a_profile_is_read_without_its_format(tmp_path: Path) -> None:
