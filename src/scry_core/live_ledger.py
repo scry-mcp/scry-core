@@ -21,7 +21,7 @@ from itertools import count
 from pathlib import Path
 from typing import Any
 
-from scry_core import live_host, live_pool
+from scry_core import file_names, live_host, live_pool, reply_contract
 from scry_core.verdict import EXIT_FAIL as EXIT_FAIL
 from scry_core.verdict import EXIT_INVALID as EXIT_INVALID
 from scry_core.verdict import EXIT_PASS as EXIT_PASS
@@ -296,7 +296,10 @@ class Ledger:
         if conf is None and log is None:
             print(f"  evidence: none for {label}, no session was live", flush=True)
             return
-        slug = "".join(ch if ch.isalnum() else "-" for ch in label).strip("-")[:80] or "cell"
+        try:
+            slug = file_names.word(label[:file_names.WORD_MAX], "label")
+        except reply_contract.Invalid:
+            slug = "cell"
         dest = self.evidence / f"{next(self._evidence_seq):03d}-{slug}"
         try:
             dest.mkdir(parents=True)
@@ -304,10 +307,11 @@ class Ledger:
                 shutil.copy2(conf, dest / conf.name)
             if log is not None and log.is_file():
                 lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
-                (dest / f"{log.name}.tail").write_text(
+                tail = file_names.name(file_names.word(log.name, "log"), "tail", extension="txt")
+                (dest / tail).write_text(
                     "\n".join(lines[-EVIDENCE_TAIL_LINES:]) + "\n", encoding="utf-8")
             self.kept.append(dest)
-        except OSError as exc:
+        except (OSError, reply_contract.Invalid) as exc:
             print(f"  evidence NOT kept for {label}: {exc}", flush=True)
 
     def _section(self, sec: Section, env: dict[str, str], isolate: Callable[[str], None]) -> None:

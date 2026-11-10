@@ -64,7 +64,7 @@ def _calls(log: Path) -> list[dict[str, Any]]:
 
 
 def _norm(tmp_path: Path) -> str:
-    return (tmp_path / "out" / "transcript.normalised.md").read_text()
+    return (tmp_path / "out" / "transcript-normalised.md").read_text()
 
 
 @pytest.fixture
@@ -283,7 +283,7 @@ def test_update_readme_rewrites_the_block_and_the_capture(
     assert d.block_of(text) == _norm(tmp_path).strip("\n")
     assert text.startswith("# A demo\n\nBefore.\n\n") and text.endswith("\n\nAfter.\n")
     assert (_readme(demo).parent / "screen.png").read_bytes() == _shot(tmp_path).read_bytes()
-    normalised = tmp_path / "out" / "transcript.normalised.md"
+    normalised = tmp_path / "out" / "transcript-normalised.md"
     assert d.readme_drift(_readme(demo), normalised) == ""
     normalised.write_text(normalised.read_text().replace("value 7", "value 8", 1))
     assert d.readme_drift(_readme(demo), normalised).startswith("line 1: the README has ")
@@ -346,10 +346,10 @@ def test_stale_names_what_a_run_did_not_write_and_does_not_raise(
         tmp_path: Path, log: Path) -> None:
     demo = _highlighted(tmp_path)
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    (tmp_path / "out" / "transcript.story.md").unlink()
-    (tmp_path / "out" / "transcript.normalised.md").unlink()
+    (tmp_path / "out" / "transcript-story.md").unlink()
+    (tmp_path / "out" / "transcript-normalised.md").unlink()
     found = d.stale(demo, tmp_path / "out")
-    assert len(found) == 1 and "wrote no" in found[0] and "transcript.story.md" in found[0], found
+    assert len(found) == 1 and "wrote no" in found[0] and "transcript-story.md" in found[0], found
 
 
 def test_a_step_highlight_that_is_no_text_is_refused(tmp_path: Path) -> None:
@@ -508,7 +508,7 @@ def test_update_readme_writes_the_shown_steps_into_the_front_door_between_its_pr
     flow = text[text.index(d.flow_begin("x")):text.index(d.flow_end("x"))]
     assert "read()\n-> {" in flow and '"value": 7' in flow, flow
     assert "start(" not in flow and "picture(" not in flow, "only the shown steps"
-    assert d.flow_drift(demo.front, "x", tmp_path / "out" / "transcript.flow.md") == ""
+    assert d.flow_drift(demo.front, "x", tmp_path / "out" / "transcript-flow.md") == ""
 
 
 def test_a_flow_that_departs_from_the_run_is_drift_naming_the_line(
@@ -517,7 +517,7 @@ def test_a_flow_that_departs_from_the_run_is_drift_naming_the_line(
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
     assert demo.front is not None
     demo.front.write_text(demo.front.read_text().replace('"value": 7', '"value": 8'))
-    assert d.flow_drift(demo.front, "x", tmp_path / "out" / "transcript.flow.md").startswith(
+    assert d.flow_drift(demo.front, "x", tmp_path / "out" / "transcript-flow.md").startswith(
         "line ")
 
 
@@ -543,7 +543,7 @@ def _flow_of(tmp_path: Path, start: dict[str, Any]) -> str:
                     lambda reply, run: "a picture")]
     demo = _demo(tmp_path, steps, front=_front(tmp_path))
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    return (tmp_path / "out" / "transcript.flow.md").read_text()
+    return (tmp_path / "out" / "transcript-flow.md").read_text()
 
 
 def test_a_long_reply_is_shown_in_the_flow_abridged(tmp_path: Path, log: Path) -> None:
@@ -576,7 +576,7 @@ def test_a_step_that_names_its_fields_shows_only_those_in_that_order(
                     lambda reply, run: "a picture")]
     demo = _demo(tmp_path, steps, front=_front(tmp_path))
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    flow = (tmp_path / "out" / "transcript.flow.md").read_text()
+    flow = (tmp_path / "out" / "transcript-flow.md").read_text()
     assert '-> {\n  "value": 7,\n  "summary": "started"\n}' in flow, flow
 
 
@@ -627,7 +627,7 @@ def test_a_run_that_writes_no_flow_leaves_no_earlier_flow_behind(
     failing = d.Demo(**{**failing.__dict__, "steps": [
         d.Step("no", "refuse", {}, lambda reply, run: "", shown=("status",))]})
     _run(failing, tmp_path)
-    assert not (tmp_path / "out" / "transcript.flow.md").exists()
+    assert not (tmp_path / "out" / "transcript-flow.md").exists()
 
 
 def test_stale_names_each_way_a_demo_s_committed_files_depart_from_a_run(

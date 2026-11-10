@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from typing import Any, TypeGuard
 
-from scry_core import png
+from scry_core import file_names, png
 from scry_core.reply_contract import Invalid
 
 Rect = tuple[int, int, int, int]
@@ -107,9 +107,33 @@ def absolute(name: str, value: object, **fields: Any) -> Path:
 
 
 def writable_file(name: str, value: object, **fields: Any) -> Path:
-    """A file a tool is about to write, which may exist: `absolute`, in an existing directory.
-    An unreadable path is refused, never raised: before Python 3.14 `is_dir` raises on EACCES."""
+    """A file a tool is about to write, which may exist: `absolute`, its last component as
+    `file_names.caller_file` writes it, in an existing directory. The path returned is the one
+    to write: the name is settled before the place is looked at."""
     path = absolute(name, value, **fields)
+    try:
+        path = file_names.caller_file(path, name)
+    except Invalid as e:
+        raise Invalid(e.code, str(e), **fields) from None
+    return _in_a_directory(name, path, fields)
+
+
+def fresh_file(name: str, value: object, **fields: Any) -> Path:
+    """A file a tool is about to create: `writable_file`, with nothing there, a dangling link
+    included (a writer would follow it)."""
+    return _not_there(name, writable_file(name, value, **fields), fields)
+
+
+def fresh_folder(name: str, value: object, **fields: Any) -> Path:
+    """A directory a tool is about to make: `absolute`, in an existing directory, with nothing
+    there. Its name is the caller's as given: the rule of `file_names` is of files."""
+    return _not_there(name, _in_a_directory(name, absolute(name, value, **fields), fields),
+                      fields)
+
+
+def _in_a_directory(name: str, path: Path, fields: dict[str, Any]) -> Path:
+    """An unreadable path is refused, never raised: before Python 3.14 `is_dir` raises on
+    EACCES."""
     try:
         there = path.parent.is_dir()
     except OSError as e:
@@ -121,10 +145,7 @@ def writable_file(name: str, value: object, **fields: Any) -> Path:
     return path
 
 
-def fresh_file(name: str, value: object, **fields: Any) -> Path:
-    """A file a tool is about to create: `writable_file`, with nothing there, a dangling link
-    included (a writer would follow it)."""
-    path = writable_file(name, value, **fields)
+def _not_there(name: str, path: Path, fields: dict[str, Any]) -> Path:
     try:
         taken = path.exists() or path.is_symlink()
     except OSError as e:

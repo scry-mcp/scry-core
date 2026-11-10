@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from scry_core import probe
+from scry_core import file_names, probe, reply_contract
 from scry_core.probe_any_of import same
 from scry_core.prose import counted
 from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
@@ -29,15 +29,15 @@ def capture_problems(repo: probe.ProbeRepo, server: str, captured: Path,
     raw, resolved = _tasks_by_id(repo, tasks_file)
     surface = probe.load_surface(repo, server)
     out: list[str] = []
-    if missing := [tid for tid in raw if not (captured / f"{tid}.json").is_file()]:
+    if missing := [tid for tid in raw if not (captured / _file(tid)).is_file()]:
         out.append(f"{server}: no capture of task {', '.join(missing)}")
     for f in files:
-        tid = f.stem
         try:
             task, runs = _read_capture(f)
         except ValueError as e:
-            out.append(f"{server} {tid}: {e}")
+            out.append(f"{server}: {e}")
             continue
+        tid = task["id"]
         if tid not in raw:
             out.append(f"{server} {tid}: captured, but the task file holds no task {tid}")
             continue
@@ -67,6 +67,11 @@ def _tasks_by_id(repo: probe.ProbeRepo, tasks_file: Path
         if not all(isinstance(t, dict) and isinstance(t.get("id"), str) for t in tasks):
             raise Invalid(f"{tasks_file} holds an entry that is not a task with an `id`: "
                           "`--check` names it")
+        ids = [t["id"] for t in tasks]
+        files = [_file(tid) for tid in ids]
+        if shared := sorted(tid for tid, f in zip(ids, files, strict=True) if files.count(f) > 1):
+            raise Invalid(f"{tasks_file}: the ids {', '.join(shared)} spell one capture file: "
+                          "a capture is kept under its id as a file is named")
         return {t["id"]: t for t in tasks}
 
     return (by_id(probe.read_tasks(repo, tasks_file, raw=True)),
@@ -95,9 +100,22 @@ def _read_capture(f: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
                        and all(isinstance(ln, str) for ln in r["lines"]) for r in runs)):
         raise ValueError(f"{f.name} is not a capture: it needs a `task` and at least one run of "
                          "`lines` and `right`")
-    if task.get("id") != f.stem:
-        raise ValueError(f"{f.name} holds task {task.get('id')}")
+    tid = task.get("id")
+    try:
+        named = isinstance(tid, str) and _file(tid) == f.name
+    except Invalid:
+        named = False
+    if not named:
+        raise ValueError(f"{f.name} holds task {tid}")
     return task, runs
+
+
+def _file(tid: str) -> str:
+    """The file a task's capture is kept in: its id as a file is named."""
+    try:
+        return file_names.name(file_names.word(tid, "id"), extension="json")
+    except reply_contract.Invalid as e:
+        raise Invalid(str(e)) from None
 
 
 def capture(repo: probe.ProbeRepo, server: str, run_dir: Path, ids: list[str]) -> int:
@@ -108,7 +126,7 @@ def capture(repo: probe.ProbeRepo, server: str, run_dir: Path, ids: list[str]) -
         dest = repo.captured_dir / server
         dest.mkdir(parents=True, exist_ok=True)
         for tid, doc in docs.items():
-            path = dest / f"{tid}.json"
+            path = dest / _file(tid)
             path.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n",
                             encoding="utf-8")
             print(f"captured {path}")

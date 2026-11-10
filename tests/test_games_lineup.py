@@ -14,7 +14,7 @@ from scry_core.games import lineup
 
 
 def _map(run: Run) -> Path:
-    return Path("/game/.scry/maps/lineup.screen-map.json")
+    return Path("/game/.scry/maps/lineup-screen-map.json")
 
 
 def _binding(actions: tuple[str, ...] = lineup.ACTIONS,
@@ -53,7 +53,7 @@ def test_the_script_asks_the_screens_the_game_has() -> None:
 
 
 def test_the_map_is_the_binding_s_and_a_copy_of_it_goes_into_the_run(tmp_path: Path) -> None:
-    shared = tmp_path / "lineup.screen-map.json"
+    shared = tmp_path / "lineup-screen-map.json"
     shared.write_text("{}", encoding="utf-8")
     step = next(s for s in lineup.steps(_binding(map_at=lambda run: shared)) if s.name == "map")
     run = Run(dir=tmp_path / "run")

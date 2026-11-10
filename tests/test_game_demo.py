@@ -27,7 +27,7 @@ COIN = Press("input", {"port": ":P1", "field": "Coin 1"})
 
 def _binding(rate_hz: float = 50.0, **over: object) -> Binding:
     return Binding(platform="board", boot=[], inputs={"COIN": COIN}, rate_hz=rate_hz,
-                   sound=Path("/ref.wav"), map=lambda run: Path("/game.screen-map.json"),
+                   sound=Path("/ref.wav"), map=lambda run: Path("/game-screen-map.json"),
                    **over)  # type: ignore[arg-type]
 
 
@@ -81,7 +81,7 @@ def test_arrived_needs_the_target_and_a_control_that_counted(tmp_path: Path) -> 
 
 
 def test_the_map_is_loaded_from_a_copy_in_the_run(tmp_path: Path) -> None:
-    shared = tmp_path / "pkg" / "game.screen-map.json"
+    shared = tmp_path / "pkg" / "game-screen-map.json"
     shared.parent.mkdir()
     shared.write_text("{}", encoding="utf-8")
     run = Run(dir=tmp_path / "run")
@@ -89,8 +89,8 @@ def test_the_map_is_loaded_from_a_copy_in_the_run(tmp_path: Path) -> None:
     step = map_load("map", lambda run: shared)
     assert callable(step.args)
     args = step.args(run)
-    assert args == {"method": "load", "path": run.dir / "game.screen-map.json"}
-    assert (run.dir / "game.screen-map.json").read_text() == "{}"
+    assert args == {"method": "load", "path": run.dir / "game-screen-map.json"}
+    assert (run.dir / "game-screen-map.json").read_text() == "{}"
     assert step.check(Reply({"screens": 4, "controls": 10}), run) == (
         "4 screens and 10 controls loaded")
 
@@ -107,7 +107,7 @@ def _wav(path: Path) -> Path:
 def test_the_sound_records_into_the_run_then_holds_it_to_the_reference(tmp_path: Path) -> None:
     reference = _wav(tmp_path / "ref.wav")
     binding = Binding("board", [], {}, 50.0, reference,
-                      lambda run: Path("/game.screen-map.json"))
+                      lambda run: Path("/game-screen-map.json"))
     steps: list[Step] = sound(binding, 2000, "music.wav")
     assert [(s.name, s.tool) for s in steps] == [
         ("record", "audio_record"), ("heard", "audio_compare"), ("exact", "audio_compare")]

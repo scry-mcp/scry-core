@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from scry_core import traffic
+from scry_core import file_names, traffic
 from scry_core.probe import EXIT_INVALID, Invalid
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -350,6 +350,20 @@ def test_a_server_with_no_tools_and_a_table_that_cannot_be_written_are_invalid(
     (blocked / "tmp").write_text("a file where the tables' directory would go")
     with pytest.raises(Invalid, match="could not be written"):
         traffic.write_table({}, blocked, "mame")
+
+
+def test_a_table_is_named_inside_the_rule_by_its_instant_and_its_server(tmp_path: Path) -> None:
+    table = traffic.write_table({}, tmp_path, "dosbox-x")
+    assert table.name.endswith("z-dosbox-x.json") and file_names.outside(tmp_path) == []
+
+
+def test_a_table_never_replaces_one_written_at_the_same_instant(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(file_names, "stamp", lambda _when: "20000102t030405000000z")
+    first = traffic.write_table({"n": 1}, tmp_path, "mame")
+    with pytest.raises(Invalid, match="could not be written"):
+        traffic.write_table({"n": 2}, tmp_path, "mame")
+    assert json.loads(first.read_text()) == {"n": 1}
 
 
 def test_an_exception_nobody_expected_is_invalid_not_a_traceback_exit(

@@ -11,6 +11,7 @@ from typing import Annotated, Any, Required
 
 from typing_extensions import TypedDict
 
+from scry_core import file_names
 from scry_core import vocabulary as vocab
 from scry_core.reply_contract import When, unavailable
 
@@ -83,7 +84,8 @@ def files(stem: Callable[[], Path], rows: list[dict[str, Any]],
     written: list[Path] = []
     try:
         base = stem()
-        paths = [base.with_suffix(".ran.jsonl"), base.with_suffix(".replies.jsonl")]
+        paths = [base.with_name(file_names.name(base.name, part, extension="jsonl"))
+                 for part in ("ran", "replies")]
         for path, lines in zip(paths, (rows, replies), strict=True):
             written.append(path)                     # before the write: one can fail half way
             write_jsonl(path, lines)

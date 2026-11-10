@@ -2,7 +2,7 @@
 `start` profile says.
 
     .scry/start/<name>.json                   a run recipe: `start`'s arguments
-    .scry/maps/<application>.screen-map.json  a screen map (`scry-screen-map/1`)
+    .scry/maps/<application>-screen-map.json  a screen map (`scry-screen-map/1`)
     .scry/perform/<name>.json                 a `perform` document
 
 A profile is `{"format": "scry-start/1", ...}` whose keys are `start`'s own arguments, which the
@@ -21,6 +21,7 @@ from collections.abc import Collection, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from scry_core import file_names
 from scry_core.reply_contract import Invalid
 
 STORE = ".scry"
@@ -51,7 +52,7 @@ def root(starting: Iterable[str | Path]) -> Path | None:
 def locate(starting: Iterable[str | Path], name: str, kind: str = "start") -> Path:
     """`.scry/<kind>/<name>.json` found by walking up from each starting point in order, or the
     refusal naming the directories searched."""
-    entry_name(name)
+    name = entry_name(name)
     if kind not in KINDS:
         raise Invalid("bad_argument", f"a store holds {', '.join(KINDS)}; {kind!r} is not one")
     starts = list(starting)
@@ -142,12 +143,13 @@ def demanded(arguments: Mapping[str, object], names: Iterable[str], *, tool: str
 
 
 def entry_name(name: str) -> str:
-    """`name` as a store entry is named by it: a plain file stem, refused by name otherwise."""
+    """The name a store entry is written and read under: a plain file stem, refused by name
+    otherwise, as `file_names.word` spells it."""
     if (not name or "/" in name or "\\" in name or "\x00" in name or name in (".", "..")
             or name.endswith(".json")):
         raise Invalid("bad_argument", f"{name!r} is not an entry name: a plain file stem, with "
                       "no directory part and no extension, which the store adds")
-    return name
+    return file_names.word(name, "entry")
 
 
 def _above(start: Path) -> Iterator[Path]:

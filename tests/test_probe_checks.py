@@ -67,9 +67,9 @@ def test_captures_misjudged_names_a_task_with_no_capture_and_nothing_when_each_h
     for task in _tasks():
         runs = [{"lines": [ln for ln in t.splitlines() if ln.startswith(f"{task['id']}:")],
                  "right": True} for t in texts]
-        (dest / f"{task['id']}.json").write_text(json.dumps({"task": task, "runs": runs}))
+        (dest / f"{task['id'].lower()}.json").write_text(json.dumps({"task": task, "runs": runs}))
     assert probe_checks.captures_misjudged(repo, "mame") == []
-    (dest / "M3.json").unlink()
+    (dest / "m3.json").unlink()
     assert probe_checks.captures_misjudged(repo, "mame") == ["mame: no capture of task M3"]
 
 

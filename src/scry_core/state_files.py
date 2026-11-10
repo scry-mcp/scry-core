@@ -1,29 +1,41 @@
 from __future__ import annotations
 
 import os
-import re
 import stat
+from collections.abc import Callable
 from pathlib import Path
 
+from scry_core import file_names
 from scry_core.reply_contract import Invalid
 
 _KINDS = ((stat.S_ISDIR, "a directory"), (stat.S_ISFIFO, "a FIFO"), (stat.S_ISSOCK, "a socket"),
           (stat.S_ISCHR, "a character device"), (stat.S_ISBLK, "a block device"))
 
 
-STATE_NAME_MAX = 64
-#: A state's name becomes a file name, and on MAME one console parameter: no leading `-`, which
-#: a command line reads as an option.
-STATE_NAME = re.compile(rf"[A-Za-z0-9_][A-Za-z0-9_-]{{0,{STATE_NAME_MAX - 1}}}")
-
-
 def check_state_name(name: object, becomes: str) -> str:
-    """`name` when it is a state name, else the refusal; `becomes` says what it turns into."""
-    if not isinstance(name, str) or not STATE_NAME.fullmatch(name):
-        raise Invalid("bad_argument",
-            f"a state name is letters, digits, `_` and `-`, never starting with `-`, "
-            f"at most {STATE_NAME_MAX} of them; got {name!r}. It becomes {becomes}")
-    return name
+    """The name a state is written and read under, as `file_names.word` spells it; `becomes`
+    says what it turns into."""
+    if not isinstance(name, str):
+        raise Invalid("bad_argument", f"name: {name!r} is not a state's name. It becomes "
+                      f"{becomes}")
+    try:
+        return file_names.word(name, "name")
+    except Invalid as e:
+        raise Invalid("bad_argument", f"{e}. It becomes {becomes}") from None
+
+
+def kept_under_another_name(path: Path,
+                            named: Callable[[str], str] | None = None) -> str | None:
+    """Why no name loads the state file at `path`, else None: its stem is not what `named`
+    (a server's own judge; `check_state_name` without one) returns for it."""
+    try:
+        read = named(path.stem) if named else check_state_name(path.stem, "a file name")
+    except Invalid:
+        read = ""
+    if read == path.stem:
+        return None
+    return ("the file is named as no state is: " + (f"a load of {path.stem!r} reads "
+            f"{read}{path.suffix}, " if read else "") + "rename it to load it")
 
 
 #: Windows' `readlink` puts this on an absolute target.

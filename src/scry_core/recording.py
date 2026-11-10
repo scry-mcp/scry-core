@@ -31,6 +31,7 @@ Export rules, each drop named:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shlex
@@ -39,7 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast, get_args
 
-from scry_core import fresh, judges, prose
+from scry_core import file_names, fresh, judges, prose
 from scry_core.reply_contract import Invalid, unavailable
 
 #: Storage ceiling per kept call, so a session that reads a million times is bounded too.
@@ -450,6 +451,8 @@ def _states(out: Account, call: Call, states: States) -> None:
     name = call.args.get(states.argument)
     if call.op != states.tool or not isinstance(name, str):
         return
+    with contextlib.suppress(Invalid):
+        name = file_names.word(name, states.argument)      # one state under either spelling
     if call.args.get("method") == states.save:
         out.saved.add(name)
     elif call.args.get("method") == states.load and name not in out.saved \

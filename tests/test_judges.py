@@ -81,10 +81,10 @@ def test_expanded_hands_on_the_text_absolute_would_judge(monkeypatch: pytest.Mon
 def test_a_file_to_write_has_a_directory_and_a_fresh_one_nothing_there(tmp_path: Path) -> None:
     there = tmp_path / "there.png"
     there.write_bytes(b"x")
-    (tmp_path / "dangling").symlink_to(tmp_path / "nowhere")
+    (tmp_path / "dangling.png").symlink_to(tmp_path / "nowhere")
     assert judges.writable_file("dest", str(there)) == there
     assert judges.fresh_file("dest", str(tmp_path / "new.png")) == tmp_path / "new.png"
-    for taken in (there, tmp_path / "dangling"):
+    for taken in (there, tmp_path / "dangling.png"):
         with pytest.raises(Invalid, match=r"already exists\. This will not overwrite it") as e:
             judges.fresh_file("dest", str(taken), tool="t")
         assert e.value.code == "bad_argument" and e.value.fields == {"tool": "t"}
@@ -94,11 +94,37 @@ def test_a_file_to_write_has_a_directory_and_a_fresh_one_nothing_there(tmp_path:
         judges.fresh_file("dest", "x.png")
 
 
+def test_a_file_is_judged_under_the_name_it_will_be_written_as(tmp_path: Path) -> None:
+    (tmp_path / "my-dump.bin").write_bytes(b"x")
+    assert judges.writable_file("dest", str(tmp_path / "My_Dump.BIN")) == tmp_path / "my-dump.bin"
+    with pytest.raises(Invalid, match=r"my-dump\.bin already exists") as e:
+        judges.fresh_file("dest", str(tmp_path / "My Dump.bin"), tool="t")
+    assert e.value.fields == {"tool": "t"}
+    for judge in (judges.writable_file, judges.fresh_file):
+        with pytest.raises(Invalid, match="^dest: 'dump' has no extension") as e:
+            judge("dest", str(tmp_path / "dump"), tool="t")
+        assert e.value.code == "bad_argument" and e.value.fields == {"tool": "t"}
+
+
+def test_a_new_folder_is_judged_like_a_new_file_with_no_extension_asked(tmp_path: Path) -> None:
+    assert judges.fresh_folder("dest", str(tmp_path / "Series_1")) == tmp_path / "Series_1"
+    (tmp_path / "there").mkdir()
+    (tmp_path / "dangling").symlink_to(tmp_path / "nowhere")
+    for taken in (tmp_path / "there", tmp_path / "dangling"):
+        with pytest.raises(Invalid, match=r"already exists\. This will not overwrite it") as e:
+            judges.fresh_folder("dest", str(taken), tool="t")
+        assert e.value.code == "bad_argument" and e.value.fields == {"tool": "t"}
+    with pytest.raises(Invalid, match=r"dest: .*[/\\]no is not a directory, so x has nowhere"):
+        judges.fresh_folder("dest", str(tmp_path / "no" / "x"))
+    with pytest.raises(Invalid, match="must be an absolute path"):
+        judges.fresh_folder("dest", "x")
+
+
 def test_a_name_too_long_to_look_at_is_refused_not_raised(tmp_path: Path) -> None:
     with pytest.raises(Invalid) as e:
-        judges.writable_file("dest", str(tmp_path / ("x" * 300) / "y"))
+        judges.writable_file("dest", str(tmp_path / ("x" * 300) / "y.bin"))
     assert e.value.code == "bad_argument"
-    assert judges.fresh_file("dest", str(tmp_path / ("x" * 300))).name == "x" * 300
+    assert judges.fresh_folder("dest", str(tmp_path / ("x" * 300))).name == "x" * 300
 
 
 @pytest.mark.parametrize(("judge", "method"), [(judges.writable_file, "is_dir"),

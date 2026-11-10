@@ -4,6 +4,7 @@ only."""
 
 from __future__ import annotations
 
+import datetime as dt
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,7 @@ from scry_core.reply_contract import Invalid
     ("M01", "m01"),
     ("Café", "caf"),
     ("20261110T120000Z", "20261110t120000z"),
+    ("x" * file_names.WORD_MAX, "x" * file_names.WORD_MAX),
 ])
 def test_an_outside_value_becomes_words_of_the_rule(value: str, word: str) -> None:
     assert file_names.word(value, "system") == word
@@ -35,6 +37,20 @@ def test_an_outside_value_with_no_letter_or_digit_is_refused_by_its_argument(
     with pytest.raises(Invalid, match=f"^{what}: ") as e:
         file_names.word(value, what)
     assert e.value.code == "bad_argument" and repr(value) in str(e.value)
+
+
+@pytest.mark.parametrize("value", ["x" * (file_names.WORD_MAX + 1),
+                                   "A_" * file_names.WORD_MAX])
+def test_an_outside_value_past_the_bound_is_refused_by_its_argument(value: str) -> None:
+    with pytest.raises(Invalid, match=f"^name: .*at most {file_names.WORD_MAX}") as e:
+        file_names.word(value, "name")
+    assert e.value.code == "bad_argument"
+
+
+def test_a_stamp_is_one_word_that_keeps_the_microsecond() -> None:
+    when = dt.datetime(2026, 11, 10, 12, 0, 5, 42, tzinfo=dt.timezone(dt.timedelta(hours=1)))
+    assert file_names.stamp(when) == "20261110t110005000042z"
+    assert file_names.name(file_names.stamp(when), "mame", extension="log")
 
 
 @pytest.mark.parametrize(("words", "extension", "name"), [
@@ -79,6 +95,7 @@ def test_a_made_up_name_outside_the_rule_is_the_builders_defect(
     ("/d/My Dump.V2.BIN", "/d/my-dump-v2.bin"),
     ("/D ir/Sub_Dir/MIXEDCASE.BIN", "/D ir/Sub_Dir/mixedcase.bin"),
     ("/d/run_1.trace", "/d/run-1.trace"),
+    ("/d/" + "X" * 200 + ".bin", "/d/" + "x" * 200 + ".bin"),
 ])
 def test_a_callers_path_changes_in_its_last_component_only(given: str, written: str) -> None:
     path = file_names.caller_file(Path(given), "dest")

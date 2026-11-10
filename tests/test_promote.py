@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from scry_core import fresh, project_store, promote, promote_diff, screen_map
+from scry_core import file_names, fresh, project_store, promote, promote_diff, screen_map
 from scry_core.promote import Drafts
 from scry_core.reply_contract import Invalid
 
@@ -141,7 +141,7 @@ def test_the_diff_names_what_a_screen_change_adds_removes_and_changes(
         tmp_path: Path) -> None:
     root = repo(tmp_path)
     (root / ".scry" / "maps").mkdir(parents=True)
-    (root / ".scry" / "maps" / "lineup.screen-map.json").write_text(json.dumps(
+    (root / ".scry" / "maps" / "lineup-screen-map.json").write_text(json.dumps(
         map_doc("play", "over")))
     learned = map_doc("play", "hiscores")
     learned["screens"][0]["size"] = [320, 240]
@@ -187,7 +187,7 @@ def test_only_the_entries_chosen_are_written_and_the_rest_stay_kept(tmp_path: Pa
     drafts.keep("maps", "lineup", map_doc("play"))
     reply = write(drafts, root, ["maps/lineup"])
     assert [w["entry"] for w in reply["written"]] == ["maps/lineup"]
-    assert (root / ".scry" / "maps" / "lineup.screen-map.json").is_file()
+    assert (root / ".scry" / "maps" / "lineup-screen-map.json").is_file()
     assert not (root / ".scry" / "start").exists()
     assert reply["draft"] == ["start/lineup"]
 
@@ -215,6 +215,22 @@ def test_an_entry_can_be_renamed_as_it_is_written(tmp_path: Path) -> None:
                   root, ["start/v30"], names={"start/v30": "lineup"})
     assert reply["written"][0]["name"] == "lineup"
     assert (root / ".scry" / "start" / "lineup.json").is_file()
+
+
+def test_an_entry_is_kept_written_and_approved_under_one_spelling_of_its_name(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    drafts = drafted("start", "M68k_Dual", start_doc(system="m68k_dual"), needs=("system",))
+    assert drafts.entries() == ["start/m68k-dual"]
+    reply = write(drafts, root, ["start/M68K dual"], names={"start/M68K dual": "Line_Up"})
+    assert reply["written"][0]["name"] == "line-up"
+    assert reply["written"][0]["file"] == ".scry/start/line-up.json"
+    assert [p.name for p in (root / ".scry" / "start").iterdir()] == ["line-up.json"]
+    assert project_store.locate([root], "Line Up") == root / ".scry" / "start" / "line-up.json"
+    maps = drafted("maps", "Line_Up", map_doc("title", application="line-up"))
+    written = write(maps, root, ["maps/line-up"])["written"][0]
+    assert written["file"] == ".scry/maps/line-up-screen-map.json"
+    assert file_names.outside(root / ".scry") == []
 
 
 def test_without_a_store_or_a_root_the_promotion_names_root(tmp_path: Path) -> None:
@@ -345,7 +361,7 @@ def test_a_store_past_its_bytes_is_refused(tmp_path: Path) -> None:
     root = repo(tmp_path)
     store = root / ".scry" / "maps"
     store.mkdir(parents=True)
-    (store / "big.screen-map.json").write_text("x" * project_store.STORE_BYTES_MAX)
+    (store / "big-screen-map.json").write_text("x" * project_store.STORE_BYTES_MAX)
     drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
     with pytest.raises(Invalid, match="start/x"):
         review(drafts, root)
@@ -390,7 +406,7 @@ def test_a_map_document_is_written_the_way_its_own_save_writes_it(tmp_path: Path
     root = repo(tmp_path)
     drafts = drafted("maps", "lineup", map_doc("play"))
     data = write(drafts, root, ["maps/lineup"])["written"][0]
-    text = (root / ".scry" / "maps" / "lineup.screen-map.json").read_text()
+    text = (root / ".scry" / "maps" / "lineup-screen-map.json").read_text()
     assert text == json.dumps(map_doc("play"), indent=1) + "\n"
     assert data["bytes"] == len(text.encode())
 
@@ -478,7 +494,7 @@ def test_the_diff_names_a_key_added_and_leaves_an_equal_list_of_names_alone(
 def test_a_named_item_that_holds_is_no_change(tmp_path: Path) -> None:
     root = repo(tmp_path)
     (root / ".scry" / "maps").mkdir(parents=True)
-    (root / ".scry" / "maps" / "lineup.screen-map.json").write_text(json.dumps(
+    (root / ".scry" / "maps" / "lineup-screen-map.json").write_text(json.dumps(
         map_doc("play")))
     entry = review(drafted("maps", "lineup", map_doc("play", "hiscores")), root)["candidates"][0]
     assert entry["diff"]["added"] == ["screens.hiscores"]
@@ -553,7 +569,7 @@ def test_a_map_document_is_what_its_own_save_writes(tmp_path: Path) -> None:
     maps = screen_map.Maps()
     maps.application = "lineup"
     maps.session["play"] = screen_map.parse(map_doc("play"), "the test's map")[2]["play"]
-    dest = tmp_path / "lineup.screen-map.json"
+    dest = tmp_path / "lineup-screen-map.json"
     maps.save(str(dest), overwrite=False)
     assert dest.read_bytes() == promote.serialised("maps", maps.document("lineup"))
 
@@ -753,7 +769,7 @@ def test_a_renamed_map_is_written_under_its_new_application(tmp_path: Path) -> N
     root = repo(tmp_path)
     write(drafted("maps", "lineup", map_doc("play")), root, ["maps/lineup"],
           names={"maps/lineup": "speedf"})
-    written = root / ".scry" / "maps" / "speedf.screen-map.json"
+    written = root / ".scry" / "maps" / "speedf-screen-map.json"
     assert json.loads(written.read_text())["application"] == "speedf"
     maps = screen_map.Maps()
     assert maps.load(str(written))["application"] == "speedf"
@@ -762,7 +778,7 @@ def test_a_renamed_map_is_written_under_its_new_application(tmp_path: Path) -> N
 def test_a_reordered_named_list_is_a_change(tmp_path: Path) -> None:
     root = repo(tmp_path)
     (root / ".scry" / "maps").mkdir(parents=True)
-    (root / ".scry" / "maps" / "lineup.screen-map.json").write_text(json.dumps(
+    (root / ".scry" / "maps" / "lineup-screen-map.json").write_text(json.dumps(
         map_doc("play", "over")))
     entry = review(drafted("maps", "lineup", map_doc("over", "play")), root)["candidates"][0]
     assert entry["diff"] == {"added": [], "removed": [],
@@ -790,7 +806,7 @@ def test_a_document_whose_name_is_not_a_string_is_no_identity_list(tmp_path: Pat
     (root / ".scry" / "maps").mkdir(parents=True)
     broken = map_doc("play")
     broken["screens"][0]["name"] = ["play"]
-    (root / ".scry" / "maps" / "lineup.screen-map.json").write_text(json.dumps(broken))
+    (root / ".scry" / "maps" / "lineup-screen-map.json").write_text(json.dumps(broken))
     entry = review(drafted("maps", "lineup", map_doc("play")), root)["candidates"][0]
     assert entry["change"] == "update"
 
@@ -914,6 +930,14 @@ def test_an_export_with_no_check_is_kept_as_nothing(tmp_path: Path) -> None:
     document = perform_doc()
     document["steps"] = [{"op": "run_for", "frames": 2}]
     path.write_text(json.dumps(document))
+    drafts = Drafts()
+    assert promote.after_export(drafts, {"path": str(path)}, ()) == {"path": str(path)}
+    assert drafts.entries() == []
+
+
+def test_an_export_whose_file_names_no_entry_is_written_and_not_proposed(tmp_path: Path) -> None:
+    path = tmp_path / ("x" * 70 + ".json")
+    path.write_text(json.dumps(perform_doc()))
     drafts = Drafts()
     assert promote.after_export(drafts, {"path": str(path)}, ()) == {"path": str(path)}
     assert drafts.entries() == []

@@ -48,12 +48,12 @@ import datetime as dt
 import json
 import statistics
 import sys
-import tempfile
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from scry_core import file_names
 from scry_core.client_cap import CLIENT_TEXT_CAP, utf16_units
 from scry_core.judges import whole
 from scry_core.picture import tiles, unattached_below
@@ -267,13 +267,13 @@ def write_table(doc: dict[str, Any], root: Path, server: str) -> Path:
     under = root / TABLES_UNDER_ROOT
     try:
         under.mkdir(parents=True, exist_ok=True)
-        stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
-        fd, name = tempfile.mkstemp(prefix=f"{stamp}-{server}-", suffix=".json", dir=under)
-        with open(fd, "w", encoding="utf-8") as fh:
+        table = under / file_names.name(file_names.stamp(dt.datetime.now(dt.UTC)), server,
+                                        extension="json")
+        with table.open("x", encoding="utf-8") as fh:
             fh.write(text)
     except OSError as e:
         raise Invalid(f"the table could not be written under {under}: {e}") from None
-    return Path(name)
+    return table
 
 
 def main(argv: list[str]) -> int:

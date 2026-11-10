@@ -99,7 +99,7 @@ def test_the_package_ships_no_program_s_map() -> None:
     """A game's map lives in its own repository: a stale copy here would be invisible."""
     from scry_core import games
     package = Path(games.__file__).parent
-    assert not list(package.glob("*.screen-map.json"))
+    assert not list(package.glob("*screen-map.json"))
 
 
 def test_the_arguments_are_judged_without_reading_anything(tmp_path: Path) -> None:

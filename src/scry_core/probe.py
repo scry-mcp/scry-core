@@ -67,7 +67,8 @@ THE SEAM. `MCP_PROBE_ANSWERS=<dir>` replays `<server>-run<k>.txt` from that dire
 calling `claude`. An output directory is such a directory.
 
 CAPTURE. `<server> --capture <run directory> --ids <id>[,<id>...]` keeps the named tasks of a
-real run as `ROOT/tests/fixtures/mcp_probe/captured/<server>/<id>.json`, `{"task": <as its file
+real run as `ROOT/tests/fixtures/mcp_probe/captured/<server>/<id>.json` (the id as
+`file_names.word` spells it), `{"task": <as its file
 writes it>, "runs": [{"lines": [<every line that answered it, the root's path as {root}>],
 "right": <the run's verdict>}]}`. It asks no model and makes no output directory. Exit 0 written; 2
 usage (a server of `CAPTURED`, both options, no `--runs` or
@@ -100,7 +101,7 @@ from pathlib import Path
 from types import MappingProxyType, ModuleType
 from typing import Any, cast
 
-from scry_core import strict_arguments
+from scry_core import file_names, strict_arguments
 from scry_core.client_cap import delivered
 from scry_core.probe_any_of import (
     calls,
@@ -770,11 +771,10 @@ def _capture_ids(parser: argparse.ArgumentParser, opts: argparse.Namespace) -> l
 
 
 def new_run_dir(repo: ProbeRepo, now: dt.datetime) -> Path:
-    """A new run directory under `out_dir`, named by the UTC second of `now` (aware); `mkdtemp`'s
-    tail separates runs sharing a second."""
+    """A new run directory under `out_dir`, named by the UTC instant `now` (aware); `mkdtemp`'s
+    tail separates runs sharing one."""
     repo.out_dir.mkdir(parents=True, exist_ok=True)
-    stamp = now.astimezone(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
-    return Path(tempfile.mkdtemp(prefix=f"{stamp}-", dir=repo.out_dir))
+    return Path(tempfile.mkdtemp(prefix=f"{file_names.stamp(now)}-", dir=repo.out_dir))
 
 
 def main(argv: list[str]) -> int:

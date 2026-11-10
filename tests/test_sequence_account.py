@@ -57,6 +57,8 @@ def test_a_long_list_shows_its_first_rows_writes_the_files_and_keeps_the_last(
     assert got["steps_total"] == 30 and got["truncated"] is True
     assert len(got["ran"]) == 5 + 1 and got["ran"][-1]["reply"]["regs"], got["ran"][-1]
     assert all("regs" not in row["reply"] for row in got["ran"][:5]), "shown rows are compact"
+    assert got["ran_path"] == str(tmp_path / "batch-1-ran.jsonl")
+    assert got["replies_path"] == str(tmp_path / "batch-1-replies.jsonl")
     compact = [json.loads(line) for line in Path(got["ran_path"]).read_text().splitlines()]
     assert len(compact) == 30 and all("regs" not in row["reply"] for row in compact)
     lines = Path(got["replies_path"]).read_text().splitlines()
@@ -112,7 +114,7 @@ def test_a_scratch_that_refuses_costs_the_pair_and_never_the_account(
 
     def second_refused(path: Path, rows: list[dict[str, Any]]) -> str:
         out = real(path, rows)                       # a write that fails HALF WAY leaves its file
-        if path.name.endswith(".replies.jsonl"):
+        if path.name.endswith("-replies.jsonl"):
             raise OSError("disk full")
         return out
     monkeypatch.setattr(sa, "write_jsonl", second_refused)

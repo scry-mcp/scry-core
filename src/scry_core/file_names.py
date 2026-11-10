@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 from pathlib import Path
 
@@ -10,14 +11,25 @@ from scry_core.reply_contract import Invalid
 NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+")
 _OTHER = re.compile(r"[^a-z0-9]+")
 _EXTENSION = re.compile(r"[a-z0-9]+")
+#: The most `word` takes from an outside value; a caller's whole file name is the host's to bound.
+WORD_MAX = 64
 
 
 def word(value: str, what: str) -> str:
     """An outside value as words of a name, or refused as the argument `what`."""
-    words = _OTHER.sub("-", value.lower()).strip("-")
+    words = _words(value)
     if not words:
         raise _nameless(value, what)
+    if len(words) > WORD_MAX:
+        raise Invalid("bad_argument", f"{what}: {value[:WORD_MAX]!r}... makes a name of "
+                      f"{len(words)} characters, and a file name takes at most {WORD_MAX} from "
+                      "it: shorten it")
     return words
+
+
+def stamp(when: dt.datetime) -> str:
+    """The UTC instant `when` (aware) as one word, to the microsecond."""
+    return when.astimezone(dt.UTC).strftime("%Y%m%dt%H%M%S%fz")
 
 
 def name(*words: str | int, extension: str) -> str:
@@ -37,10 +49,14 @@ def caller_file(path: Path, what: str) -> Path:
         raise Invalid("bad_argument", f"{what}: {path.name!r} has no extension of letters and "
                       "digits after its last dot, and a file is written under a name that has "
                       "one: name it, as in `dump.bin`")
-    try:
-        return path.with_name(f"{word(stem, what)}.{extension}")
-    except Invalid:
-        raise _nameless(path.name, what) from None
+    words = _words(stem)
+    if not words:
+        raise _nameless(path.name, what)
+    return path.with_name(f"{words}.{extension}")
+
+
+def _words(value: str) -> str:
+    return _OTHER.sub("-", value.lower()).strip("-")
 
 
 def _nameless(value: str, what: str) -> Invalid:

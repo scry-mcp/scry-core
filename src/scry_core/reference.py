@@ -423,7 +423,7 @@ def write(reg: Registry) -> list[str]:
 RUN_KEYS = {k: "" for k in ("created_at", "origin", "pid", "stub_port", "input_port",
                             "wall_at", "saved_at", "version")}
 _CLOCK = re.compile(r"(?<!\d)(?:\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d(?:\.\d+)?)?"
-                    r"(?:Z|[+-]\d\d:?\d\d)?)?|\d{8}T\d{6}(?:\.\d+)?Z?)(?!\d)")
+                    r"(?:Z|[+-]\d\d:?\d\d)?)?|\d{8}[Tt]\d{6,12}(?:\.\d+)?[Zz]?)(?!\d)")
 #: A scratch directory a run makes: `<emulator>-...-` then the 12 hex characters of a uuid or the 8
 #: of `tempfile.mkdtemp`, as a whole path component.
 _RUN_DIR = re.compile(

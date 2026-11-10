@@ -218,7 +218,29 @@ def test_a_failed_cell_leaves_the_sessions_conf_and_log_beside_it(
     assert len(plain.kept) == 1
     kept = plain.kept[0]
     assert (kept / "guest.conf").read_text() == "[cpu]\ncore=normal\n"
-    assert (kept / "guest.log.tail").read_text() == "line one\nline two\n"
+    assert (kept / "guest-log-tail.txt").read_text() == "line one\nline two\n"
+
+
+@pytest.mark.parametrize(("label", "folder"), [
+    ("AA.3 The File's NAME", "001-aa-3-the-file-s-name"), ("...", "001-cell"),
+    ("x" * 200, "001-" + "x" * 64)])
+def test_the_evidence_of_a_cell_is_kept_under_its_label_as_a_name(
+        plain: ledger.Ledger, tmp_path: Path, label: str, folder: str) -> None:
+    log = tmp_path / "Guest_Run.LOG"
+    log.write_text("line\n")
+    plain.session_files = lambda: (None, log)
+    plain.keep_evidence(label)
+    assert [p.name for p in plain.kept] == [folder]
+    assert [p.name for p in plain.kept[0].iterdir()] == ["guest-run-log-tail.txt"]
+
+
+def test_a_log_whose_name_spells_no_file_costs_the_evidence_and_never_the_run(
+        plain: ledger.Ledger, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    log = tmp_path / "___"
+    log.write_text("line\n")
+    plain.session_files = lambda: (None, log)
+    plain.keep_evidence("a")
+    assert plain.kept == [] and "evidence NOT kept for a" in capsys.readouterr().out
 
 
 def test_a_call_is_recorded_with_its_reply_and_an_exception_becomes_one(

@@ -385,6 +385,17 @@ def test_a_state_loaded_and_not_saved_in_the_recording_is_what_the_document_need
     assert doc["needs"] == {"states": ["theirs"], "declarations": _held([])}
 
 
+def test_a_state_saved_under_one_spelling_and_loaded_under_another_is_one_state() -> None:
+    s = _Server()
+    s.start(system="board")
+    s.state_write(method="save", name="Boss_1")
+    s.state_write(method="load", name="boss-1")
+    s.state_write(method="load", name="Their_State")
+    s.state_write(method="load", name="their-state")
+    doc, _out = s.document()
+    assert doc["needs"]["states"] == ["their-state"]
+
+
 def test_the_export_writes_the_document_and_accounts_for_it(tmp_path: Path) -> None:
     s = _Server()
     s.start(system="board")
@@ -392,7 +403,7 @@ def test_the_export_writes_the_document_and_accounts_for_it(tmp_path: Path) -> N
         s.log()
     s.run_for(frames=3)
     path = tmp_path / "session.json"
-    got = s.perform_export(path=str(path))
+    got = s.perform_export(path=str(tmp_path / "Session.JSON"))
     assert got["path"] == str(path) and got["steps"] == 1 and got["checks"] == 0
     assert got["dropped_total"] == 45 and len(got["dropped"]) == recording.DROPPED_SHOWN
     assert got["dropped"][-1]["call"] == 45 and got["cut"]["available"] is False, got

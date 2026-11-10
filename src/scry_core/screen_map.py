@@ -2,8 +2,8 @@
 caller names a control instead of a coordinate and a screen is recognised without a picture
 crossing the conversation. No emulator here: a server hands in one read of its screen.
 
-THE FILE is JSON, `"format": "scry-screen-map/1"`, named `<application>.screen-map.json` and kept
-in the application's own store, `.scry/maps/<application>.screen-map.json`, beside its run recipe
+THE FILE is JSON, `"format": "scry-screen-map/1"`, named `<application>-screen-map.json` and kept
+in the application's own store, `.scry/maps/<application>-screen-map.json`, beside its run recipe
 and its scripts (a game both servers run keeps one in each port's repository: the same screens,
 the same map):
 
@@ -75,12 +75,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
-from scry_core import fresh, judges, prose, raster
+from scry_core import file_names, fresh, judges, prose, raster
 from scry_core import vocabulary as vocab
 from scry_core.reply_contract import Invalid, or_unavailable
 
 FORMAT = "scry-screen-map/1"
-SUFFIX = ".screen-map.json"
+SUFFIX = "-screen-map.json"
 KINDS = ("text", "pixel")
 MODES = ("verified", "consolidated")
 #: The largest scale a view declares: past any picture a machine shows enlarged.
@@ -673,11 +673,11 @@ def _cells(value: object, at: str) -> str:
 
 
 def _map_path(name: str, value: object) -> Path:
-    path = judges.absolute(name, value)
-    if not path.name.endswith(SUFFIX) or not _name(_application(path)):
+    path = file_names.caller_file(judges.absolute(name, value), name)
+    if not path.name.endswith(SUFFIX) or not _application_name(_application(path)):
         raise Invalid("bad_argument", f"{name}: {path} is not named `<application>{SUFFIX}`, "
-                      f"the application a name of 1..{_NAME_MAX} characters: the name a map is "
-                      "kept by in `.scry/maps/`")
+                      f"the application a name of 1..{file_names.WORD_MAX} characters: the name "
+                      "a map is kept by in `.scry/maps/`")
     return path
 
 
@@ -703,9 +703,10 @@ def parse(doc: object, where: str) -> tuple[str, str, dict[str, Screen], Pointer
         raise Invalid("bad_argument", f"{where} is not a {FORMAT} map")
     _keys(doc, {"format", "application", "mode", "screens"}, where, optional={"pointer"})
     application = doc.get("application")
-    if not _name(application):
-        raise Invalid("bad_argument", f"{where}: `application` is a name of 1..{_NAME_MAX} "
-                      "characters")
+    if not _application_name(application):
+        raise Invalid("bad_argument", f"{where}: `application` is the name its file carries, "
+                      f"lowercase letters and digits in words joined by hyphens, "
+                      f"1..{file_names.WORD_MAX} characters")
     screens = doc.get("screens")
     if not isinstance(screens, list) or (not screens and "pointer" not in doc):
         raise Invalid("bad_argument",
@@ -832,6 +833,12 @@ def _given(obj: dict[str, Any], key: str, at: str) -> Any:
 def _name(value: object) -> bool:
     return (isinstance(value, str) and 0 < len(value) <= _NAME_MAX
             and value == value.strip() and value.isprintable())
+
+
+def _application_name(value: object) -> bool:
+    """A map names its application as its file does, so the two are compared as written."""
+    return (isinstance(value, str) and len(value) <= file_names.WORD_MAX
+            and file_names.NAME.fullmatch(f"{value}.json") is not None)
 
 
 def _keys(obj: dict[str, Any], allowed: set[str], at: str,

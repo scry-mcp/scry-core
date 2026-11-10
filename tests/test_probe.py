@@ -134,7 +134,7 @@ def test_two_runs_in_one_second_keep_two_directories(
     assert first[-1] != second[-1], "both runs wrote into one directory"
     for lines, right in ((first, False), (second, True)):
         out = Path(lines[-1])
-        assert out.parent == probe_env / "out" and out.name.startswith("20000102T030405Z-")
+        assert out.parent == probe_env / "out" and out.name.startswith("20000102t030405000000z-")
         assert (out / "report.txt").read_text().splitlines() == lines
         verdicts = json.loads((out / "mame-verdicts.json").read_text())
         assert verdicts[1]["M1"]["right"] is right, verdicts
@@ -150,7 +150,7 @@ def test_a_run_directory_is_made_with_its_missing_parents(
     repo = dataclasses.replace(REPO, out_dir=tmp_path / "tmp" / "mcp_probe")
     out = probe.new_run_dir(repo, SAME_SECOND)
     assert out.is_dir() and out.parent == tmp_path / "tmp" / "mcp_probe"
-    assert out.name.startswith("20000102T030405Z-"), out.name
+    assert out.name.startswith("20000102t030405000000z-"), out.name
 
 
 def test_runs_counts_only_the_runs_asked_for(
@@ -174,7 +174,8 @@ def _captured_by_hand(tmp_path: Path) -> tuple[Path, Path]:
     for task in _tasks("mame"):
         runs = [{"lines": [ln for ln in t.splitlines() if ln.startswith(f"{task['id']}:")],
                  "right": True} for t in texts]
-        (captured / f"{task['id']}.json").write_text(json.dumps({"task": task, "runs": runs}))
+        (captured / f"{task['id'].lower()}.json").write_text(
+            json.dumps({"task": task, "runs": runs}))
     return captured, tasks_file
 
 
@@ -197,16 +198,40 @@ def test_a_directory_with_no_capture_examined_nothing(tmp_path: Path) -> None:
 
 def test_a_task_with_no_capture_is_named(tmp_path: Path) -> None:
     captured, tasks_file = _captured_by_hand(tmp_path)
-    (captured / "M3.json").unlink()
-    (captured / "M1.json").unlink()
+    (captured / "m3.json").unlink()
+    (captured / "m1.json").unlink()
     assert _problems(captured, tasks_file) == ["mame: no capture of task M1, M3"]
+
+
+def test_a_task_whose_id_names_no_file_is_invalid_not_a_traceback(tmp_path: Path) -> None:
+    captured, tasks_file = _captured_by_hand(tmp_path)
+    tasks_file.write_text(tasks_file.read_text().replace('"M3"', '"_"'))
+    with pytest.raises(probe.Invalid, match="id: '_' holds no letter or digit"):
+        _problems(captured, tasks_file)
+
+
+def test_two_tasks_whose_ids_spell_one_capture_file_are_refused(tmp_path: Path) -> None:
+    captured, tasks_file = _captured_by_hand(tmp_path)
+    text = tasks_file.read_text().replace('"M2"', '"M-1"').replace('"M3"', '"m_1"')
+    tasks_file.write_text(text)
+    with pytest.raises(probe.Invalid, match="the ids M-1, m_1 spell one capture file"):
+        _problems(captured, tasks_file)
+
+
+def test_a_capture_whose_task_names_no_file_is_one_problem_not_a_traceback(
+        tmp_path: Path) -> None:
+    captured, tasks_file = _captured_by_hand(tmp_path)
+    doc = json.loads((captured / "m1.json").read_text())
+    doc["task"]["id"] = "x" * 70
+    (captured / "m9.json").write_text(json.dumps(doc))
+    assert _problems(captured, tasks_file) == [f"mame: m9.json holds task {'x' * 70}"]
 
 
 def test_a_capture_of_no_task_is_an_orphan(tmp_path: Path) -> None:
     captured, tasks_file = _captured_by_hand(tmp_path)
-    doc = json.loads((captured / "M1.json").read_text())
+    doc = json.loads((captured / "m1.json").read_text())
     doc["task"]["id"] = "M9"
-    (captured / "M9.json").write_text(json.dumps(doc))
+    (captured / "m9.json").write_text(json.dumps(doc))
     assert _problems(captured, tasks_file) == [
         "mame M9: captured, but the task file holds no task M9"]
 
@@ -221,12 +246,12 @@ def test_a_capture_answered_to_another_question_is_stale(tmp_path: Path) -> None
 
 def test_a_stored_verdict_the_surface_no_longer_gives_is_named(tmp_path: Path) -> None:
     captured, tasks_file = _captured_by_hand(tmp_path)
-    m1 = json.loads((captured / "M1.json").read_text())
+    m1 = json.loads((captured / "m1.json").read_text())
     m1["runs"][1]["right"] = False
-    (captured / "M1.json").write_text(json.dumps(m1))
-    m3 = json.loads((captured / "M3.json").read_text())
+    (captured / "m1.json").write_text(json.dumps(m1))
+    m3 = json.loads((captured / "m3.json").read_text())
     m3["runs"][2]["lines"] = [m3["runs"][2]["lines"][0].replace('"length": 12', '"length": 13')]
-    (captured / "M3.json").write_text(json.dumps(m3))
+    (captured / "m3.json").write_text(json.dumps(m3))
     assert _problems(captured, tasks_file) == [
         "mame M1 run 2: judged right now, captured as wrong",
         "mame M3 run 3: judged wrong now (length=13, expected 12), captured as right"]
@@ -236,9 +261,9 @@ def test_a_task_edited_from_one_to_true_is_stale(tmp_path: Path) -> None:
     """`True` is not `1` to the judge, so it is not the same question either."""
     captured, tasks_file = _captured_by_hand(tmp_path)
     _edit(tasks_file, '"length": 6}', '"length": 1}')
-    m1 = json.loads((captured / "M1.json").read_text())
+    m1 = json.loads((captured / "m1.json").read_text())
     m1["task"]["args"]["length"] = True
-    (captured / "M1.json").write_text(json.dumps(m1))
+    (captured / "m1.json").write_text(json.dumps(m1))
     assert _problems(captured, tasks_file) == [
         "mame M1: captured for another question than the task file asks now"]
 
@@ -254,19 +279,19 @@ def test_a_capture_whose_tool_left_the_surface_is_named(
 
 
 @pytest.mark.parametrize(("content", "problem"), [
-    ("{", "M1.json is not a capture"),
-    ('{"task": {"id": "M1"}}', "M1.json is not a capture"),
-    ('{"task": {"id": "M1"}, "runs": []}', "M1.json is not a capture"),
+    ("{", "m1.json is not a capture"),
+    ('{"task": {"id": "M1"}}', "m1.json is not a capture"),
+    ('{"task": {"id": "M1"}, "runs": []}', "m1.json is not a capture"),
     ('{"task": {"id": "M1"}, "runs": [{"lines": "M1: x", "right": true}]}',
-     "M1.json is not a capture"),
-    ('{"task": {"id": "M2"}, "runs": [{"lines": [], "right": true}]}', "M1.json holds task M2"),
+     "m1.json is not a capture"),
+    ('{"task": {"id": "M2"}, "runs": [{"lines": [], "right": true}]}', "m1.json holds task M2"),
 ])
 def test_a_file_that_is_not_a_capture_of_its_name_is_named(
         tmp_path: Path, content: str, problem: str) -> None:
     captured, tasks_file = _captured_by_hand(tmp_path)
-    (captured / "M1.json").write_text(content)
+    (captured / "m1.json").write_text(content)
     problems = _problems(captured, tasks_file)
-    assert len(problems) == 1 and problems[0].startswith(f"mame M1: {problem}"), problems
+    assert len(problems) == 1 and problems[0].startswith(f"mame: {problem}"), problems
 
 
 # ---- the per-task capture: what the writer takes from a real run ----------------------------
@@ -294,8 +319,8 @@ def test_the_writer_captures_only_the_ids_named_and_makes_no_run_directory(
     rc, lines = _capture(run_dir, "M1,M3", capsys)
     assert rc == probe.EXIT_PASS, lines
     assert sorted(p.name for p in (probe_env / "captured" / "mame").iterdir()) == [
-        "M1.json", "M3.json"]
-    assert len(lines) == 3 and lines[0].endswith("M1.json") and lines[2].startswith("SUMMARY 2")
+        "m1.json", "m3.json"]
+    assert len(lines) == 3 and lines[0].endswith("m1.json") and lines[2].startswith("SUMMARY 2")
     m1 = _written(probe_env, "M1")
     assert m1["task"] == next(t for t in _tasks("mame") if t["id"] == "M1")
     assert m1["runs"] == [{"lines": ['M1: {"tool": "read_memory", "args": {"ref": "PlayerX", '
@@ -475,11 +500,11 @@ def test_a_root_json_has_to_escape_resolves_and_marks_as_a_json_string_spells_it
 def test_a_capture_taken_again_replaces_only_its_own_file(
         probe_env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert _capture(_a_run(capsys), "M1,M3", capsys)[0] == probe.EXIT_PASS
-    m3 = (probe_env / "captured" / "mame" / "M3.json").read_text()
+    m3 = (probe_env / "captured" / "mame" / "m3.json").read_text()
     _edit(probe_env / "answers" / "mame-run2.txt", ', "length": 6', "")
     assert _capture(_a_run(capsys), "M1", capsys)[0] == probe.EXIT_PASS
     assert [r["right"] for r in _written(probe_env, "M1")["runs"]] == [True, False, True]
-    assert (probe_env / "captured" / "mame" / "M3.json").read_text() == m3
+    assert (probe_env / "captured" / "mame" / "m3.json").read_text() == m3
 
 
 def test_a_task_asked_otherwise_since_the_run_is_not_captured(

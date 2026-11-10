@@ -130,7 +130,7 @@ class Drafts:
         if kind not in KINDS:
             raise Invalid("bad_argument", f"{kind!r} is not a kind: a store holds "
                           f"{', '.join(KINDS)}")
-        project_store.entry_name(name)
+        name = project_store.entry_name(name)
         if not isinstance(document, dict):
             raise Invalid("bad_argument", f"the {kind} candidate {name!r} is a "
                           f"{type(document).__name__}, not a document")
@@ -320,8 +320,7 @@ def planned_entry(candidate: Candidate, store_dir: Path, state: str,
     """`candidate` as it would be written: its document with every path expressed for a tracked
     file, the bytes it makes, its target, and the reply's item. A map is judged by its own
     reader here, under the name it is written as."""
-    named = name or candidate.name
-    project_store.entry_name(named)
+    named = project_store.entry_name(name or candidate.name)
     document = tracked(candidate, store_dir.parent, state, environ)
     if candidate.kind == "maps":
         document["application"] = named
@@ -392,9 +391,11 @@ def after_export(drafts: Drafts, reply: dict[str, Any],
     path = str(reply.get("path") or "")
     name = drafts.loaded_name("perform") or Path(path).stem
     document = recording.read_document(path)
-    if drafts.keep("perform", name, document, path_keys=path_keys):
-        return {**reply, "kept": kept_line(drafts)}
-    return reply
+    try:
+        kept = drafts.keep("perform", name, document, path_keys=path_keys)
+    except Invalid:             # a file whose name is no entry's is written and not proposed
+        kept = False
+    return {**reply, "kept": kept_line(drafts)} if kept else reply
 
 
 def after_close(drafts: Drafts, reply: dict[str, Any], *,
@@ -527,8 +528,7 @@ def _split(entry: str) -> tuple[str, str]:
     if not sep or kind not in KINDS:
         raise Invalid("bad_argument", f"entry={entry!r} is `<kind>/<name>`, a kind of "
                       f"{', '.join(KINDS)}")
-    project_store.entry_name(name)
-    return kind, name
+    return kind, project_store.entry_name(name)
 
 
 def _stem(path: Path, kind: str) -> str:

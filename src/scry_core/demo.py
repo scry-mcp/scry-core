@@ -50,7 +50,7 @@ from mcp.client import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult
 
-from scry_core import prose
+from scry_core import file_names, prose
 from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 BEGIN = "<!-- demo-transcript:begin -->"
@@ -670,9 +670,10 @@ def load(demo_file: Path) -> Demo:
 def _beside(transcript: Path) -> tuple[Path, Path, Path]:
     """The normalised transcript, the front door's flow and the README's highlights, written
     beside `transcript`."""
-    return (transcript.with_name(transcript.stem + ".normalised.md"),
-            transcript.with_name(transcript.stem + ".flow.md"),
-            transcript.with_name(transcript.stem + ".story.md"))
+    stem = file_names.word(transcript.stem, "transcript")
+    def beside(part: str) -> Path:
+        return transcript.with_name(file_names.name(stem, part, extension="md"))
+    return beside("normalised"), beside("flow"), beside("story")
 
 
 def _story(entries: list[str], calls: int) -> str:
