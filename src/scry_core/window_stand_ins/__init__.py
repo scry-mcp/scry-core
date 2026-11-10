@@ -1,8 +1,8 @@
 """Stand-in windows for the window tier: a window of its own, then a full-screen application taking
-the display's Space over it, so `bring_front` is proved against the case that failed in the field.
+the display's Space over it, the case `bring_front` failed in the field; and `thief`, a stay in
+front of a moment.
 
-The tier opens windows and switches the owner's Space, so it carries the `window` marker and runs
-only on a Mac with `SCRY_FOCUS_CONTROL=1` (`on_the_desk`).
+The tier takes the owner's desk: `window` marker, a Mac, `SCRY_FOCUS_CONTROL=1` (`on_the_desk`).
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from scry_core import focus_gate
+from scry_core import focus_gate, focus_listener
 from scry_core import window as w
 from scry_core import window_host as wh
 
@@ -45,9 +45,8 @@ def on_the_desk(test: Any) -> Any:
 
 def built(tmp_path: Path, name: str) -> Path:  # needs the desk
     out = tmp_path / name
-    run = subprocess.run(["swiftc", "-O", str(SOURCES / f"{name}.swift"), "-o", str(out)],
-                         capture_output=True, text=True, timeout=300, check=False)
-    assert run.returncode == 0, run.stderr
+    why = focus_listener.swiftc(SOURCES / f"{name}.swift", out)
+    assert not why, why
     return out
 
 

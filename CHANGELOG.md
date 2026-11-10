@@ -4,6 +4,16 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- `scry_core.focus_listener`: every application that comes to the front, heard as it happens
+  by a listener built with `swiftc` beside the record. `focus_watch` runs one, so a stay in
+  front shorter than a sampling period is a `TOOK_FOCUS` naming the application and its pid.
+  `judge` takes what was heard (`heard=`, required) and answers `INVALID` for a window the
+  listener did not hear whole: with no listener no window is `CLEAN`. The activations are kept
+  beside the samples, in `<record>-activations.tsv`.
+- The sampler no longer asks System Events who is in front: the listener says it, so a watch
+  sends no Apple event and needs no Automation permission.
+- `focus_gate.control` holds its start in front only when the listener heard it, and blocks
+  that cell when nothing listened.
 - `private_run` also fails a run whose temp folder could not be removed, naming it: a file
   still held open keeps the folder on Windows.
 

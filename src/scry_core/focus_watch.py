@@ -1,22 +1,26 @@
-"""Whether a run took the owner's focus: the frontmost application, sampled while the run goes.
+"""Whether a run took the owner's focus: every application activation heard as it happens, and
+the Spaces sampled while the run goes.
 
 An emulator activated behind a run's back answers every tool normally, so it is asked from outside:
 
     with focus_watch.FocusWatch(tsv) as watch:
         ...                                   # the run
-    v = focus_watch.judge(watch.samples, {"dosbox-x"}, start_ms=t0, end_ms=t1)
+    v = focus_watch.judge(watch.samples, {"dosbox-x"}, heard=watch.heard, start_ms=t0, end_ms=t1)
 
-`v.status` is `CLEAN`, `TOOK_FOCUS` (`v.sample` is the first such),
-`SPACE_CHANGED` (`v.sample` is the first whose Spaces differ from the first sample's) or
-`INVALID`: no sample the window could take, a stretch unsampled past `MAX_GAP_MS`, samples that
-change displays, or some with a Space reading and others none. A sample the instrument could
-not take counts as a gap. A focus taken or a Space moved is reported over a later gap or
-change of displays. A stay shorter than one period can be missed. Spaces are keyed by display
-identifier (`same_spaces`).
+`v.status` is `CLEAN`, `TOOK_FOCUS` (`v.activation` is the first one heard, else `v.sample` the
+first that found it in front), `SPACE_CHANGED` (`v.sample` is the first whose Spaces differ from
+the first sample's) or `INVALID`: no sample the window could take, a stretch unsampled past
+`MAX_GAP_MS`, samples that change displays, some with a Space reading and others none, or a
+window the listener did not hear whole. A sample the instrument could not take counts as a gap.
+A focus taken or a Space moved is reported over a later gap or change of displays. Spaces are
+keyed by display identifier (`same_spaces`).
 
-The instrument is System Events through `osascript`: `NSWorkspace` inside this process was
-observed to keep answering with whatever was in front at start. Without the Automation
-permission every sample is an ERROR. Each sample also records the host pointer (never judged:
+Two instruments, because each is blind where the other sees. `scry_core.focus_listener` hears
+every application that comes to the front, however briefly, and says what it cannot hear. The
+sampler reads where the Spaces are at its instants, and nothing between two of them: a Space
+moved and put back inside one period is missed. A sample names the application the listener
+says was in front at its instant, so the record reads whole. Each sample also records the host
+pointer (never judged:
 the owner's hand moves it) and each display's current Space, because a run can move the owner
 to another Space without coming to the front. The private CoreGraphics symbols for that are
 guarded: without them samples carry no Space and `spaces_missing` names the symbol. The flow and
@@ -24,13 +28,15 @@ the Space actuator are `scry_core.focus_gate`'s.
 
 Samples go to a TSV as they are taken, so a run that dies keeps its record:
 `epoch_ms<TAB>app<TAB>pid<TAB>x,y<TAB>display:space,display:space` or
-`epoch_ms<TAB>ERROR<TAB><why>`. macOS only: elsewhere every sample is an ERROR.
+`epoch_ms<TAB>ERROR<TAB><why>`; the listener's record goes beside it (`activations_path`).
+macOS only: elsewhere every sample is an ERROR and nothing listens.
 """
 
 from __future__ import annotations
 
 import ctypes
 import ctypes.util
+import dataclasses
 import functools
 import plistlib
 import re
@@ -38,19 +44,19 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Literal, TextIO
 
+from scry_core import focus_listener
+from scry_core.focus_listener import Activation, Heard
+
 INTERVAL_S = 0.25
 OSASCRIPT_TIMEOUT_S = 5.0
-# Several periods, so a slow osascript call is not blindness.
+# Several periods, so a slow reading is not blindness.
 MAX_GAP_MS = 2500
-FRONT_SCRIPT = (
-    'tell application "System Events" to set p to first process whose frontmost is true',
-    'tell application "System Events" to return (name of p) & tab & (unix id of p)')
 _FIELD_BREAKS = re.compile(r"[\t\r\n\v\f\x1c-\x1e\x85  ]")
 
 Status = Literal["CLEAN", "TOOK_FOCUS", "SPACE_CHANGED", "INVALID"]
@@ -262,48 +268,52 @@ _MACOS = sys.platform == "darwin"
 
 
 def sample_host() -> Sample:
-    """One sample of this host, stamped at the middle of the System Events call so a window's edge
-    does not take a later moment's sample."""
+    """One sample of this host's pointer and Spaces; the watch adds who its listener says is in
+    front."""
     if not _MACOS:
-        return Sample(now_ms(), error=f"the frontmost application is read on macOS only, not "
-                                       f"{sys.platform}")
-    asked = now_ms()
-    run = osascript(*FRONT_SCRIPT)
-    if isinstance(run, str):
-        return Sample(now_ms(), error=run)
-    stamp = (asked + now_ms()) // 2
-    app, _, pid = run.stdout.strip().partition("\t")
-    if run.returncode != 0 or not pid.isdigit():
-        why = run.stderr.strip() or run.stdout.strip() or f"rc {run.returncode}"
-        return Sample(stamp, error=f"System Events did not name the frontmost process: {why}")
+        return Sample(now_ms(), error=f"the Spaces are read on macOS only, not {sys.platform}")
+    stamp = now_ms()
     if spaces_missing():
-        return Sample(stamp, app, int(pid), _pointer())
+        return Sample(stamp, pointer=_pointer())
     read = spaces()
     if not read:
         return Sample(stamp, error="the displays' current Spaces could not be read")
-    return Sample(stamp, app, int(pid), _pointer(), spaces=read)
+    return Sample(stamp, pointer=_pointer(), spaces=read)
 
 
 class FocusWatch:
-    """Samples on a thread from `__enter__` to `__exit__`, into `samples` and `path` as taken.
+    """Listens and samples from `__enter__` to `__exit__`: `samples` into `path`, the listener's
+    record into `activations_path`, each as taken.
 
-    `sample` is the test seam. A sampler that raises is recorded as an ERROR sample and sampling
-    goes on; a record that cannot be written stops the thread and re-raises at `__exit__`."""
+    `sample` and `listen` are the test seams; `listen(folder)` answers the listener's argv or why
+    there is none. A sampler that raises is recorded as an ERROR sample and sampling goes on; a
+    record that cannot be written stops its thread and re-raises at `__exit__`."""
 
     def __init__(self, path: Path, *, interval_s: float = INTERVAL_S,
-                 sample: Callable[[], Sample] = sample_host) -> None:
+                 sample: Callable[[], Sample] = sample_host,
+                 listen: Callable[[Path], Sequence[str] | str] = focus_listener.host) -> None:
         self.path = path
+        self.activations_path = path.with_name(f"{path.stem}-activations{path.suffix}")
         self.samples: list[Sample] = []
+        self.listener = focus_listener.Listener(self.activations_path, listen)
         self._interval_s = interval_s
         self._sample = sample
         self._stop = threading.Event()
         self._failure: BaseException | None = None
 
+    @property
+    def heard(self) -> Heard:
+        return self.listener.heard
+
     def _take(self) -> Sample:
         try:
-            return self._sample()
+            taken = self._sample()
         except Exception as e:  # any failure of the instrument is a sample it could not take
             return Sample(now_ms(), error=f"the sampler raised {type(e).__name__}: {e}")
+        front = None if taken.error else self.heard.front_at(taken.epoch_ms)
+        if front is None:
+            return taken
+        return dataclasses.replace(taken, app=front.app, pid=front.pid)
 
     def _run(self, out: TextIO) -> None:
         try:
@@ -320,6 +330,11 @@ class FocusWatch:
     def __enter__(self) -> FocusWatch:
         # Opened here, not on the thread, so an unwritable path refuses before the run starts.
         self._out = self.path.open("w", encoding="utf-8")
+        try:
+            self.listener.__enter__()
+        except BaseException:
+            self._out.close()
+            raise
         self._thread = threading.Thread(target=self._run, args=(self._out,),
                                         name="focus_watch", daemon=True)
         self._thread.start()
@@ -330,8 +345,13 @@ class FocusWatch:
         self._stop.set()
         self._thread.join()
         self._out.close()
-        if self._failure is not None and exc is None:
-            raise self._failure
+        failure = self._failure
+        try:
+            self.listener.__exit__(None, None, None)
+        except BaseException as e:
+            failure = failure or e
+        if failure is not None and exc is None:
+            raise failure
 
 
 @dataclass(frozen=True)
@@ -341,6 +361,7 @@ class Verdict:
     reason: str
     sample: Sample | None = None
     distinct_pointers: int = 0
+    activation: Activation | None = None
 
 
 def _gap(seen: list[Sample], start_ms: int | None, end_ms: int | None) -> str:
@@ -354,15 +375,25 @@ def _gap(seen: list[Sample], start_ms: int | None, end_ms: int | None) -> str:
     return ""
 
 
-def judge(samples: list[Sample], names: Collection[str], *, start_ms: int | None = None,
-          end_ms: int | None = None) -> Verdict:
-    """Judge the samples inside `[start_ms, end_ms]`: was an application in `names` in front, or did
-    a Space move? A bare string or empty `names` would match nothing and read CLEAN (ValueError)."""
+def judge(samples: list[Sample], names: Collection[str], *, heard: Heard,
+          start_ms: int | None = None, end_ms: int | None = None) -> Verdict:
+    """Judge `[start_ms, end_ms]`: did an application in `names` come to the front, heard or
+    sampled, or did a Space move? A bare string or empty `names` would match nothing and read
+    CLEAN (ValueError)."""
     if isinstance(names, str) or not names:
         raise ValueError(f"names is a non-empty collection of application names; got {names!r}")
     wanted = set(names)
-    chosen = [s for s in samples if (start_ms is None or s.epoch_ms >= start_ms)
-              and (end_ms is None or s.epoch_ms <= end_ms)]
+
+    def inside(epoch_ms: int) -> bool:
+        return ((start_ms is None or epoch_ms >= start_ms)
+                and (end_ms is None or epoch_ms <= end_ms))
+    chosen = [s for s in samples if inside(s.epoch_ms)]
+    within = [a for a in heard.activations if inside(a.epoch_ms)]
+    stolen = next((a for a in within if a.app in wanted), None)
+    if stolen is not None:
+        return Verdict("TOOK_FOCUS", sum(not s.error for s in chosen),
+                       f"{stolen.app} (pid {stolen.pid}) came to the front at {stolen.epoch_ms}, "
+                       f"heard as it happened", activation=stolen)
     if not chosen:
         return Verdict("INVALID", 0, "no sample was taken inside the window, so nothing was "
                                      "examined")
@@ -399,6 +430,12 @@ def judge(samples: list[Sample], names: Collection[str], *, start_ms: int | None
     if gap:
         return Verdict("INVALID", len(read), f"the window was not watched throughout: {gap}",
                        None, pointers)
+    # An edge the caller left open is where the samples judged begin or end.
+    unheard = heard.unheard(read[0].epoch_ms if start_ms is None else start_ms,
+                            read[-1].epoch_ms if end_ms is None else end_ms)
+    if unheard:
+        return Verdict("INVALID", len(read), f"a stay between two samples would not have been "
+                       f"heard: {unheard}", None, pointers)
     unread = "" if first else " (no Space was recorded)"
-    return Verdict("CLEAN", len(read), f"none of {sorted(wanted)} was in front in "
-                                       f"{len(read)} samples{unread}", None, pointers)
+    return Verdict("CLEAN", len(read), f"none of {sorted(wanted)} was in front in {len(read)} "
+                   f"samples or among {len(within)} activations heard{unread}", None, pointers)

@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from scry_core import focus_gate as fg
+from scry_core import focus_listener as fl
 from scry_core import focus_watch as fw
 
 
@@ -156,9 +157,14 @@ def test_press_says_why_a_keystroke_did_not_go(monkeypatch: pytest.MonkeyPatch) 
     assert fg._press(123) == ""
 
 
+# A listener that listened from before any window here and still does, and heard nothing.
+LISTENED = fl.Heard(since_ms=0)
+
+
 class _Watched:
-    def __init__(self, samples: list[fw.Sample]) -> None:
+    def __init__(self, samples: list[fw.Sample], heard: fl.Heard = LISTENED) -> None:
         self.samples, self.path, self.exited = samples, Path("w.tsv"), False
+        self.heard = heard
 
     def __exit__(self, *exc: object) -> None:
         self.exited = True
@@ -170,9 +176,12 @@ def _app(ms: int, app: str = "Finder", spaces: tuple[int, ...] = (1,)) -> fw.Sam
 
 def _control_case(monkeypatch: pytest.MonkeyPatch, front_app: str, behind_app: str,
                   moved: bool, why: str = "", blind: tuple[int, int] | None = None,
-                  taken: bool = True) -> fg.Control:
-    """`blind` is a stretch whose samples are errors: the instrument could not read the host."""
-    samples = [fw.Sample(ms, error="osascript did not answer")
+                  taken: bool = True, heard: fl.Heard | None = None) -> fg.Control:
+    """`blind` is a stretch whose samples are errors: the instrument could not read the host.
+    Unless `heard` says otherwise, the listener heard the front start come to the front."""
+    if heard is None:
+        heard = fl.Heard((fl.Activation(1500, front_app, 9),), since_ms=0)
+    samples = [fw.Sample(ms, error="the Spaces could not be read")
                if blind is not None and blind[0] <= ms <= blind[1] else
                _app(ms, front_app if 1000 <= ms <= 2000 else
                     behind_app if 3000 <= ms <= 4000 else "Finder",
@@ -186,17 +195,47 @@ def _control_case(monkeypatch: pytest.MonkeyPatch, front_app: str, behind_app: s
         asked.append(background)
         return (3000, 4000) if background else (1000, 2000)
     monkeypatch.setattr(fg, "move_space", lambda: fg.Moved(5000, 6000, why, taken))
-    c = fg.control(_Watched(samples), {"mame"}, hold)
+    c = fg.control(_Watched(samples, heard), {"mame"}, hold)
     assert asked == [False, True], asked
     return c
 
 
 def test_a_control_window_the_instrument_could_not_read_is_blocked_not_failed(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    c = _control_case(monkeypatch, "mame", "Finder", moved=True, blind=(1000, 2000))
+    c = _control_case(monkeypatch, "mame", "Finder", moved=True, blind=(1000, 2000),
+                      heard=LISTENED)
     assert c.front.status == "BLOCKED" and c.since is None, c
     c = _control_case(monkeypatch, "mame", "Finder", moved=True, blind=(3000, 4000))
     assert c.behind.status == "BLOCKED" and c.since is None, c
+
+
+def test_a_front_start_heard_holds_though_no_sample_saw_it(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    c = _control_case(monkeypatch, "Finder", "Finder", moved=True,
+                      heard=fl.Heard((fl.Activation(1500, "mame", 9),), since_ms=0))
+    assert c.front.status == "OK" and "heard as it happened" in c.front.reason
+    assert c.since == 6000
+
+
+@pytest.mark.parametrize(("heard", "status", "says"), [
+    (LISTENED, "FAIL", "nobody heard it come there inside the window"),
+    (fl.Heard(error="no swiftc"), "BLOCKED", "could not be heard: no swiftc"),
+    (fl.Heard(since_ms=1001), "BLOCKED", "began at 1001"),
+])
+def test_a_front_start_nobody_heard_come_there_never_holds_the_control(
+        monkeypatch: pytest.MonkeyPatch, heard: fl.Heard, status: str, says: str) -> None:
+    c = _control_case(monkeypatch, "mame", "Finder", moved=True, heard=heard)
+    assert c.front.status == status and says in c.front.reason, c.front
+    assert c.since is None
+
+
+def test_a_start_behind_that_came_to_the_front_between_two_samples_fails_its_cell(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    heard = fl.Heard((fl.Activation(1500, "mame", 9), fl.Activation(3010, "mame", 10),
+                      fl.Activation(3030, "Finder", 2)), since_ms=0)
+    c = _control_case(monkeypatch, "mame", "Finder", moved=True, heard=heard)
+    assert (c.front.status, c.behind.status) == ("OK", "FAIL")
+    assert "pid 10" in c.behind.reason and c.since is None
 
 
 def test_a_control_that_holds_passes_its_three_cells_and_opens_the_judged_window(
@@ -250,7 +289,8 @@ def test_a_space_move_inside_the_behind_window_blocks_that_cell_and_names_nobody
                for ms in range(1000, 6001, 100)]
     windows = iter([(1000, 2000), (3000, 4000)])
     monkeypatch.setattr(fg, "move_space", lambda: fg.Moved(5000, 6000))
-    c = fg.control(_Watched(samples), {"mame"}, lambda background: next(windows))
+    heard = fl.Heard((fl.Activation(1500, "mame", 9),), since_ms=0)
+    c = fg.control(_Watched(samples, heard), {"mame"}, lambda background: next(windows))
     assert c.behind.status == "BLOCKED" and "Spaces" in c.behind.reason
     assert c.front.status == c.space.status == "OK" and c.since is None
 
@@ -300,6 +340,25 @@ def test_without_the_opt_in_a_clean_run_is_unproven_and_a_stolen_focus_still_fai
     assert v.status == "FAIL" and "TOOK_FOCUS" in v.reason and "w.tsv" in v.reason
     v = fg.verdict(_Watched([]), {"mame"}, None, 70_000)
     assert v.status == "BLOCKED" and "no sample" in v.reason
+    deaf = _Watched([_app(ms) for ms in range(0, 70_001, 500)], fl.Heard(error="no swiftc"))
+    v = fg.verdict(deaf, {"mame"}, None, 70_000)
+    assert v.status == "BLOCKED" and "no swiftc" in v.reason and "unproven" not in v.reason
+    heard = fl.Heard((fl.Activation(30_100, "mame", 9),), since_ms=0)
+    for samples in ([_app(ms) for ms in range(0, 70_001, 500)], []):
+        v = fg.verdict(_Watched(samples, heard), {"mame"}, None, 70_000)
+        assert v.status == "FAIL" and "heard as it happened" in v.reason, v
+
+
+@pytest.mark.parametrize(("heard", "status", "says"), [
+    (fl.Heard((fl.Activation(30_100, "mame", 9),), since_ms=0), "FAIL", "heard as it happened"),
+    (fl.Heard(since_ms=0, until_ms=69_999), "BLOCKED", "would not have been heard"),
+    (fl.Heard(error="no swiftc"), "BLOCKED", "no swiftc"),
+])
+def test_the_verdict_rests_on_what_the_listener_heard(
+        heard: fl.Heard, status: str, says: str) -> None:
+    samples = [_app(ms) for ms in range(0, 70_001, 500)]
+    v = fg.verdict(_Watched(samples, heard), {"mame"}, 0, 70_000)
+    assert v.status == status and says in v.reason, v
 
 
 @pytest.mark.parametrize("window_ms, status", [(fg.MIN_WINDOW_MS - 1, "BLOCKED"),

@@ -66,7 +66,8 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.recording` | a session as a bench: what a server did, recorded from its `start` through its call boundary, and exported as `perform`'s own document (`perform_export`); the check a replayed step holds to |
 | `scry_core.comment_file` | the comment file both servers read and write (version 1): its header, columns, text and stamp rules, parse and render, each server's `ref` and `cpu` columns handed in as a `Policy` |
 | `scry_core.replay` | the runner of that document: the server over stdio, its steps in one `perform`, with no model |
-| `scry_core.focus_watch` | whether a live run took the owner's focus or moved their Space: the frontmost application and each display's Space, keyed by the display, sampled from outside the run (macOS), and the judge of a window of samples |
+| `scry_core.focus_watch` | whether a live run took the owner's focus or moved their Space: every application activation heard as it happens and each display's Space, keyed by the display, sampled, both from outside the run (macOS), and the judge of a window of them |
+| `scry_core.focus_listener` | every application that comes to the front of the host, heard as it happens by a listener built with `swiftc` and run as a process of its own (macOS): what was heard, the stretch it covers and who was in front at an instant |
 | `scry_core.focus_gate` | the flow a live section takes the watch through: the control (a start in front, one behind, the owner's Space moved and put back; the first and last only when asked), the verdict after it, each in `live_pool`'s words |
 | `scry_core.frame_window` | `perform(until_frame=F)` on a server whose stops carry an absolute `frame`: the arguments' check, the list's check against where the machine stands, and the `Cycle` that repeats the list until a stop reads the frame, bounded in steps and in time |
 | `scry_core.presence` | the presence indicator: a session's state, the look both emulators draw (colour, edge, fades; the pointer is DOSBox-X's own), and the check that holds a server's declaration of which tools drive against its registry |
@@ -148,10 +149,19 @@ judges the run after it with `focus_gate.verdict`; each outcome is OK, FAIL or B
 desk of whoever is working, so they run only with `SCRY_FOCUS_CONTROL=1` on an idle machine;
 unset, those two cells are BLOCKED and the verdict says it is unproven (a stolen focus still
 fails it); run while somebody works, the control takes their desk and its start-in-front cell
-fails anyway, since macOS keeps focus with the app in use. The two module docstrings are the contract. The watch is a sampler: it sees what stays
-in front at its instants, and a theft between two samples leaves no trace in it. A green focus cell reads "nothing stayed in
-front", never "nothing took focus"; when the person at the machine says they lost focus, that is
-the fact, and the cause is read off the process tree while it happens.
+fails anyway, since macOS keeps focus with the app in use. The two module docstrings are the contract.
+
+The watch is two instruments. A listener, built with `swiftc` beside the record, prints every
+application activation the window server reports, so a stay in front of any length leaves a line
+naming who came forward and its pid; the control's start in front holds only when the listener
+heard it. A sampler reads each display's Space at its instants. A green focus cell therefore
+reads "no application of this run came to the front, and no sample found a Space moved". It does
+not read "no window took the keyboard inside the application already in front", nor "no Space
+was moved and put back between two samples". Where nothing can listen (no `swiftc`, not macOS)
+the run's verdict is never green. Neither instrument sends an Apple event, so a watch needs no
+Automation permission; the control's Space move does send them. When the person at the machine says
+they lost focus, that is the fact, and the activations record beside the samples names who came
+to the front and when.
 
 ## On-demand tiers
 

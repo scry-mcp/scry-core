@@ -16,7 +16,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import Protocol
 
-from scry_core import focus_watch
+from scry_core import focus_listener, focus_watch
 from scry_core.live_pool import Outcome
 
 #: Set to 1 to let the control take the desk: a start forced in front and the Space moved.
@@ -119,6 +119,10 @@ class Watched(Protocol):
     samples: list[focus_watch.Sample]
     path: Path
 
+    @property
+    def heard(self) -> focus_listener.Heard:
+        """What the watch's listener heard so far."""
+
     def __exit__(self, kind: type[BaseException] | None, exc: BaseException | None,
                  tb: TracebackType | None) -> None: ...
 
@@ -142,6 +146,30 @@ class Control:
     since: int | None
 
 
+def _judge(watch: Watched, names: Collection[str], start_ms: int | None,
+           end_ms: int) -> focus_watch.Verdict:
+    """The window judged on everything the watch holds."""
+    return focus_watch.judge(watch.samples, names, heard=watch.heard, start_ms=start_ms,
+                             end_ms=end_ms)
+
+
+def _seen_in_front(watch: Watched, names: Collection[str], window: tuple[int, int]) -> Judged:
+    """The start forced in front: OK only when its coming to the front was heard inside the
+    window, because the verdict's green rests on the listener hearing these applications."""
+    seen = _judge(watch, names, *window)
+    if seen.activation is not None:
+        return Judged("OK", seen.reason)
+    if seen.status == "INVALID":
+        return Judged("BLOCKED", seen.reason)
+    unheard = watch.heard.unheard(*window)
+    if unheard:
+        return Judged("BLOCKED", f"the start could not be heard: {unheard}")
+    if seen.status == "TOOK_FOCUS":
+        return Judged("FAIL", f"it was in front and nobody heard it come there inside the "
+                              f"window, so the listener's silence clears nothing: {seen.reason}")
+    return Judged("FAIL", seen.reason)
+
+
 def control(watch: Watched, names: Collection[str],
             hold: Callable[[bool], tuple[int, int]]) -> Control:
     """Run the control over `watch`; `hold(background)` launches one start and returns its
@@ -153,17 +181,15 @@ def control(watch: Watched, names: Collection[str],
     if front_w is None:
         front = Judged("BLOCKED", _needs_the_desk("forcing a start in front"))
     else:
-        seen = focus_watch.judge(watch.samples, names, start_ms=front_w[0], end_ms=front_w[1])
-        front = Judged("BLOCKED" if seen.status == "INVALID"
-                       else "OK" if seen.status == "TOOK_FOCUS" else "FAIL", seen.reason)
-    clean = focus_watch.judge(watch.samples, names, start_ms=behind_w[0], end_ms=behind_w[1])
+        front = _seen_in_front(watch, names, front_w)
+    clean = _judge(watch, names, *behind_w)
     behind = Judged("BLOCKED" if clean.status in ("SPACE_CHANGED", "INVALID")
                     else "OK" if clean.status == "CLEAN" else "FAIL", clean.reason)
     if not asked:
         space = Judged("BLOCKED", _needs_the_desk("moving the Space"))
         return Control(front, behind, space, None)
     m = move_space()
-    moved = focus_watch.judge(watch.samples, names, start_ms=m.began, end_ms=m.ended)
+    moved = _judge(watch, names, m.began, m.ended)
     space = Judged("BLOCKED" if not m.taken or moved.status == "INVALID"
                    else "OK" if moved.status == "SPACE_CHANGED" and not m.why else "FAIL",
                    m.why if not m.taken else f"{m.why}; {moved.reason}" if m.why
@@ -175,11 +201,13 @@ def control(watch: Watched, names: Collection[str],
 def _unproven(watch: Watched, names: Collection[str], end_ms: int, record: str) -> Judged:
     """The whole run judged with no control behind it: a stolen focus is still a FAIL, a clean run
     proves nothing."""
-    if not watch.samples:
-        return Judged("BLOCKED", f"the watch took no sample; {record}")
-    v = focus_watch.judge(watch.samples, names, start_ms=watch.samples[0].epoch_ms, end_ms=end_ms)
+    v = _judge(watch, names, watch.samples[0].epoch_ms if watch.samples else None, end_ms)
     if v.status == "TOOK_FOCUS":
         return Judged("FAIL", f"{v.status}: {v.reason}; {record}")
+    if not watch.samples:
+        return Judged("BLOCKED", f"the watch took no sample; {record}")
+    if v.status == "INVALID":
+        return Judged("BLOCKED", f"the watch cannot judge the run: {v.reason}; {record}")
     return Judged("BLOCKED", f"unproven: the control was not taken, so a clean watch clears "
                              f"nothing (set {OPT_IN_VAR}=1 on an idle machine); {record}")
 
@@ -201,7 +229,7 @@ def verdict(watch: Watched, names: Collection[str], since: int | None, end_ms: i
     if end_ms - since < MIN_WINDOW_MS:
         return Judged("BLOCKED", f"{end_ms - since} ms ran after the control, too little to "
                                  f"judge; {record}")
-    v = focus_watch.judge(watch.samples, names, start_ms=since, end_ms=end_ms)
+    v = _judge(watch, names, since, end_ms)
     if v.status == "INVALID":
         return Judged("BLOCKED", f"the watch cannot judge the run: {v.reason}; {record}")
     if v.status == "SPACE_CHANGED":
