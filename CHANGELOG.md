@@ -2,6 +2,15 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.97.1
+
+- `project_store.locate` finds a screen map by its entry's name: `file_name` and `entry_of`
+  hold what a kind's file name adds, where `locate` looked for `<name>.json` in every kind;
+  `promote.file_name` and `promote.SUFFIXES` are gone.
+- `scry_core.names_written`: what a server's battery holds its files' names to, once for both
+  servers. `Names.outside` answers the new files of a case named outside the rule, and
+  `judged_nothing` whether a whole run met none.
+
 ## 0.97.0
 
 The files this package names or judges follow the one rule
