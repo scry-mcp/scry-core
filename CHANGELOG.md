@@ -2,6 +2,21 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.96.0
+
+`scry_core.file_names`, the one rule for the names of the files a server writes
+([docs/file-names.md](docs/file-names.md)):
+
+- `word` turns an outside value into words of a name, or refuses it by its argument.
+- `name` builds a made-up name and raises on one outside the rule.
+- `caller_file` normalises the last component of a path the caller names, and refuses a name
+  with no extension.
+- `outside` lists the files under a folder named outside the rule, for a battery to hold what it
+  wrote to.
+
+The reference generator names its pages through it: a family with no letter or digit is refused
+instead of written as `.md`.
+
 ## 0.95.1
 
 An app bundle's launch:
