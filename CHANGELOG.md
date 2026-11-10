@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.98.0
 
 - `scry_core.private_run`, a pytest plugin a suite asks for with `private_run = true`: the run
   gets a home and a temp folder of its own, and fails naming each file it left in that home. A
