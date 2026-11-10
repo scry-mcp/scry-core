@@ -3,6 +3,7 @@ servers' generated pages and never typed, and the committed page is the run's.""
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -90,6 +91,10 @@ def test_the_clones_default_to_the_environment_then_to_code(
 
 def test_the_committed_page_is_the_servers_run(monkeypatch: pytest.MonkeyPatch) -> None:
     """Skipped where the two servers' clones are not beside this one."""
+    beside = Path(__file__).resolve().parents[2]
+    for env, name in (("SCRY_MAME_DIR", "scry-mame"), ("SCRY_DOSBOX_X_DIR", "scry-dosbox-x")):
+        if not os.environ.get(env):        # the run's home is its own, and holds no clone
+            monkeypatch.setenv(env, str(beside / name))
     if not all((rd._clone(env, name) / rd.SERVER_PAGE).is_file()
                for env, name in (("SCRY_MAME_DIR", "scry-mame"),
                                  ("SCRY_DOSBOX_X_DIR", "scry-dosbox-x"))):

@@ -12,6 +12,7 @@ import contextlib
 import csv
 import io
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -36,6 +37,15 @@ LEDGER_VAR = "SCRY_LIVE_LEDGER"
 LEDGER_NAME = "emulators.tsv"
 #: Set by the parent run: a pooled job's scratch, inside its own.
 SCRATCH_VAR = "SCRY_LIVE_SCRATCH"
+#: What a starting run leaves of the earlier ones a failure kept: the newest, and any under a day.
+KEPT_RUNS = 3
+KEPT_AGE_S = 24 * 3600.0
+#: A run's scratch is `<prefix><id>`; `new_run_id` and this shape are the id's one home.
+RUN_ID_SHAPE = re.compile(r"[0-9a-f]{12}")
+
+
+def new_run_id() -> str:
+    return uuid.uuid4().hex[:12]
 #: Seconds a leftover emulator is given to leave after each signal.
 LEAVE_S = 5.0
 #: Linux's `ps` cuts a command name to this; a longer one is matched by prefix.
@@ -222,6 +232,27 @@ class EmulatorLedger:
             (p, states.get(p, (0, "?", ""))[1]) for p in left)))
 
 
+def drop_earlier_runs(scratch: Path, prefix: str) -> int:
+    """Remove the scratch earlier runs of `prefix` kept beside `scratch`, past `KEPT_AGE_S` and
+    beyond the `KEPT_RUNS` newest; how many went. A kept scratch is there to be read, and nobody
+    reads the fortieth."""
+    dated: list[tuple[float, Path]] = []
+    for other in scratch.parent.glob(f"{prefix}*"):
+        if other == scratch or not RUN_ID_SHAPE.fullmatch(other.name[len(prefix):]):
+            continue
+        try:
+            dated.append((other.stat().st_mtime, other))
+        except OSError:
+            continue
+    old = time.time() - KEPT_AGE_S
+    gone = 0
+    for at, other in sorted(dated, reverse=True)[KEPT_RUNS:]:
+        if at < old:
+            shutil.rmtree(other, ignore_errors=True)
+            gone += not other.exists()
+    return gone
+
+
 @dataclass
 class LiveRun:
     """One live run on its host.
@@ -231,6 +262,8 @@ class LiveRun:
     job: bool
     say: Callable[[str], None] = print
     finished: bool = False
+    #: What names this kind of run's scratch; empty for one given its scratch, which knows none.
+    prefix: str = ""
     ledger: EmulatorLedger | None = field(default=None, init=False)
     _closed: bool = field(default=False, init=False)
 
@@ -238,8 +271,9 @@ class LiveRun:
     def for_process(cls, prefix: str, job: bool) -> LiveRun:
         """This process's run: a job takes its parent's scratch, else a new `<prefix><random>`."""
         handed = os.environ.get(SCRATCH_VAR) if job else None
-        return cls(Path(handed) if handed else
-                   Path(tempfile.gettempdir()) / f"{prefix}{uuid.uuid4().hex[:12]}", job)
+        if handed:
+            return cls(Path(handed), job)
+        return cls(Path(tempfile.gettempdir()) / f"{prefix}{new_run_id()}", job, prefix=prefix)
 
     def made(self) -> Path:
         self.scratch.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -259,6 +293,11 @@ class LiveRun:
             return f"host canary: {why}"
         else:
             self.say(f"host canary: {Path(canary_argv[0]).name} started and ended by itself")
+        if self.prefix:
+            dropped = drop_earlier_runs(self.scratch, self.prefix)
+            if dropped:
+                self.say(f"removed the scratch of {counted(dropped, 'earlier run')}, kept over "
+                         f"a day")
         self.ledger = EmulatorLedger(self.made() / LEDGER_NAME)
         os.environ[LEDGER_VAR] = str(self.ledger.path)
         return ""
@@ -297,6 +336,9 @@ class LiveRun:
             self.say(f"kept: {self.scratch}")
             return
         shutil.rmtree(self.scratch, ignore_errors=True)
+        if self.scratch.exists():
+            self.say(f"kept: {self.scratch} (it could not be removed)")
+            return
         self.say("scratch removed, the transcript with it")
 
     def unfinished(self, on_end: Callable[[], object]) -> None:

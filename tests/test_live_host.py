@@ -4,6 +4,7 @@ verdict on a host, the ledger's proof that nothing outlived a run, and a run's s
 from __future__ import annotations
 
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -387,6 +388,63 @@ def test_a_red_run_keeps_its_scratch_and_names_it(run: host.LiveRun) -> None:
     run.made()
     run.leave(kept=True)
     assert run.scratch.is_dir() and _said(run) == [f"kept: {run.scratch}"]
+
+
+def test_a_scratch_that_could_not_be_removed_is_said_kept(
+        run: host.LiveRun, monkeypatch: pytest.MonkeyPatch) -> None:
+    run.made()
+    monkeypatch.setattr(shutil, "rmtree", lambda *_a, **_k: None)
+    run.leave(kept=False)
+    assert _said(run) == [f"kept: {run.scratch} (it could not be removed)"]
+
+
+def _earlier(tmp_path: Path, name: str, days: float) -> Path:
+    kept = tmp_path / name
+    kept.mkdir()
+    (kept / "transcript.jsonl").write_text("{}\n", encoding="utf-8")
+    at = time.time() - days * 86400
+    os.utime(kept, (at, at))
+    return kept
+
+
+def test_a_run_that_starts_removes_earlier_runs_scratch_past_a_day_but_the_newest_ones(
+        run: host.LiveRun, tmp_path: Path) -> None:
+    old = [_earlier(tmp_path, f"x-live-{n:012x}", days=2 + n) for n in range(5)]
+    fresh = [_earlier(tmp_path, f"x-live-fffffffffff{n}", days=0.1 * n) for n in range(1, 5)]
+    (tmp_path / "x-live-eeeeeeeeeeee").symlink_to(tmp_path / "gone")     # read by nobody
+    another = _earlier(tmp_path, "y-live-000000000000", days=9)
+    no_run = _earlier(tmp_path, "x-live-notes", days=9)
+    assert run.begin(None, "MAME") == ""
+    kept = {p.name for p in tmp_path.iterdir()}
+    # The fresh ones are the newest and all under a day, so every old one goes.
+    assert len(fresh) > host.KEPT_RUNS
+    assert kept == {run.scratch.name, another.name, no_run.name, "x-live-eeeeeeeeeeee",
+                    *(p.name for p in fresh)}, kept
+    assert f"removed the scratch of {len(old)} earlier runs, kept over a day" in _said(run)
+
+
+def test_a_run_given_its_scratch_by_hand_knows_no_kind_and_removes_nothing(
+        tmp_path: Path) -> None:
+    old = [_earlier(tmp_path, f"{n:012x}", days=5) for n in range(5)]
+    by_hand = host.LiveRun(tmp_path / "x", job=False)
+    by_hand.say = lambda _line: None
+    assert by_hand.begin(None, "MAME") == ""
+    assert all(p.is_dir() for p in old)
+
+
+def test_the_newest_kept_scratch_stays_however_old(run: host.LiveRun, tmp_path: Path) -> None:
+    old = [_earlier(tmp_path, f"x-live-{n:012x}", days=2 + n) for n in range(host.KEPT_RUNS + 2)]
+    assert run.begin(None, "MAME") == ""
+    assert [p.is_dir() for p in old] == [True] * host.KEPT_RUNS + [False, False]
+    assert "removed the scratch of 2 earlier runs, kept over a day" in _said(run)
+
+
+def test_a_job_knows_no_kind_so_it_removes_no_earlier_run(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    handed = tmp_path / "x-live-aaaaaaaaaaaa" / "jobs-scratch" / "A"
+    monkeypatch.setenv(host.SCRATCH_VAR, str(handed))
+    assert host.LiveRun.for_process("x-live-", job=True).prefix == ""
+    assert host.LiveRun.for_process("x-live-", job=False).prefix == "x-live-"
 
 
 def test_a_job_leaves_its_scratch_to_its_parent(tmp_path: Path) -> None:

@@ -2,6 +2,19 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.private_run`, a pytest plugin a suite asks for with `private_run = true`: the run
+  gets a home and a temp folder of its own, and fails naming each file it left in that home. A
+  run with a `live` case among those selected stands aside.
+- A live run that passes its canary removes the scratch earlier runs of its kind kept, past a
+  day and beyond the three newest, and says how many; a pooled job removes none.
+  `LiveRun.leave` says `kept` with the path when the scratch could not be removed.
+- The probe's model call runs with auto memory off, so a run leaves no folder per call under the
+  caller's Claude Code configuration.
+- `scripts/windows/run-task.sh` fetches into `scry-win-*` under `TMPDIR` and removes from the
+  host the logs of a step that ended and was fetched.
+
 ## 0.97.1
 
 - `project_store.locate` finds a screen map by its entry's name: `file_name` and `entry_of`

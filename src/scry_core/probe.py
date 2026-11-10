@@ -133,6 +133,9 @@ DEFAULT_RUNS = 3
 CLAUDE = ["claude", "--print", "--model", "haiku", "--effort", "low", "--max-budget-usd", "1",
           "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"]
 MODEL_COMMAND = [*CLAUDE, "--tools", "", "--output-format", "json"]
+#: Auto memory makes a folder per working directory under the caller's configuration, and each
+#: run has a working directory of its own.
+MODEL_ENV = {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
 
 #: How `--check` begins each line; a caller (a pre-commit) matches these.
 CHECK_OK, CHECK_REFUSED = "OK ", "REFUSED "
@@ -557,7 +560,7 @@ def _ask_model(prompt: str, saved: Path) -> str:
             proc = subprocess.run([found, *MODEL_COMMAND[1:]], input=prompt, capture_output=True,
                                   text=True,
                                   errors="replace", cwd=cwd, timeout=CLAUDE_TIMEOUT_S,
-                                  check=False)
+                                  check=False, env={**os.environ, **MODEL_ENV})
         except FileNotFoundError:
             raise Invalid("`claude` is not on PATH") from None
         except subprocess.TimeoutExpired:

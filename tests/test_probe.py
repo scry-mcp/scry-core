@@ -1098,9 +1098,11 @@ def _fake_claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, document: str 
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     argv = tmp_path / "argv"
-    host_program.write(bin_dir / "claude", "import pathlib, sys\n"
+    host_program.write(bin_dir / "claude", "import os, pathlib, sys\n"
                        f"pathlib.Path({str(argv)!r}).write_text(''.join(a + '\\n' for a in "
                        "sys.argv[1:]))\n"
+                       f"pathlib.Path({str(argv) + '.memory'!r}).write_text("
+                       "os.environ.get('CLAUDE_CODE_DISABLE_AUTO_MEMORY', 'unset'))\n"
                        f"pathlib.Path({str(argv) + '.stdin'!r}).write_bytes("
                        "sys.stdin.buffer.read())\n"
                        f"sys.stdout.buffer.write(pathlib.Path({str(FIXTURES / document)!r})"
@@ -1127,6 +1129,8 @@ def test_the_model_is_asked_with_nothing_but_the_prompt(
         out / "mame-run1.txt").read_text()
     prompt = (out / "mame-prompt.txt").read_text()
     assert Path(f"{argv}.stdin").read_text() == prompt, "the model was not sent the prompt"
+    # Each run has a working directory of its own, and auto memory would keep a folder per one.
+    assert Path(f"{argv}.memory").read_text() == "1"
     assert "--- tool: read_memory" in prompt and "M2: Read 6 bytes at PlayerX" in prompt
     assert SURFACES["mame"].instructions in prompt
 

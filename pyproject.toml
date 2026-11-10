@@ -27,6 +27,8 @@ dependencies = [
 reply_shapes = "scry_core.reply_shapes"
 # The window tier's marker and fixture, served to every suite with this package installed.
 window_tier = "scry_core.window_tier"
+# A home and a temp folder of the run's own, for a suite that asks with `private_run = true`.
+private_run = "scry_core.private_run"
 
 [dependency-groups]
 # `jsonschema` is what the SDK's client validates a reply with; the tests run the same validator
@@ -67,6 +69,10 @@ warn_return_any = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# The battery runs with a home and a temp folder of its own and fails on a file left in that
+# home (`scry_core.private_run`); pytest removes a green run's base temp and keeps a failed one's.
+private_run = true
+tmp_path_retention_policy = "failed"
 # `--cov` IS HERE SO EVERY `pytest` JUDGES THE FLOOR: without the flag pytest-cov measures nothing
 # and never evaluates `fail_under`, so a bare run exits 0 having judged nothing. A partial run
 # goes red on the floor by construction, because the floor is the whole package's: pass
@@ -78,9 +84,11 @@ reply_shapes_anchors = ["scry_core.reply_contract", "scry_core.boundary"]
 [tool.coverage.run]
 branch = true
 source = ["src/scry_core", "tests"]
-# The plugins' thin hooks, which `reply_shapes.py` says why no run can measure, and the one test
-# module that only a Windows desktop can execute (its skip is its whole body on macOS).
+# The plugins, imported through their entry points before coverage starts (`reply_shapes.py`
+# says so; `private_run`'s cases run it through pytester), and the one test module that only a
+# Windows desktop can execute (its skip is its whole body on macOS).
 omit = ["src/scry_core/reply_shapes.py", "src/scry_core/window_tier.py",
+        "src/scry_core/private_run.py",
         "tests/test_window_host_windows.py"]
 
 [tool.coverage.report]

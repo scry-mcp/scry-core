@@ -43,6 +43,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.value_format` | how a watched value is typed: the format of its bytes (scalars, arrays, strings, structs, pointers; a NaN or infinite float read as the text `nan`, `inf` or `-inf`), the `types` file naming one per symbol, and the pointer ref read through one |
 | `scry_core.reply_differences` | the advance tools' reply fields of the two servers side by side, read off their generated reference pages into `docs/advance-differences.md`, which a test holds to the run |
 | `scry_core.names_written` | the files a server wrote during its battery, judged by their names case by case for a server's `conftest.py`: the new ones outside the rule, less the names another program fixes, and whether a whole run judged none |
+| `scry_core.private_run` | the pytest plugin a suite asks for with `private_run = true`: the run gets a home and a temp folder of its own and fails when it leaves a file in that home |
 | `scry_core.reply_shapes` | the pytest plugin running the test-time guard (`reply_shapes_guard`) that holds one word to one shape in every reply |
 | `scry_core.reply_shapes_guard` | what that plugin runs: every key of a reply in the one shape the table gives it, no null anywhere, and the reply held to its tool's declared model (`reply_schema.check`) |
 | `scry_core.verdict` | what every instrument here answers when it has no verdict (the probe, the cap check, the live bench, the demo, the replay, the hook): `Invalid` and the exit codes 0, 1 and 3 |
@@ -52,7 +53,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.probe_captures` | the capture store: one file per task with the lines a real run answered it with, written from a run and judged again, free, against the surface as it is now |
 | `scry_core.probe_checks` | what each server's suite checks on its own probe surface: tasks, captures, the cap and its margins |
 | `scry_core.live_bench` | the pinned copies a server's live tier runs on |
-| `scry_core.live_host` | the host a live tier runs on: a canary that refuses one which cannot start the emulator, the ledger that proves no emulator outlived a run, and the run's scratch left as its verdict says |
+| `scry_core.live_host` | the host a live tier runs on: a canary that refuses one which cannot start the emulator, the ledger that proves no emulator outlived a run, the run's scratch left as its verdict says, and the scratch earlier runs kept removed past a day and the newest few |
 | `scry_core.live_ledger` | the bookkeeping a live matrix keeps: the sections it plans and the cells each promises, the calls it records, the tally, the transcript, the evidence a FAIL leaves, and the jobs it pools |
 | `scry_core.live_focus` | the focus section both live matrices run: the control that opens a run and the verdict that closes it, judged into the ledger that ran them |
 | `scry_core.app_launch` | an emulator launched as a `.app` through `open`: the bundle's executable, the command that connects its channels, the pid the session's token finds, and a handle that never claims an exit status it did not reap |
