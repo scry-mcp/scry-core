@@ -2,6 +2,11 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `private_run` also fails a run whose temp folder could not be removed, naming it: a file
+  still held open keeps the folder on Windows.
+
 ## 0.98.0
 
 - `scry_core.private_run`, a pytest plugin a suite asks for with `private_run = true`: the run

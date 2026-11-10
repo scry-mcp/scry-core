@@ -5,6 +5,7 @@ temp folder of its own, and fails when it leaves a file in that home. A run with
 
 from __future__ import annotations
 
+import os
 import shutil
 import tempfile
 from collections.abc import Iterator
@@ -50,6 +51,8 @@ def private_run(request: pytest.FixtureRequest,
     finally:
         shutil.rmtree(temp, ignore_errors=True)
     left = sorted(str(p.relative_to(home)) for p in home.rglob("*") if not p.is_dir())
-    if left:
-        pytest.fail(f"{len(left)} file(s) left in the run's home, {home}: " + ", ".join(left),
-                    pytrace=False)
+    found = [f"{len(left)} file(s) left in the run's home, {home}: " + ", ".join(left)] * bool(left)
+    if os.path.exists(temp):
+        found.append(f"the run's temp folder could not be removed: {temp}")
+    if found:
+        pytest.fail("; ".join(found), pytrace=False)

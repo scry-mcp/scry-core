@@ -4,6 +4,7 @@ and fails when it leaves a file in that home."""
 from __future__ import annotations
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -48,6 +49,27 @@ def test_the_run_has_a_home_and_a_temp_folder_of_its_own_and_gives_them_back(
     pytester.runpytest().assert_outcomes(passed=1)
     assert (Path.home(), tempfile.gettempdir()) == (home, temp), "the run gave them back"
     assert not Path((pytester.path / "where").read_text()).exists(), "its temp folder is gone"
+
+
+def test_a_temp_folder_that_could_not_be_removed_fails_the_run_and_is_named(
+        pytester: pytest.Pytester) -> None:
+    pytester.makepyprojecttoml(ASKED)
+    pytester.makepyfile("""
+        import os, tempfile
+        from pathlib import Path
+
+        def test_leaves_what_nobody_can_remove():
+            held = Path(tempfile.mkdtemp())
+            (held / "x").write_text("x")
+            os.chmod(held, 0)
+            Path("held").write_text(str(held))
+    """)
+    result = pytester.runpytest()
+    held = Path((pytester.path / "held").read_text())
+    os.chmod(held, 0o700)
+    shutil.rmtree(held.parent)
+    result.assert_outcomes(passed=1, errors=1)
+    result.stdout.fnmatch_lines([f"*temp folder could not be removed*{held.parent.name}*"])
 
 
 def test_a_directory_alone_is_no_file_left(pytester: pytest.Pytester) -> None:
