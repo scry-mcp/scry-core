@@ -18,6 +18,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.roster` | a server's tools by family: the `instructions`' roster and the sentence naming what answers a running machine, both rendered from one table that partitions the registry, and the gate saying what a step may run on a running machine |
 | `scry_core.media_replies` | the reply models of the file tools both servers share |
 | `scry_core.tool_replies` | the fields of `screen_map_write`, `log_wait` and `comment_write` that mean the same on both servers, each server's model adding its own |
+| `scry_core.stop_wait` | `screen_wait` judged at a declared breakpoint or watch: the arguments, the condition grammar, the `changed` predicate, the reply fields and the `never_fired` refusal |
 | `scry_core.regpoint` | the `regpoint_hit` of a registerpoint stop: its ref, condition and pc, and the sentence saying it stays armed |
 | `scry_core.process_tree` | ending a launched process with everything it started, and whether a pid lives (a zombie is not alive; a failing `ps` is an error) |
 | `scry_core.session_block` | the `session` block that closes every reply: the alarms on every one, the fixed half on `start` and `status`, the short block naming what it left out, or the half itself where naming it would cost more; what `close` and `status` say with no session |

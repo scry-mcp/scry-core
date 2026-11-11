@@ -2,6 +2,15 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.stop_wait`: a screen wait judged at a declared breakpoint or watch, the same on
+  both servers. The arguments (`on_breakpoint` or `on_watch`, never with `every`, and a
+  `condition` of up to four `&&` terms over registers and `b@`/`w@`/`d@` memory reads), the
+  `changed` predicate (a screen the map names other than the first; a frame it names nothing
+  does not end the wait), the reply's `waited_on`, `firings`, `frames_examined` and
+  `fired_line`, and the `never_fired` refusal, a new code of the reply contract.
+
 ## 0.99.0
 
 - `scry_core.focus_listener`: every application that comes to the front, heard as it happens

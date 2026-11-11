@@ -37,6 +37,7 @@ Code = Literal[
     "no_channel",
     "wait_stopped",
     "wait_expired",
+    "never_fired",
     "control_silent",
     "cut_by_other_stop",
     "not_settled",

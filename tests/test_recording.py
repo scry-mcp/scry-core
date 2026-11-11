@@ -134,9 +134,12 @@ class _Server:
             return stopped()
 
         @b.tool("wait_text", replay=recording.Counted("run_for", "frames", "polls"))
-        def wait_text(polls: int, late: bool = False) -> dict[str, Any]:
+        def wait_text(polls: int, late: bool = False, firings: int = 0) -> dict[str, Any]:
             if polls:
                 m.stop_at(None if m.frame is None else m.frame + polls)
+            if firings:          # a wait judged at a declared stop: no poll count to replay
+                m.stop_at(None if m.frame is None else m.frame + 3)
+                return {**stopped(), "firings": firings, "verdict": "TARGET"}
             return {**stopped(), "polls": polls, "verdict": "TIMEOUT" if late else "TARGET"}
 
         @b.tool("write")
@@ -720,6 +723,15 @@ def test_a_counted_wait_that_moved_nothing_is_dropped_and_one_the_bound_ended_cu
     assert [st["op"] for st in doc["steps"]] == ["run_for"], doc["steps"]
     assert [d["op"] for d in out.dropped] == ["wait_text"], out.dropped
     assert out.cut == {"call": 3, "op": "wait_text", "why": recording.RUN_STOPPED_INSIDE}, out.cut
+
+
+def test_a_wait_judged_at_a_declared_stop_is_cut_never_replayed_as_a_run() -> None:
+    s = _Server()
+    s.start(system="board")
+    s.wait_text(polls=0, firings=2)
+    doc, out = s.document()
+    assert doc["steps"] == [], doc["steps"]
+    assert out.cut == {"call": 1, "op": "wait_text", "why": recording.RUN_STOPPED_INSIDE}, out.cut
 
 
 @pytest.mark.parametrize("names", ["the manifest", "a file in the directory",
