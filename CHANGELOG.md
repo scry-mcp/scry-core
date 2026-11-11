@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.window_host`: a server that places a window on macOS reads the screens from a
+  one-shot child, so macOS no longer holds the server as an application, which Activity Monitor
+  could show as not responding. The answer is reused while the displays' bounds stay the same,
+  and a child that fails leaves the displays with no usable area, as before.
+
 ## 0.101.0
 
 - `scry_core.demo`: a demo's committed `screen.png` matches a run's capture when the pixels

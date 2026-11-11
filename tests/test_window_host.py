@@ -5,6 +5,8 @@ forward from behind a full-screen application, with the activation by pid alone 
 from __future__ import annotations
 
 import ctypes
+import json
+import os
 import subprocess
 import sys
 import time
@@ -178,6 +180,40 @@ def test_the_main_display_is_index_0_at_the_origin() -> None:
     assert [d.index for d in displays] == list(range(len(displays)))
     assert displays[0].bounds[:2] == (0, 0) and min(displays[0].bounds[2:]) > 0
     assert len({d.bounds for d in displays}) == len(displays)
+
+
+#: A process that asks for the displays, then says whether LaunchServices holds it as an
+#: application, and whether every display came back with its usable area.
+ASKS_DISPLAYS = """
+import json, os, subprocess
+from scry_core import window_host as wh
+displays = wh.MacHost().displays()
+asn = subprocess.run(["lsappinfo", "find", f"pid={os.getpid()}"], capture_output=True,
+                     text=True).stdout.strip()
+print(json.dumps({"registered": bool(asn), "usable": all(d.usable for d in displays),
+                  "displays": len(displays)}))
+"""
+
+
+@DESKTOP
+def test_asking_for_the_displays_does_not_make_the_server_an_application() -> None:
+    """A process macOS holds as an application is pinged by the window server, and one with no
+    event loop then shows as not responding; the server asks for the displays from a child."""
+    out = subprocess.run([sys.executable, "-c", ASKS_DISPLAYS], capture_output=True, text=True,
+                         check=True, env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)})
+    got = json.loads(out.stdout)
+    assert got["displays"] > 0 and got["usable"] is True, got
+    assert got["registered"] is False, got
+    control = ASKS_DISPLAYS.replace("wh.MacHost().displays()", "wh.screens_here() or [1]")
+    control = control.replace("all(d.usable for d in displays)", "True")
+    out = subprocess.run([sys.executable, "-c", control], capture_output=True, text=True,
+                         check=True, env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)})
+    assert json.loads(out.stdout)["registered"] is True, "lsappinfo saw no registration at all"
+
+
+@DESKTOP
+def test_the_child_reads_the_screens_this_process_would_read() -> None:
+    assert wh.screens() == wh.screens_here() != []
 
 
 @DESKTOP
@@ -416,9 +452,46 @@ def test_the_screens_are_read_through_the_runtime_in_the_right_order(
     monkeypatch.setattr(wh, "_send", send)
     monkeypatch.setattr(wh, "_class", lambda name: 1)
     monkeypatch.setattr(ctypes, "CDLL", lambda name: None)
-    got = wh.screens()
+    got = wh.screens_here()
     assert got == [((0, 0, 10, 10), (0, 1, 10, 8), 2.0)] * 2
     assert calls[:2] == ["screens", "count"]
+
+
+def test_the_screens_come_back_from_the_child_and_a_child_that_fails_gives_none(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    asked: list[tuple[list[str], dict[str, str]]] = []
+
+    def run(argv: list[str], **k: Any) -> subprocess.CompletedProcess[str]:
+        asked.append((argv, k["env"]))
+        return subprocess.CompletedProcess(argv, 0, answers[0], "")
+    monkeypatch.setattr(subprocess, "run", run)
+    answers = ['[[[0, 0, 10, 10], [0, 1, 10, 8], 2.0]]']
+    assert wh.screens() == [((0, 0, 10, 10), (0, 1, 10, 8), 2.0)]
+    argv, env = asked[0]
+    assert argv == [sys.executable, "-c", wh.SCREENS_CHILD], argv
+    assert env["PYTHONPATH"].split(os.pathsep) == sys.path
+    for odd in ("", "Traceback", "[[1]]"):
+        answers[0] = odd
+        assert wh.screens() == [], odd
+    monkeypatch.setattr(sys, "executable", "")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(
+        FileNotFoundError("no such file")))
+    assert wh.screens() == []
+
+
+def test_the_screens_are_asked_again_only_when_the_displays_move(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[int] = []
+    def screens() -> list[Any]:
+        calls.append(1)
+        return []
+    monkeypatch.setattr(wh, "screens", screens)
+    monkeypatch.setattr(wh, "_SCREENS_READ", {})
+    one = [w.Display(0, (0, 0, 10, 10))]
+    wh.screens_for(one), wh.screens_for(one)
+    assert len(calls) == 1
+    wh.screens_for([w.Display(0, (0, 0, 20, 10))])
+    assert len(calls) == 2
 
 
 def test_a_desk_that_lists_no_screen_gives_no_usable_area(
@@ -426,7 +499,7 @@ def test_a_desk_that_lists_no_screen_gives_no_usable_area(
     monkeypatch.setattr(wh, "_class", lambda name: 1)
     monkeypatch.setattr(wh, "_send", lambda obj, selector, restype, *a: 0)
     monkeypatch.setattr(ctypes, "CDLL", lambda name: None)
-    assert wh.screens() == []
+    assert wh.screens_here() == []
 
 
 @pytest.mark.parametrize(("hresult", "dpi", "scale"), [(0, 96, 1.0), (0, 288, 3.0), (0, 144, 1.5)])

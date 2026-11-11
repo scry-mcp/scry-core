@@ -17,6 +17,8 @@ from __future__ import annotations
 import ctypes
 import ctypes.util
 import functools
+import json
+import os
 import platform
 import subprocess
 import sys
@@ -94,7 +96,37 @@ def _send(obj: int, selector: str, restype: Any, *args: int) -> Any:  # needs Ap
 
 def screens() -> list[tuple[Rect, Rect, float]]:
     """Each AppKit screen as (frame, visible frame, backing scale), in the window list's
-    coordinates. The visible frame excludes the menu bar and the Dock."""
+    coordinates. The visible frame excludes the menu bar and the Dock. Asked from a child: AppKit
+    in this process makes macOS hold it as an application, which the window server then pings,
+    and a server with no event loop shows as not responding."""
+    try:
+        out = subprocess.run([sys.executable, "-c", SCREENS_CHILD], capture_output=True,
+                             text=True, env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)})
+        return [(tuple(f), tuple(v), float(k)) for f, v, k in json.loads(out.stdout)]
+    except (OSError, ValueError, TypeError):
+        return []          # as AppKit with no screen class: the displays keep no usable area
+
+
+#: The displays' bounds the last `screens` answered for, and its answer.
+_SCREENS_READ: dict[tuple[Rect, ...], list[tuple[Rect, Rect, float]]] = {}
+
+
+def screens_for(found: list[Display]) -> list[tuple[Rect, Rect, float]]:
+    """`screens`, asked again only when the displays' bounds moved: each ask is a child, and the
+    waits read the displays every poll."""
+    key = tuple(d.bounds for d in found)
+    if key not in _SCREENS_READ:
+        _SCREENS_READ.clear()
+        _SCREENS_READ[key] = screens()
+    return _SCREENS_READ[key]
+
+
+SCREENS_CHILD = ("import json; from scry_core import window_host; "
+                 "print(json.dumps(window_host.screens_here()))")
+
+
+def screens_here() -> list[tuple[Rect, Rect, float]]:
+    """`screens`, asked in this process."""
     ctypes.CDLL(ctypes.util.find_library("AppKit"))          # registers NSScreen
     listed = _send(_class("NSScreen"), "screens", ctypes.c_void_p)
     count = _send(listed, "count", ctypes.c_ulong)
@@ -180,7 +212,7 @@ class MacHost:
         main = cg.CGMainDisplayID()
         order = sorted(ids[:count.value], key=lambda i: i != main)          # the main one first
         found = [Display(n, _rounded(cg.CGDisplayBounds(i))) for n, i in enumerate(order)]
-        return with_usable(found, screens()) if found else found
+        return with_usable(found, screens_for(found)) if found else found
 
     def windows(self) -> list[Seen]:
         return seen_from(focus_watch.windows())
