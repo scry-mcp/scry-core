@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.102.0
 
 - `scry_core.window_host`: a server that places a window on macOS reads the screens from a
   one-shot child, so macOS no longer holds the server as an application, which Activity Monitor
