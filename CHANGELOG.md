@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.101.0
 
 - `scry_core.demo`: a demo's committed `screen.png` matches a run's capture when the pixels
   match, whatever bytes the host's zlib compressed them into, and a normalised transcript
