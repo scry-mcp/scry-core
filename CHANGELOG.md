@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.100.0
 
 - `scry_core.stop_wait`: a screen wait judged at a declared breakpoint or watch, the same on
   both servers. The arguments (`on_breakpoint` or `on_watch`, never with `every`, and a
