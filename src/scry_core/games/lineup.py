@@ -5,9 +5,10 @@ them through its build's map: the high scores by symbol, a coin and the credits 
 started, its level, then a move, a colour and a shot read back off `Player1`, the stage's music
 held to the platform's recording, and a picture of the board.
 
-Navigation is by symbol where the ports differ in pace: the PC port is past its stage title before
-the key that started it is released. The one map signs palette indices: the arcade's 5-bit palette
-and the VGA's 6-bit DAC show the same index in different colours. `insert` is listed before
+Every arrival is the game's own code, never a time, because the ports differ in pace: a routine
+by symbol, or a screen judged at the frame after the game's tick. The one map signs palette
+indices: the arcade's 5-bit palette and the VGA's 6-bit DAC show the same index in different
+colours. `insert` is listed before
 `hiscores`: it is the high-score table with the coin's banner over it, so it is tried first.
 """
 
@@ -20,7 +21,6 @@ from scry_core.game_demo import (
     WAIT_S,
     Binding,
     arrived,
-    elapsed,
     found,
     map_load,
     sound,
@@ -32,6 +32,10 @@ from scry_core.game_demo import (
 ACTIONS = ("COIN", "START", "RIGHT", "FIRE1", "UP")
 #: Run on every tick of the game's 50 Hz interrupt, the attract included.
 CONTROL = "Check_Money25"
+#: Its neighbour on the same tick, where a screen is judged: `CONTROL` stays free for `run_to`.
+TICK = "Check_Money100"
+#: Called once a game frame, after the players' moves are taken (`Main_Prog`).
+MOVES_TAKEN = "Gest_Scores"
 #: A coin in the slot the game reads as 100 points is three credits (`Check_Money100`).
 CREDITS_PER_COIN = 3
 #: `Player`'s first words, as the source declares them.
@@ -56,8 +60,27 @@ def said(what: str) -> Callable[[Reply, Run], str]:
     return lambda reply, run: what
 
 
-def wait(name: str, milliseconds: int, what: str) -> Step:
-    return Step(name, "run_for", {"milliseconds": milliseconds, "seconds": WAIT_S}, elapsed(what))
+def shown(name: str, screen: str, what: str, condition: str = "") -> list[Step]:
+    """Wait until the map names `screen`, judged only after the game's tick."""
+    def check(reply: Reply, run: Run) -> str:
+        expect(reply["verdict"] == "TARGET", f"screen_wait {screen}: verdict {reply['verdict']}")
+        return what
+    return [Step(f"{name}: tick", "breakpoint_at", {"ref": TICK}, said(f"a stop on {TICK}")),
+            Step(name, "screen_wait", {"screen": screen, "on_breakpoint": TICK,
+                                       **({"condition": condition} if condition else {}),
+                                       "seconds": WAIT_S}, check,
+                 volatile={"waited_s": "wall-clock time the wait took"}),
+            Step(f"{name}: untick", "declaration_clear", {"kind": "breakpoint", "all": True},
+                 said("the tick's stop cleared"))]
+
+
+def taken(name: str, what: str) -> Step:
+    """Run to where the frame after an input has taken the moves."""
+    def check(reply: Reply, run: Run) -> str:
+        expect(reply["verdict"] == "TARGET", f"run_to {MOVES_TAKEN}: verdict {reply['verdict']}")
+        return what
+    return Step(name, "run_to", {"ref": MOVES_TAKEN, "control": CONTROL, "seconds": WAIT_S},
+                check)
 
 
 def steps(binding: Binding) -> list[Step]:
@@ -73,12 +96,12 @@ def steps(binding: Binding) -> list[Step]:
                         "and runs the machine until that routine begins. `control` is a place "
                         "known to run, and the reply counts its hits meanwhile, so a run that "
                         "missed its target says whether the machine was running at all.")),
-        wait("drawn", 1500, "the table drawn"),
+        *shown("drawn", "hiscores", "the table drawn"),
         Step("is hiscores", "screen_map_find", {}, found("hiscores")),
         Step("no credits", "read_memory", {"ref": "Credits", "length": 2},
              word_is("Credits", 0)),
         pressed["COIN"],
-        wait("counted", 1000, "the coin counted"),
+        *shown("counted", "insert", "the coin counted"),
         Step("is insert", "screen_map_find", {}, found("insert")),
         Step("credits", "read_memory", {"ref": "Credits", "length": 2},
              word_is("Credits", CREDITS_PER_COIN),
@@ -89,24 +112,25 @@ def steps(binding: Binding) -> list[Step]:
         pressed["START"],
         Step("to the level", "run_to", {"ref": "Level_Write", "control": CONTROL,
                                         "seconds": WAIT_S}, arrived("Level_Write")),
-        wait("level shown", 200, "LEVEL 1 written"),
+        *shown("level shown", "level", "LEVEL 1 written"),
         Step("is level", "screen_map_find", {}, found("level")),
         Step("one spent", "read_memory", {"ref": "Credits", "length": 2},
              word_is("Credits", CREDITS_PER_COIN - 1)),
         Step("first stage", "read_memory", {"ref": "Stage_Act", "length": 2},
              word_is("Stage_Act", 0)),
-        wait("play", 3000, "the board filled"),
+        *shown("play", "play", "the board filled and the player in it",
+               f"d@Player1 == {START_COLUMN << 16 | PLAYER_ACTIVE:#x}"),
         Step("is play", "screen_map_find", {}, found("play")),
         player({"Status": PLAYER_ACTIVE, "Column": START_COLUMN, "Block": START_BLOCK},
                "in play"),
         pressed["RIGHT"],
-        wait("moved", 200, "the move taken"),
+        taken("moved", "the move taken"),
         player({"Column": START_COLUMN + 1}, "one column right"),
         pressed["FIRE1"],
-        wait("raised", 200, "the colour taken"),
+        taken("raised", "the colour taken"),
         player({"Block": START_BLOCK + 1}, "the next colour"),
         pressed["UP"],
-        wait("shot", 100, "the shot launched"),
+        taken("shot", "the shot launched"),
         player({"S_Column": START_COLUMN + 1, "S_Block": START_BLOCK + 1}, "a shot of it"),
         *epilogue(binding),
     ]

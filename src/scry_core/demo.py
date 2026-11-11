@@ -25,7 +25,8 @@ sentence on how the call does it, and commits the whole normalised run beside th
 
 Normalisation hides what differs between two honest runs and nothing else: `$HOME` as `~`, the
 repository root as `.`, the values of `VOLATILE` keys (and the demo's and step's own) in a reply
-as `<volatile>`, and of `host_args` keys in a call's arguments as `<host>`. Hiding is by key, so
+as `<volatile>`, a written picture's `bytes` and `sha256` (the pixels are the run's, the bytes
+the host zlib's), and of `host_args` keys in a call's arguments as `<host>`. Hiding is by key, so
 a reply echoing a host argument needs that key in `volatile` too. A value the demo shows is never
 hidden: if it differs between runs the demo is wrong. A step's summary is never searched for
 volatile values, so it quotes only what the demo shows.
@@ -50,7 +51,7 @@ from mcp.client import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult
 
-from scry_core import file_names, prose
+from scry_core import file_names, png, prose
 from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 BEGIN = "<!-- demo-transcript:begin -->"
@@ -269,6 +270,8 @@ class Normaliser:
         return self._value(value, self.host, HOST_MARK)
 
     def _value(self, value: Any, hidden: Mapping[str, str], mark: str) -> Any:
+        if isinstance(value, dict) and mark == VOLATILE_MARK and _picture(value):
+            hidden = {**hidden, **PICTURE_VOLATILE}
         if isinstance(value, dict):
             return {self.text(k): mark if k in hidden else self._value(v, hidden, mark)
                     for k, v in value.items()}
@@ -277,6 +280,17 @@ class Normaliser:
         if isinstance(value, str):
             return self.text(value)
         return value
+
+
+#: A written picture's size and digest: the pixels are the run's, the bytes the host zlib's.
+PICTURE_VOLATILE = {key: "the host's zlib compresses the same pixels into different bytes"
+                    for key in ("bytes", "sha256")}
+
+
+def _picture(value: Mapping[str, Any]) -> bool:
+    """Whether `value` is a written picture as a reply names it: a PNG path with its digest."""
+    path = value.get("path")
+    return isinstance(path, str) and path.lower().endswith(".png") and "sha256" in value
 
 
 def placeholder(root: Path) -> str:
@@ -714,10 +728,23 @@ def stale(demo: Demo, run_dir: Path) -> list[str]:
         found.append(f"the front door's {demo.name} flow: {drift}")
     if demo.readme is not None and demo.capture is not None:
         shot, committed = demo.capture(Run(dir=run_dir)), demo.readme.with_name("screen.png")
-        if not (shot.is_file() and committed.is_file()
-                and shot.read_bytes() == committed.read_bytes()):
+        if not same_picture(shot, committed):
             found.append(f"{demo.name}'s screen.png is not this run's capture")
     return found
+
+
+def same_picture(a: Path, b: Path) -> bool:
+    """Whether two files hold the same picture: the same bytes, or the same pixels, because each
+    host's zlib compresses one raster into different bytes."""
+    if not (a.is_file() and b.is_file()):
+        return False
+    x, y = a.read_bytes(), b.read_bytes()
+    if x == y:
+        return True
+    try:
+        return png.decode(x) == png.decode(y)
+    except png.NotAPicture:
+        return False
 
 
 def _no_readme(demo: Demo) -> Invalid:

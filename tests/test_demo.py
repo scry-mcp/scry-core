@@ -14,7 +14,7 @@ import pytest
 from mcp.client import Client
 
 from scry_core import demo as d
-from scry_core import verdict
+from scry_core import png, verdict
 from scry_core.verdict import EXIT_INVALID
 
 SERVER = Path(__file__).resolve().parent / "fixtures" / "demo" / "server.py"
@@ -648,6 +648,40 @@ def test_stale_names_each_way_a_demo_s_committed_files_depart_from_a_run(
     bare = d.Demo(**{**demo.__dict__, "readme": None, "front": None,
                      "steps": [d.Step("boot", "start", {}, _said("value"))]})
     assert d.stale(bare, run_dir) == []
+
+
+def test_stale_takes_a_picture_compressed_another_way_as_this_run_s_capture(
+        tmp_path: Path, log: Path) -> None:
+    demo = _shown_demo(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    assert demo.readme is not None and demo.capture is not None
+    committed = demo.readme.parent / "screen.png"
+    raster = png.Raster(4, 2, bytes([0, 1, 2, 3, 3, 2, 1, 0]), ((0, 0, 0), (9, 9, 9), (7, 0, 0),
+                                                               (0, 7, 0)))
+    usual = png.encode(raster)
+    demo.capture(d.Run(dir=tmp_path / "out")).write_bytes(usual)
+    level = png.ZLIB_LEVEL
+    try:
+        png.ZLIB_LEVEL = 0  # another host's zlib: the same pixels in other bytes
+        other = png.encode(raster)
+    finally:
+        png.ZLIB_LEVEL = level
+    assert other != usual
+    committed.write_bytes(other)
+    assert d.stale(demo, tmp_path / "out") == []
+    flipped = bytes([raster.pixels[0] ^ 1]) + raster.pixels[1:]
+    committed.write_bytes(png.encode(png.Raster(raster.width, raster.height, flipped,
+                                                raster.palette)))
+    assert d.stale(demo, tmp_path / "out") == ["x's screen.png is not this run's capture"]
+
+
+def test_a_picture_s_size_and_digest_are_hidden_and_other_bytes_are_not(tmp_path: Path) -> None:
+    norm = d.Normaliser(tmp_path, Path("/home/nobody-here"), {})
+    shown = norm.reply({"image": {"path": "/x/shot.png", "bytes": 10, "sha256": "ab"},
+                        "state": {"path": "/x/s.sav", "bytes": 10, "sha256": "ab"}})
+    assert shown["image"] == {"path": "/x/shot.png", "bytes": d.VOLATILE_MARK,
+                              "sha256": d.VOLATILE_MARK}
+    assert shown["state"] == {"path": "/x/s.sav", "bytes": 10, "sha256": "ab"}
 
 
 def test_a_mark_begins_a_path_and_its_text_is_taken_as_written(tmp_path: Path) -> None:

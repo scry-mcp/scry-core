@@ -2,6 +2,16 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.demo`: a demo's committed `screen.png` matches a run's capture when the pixels
+  match, whatever bytes the host's zlib compressed them into, and a normalised transcript
+  hides a written picture's `bytes` and `sha256` for the same reason.
+- `scry_core.games.lineup`: the script arrives by the game's code, never by time: each screen
+  is waited for at the frame after the game's tick (`Check_Money100`), with `Player1` in the
+  condition for the board, and each move is read once the frame that took it has run
+  (`Gest_Scores`).
+
 ## 0.100.0
 
 - `scry_core.stop_wait`: a screen wait judged at a declared breakpoint or watch, the same on
