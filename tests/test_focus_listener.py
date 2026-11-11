@@ -17,6 +17,10 @@ from scry_core import focus_listener as fl
 
 DEADLINE_S = 5.0
 LISTENING = "1000\tLISTENING\tiTerm2\t5"
+#: What a killed process returns: Windows has no signal to name.
+KILLED = 1 if sys.platform == "win32" else -9
+#: What opening a directory as a file raises: Windows answers that it may not.
+NOT_A_FILE = PermissionError if sys.platform == "win32" else IsADirectoryError
 
 
 def until(true: Callable[[], object], what: str) -> None:
@@ -156,7 +160,7 @@ def test_a_listener_that_never_says_it_listens_is_waited_for_and_then_left_unhea
         waited = time.monotonic() - began
         assert listener.heard.unheard(0, 1) == "the listener never said it was listening"
     assert waited >= 0.05
-    assert listener.returncode == -9
+    assert listener.returncode == KILLED
 
 
 def test_a_wait_that_is_interrupted_ends_the_listener_it_started(
@@ -174,7 +178,7 @@ def test_a_wait_that_is_interrupted_ends_the_listener_it_started(
 def test_a_record_that_cannot_be_opened_refuses_before_the_run(tmp_path: Path) -> None:
     listener = fl.Listener(tmp_path / "heard.tsv", fake_listener(LISTENING))
     listener.record.mkdir()
-    with pytest.raises(IsADirectoryError):
+    with pytest.raises(NOT_A_FILE):
         listener.__enter__()
     assert listener.returncode is None
 

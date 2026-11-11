@@ -14,7 +14,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from test_focus_listener import LISTENING, fake_listener, gated_listener, no_listener, until
+from test_focus_listener import (
+    LISTENING,
+    NOT_A_FILE,
+    fake_listener,
+    gated_listener,
+    no_listener,
+    until,
+)
 
 from scry_core import focus_listener as fl
 from scry_core import focus_watch as fw
@@ -338,7 +345,7 @@ def test_an_activation_record_that_cannot_be_opened_refuses_before_the_run(
         tmp_path: Path) -> None:
     watch = _watching(tmp_path, fake_listener(LISTENING))
     watch.activations_path.mkdir()
-    with pytest.raises(IsADirectoryError):
+    with pytest.raises(NOT_A_FILE):
         watch.__enter__()
     assert watch._out.closed and watch.samples == []
 

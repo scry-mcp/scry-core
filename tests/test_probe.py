@@ -308,7 +308,8 @@ def _capture(run_dir: Path, ids: str, capsys: pytest.CaptureFixture[str]) -> tup
 
 
 def _written(probe_env: Path, tid: str) -> dict[str, Any]:
-    doc: dict[str, Any] = json.loads((probe_env / "captured" / "mame" / f"{tid}.json").read_text())
+    doc: dict[str, Any] = json.loads(
+        (probe_env / "captured" / "mame" / f"{tid.lower()}.json").read_text())
     return doc
 
 
