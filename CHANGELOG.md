@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.104.0
 
 - `scry_core.scry_readme`: one template for every repository's `.scry/README.md`, rendered by
   `python -m scry_core.scry_readme` from the folder and a small `.scry/about.json`
