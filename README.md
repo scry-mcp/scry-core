@@ -33,6 +33,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.prose` | how a count is said in a summary, a note or a refusal: the one plural rule, and the verb that agrees with it; and the one summary line every tool answers for a refusal |
 | `scry_core.declaration_file` | the file both servers keep their declarations in: read whole, a key's rows judged by shape, one key written atomically |
 | `scry_core.project_store` | the store a repository declares for its own program (`.scry/`): the root found by walking up, a `start` profile read against it (`scry-start/1`), each path resolved against the one base, and the caller's argument winning over the profile's |
+| `scry_core.scry_readme` | the one template of a repository's `.scry/README.md` and the command that renders it from the folder and its `about.json`, so a change to the template reaches every repository by a re-render (`docs/scry-readme.md`) |
 | `scry_core.promote` | the session's draft and the promotion that writes it into a repository's store: one candidate per (kind, name), complete only with what makes it replayable, a name the store already holds shown as its update's diff, every path expressed against `${root}`, `${home}`, `${state}` or `${env:NAME}`, and `.scry/` created only by an approved call |
 | `scry_core.promote_diff` | what an update changes in a store entry, as a promotion's review shows it |
 | `scry_core.promote_paths` | a path as a tracked store file may hold it: under the store's placeholders or refused |
@@ -121,6 +122,7 @@ uv run python -m scry_core.probe all --check --servers mcp_probe/servers.py --ta
 uv run python -m scry_core.live_bench check --bench <bench>
 uv run python -m scry_core.traffic <server> --servers mcp_probe/servers.py --transcript <jsonl>
 uv run python -m scry_core.hook
+uv run python -m scry_core.scry_readme [--check] [DIR]
 uv run python -m scry_core.window_cli {displays|words|launch|proof}
 uv run python -m scry_core.replay <document> [--binary PATH] [--rompath DIR] [--transcript PATH]
 uv run python -m scry_core.reference <module>:<attribute> [--examples JSONL ... [--mark PATH=TEXT ...]] [--write]
