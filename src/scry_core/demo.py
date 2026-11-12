@@ -2,9 +2,10 @@
 answer checked, and a transcript a README can carry without drifting from the server.
 
 A server repository declares a `Demo` in `demos/<name>/demo.py` and hands it to `main`
-(`--binary`, `--transcript`, `--update-readme`, plus `--cwd`, `--rompath` and `--shared` where
-the demo `offers` them). Options reach the step declared `options=True`, or only those a
-frozenset names; an option left out is absent, so the server's own default decides.
+(`--binary`, `--transcript`, `--update-readme`, plus `--cwd`, `--rompath`, `--shared` and
+`--display` where the demo `offers` them). Options reach the step declared `options=True`, or
+only those a frozenset names; an option left out is absent, so the server's own default
+decides.
 
 stdout is `OK <step>: <summary>` or `FAIL <step>: <why>` per step run, then
 `DEMO <name>: <n> steps, <k> OK` and the paths of the whole transcript and the NORMALISED one,
@@ -87,7 +88,7 @@ CLEANUP_TOOL = "close"
 CALL_TIMEOUT_S = 900
 
 #: The options a demo can offer beyond `--binary`, as its server's `start` spells them.
-OFFERABLE = frozenset({"cwd", "rompath", "shared"})
+OFFERABLE = frozenset({"cwd", "rompath", "shared", "display"})
 
 #: Reply keys whose values differ between two honest runs, each with the reason. A demo adds
 #: its own through `Demo.volatile`, and a step those that vary in it alone through
@@ -663,6 +664,9 @@ def _parser(demo: Demo) -> argparse.ArgumentParser:
     if "shared" in demo.offers:
         p.add_argument("--shared", action="store_true", default=None,
                        help="somebody watches: a big window at real speed")
+    if "display" in demo.offers:
+        p.add_argument("--display", type=int,
+                       help="the display the emulator's window opens on, 0 the main one")
     p.add_argument("--transcript", type=Path,
                    help="where the whole transcript goes; the run's other files go beside it")
     p.add_argument("--update-readme", action="store_true",
@@ -679,7 +683,8 @@ def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
                         / "transcript.md").resolve()
     given = {"binary": ns.binary, "cwd": getattr(ns, "cwd", None),
              "rompath": getattr(ns, "rompath", None),
-             "shared": getattr(ns, "shared", None)}
+             "shared": getattr(ns, "shared", None),
+             "display": getattr(ns, "display", None)}
     if empty := [k for k in ("binary", "cwd", "rompath") if given[k] == ""]:
         print(f"INVALID: --{empty[0]} names a path, and an empty one names nothing")
         return EXIT_INVALID

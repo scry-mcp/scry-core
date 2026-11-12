@@ -33,10 +33,16 @@ def _answer(body: dict[str, Any], *extra: Any) -> CallToolResult:
 
 
 @server.tool()
-def start(value: int = 7, binary: str = "") -> CallToolResult:
+def start(value: int = 7, binary: str = "", shared: bool = False,
+          display: int | None = None) -> CallToolResult:
     _held["value"] = value
-    return _answer({"status": "ok", "summary": "started", "pid": os.getpid(), "value": value,
-                    "binary": binary, "where": str(Path.cwd())})
+    body: dict[str, Any] = {"status": "ok", "summary": "started", "pid": os.getpid(),
+                            "value": value, "binary": binary, "where": str(Path.cwd())}
+    if shared:
+        body["shared"] = shared
+    if display is not None:
+        body["display"] = display
+    return _answer(body)
 
 
 @server.tool()

@@ -236,6 +236,18 @@ def test_offered_options_reach_the_options_step_only_when_given(
     assert '"cwd": "/c"' in _norm(tmp_path)
 
 
+def test_the_display_the_run_opens_on_reaches_the_options_step(tmp_path: Path,
+                                                               log: Path) -> None:
+    demo = _demo(tmp_path, offers=frozenset({"shared", "display"}),
+                 steps=[d.Step("boot", "start", {}, _said("value"), options=True)])
+    assert _run(demo, tmp_path, "--shared", "--display", "1") == verdict.EXIT_PASS
+    (call,) = [c for c in _calls(log) if c["summary"] == "started"]
+    assert (call["shared"], call["display"]) == (True, 1), call
+    assert _run(demo, tmp_path) == verdict.EXIT_PASS
+    call = [c for c in _calls(log) if c["summary"] == "started"][-1]
+    assert "display" not in call, "an option left out is absent"
+
+
 def test_a_step_takes_only_the_options_it_names(tmp_path: Path, log: Path) -> None:
     demo = _demo(tmp_path, offers=frozenset({"shared"}), reads=frozenset({"shared"}), steps=[
         d.Step("boot", "start", lambda run: {"value": 9 if run.options.get("shared") else 7},
