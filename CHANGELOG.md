@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.roster`: the `record` words say what a bound does when its release answers, so a
+  server that answers `ended: false` over a capture it could not turn off is not contradicted;
+  the reply sentence is derived from the field list rather than restated.
+
 ## 0.107.0
 
 - `scry_core.promote`: a `root` that reaches the store through `..` is refused as naming the store

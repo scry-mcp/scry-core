@@ -106,11 +106,11 @@ def test_the_shared_declaration_names_each_tool_in_one_family() -> None:
     assert {"Captures", "Lists", "Machine", "Names", "Screen"} <= families
 
 
-def test_the_record_family_declares_the_words_and_fields_both_servers_answer() -> None:
+def test_the_record_family_declares_the_words_and_its_reply_fields() -> None:
     assert roster.DOC_VALUES == {"RECORD_ARGS": roster.RECORD_ARGS,
                                  "RECORD_CUT": roster.RECORD_CUT,
                                  "RECORD_REPLY": roster.RECORD_REPLY}
     assert reply_schema.reply_sentence_names("Reply, once answered: " + roster.RECORD_REPLY) \
         == list(roster.RECORD_REPLY_FIELDS)
-    assert "`snapshot`" in roster.RECORD_ARGS, "the one frame's own tool, the reason for two"
+    assert "2 or more" in roster.RECORD_ARGS, "the count the contract fixes"
     assert "INVALID" in roster.RECORD_CUT, "a file still open is the refusal the text promises"
