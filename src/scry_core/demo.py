@@ -108,13 +108,14 @@ VOLATILE: Mapping[str, str] = {
 }
 
 #: What a recording reports of the machine it ran: it begins where the demo left the machine, and
-#: how many frames it got from there, the clock and cycles at both ends, the place it stopped and
-#: the file's size all follow that start.
+#: how many frames it got from there, the clock and cycles at both ends, the place it stopped with
+#: the survey of that stop, and the file's size all follow that start.
 RECORDING_TIMING: Mapping[str, str] = {
     key: "it follows where the recording began, which the host reached"
     for key in ("summary", "frame", "frame_before", "frame_after", "frame_begin", "frame_end",
                 "avi_frames", "bytes", "cycles", "emulated_before_s", "emulated_after_s", "polls",
-                "stop_seq", "pc", "regs", "instruction", "e9")}
+                "stop_seq", "pc", "cpu_mode", "regs", "instruction", "following", "watches",
+                "watch_hit", "regpoint_hit", "e9", "cause")}
 
 
 class StepFailed(Exception):
