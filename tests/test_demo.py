@@ -317,6 +317,9 @@ def test_a_loop_is_recorded_right_after_the_step_it_follows(
     normalised = _norm(tmp_path)
     assert "**4. `record`**" in normalised and "**5. `close`**" in normalised, normalised
     assert "./out/loop.avi" in normalised, "the loop's path was not the run's"
+    assert '"frame_before": "<volatile>"' in normalised, \
+        "where the recording began is the host's and must not be compared"
+    assert '"frames": 240' in normalised, "the frames asked are the demo's own"
 
 
 def test_update_readme_converts_the_loop_beside_the_capture(

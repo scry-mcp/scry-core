@@ -107,6 +107,15 @@ VOLATILE: Mapping[str, str] = {
     "elapsed_s": "wall-clock time a call took",
 }
 
+#: What a recording reports of the machine it ran: it begins where the demo left the machine, and
+#: how many frames it got from there, the clock and cycles at both ends, the place it stopped and
+#: the file's size all follow that start.
+RECORDING_TIMING: Mapping[str, str] = {
+    key: "it follows where the recording began, which the host reached"
+    for key in ("summary", "frame", "frame_before", "frame_after", "frame_begin", "frame_end",
+                "avi_frames", "bytes", "cycles", "emulated_before_s", "emulated_after_s", "polls",
+                "stop_seq", "pc", "regs", "instruction", "e9")}
+
 
 class StepFailed(Exception):
     """A step's answer was not the one its check asked for: the message says why."""
@@ -619,15 +628,15 @@ def _loop_step(loop: Loop) -> Step:
         if reply.get("began") is not True or reply.get("ended") is not True:
             raise StepFailed(f"the recording at {path} did not both begin and end: the run read "
                              "no file the reply can answer for")
-        frames = reply.get("avi_frames")
-        if not isinstance(frames, int):
+        if not isinstance(reply.get("avi_frames"), int):
             raise StepFailed(f"the reply names no `avi_frames`, so what {path} holds is unknown")
         if not Path(path).is_file():
             raise StepFailed(f"{path} was not written by this call")
-        return f"{frames} frames in {path}"
+        return f"recording {loop.frames} frames in {path}"
 
     return Step("loop", "record",
-                lambda run: {"frames": loop.frames, "dest": loop_avi(run.dir)}, check)
+                lambda run: {"frames": loop.frames, "dest": loop_avi(run.dir)}, check,
+                volatile=RECORDING_TIMING)
 
 
 def _with_loop(demo: Demo) -> Demo:
