@@ -72,6 +72,22 @@ def answers_while_running(running_ok: Iterable[str], not_steps: Iterable[str],
             *sorted(set(not_steps) - set(kept_out))]
 
 
+#: What both servers' `record` answers, declared once: the arguments the contract fixes, the
+#: bound's own end, and the reply fields a caller may read, each model adding its own (`view`,
+#: `kind`). A server says these words in its description and its tests hold its model to them.
+RECORD_ARGS = ("`dest`: an absolute `.avi` path not there yet; empty lands in the session's "
+               "scratch, and the reply names it either way. `frames` is 2 or more, because one "
+               "frame is a still and a still is `snapshot`. `seconds` bounds the wait for the "
+               "recording. The AVI is read before its path is given.")
+RECORD_CUT = ("A run cut at that bound is stopped and its file finalised before the reply, "
+              "which says `ended: true`; a file that still reads open is INVALID.")
+RECORD_REPLY = "`verdict`, `frames`, `path`, `began`, `ended`, `bytes`, `avi_frames`"
+RECORD_REPLY_FIELDS: tuple[str, ...] = ("verdict", "frames", "path", "began", "ended", "bytes",
+                                        "avi_frames")
+DOC_VALUES: Mapping[str, str] = {"RECORD_ARGS": RECORD_ARGS, "RECORD_CUT": RECORD_CUT,
+                                 "RECORD_REPLY": RECORD_REPLY}
+
+
 #: The family of every tool both servers have, declared once: a model reading the two rosters
 #: sees one surface, and a server that files a shared name elsewhere is refused by `misfiled`.
 SHARED_FAMILIES: Mapping[str, str] = {

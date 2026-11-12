@@ -10,6 +10,8 @@ What a server author notices. A client's view of each server is in that server's
   is not counted as a comment.
 - `scry_core.scry_readme`: the page's introduction no longer names the two servers, so a server
   whose profile forbids naming its sibling renders a page that holds.
+- `scry_core.roster`: the `record` reply family and the words both servers' descriptions use
+  for it, so the video contract is written once.
 
 ## 0.106.0
 
