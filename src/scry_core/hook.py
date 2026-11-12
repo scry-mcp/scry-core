@@ -12,9 +12,10 @@ PROBE: `python -m scry_core.probe all --check`, which asks no model, where the r
 `mcp_probe/servers.py`; one that holds none declares no server and the step says so. A 1 is a
 refusal only when it prints `REFUSED ...`, a 0 a pass only when it covered a server (`OK ...`).
 
-PROSE: per tracked or untracked `*.py`, symlinks aside, the bytes of its comments and docstrings
-over its bytes, against a quarter, or a sixth under `tests/`. A registered tool's docstring is
-its description, held by the client's cap, so it is not counted. `[tool.scry-prose] exempt =
+PROSE: per tracked or untracked `*.py` and `*.lua`, symlinks aside, the bytes of its comments
+(and a Python file's docstrings; never a Lua string or statement-slot line) over its bytes,
+against a quarter, or a sixth under `tests/`. A registered tool's docstring is its description,
+held by the client's cap, so it is not counted. `[tool.scry-prose] exempt =
 { "<path>" = "<reason>" }` in `pyproject.toml` is for generated or vendored files only.
 
 WIN32: `mypy --strict --platform win32 .` in the repository's own environment, so a POSIX-only
@@ -228,6 +229,45 @@ def _exemptions(root: Path) -> dict[str, str]:
     return table
 
 
+_LUA_LONG = re.compile(rb"\[(=*)\[")
+_LUA_SLOT = re.compile(rb"[ \t]*--- __SCRY_[a-z0-9_]+__[ \t]*\r?")
+
+
+def lua_prose_bytes(source: bytes) -> int:
+    """The bytes of `source`'s Lua comments, line and block; a string's text and a statement-slot
+    line (`--- __SCRY_<name>__`, code to its loader) are not prose."""
+    source = source.removeprefix(codecs.BOM_UTF8)
+    n, i, size = 0, 0, len(source)
+    while i < size:
+        c = source[i:i + 1]
+        if c in (b'"', b"'"):
+            i += 1
+            while i < size and source[i:i + 1] != c and source[i:i + 1] != b"\n":
+                escaped = source[i:i + 1] == b"\\"
+                i += 1 + escaped + (escaped and source.startswith(b"\r\n", i + 1))
+            i += 1
+        elif (long := _LUA_LONG.match(source, i)) is not None:
+            end = source.find(b"]" + long.group(1) + b"]", long.end())
+            i = size if end < 0 else end + len(long.group(1)) + 2
+        elif source.startswith(b"--", i):
+            block = _LUA_LONG.match(source, i + 2)
+            if block is not None:
+                end = source.find(b"]" + block.group(1) + b"]", block.end())
+                stop = size if end < 0 else end + len(block.group(1)) + 2
+            else:
+                stop = source.find(b"\n", i)
+                stop = size if stop < 0 else stop - source.startswith(b"\r", stop - 1)
+                start = source.rfind(b"\n", 0, i) + 1
+                if _LUA_SLOT.fullmatch(source, start, stop):
+                    i = stop
+                    continue
+            n += stop - i
+            i = stop
+        else:
+            i += 1
+    return n
+
+
 def _git(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[bytes]:
     try:
         return subprocess.run(["git", *args], capture_output=True, check=False, cwd=cwd)
@@ -235,7 +275,7 @@ def _git(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProces
         raise Invalid(f"git could not be run: {e}") from None
 
 
-def _python_files(root: Path) -> list[str]:
+def _source_files(root: Path) -> list[str]:
     listed: set[str] = set()
     for extra in ([], ["--others", "--exclude-standard"]):
         done = _git(["ls-files", "-z", *extra], root)
@@ -243,20 +283,21 @@ def _python_files(root: Path) -> list[str]:
             raise Invalid(f"git ls-files failed (rc={done.returncode}): "
                           f"{done.stderr.decode(errors='replace').strip()}")
         listed.update(done.stdout.decode(errors="surrogateescape").split("\0"))
-    return sorted(rel for rel in listed if rel.endswith(".py") and not (root / rel).is_symlink()
-                  and (root / rel).is_file())
+    return sorted(rel for rel in listed if rel.endswith((".py", ".lua"))
+                  and not (root / rel).is_symlink() and (root / rel).is_file())
 
 
 def prose(root: Path) -> str:
     """The prose check's line for a tree within its ceilings; `Refused` naming each file over."""
     exempt = _exemptions(root)
     judged, over = 0, []
-    for rel in _python_files(root):
+    for rel in _source_files(root):
         if rel in exempt:
             continue
         source = (root / rel).read_bytes()
         try:
-            share = prose_bytes(source) / len(source) if source else 0.0
+            count = lua_prose_bytes if rel.endswith(".lua") else prose_bytes
+            share = count(source) / len(source) if source else 0.0
         except (SyntaxError, ValueError, tokenize.TokenError) as e:
             raise Invalid(f"{rel} could not be read: {type(e).__name__}: {e}") from None
         ceiling = PROSE_CEILING_TESTS if rel.startswith("tests/") else PROSE_CEILING

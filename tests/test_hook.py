@@ -469,6 +469,41 @@ def test_the_real_mypy_refuses_a_posix_only_call_and_passes_its_guarded_twin(
         in said, said
 
 
+LUA_FORTY = "-" * 40 + "\n" + "x = " + "1" * 54 + "\n"
+
+
+def test_a_lua_file_over_a_quarter_blocks_like_a_python_one(
+        repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _plant(repo, "lua/over.lua", LUA_FORTY)
+    rc, said = _hook(capsys)
+    assert rc == verdict.EXIT_FAIL
+    assert "lua/over.lua: prose 40.0% of 100 bytes, ceiling 25.0%" in said, said
+    _plant(repo, "lua/over.lua", "-" * 25 + "\n" + "x = " + "1" * 69 + "\n")
+    rc, said = _hook(capsys)
+    assert rc == verdict.EXIT_PASS and "prose: 2 files within the ceiling" in said, said
+
+
+def test_lua_prose_is_its_comments_and_never_a_string_or_a_slot() -> None:
+    source = ('-- why\nlocal s = "-- not a comment"\nlocal t = [[\n-- nor this\n]]\n'
+              'local u = 1 -- after code\n--- __SCRY_body__\n--[[ a\nblock ]] local v = 2\n'
+              "local w = '--' -- tail\n")
+    expected = [b"-- why", b"-- after code", b"--[[ a\nblock ]]", b"-- tail"]
+    assert hook.lua_prose_bytes(source.encode()) == sum(map(len, expected))
+
+
+@pytest.mark.parametrize(("source", "expected"), [
+    (b"--- __SCRY_body__\r\nx = 1 -- c\r\n", [b"-- c"]),
+    (b"\xef\xbb\xbf--- __SCRY_a__\nx = 1\n", []),
+    (b"  --- __SCRY_a__  \nx = 1\n", []),
+    (b'x = "a\\" -- no"\n-- c\n', [b"-- c"]),
+    (b'x = "a\\\r\nb -- no"\r\n', []),
+    (b"--[==[ a ]] b ]==] x = [=[ -- no ]] ]=]\n", [b"--[==[ a ]] b ]==]"]),
+    (b"--[ x\n---[[ y\n", [b"--[ x", b"---[[ y"]),
+])
+def test_lua_prose_counts_each_line_form_alike(source: bytes, expected: list[bytes]) -> None:
+    assert hook.lua_prose_bytes(source) == sum(map(len, expected))
+
+
 def test_this_repository_is_within_its_prose_ceiling() -> None:
     """scry-core has no pre-commit of its own (it holds no server), so its suite runs the check."""
     assert hook.prose(Path(__file__).resolve().parent.parent).startswith("prose: ")
