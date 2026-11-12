@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.109.2
+
+- `scry_core.demo`: the loop step also reports the stop that ended the recording (its
+  cause, the place and the survey around it) as volatile, so a program that polls a
+  retrace gives the same transcript twice.
+
 ## 0.109.1
 
 - `scry_core.demo`: a demo's loop reports what the recording's own start decides (the
