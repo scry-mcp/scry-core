@@ -71,7 +71,7 @@ def record(frames: int, dest: str) -> CallToolResult:
     avi = (Path(__file__).parent / "screen.avi").read_bytes()
     path.write_bytes(avi)
     return _answer({"status": "ok", "summary": f"record: {frames} frames",
-                    "path": str(path), "frames": frames, "bytes": len(avi),
+                    "verdict": "ELAPSED", "path": str(path), "frames": frames, "bytes": len(avi),
                     "avi_frames": 2, "began": True, "ended": True, "frame_before": 7})
 
 

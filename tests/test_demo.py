@@ -322,6 +322,18 @@ def test_a_loop_is_recorded_right_after_the_step_it_follows(
     assert '"frames": 240' in normalised, "the frames asked are the demo's own"
 
 
+def test_a_loop_a_bound_or_a_stop_cut_is_a_failed_step(tmp_path: Path, log: Path) -> None:
+    demo = _loop_demo(tmp_path)
+    assert _run(demo, tmp_path) == verdict.EXIT_PASS
+    served = d._loop_step(d.Loop("shot"))
+    (tmp_path / "out" / "loop.avi").write_bytes(b"the recording")
+    for cut in ("TIMEOUT", "OTHER_STOP"):
+        reply = d.Reply({"status": "ok", "verdict": cut, "path": str(tmp_path / "out" / "loop.avi"),
+                         "avi_frames": 1, "began": True, "ended": True})
+        with pytest.raises(d.StepFailed, match=f"ended '{cut}'"):
+            served.check(reply, d.Run(dir=tmp_path))
+
+
 def test_update_readme_converts_the_loop_beside_the_capture(
         tmp_path: Path, log: Path) -> None:
     demo = _loop_demo(tmp_path)
@@ -412,7 +424,8 @@ def test_the_loop_s_check_judges_the_reply_and_not_only_a_file_that_happens_to_b
         check(d.Reply({"status": "ok"}), run)
     with pytest.raises(d.StepFailed, match="did not both begin and end"):
         check(d.Reply({"status": "ok", "began": False, "ended": False, "path": str(stale)}), run)
-    ended = {"status": "ok", "began": True, "ended": True, "path": str(stale)}
+    ended = {"status": "ok", "began": True, "ended": True, "verdict": "ELAPSED",
+             "path": str(stale)}
     with pytest.raises(d.StepFailed, match="names no `avi_frames`"):
         check(d.Reply(ended), run)
     stale.unlink()

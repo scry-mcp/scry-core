@@ -115,7 +115,7 @@ RECORDING_TIMING: Mapping[str, str] = {
     for key in ("summary", "frame", "frame_before", "frame_after", "frame_begin", "frame_end",
                 "avi_frames", "bytes", "cycles", "emulated_before_s", "emulated_after_s", "polls",
                 "stop_seq", "pc", "cpu_mode", "regs", "instruction", "following", "watches",
-                "watch_hit", "regpoint_hit", "e9", "cause")}
+                "watch_hit", "regpoint_hit", "e9", "cause", "note")}
 
 
 class StepFailed(Exception):
@@ -631,6 +631,9 @@ def _loop_step(loop: Loop) -> Step:
                              "no file the reply can answer for")
         if not isinstance(reply.get("avi_frames"), int):
             raise StepFailed(f"the reply names no `avi_frames`, so what {path} holds is unknown")
+        if reply.get("verdict") != "ELAPSED":
+            raise StepFailed(f"the recording at {path} ended {reply.get('verdict')!r}: a bound or "
+                             "a stop cut it, so the file is not the loop the demo asked for")
         if not Path(path).is_file():
             raise StepFailed(f"{path} was not written by this call")
         return f"recording {loop.frames} frames in {path}"
