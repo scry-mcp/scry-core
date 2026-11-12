@@ -50,7 +50,8 @@ def test_the_page_splits_each_tool_into_shared_and_one_sided_fields() -> None:
                      {"run_to": ["pc", "cause"], "stop": ["pc"], "screen_wait": ["pc"]})
     assert "| `run_to` | `pc` | `cpu` | `cause` |" in page
     assert "| `stop` | `pc` | - | - |" in page
-    assert "Tools only DOSBox-X has: `screen_wait`." in page and "Tools only MAME has: -." in page
+    assert "On this page only for DOSBox-X: `screen_wait`." in page
+    assert "On this page only for MAME: -." in page
 
 
 def test_write_then_check_agree_and_a_changed_page_is_drift(

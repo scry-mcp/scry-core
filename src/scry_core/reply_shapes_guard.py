@@ -4,7 +4,7 @@ declared model (`scry_core.reply_schema`). The `reply_shapes` pytest plugin runs
 A suite declares the modules to wrap:
 
     [tool.pytest.ini_options]
-    reply_shapes_anchors = ["scry_core.reply_contract", "server"]
+    reply_shapes_anchors = ["scry_core.reply_contract", "scry_core.boundary"]
 
 No declaration is a usage error; a run importing none of them says it judged nothing. Test-time
 only: in production a new field called `truncated` would crash a caller.
@@ -111,7 +111,7 @@ def declared(config: pytest.Config) -> list[str]:
             f"the shape guard (scry_core.reply_shapes) has no `{ANCHORS_INI}` to wrap: declare "
             "the modules whose replies it judges in [tool.pytest.ini_options], or this run "
             "would report green having judged nothing. For example:\n"
-            f'    {ANCHORS_INI} = ["scry_core.reply_contract", "server"]')
+            f'    {ANCHORS_INI} = ["scry_core.reply_contract", "scry_core.boundary"]')
     if lost := [name for name in names if not _findable(name)]:
         raise pytest.UsageError(
             f"`{ANCHORS_INI}` names {', '.join(lost)}, which no import can find: a misspelt "

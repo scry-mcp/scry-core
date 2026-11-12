@@ -65,8 +65,9 @@ def render(mame: dict[str, list[str]], dosbox_x: dict[str, list[str]]) -> str:
         left, right = set(mame[tool]), set(dosbox_x[tool])
         lines.append(f"| `{tool}` | {_cell(sorted(left & right))} | {_cell(sorted(left - right))} "
                      f"| {_cell(sorted(right - left))} |")
-    lines += ["", f"Tools only MAME has: {_cell(sorted(mame.keys() - dosbox_x.keys()))}.",
-              f"Tools only DOSBox-X has: {_cell(sorted(dosbox_x.keys() - mame.keys()))}.", ""]
+    lines += ["", f"On this page only for MAME: {_cell(sorted(mame.keys() - dosbox_x.keys()))}.",
+              f"On this page only for DOSBox-X: {_cell(sorted(dosbox_x.keys() - mame.keys()))}.",
+              ""]
     return "\n".join(lines)
 
 

@@ -15,9 +15,10 @@ Every watched `start` and the `window` tool call these of `scry_core.window`:
 - `prove(pid, asked)` once the emulator is up: the window as the host lists it, as the `window`
   block of the `start` reply. A refusal leaves the session live, so `close` still acts.
 - `answer(pid, asked, front=, launched_behind=)` is the body of the `window` tool once the server
-  has judged its session (no session, an emulator that has died). `answer` itself refuses only a
-  session started without a window (`no_channel`), so the other refusals come first.
-- `judge_background(background, shared)` and `launch_environment(base, background)` decide and
+  has judged its session (no session, an emulator that has died). `answer` itself refuses a
+  session started without a window (`no_channel`) and a window that is not listed or not visible,
+  so the session's own refusals come first.
+- `judge_background(background, watched)` and `launch_environment(base, background)` decide and
   mark a launch behind. `launched_behind` of `answer` is that decision, with no default, so a
   server that forgets it fails at the call.
 

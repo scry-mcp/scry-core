@@ -76,7 +76,8 @@ def test_a_suite_that_declares_no_anchor_is_refused_before_it_runs(
     result = pytester.runpytest("-p", "no:cacheprovider")
     assert result.ret == pytest.ExitCode.USAGE_ERROR
     result.stderr.fnmatch_lines(["*has no `reply_shapes_anchors` to wrap*"])
-    assert 'reply_shapes_anchors = ["scry_core.reply_contract", "server"]' in result.stderr.str()
+    assert 'reply_shapes_anchors = ["scry_core.reply_contract", "scry_core.boundary"]' in (
+        result.stderr.str())
 
 
 def test_a_declared_anchor_no_import_can_find_is_refused_before_it_runs(

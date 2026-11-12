@@ -4,5 +4,13 @@ A file a server writes is named in lowercase ASCII letters and digits, in words 
 hyphens, then one dot and an extension of lowercase letters and digits (`snapshot-3.png`,
 `f000012.png`): `^[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+$`. A value that comes from outside (an
 argument, a profile, a system's name, the last component of a path the caller names) is
-normalised into that rule by `scry_core.file_names`, or refused when nothing of it fits, and the
+normalised into that rule by `scry_core.file_names`, or refused when nothing of it fits or what
+fits is longer than its `WORD_MAX`, and the
 server's reply names the file that was written.
+
+The data a repository tracks for its servers (its fixtures, demos and `.scry/` files) follows the
+same rule, with two exceptions. A file a DOS program runs, reads or writes by its own name keeps
+DOS's 8.3 form in capitals (`MINES.COM`, `BUILD.BAT`, `MAPDEMO.MAP`):
+`^[A-Z0-9_]{1,8}\.[A-Z0-9]{1,3}$`. And a name a convention fixes keeps it: `README.md`,
+`CHANGELOG.md`, `CONTRIBUTING.md`, `REFERENCE.md`, `TRANSCRIPT.md`, `LICENSE`, a dotfile. Code is
+named by its language (a Python module takes `_`).

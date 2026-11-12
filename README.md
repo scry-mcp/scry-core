@@ -113,8 +113,8 @@ The probe, the bench and traffic take what they act on as options, so none reads
 not pointed at. The probe's paths below, and traffic's servers file, are a server repository's
 own; the bench is the directory a server's live tier resolved, and its manifest is
 `<bench>/bench.json`. The hook takes none: it runs from inside a repository that tracks
-`.jscpd-baseline.json`, has `jscpd` on the path and keeps its probe at `mcp_probe/servers.py` and
-`mcp_probe/tasks/`. The reference runs from a server repository too, where `<module>` imports:
+`.jscpd-baseline.json`, has `jscpd` on the path, and checks the probe at `mcp_probe/servers.py` and `mcp_probe/tasks/`
+when the repository keeps one. The reference runs from a server repository too, where `<module>` imports:
 
 ```sh
 uv run python -m scry_core.probe all --check --servers mcp_probe/servers.py --tasks mcp_probe/tasks
@@ -137,7 +137,7 @@ declares none is refused:
 
 ```toml
 [tool.pytest.ini_options]
-reply_shapes_anchors = ["scry_core.reply_contract", "server"]
+reply_shapes_anchors = ["scry_core.reply_contract", "scry_core.boundary"]
 ```
 
 ## Focus watch
@@ -226,13 +226,13 @@ UI labels an entry by its key, and a server given on the command line is labelle
     "Scry - MAME MCP": {
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/scry-mame", "python", "server.py"],
+      "args": ["run", "--directory", "/path/to/scry-mame", "scry-mame"],
       "env": {"MAME_BINARY": "/path/to/mame"}
     },
     "Scry - DOSBox-X MCP": {
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/scry-dosbox-x", "python", "dosbox_x_server.py"]
+      "args": ["run", "--directory", "/path/to/scry-dosbox-x", "scry-dosbox-x"]
     }
   }
 }
