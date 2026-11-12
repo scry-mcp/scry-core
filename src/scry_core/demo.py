@@ -13,11 +13,19 @@ which is what a README carries and `readme_drift` compares.
 Exit codes: 0 every step OK; 1 a step failed (later ones are not run); 2 a usage error; 3
 INVALID, nothing was demonstrated (zero steps, options nothing takes, a `precheck` reason, a
 server that did not start, a check raising `Invalid`, README markers not exactly once, a capture
-the run did not write). `execute` is the run without its command line. The run ends with the
-cleanup call unless its last step made it, so no emulator outlives it.
+the run did not write, a loop it wrote or could not convert). `execute` is the run without its
+command line. The run ends with the cleanup call unless its last step made it, so no emulator
+outlives it.
 
 `--update-readme` rewrites the README block, the capture and the `Demo.front` flow only after a
 run whose every step was OK.
+
+A demo that declares a `Loop` has its video recorded by the runner: right after the step the
+loop names, one `record` call writes `loop.avi` into the run's directory and its reply joins the
+transcript as a call of its own. `--update-readme` converts it to `loop.mp4` beside the capture,
+and `stale` asks only that the file is committed, never that its bytes are the run's: a
+recording is not byte-stable. The conversion is refused past the loop's budget, naming the file
+and its bytes.
 
 A demo whose steps carry a `highlight` puts only those steps in the README block, each with its
 sentence on how the call does it, and commits the whole normalised run beside the README as
@@ -41,9 +49,10 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -51,13 +60,21 @@ from mcp.client import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult
 
-from scry_core import file_names, png, prose
+from scry_core import file_names, fresh, png, prose
 from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 BEGIN = "<!-- demo-transcript:begin -->"
 END = "<!-- demo-transcript:end -->"
 FULL_NAME = "TRANSCRIPT.md"
 VOLATILE_MARK = "<volatile>"
+
+#: Frames a demo records for its loop, and the seconds of them its `loop.mp4` carries.
+LOOP_FRAMES = 240
+LOOP_SECONDS = 3
+#: The most a converted loop may weigh: every demo page loads its own.
+LOOP_BUDGET_BYTES = 1_500_000
+LOOP_AVI = "loop.avi"
+LOOP_MP4 = "loop.mp4"
 
 ABRIDGED_ITEMS = 6
 ABRIDGED_CHARS = 240
@@ -155,11 +172,21 @@ class Step:
 
 
 @dataclass(frozen=True)
+class Loop:
+    """A demo's video: the `frames` recorded after the step named `after` completes, converted to
+    the demo's `loop.mp4` when the README is rewritten."""
+
+    after: str
+    frames: int = LOOP_FRAMES
+
+
+@dataclass(frozen=True)
 class Demo:
     """A demo as declared. `offers` names the `OFFERABLE` options it accepts,
     `reads` those it reads from `run.options` itself. `capture` is the image one step writes in
     `run.dir`. `precheck` answers why the demo cannot run, or empty. `host_args` maps argument
-    keys that are the host's own to their reasons. `verdict` words the last line."""
+    keys that are the host's own to their reasons. `verdict` words the last line. `loop` is the
+    recording the runner makes on its own, right after the step it follows."""
 
     name: str
     root: Path
@@ -174,6 +201,7 @@ class Demo:
     reads: frozenset[str] = frozenset()
     verdict: Callable[[int, int], str] | None = None
     front: Path | None = None
+    loop: Loop | None = None
 
 
 def flow_begin(name: str) -> str:
@@ -555,6 +583,9 @@ def _declared(demo: Demo) -> None:
         if not isinstance(step.options, bool | frozenset):
             raise ValueError(f"step {step.name}: `options` is {step.options!r}, not True, False "
                              "or a frozenset of option names")
+    if demo.loop is not None and demo.loop.after not in {step.name for step in demo.steps}:
+        raise ValueError(f"the demo {demo.name}'s Loop follows {demo.loop.after!r}, which is no "
+                         "step of it")
     if demo.front is not None and not any(step.shown for step in demo.steps):
         raise ValueError(f"the demo {demo.name} names a front door and shows no step")
     if demo.front is None and any(step.shown for step in demo.steps):
@@ -566,6 +597,48 @@ def _declared(demo: Demo) -> None:
     if named:
         raise ValueError(f"the demo {demo.name} names options the runner does not know: "
                          f"{sorted(named)}; it knows {sorted(KNOWN_OPTIONS)}")
+
+
+def loop_avi(run_dir: Path) -> Path:
+    """Where a run records its loop."""
+    return run_dir / LOOP_AVI
+
+
+def loop_mp4(readme: Path) -> Path:
+    """The demo's tracked loop, beside its README."""
+    return readme.with_name(LOOP_MP4)
+
+
+def _loop_step(loop: Loop) -> Step:
+    """The recording the runner makes on its own, as one call among the demo's steps."""
+    def check(reply: Reply, run: Run) -> str:
+        path = reply.get("path")
+        if not isinstance(path, str):
+            raise StepFailed("the reply names no `path`, so what it wrote is unknown")
+        if reply.get("began") is not True or reply.get("ended") is not True:
+            raise StepFailed(f"the recording at {path} did not both begin and end: the run read "
+                             "no file the reply can answer for")
+        frames = reply.get("avi_frames")
+        if not isinstance(frames, int):
+            raise StepFailed(f"the reply names no `avi_frames`, so what {path} holds is unknown")
+        if not Path(path).is_file():
+            raise StepFailed(f"{path} was not written by this call")
+        return f"{frames} frames in {path}"
+
+    return Step("loop", "record",
+                lambda run: {"frames": loop.frames, "dest": loop_avi(run.dir)}, check)
+
+
+def _with_loop(demo: Demo) -> Demo:
+    """`demo` with its `Loop`'s recording made a step of its own, right after the one it follows."""
+    if demo.loop is None:
+        return demo
+    steps: list[Step] = []
+    for step in demo.steps:
+        steps.append(step)
+        if step.name == demo.loop.after:
+            steps.append(_loop_step(demo.loop))
+    return replace(demo, steps=steps)
 
 
 def _taken(demo: Demo) -> set[str]:
@@ -593,7 +666,8 @@ def _parser(demo: Demo) -> argparse.ArgumentParser:
     p.add_argument("--transcript", type=Path,
                    help="where the whole transcript goes; the run's other files go beside it")
     p.add_argument("--update-readme", action="store_true",
-                   help="rewrite the README's transcript block and screen.png from this run")
+                   help="rewrite the README's transcript block, screen.png and the loop from "
+                        "this run")
     return p
 
 
@@ -627,6 +701,7 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
     it before a verdict."""
     if not demo.steps:
         raise Invalid(f"the demo {demo.name} declares zero steps, so it demonstrates nothing")
+    demo = _with_loop(demo)
     untaken = set(run.options) - _taken(demo)
     if untaken:
         raise Invalid(f"options {sorted(untaken)} were given and nothing in the demo "
@@ -645,6 +720,8 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
     capture = demo.capture(run) if demo.capture is not None else None
     if capture is not None:
         capture.unlink(missing_ok=True)  # only this run's picture may reach the README
+    if demo.loop is not None:
+        loop_avi(run.dir).unlink(missing_ok=True)  # nor an earlier run's recording
     norm = Normaliser(demo.root.resolve(), Path.home().resolve(),
                       {**VOLATILE, **demo.volatile}, demo.host_args)
     normalised, flow, story = _beside(transcript)
@@ -664,7 +741,7 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
         print(f"transcript: {transcript}")
         print(f"normalised: {normalised}")
     if out.code == EXIT_PASS and update_readme and capture is not None and demo.readme:
-        _update_readmes(demo, demo.readme, capture, normalised, flow, story)
+        _update_readmes(demo, run, demo.readme, capture, normalised, flow, story)
     return out.code
 
 
@@ -730,6 +807,9 @@ def stale(demo: Demo, run_dir: Path) -> list[str]:
         shot, committed = demo.capture(Run(dir=run_dir)), demo.readme.with_name("screen.png")
         if not same_picture(shot, committed):
             found.append(f"{demo.name}'s screen.png is not this run's capture")
+    if demo.readme is not None and demo.loop is not None \
+            and not loop_mp4(demo.readme).is_file():
+        found.append(f"{demo.name}'s {LOOP_MP4} is not committed")
     return found
 
 
@@ -747,12 +827,39 @@ def same_picture(a: Path, b: Path) -> bool:
         return False
 
 
+def _convert_loop(avi: Path, mp4: Path) -> bytes:
+    """The run's AVI converted for `mp4`, refused past the loop's budget. The conversion lands in
+    the run's own directory, so a refusal or a failure leaves the committed `mp4` as it was."""
+    if not avi.is_file():
+        raise Invalid(f"this run wrote no {avi.name} at {avi}, so there is no loop to convert")
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        raise Invalid("ffmpeg is not on PATH, and the loop is converted with it")
+    converted = avi.with_name(LOOP_MP4)
+    done = subprocess.run([ffmpeg, "-y", "-i", str(avi), "-t", str(LOOP_SECONDS), "-an",
+                           "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "30",
+                           "-preset", "slow", "-movflags", "+faststart", str(converted)],
+                          capture_output=True, text=True, check=False)
+    if done.returncode != 0:
+        converted.unlink(missing_ok=True)
+        said = done.stderr.strip().splitlines()
+        raise Invalid(f"ffmpeg refused to convert {avi} (exit {done.returncode}): "
+                      f"{said[-1] if said else 'no words'}")
+    size = converted.stat().st_size
+    data = converted.read_bytes()
+    converted.unlink()
+    if size > LOOP_BUDGET_BYTES:
+        raise Invalid(f"the loop {mp4} is {size} bytes, past the {LOOP_BUDGET_BYTES}-byte "
+                      "budget: record fewer frames, or let the demo show less")
+    return data
+
+
 def _no_readme(demo: Demo) -> Invalid:
     return Invalid(f"the demo {demo.name} has no README block to update")
 
 
-def _update_readmes(demo: Demo, readme: Path, capture: Path, normalised: Path, flow: Path,
-                    story: Path) -> None:
+def _update_readmes(demo: Demo, run: Run, readme: Path, capture: Path, normalised: Path,
+                    flow: Path, story: Path) -> None:
     """Rewrite the README block, picture and flow; every text is built before any file is
     written, so a failure leaves all as they were."""
     if not capture.is_file():
@@ -763,6 +870,8 @@ def _update_readmes(demo: Demo, readme: Path, capture: Path, normalised: Path, f
     front = None if demo.front is None else with_block(
         demo.front.read_text(encoding="utf-8"), flow.read_text(encoding="utf-8"),
         flow_begin(demo.name), flow_end(demo.name))
+    loop = loop_mp4(readme) if demo.loop is not None else None
+    converted = None if loop is None else _convert_loop(loop_avi(run.dir), loop)
     shutil.copyfile(capture, readme.with_name("screen.png"))
     if highlighted(demo):
         shutil.copyfile(normalised, readme.with_name(FULL_NAME))
@@ -771,3 +880,6 @@ def _update_readmes(demo: Demo, readme: Path, capture: Path, normalised: Path, f
     if demo.front is not None and front is not None:
         demo.front.write_text(front, encoding="utf-8")
         print(f"README: {demo.front} flow {demo.name} rewritten")
+    if loop is not None and converted is not None:
+        fresh.replace(loop, converted, "the demo's loop")
+        print(f"README: {loop} rewritten")

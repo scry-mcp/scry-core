@@ -207,8 +207,9 @@ Each server keeps its demos in `demos/<name>/`: a README with the prompt to give
 `demo.py` making the same calls and checking each answer, and what `demo.py --update-readme`
 writes from a run where every step passed, so what the README shows is what the server answered:
 the README's block, which holds every step or, where the demo marks steps as highlights, only
-those with how each call does it and a `TRANSCRIPT.md` beside it with every step, and
-`screen.png`. `scry_core.demo` is the runner both servers share, and its module
+those with how each call does it and a `TRANSCRIPT.md` beside it with every step,
+`screen.png`, and, for a demo that declares a loop, the `loop.mp4` its own recording converts
+to with `ffmpeg` on `PATH`. `scry_core.demo` is the runner both servers share, and its module
 docstring is the contract. A game that exists on both platforms is one script in `scry_core.games`,
 run by each server's `demos/<game>/` through a short `Binding` (`scry_core.game_demo`): the same
 steps, symbols, screen map and checks on both, which is what proves the two servers answer one

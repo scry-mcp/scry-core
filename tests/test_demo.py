@@ -6,8 +6,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -287,6 +290,181 @@ def test_update_readme_rewrites_the_block_and_the_capture(
     assert d.readme_drift(_readme(demo), normalised) == ""
     normalised.write_text(normalised.read_text().replace("value 7", "value 8", 1))
     assert d.readme_drift(_readme(demo), normalised).startswith("line 1: the README has ")
+
+
+def _loop_demo(tmp_path: Path) -> d.Demo:
+    return _demo(tmp_path, loop=d.Loop("shot"))
+
+
+def test_a_loop_is_recorded_right_after_the_step_it_follows(
+        tmp_path: Path, log: Path) -> None:
+    assert _run(_loop_demo(tmp_path), tmp_path) == verdict.EXIT_PASS
+    assert [c["summary"] for c in _calls(log)][-3:] == ["picture", "record: 240 frames",
+                                                        "closed"]
+    assert (tmp_path / "out" / "loop.avi").is_file(), "the run wrote no loop"
+    normalised = _norm(tmp_path)
+    assert "**4. `record`**" in normalised and "**5. `close`**" in normalised, normalised
+    assert "./out/loop.avi" in normalised, "the loop's path was not the run's"
+
+
+def test_update_readme_converts_the_loop_beside_the_capture(
+        tmp_path: Path, log: Path) -> None:
+    demo = _loop_demo(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    loop = _readme(demo).with_name(d.LOOP_MP4)
+    assert loop.is_file(), "the loop was not converted"
+    assert 0 < loop.stat().st_size <= d.LOOP_BUDGET_BYTES, loop.stat().st_size
+    assert loop.read_bytes()[4:8] == b"ftyp", "not an MP4"
+
+
+def test_a_loop_past_its_budget_is_invalid_naming_its_file_and_bytes(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    demo = _loop_demo(tmp_path)
+    committed = _readme(demo).with_name(d.LOOP_MP4)
+    committed.write_bytes(b"the loop in the repository")
+    monkeypatch.setattr(d, "LOOP_BUDGET_BYTES", 10)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    said = capsys.readouterr().out
+    assert f"INVALID: the loop {committed} is " in said and " bytes, past the 10-byte budget" \
+        in said, said
+    assert _readme(demo).read_text() == README, "the README was written over a refused loop"
+    assert committed.read_bytes() == b"the loop in the repository", \
+        "a refused conversion replaced the committed loop"
+
+
+def test_a_run_that_cannot_write_its_readmes_leaves_the_committed_loop_as_it_was(
+        tmp_path: Path, log: Path) -> None:
+    front = _front(tmp_path)
+
+    def vanish(reply: d.Reply, run: d.Run) -> str:
+        front.write_text("# no markers now\n")
+        return "markers gone"
+
+    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True,
+                    shown=START_SHOWN),
+             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"}, vanish)]
+    demo = _demo(tmp_path, steps, front=front, loop=d.Loop("shot"))
+    committed = _readme(demo).with_name(d.LOOP_MP4)
+    committed.write_bytes(b"the loop in the repository")
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    assert committed.read_bytes() == b"the loop in the repository"
+
+
+def test_a_loop_is_converted_from_a_tiny_avi_within_the_budget(tmp_path: Path) -> None:
+    run, demos = tmp_path / "run", tmp_path / "demos"
+    run.mkdir()
+    demos.mkdir()
+    avi = run / d.LOOP_AVI
+    avi.write_bytes((Path(__file__).resolve().parent / "fixtures" / "demo"
+                     / "screen.avi").read_bytes())
+    data = d._convert_loop(avi, demos / d.LOOP_MP4)
+    assert data[4:8] == b"ftyp" and 0 < len(data) <= d.LOOP_BUDGET_BYTES, len(data)
+    assert not (demos / d.LOOP_MP4).exists(), "the conversion wrote the committed path itself"
+    assert not (run / d.LOOP_MP4).exists(), "the staged conversion was left in the run"
+
+
+def test_the_conversion_is_the_command_the_plan_decided(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """H.264 to a muted MP4 at most three seconds long, trimmed by time, startable early."""
+    run = tmp_path / "run"
+    run.mkdir()
+    avi = run / d.LOOP_AVI
+    avi.write_bytes(b"an avi")
+    seen: list[list[str]] = []
+
+    def fake(argv: list[str], **_: Any) -> SimpleNamespace:
+        seen.append(argv)
+        Path(argv[-1]).write_bytes(b"an mp4")
+        return SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake)
+    assert d._convert_loop(avi, tmp_path / d.LOOP_MP4) == b"an mp4"
+    (argv,) = seen
+    assert Path(argv[0]).name == "ffmpeg" and argv[1:] == [
+        "-y", "-i", str(avi), "-t", str(d.LOOP_SECONDS), "-an", "-c:v", "libx264", "-pix_fmt",
+        "yuv420p", "-crf", "30", "-preset", "slow", "-movflags", "+faststart",
+        str(run / d.LOOP_MP4)]
+
+
+def test_the_loop_s_check_judges_the_reply_and_not_only_a_file_that_happens_to_be_there(
+        tmp_path: Path) -> None:
+    check = d._loop_step(d.Loop("shot")).check
+    run = d.Run(dir=tmp_path)
+    stale = tmp_path / "loop.avi"
+    stale.write_bytes(b"an earlier run's recording")
+    with pytest.raises(d.StepFailed, match="names no `path`"):
+        check(d.Reply({"status": "ok"}), run)
+    with pytest.raises(d.StepFailed, match="did not both begin and end"):
+        check(d.Reply({"status": "ok", "began": False, "ended": False, "path": str(stale)}), run)
+    ended = {"status": "ok", "began": True, "ended": True, "path": str(stale)}
+    with pytest.raises(d.StepFailed, match="names no `avi_frames`"):
+        check(d.Reply(ended), run)
+    stale.unlink()
+    with pytest.raises(d.StepFailed, match="was not written by this call"):
+        check(d.Reply({**ended, "avi_frames": 240}), run)
+
+
+def test_an_earlier_run_s_loop_is_not_left_for_this_run(
+        tmp_path: Path, log: Path) -> None:
+    stale = tmp_path / "out" / "loop.avi"
+    stale.parent.mkdir(parents=True)
+    stale.write_bytes(b"an earlier run's recording")
+    demo = _demo(tmp_path, steps=[d.Step("no", "refuse", {}, lambda reply, run: "")],
+                 loop=d.Loop("no"))
+    assert _run(demo, tmp_path) == verdict.EXIT_FAIL
+    assert not stale.exists(), "an earlier run's loop was left for this run"
+
+
+def test_a_loop_whose_avi_this_run_did_not_write_is_invalid(tmp_path: Path) -> None:
+    with pytest.raises(verdict.Invalid, match="wrote no loop.avi"):
+        d._convert_loop(tmp_path / "loop.avi", tmp_path / "loop.mp4")
+
+
+def test_a_loop_with_no_ffmpeg_on_the_path_is_invalid(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    avi = tmp_path / "loop.avi"
+    avi.write_bytes(b"RIFF")
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    with pytest.raises(verdict.Invalid, match="ffmpeg is not on PATH"):
+        d._convert_loop(avi, tmp_path / "loop.mp4")
+
+
+def test_a_loop_ffmpeg_cannot_read_is_invalid_with_its_own_words(
+        tmp_path: Path) -> None:
+    avi, mp4 = tmp_path / "loop.avi", tmp_path / "loop.mp4"
+    avi.write_bytes(b"not an AVI at all")
+    with pytest.raises(verdict.Invalid, match="ffmpeg refused to convert"):
+        d._convert_loop(avi, mp4)
+    assert not mp4.exists()
+
+
+def test_stale_ignores_a_loop_s_bytes_and_names_one_that_is_not_committed(
+        tmp_path: Path, log: Path) -> None:
+    demo = _loop_demo(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    assert d.stale(demo, tmp_path / "out") == []
+    loop = _readme(demo).with_name(d.LOOP_MP4)
+    loop.write_bytes(loop.read_bytes() + b"another host's encoder")
+    assert d.stale(demo, tmp_path / "out") == [], "a recording was compared byte for byte"
+    readme = _readme(demo)
+    readme.write_text(readme.read_text().replace("value 7", "value 9", 1))
+    found = d.stale(demo, tmp_path / "out")
+    assert len(found) == 1 and found[0].startswith("x's README: line "), found
+    readme.write_text(readme.read_text().replace("value 9", "value 7", 1))
+    loop.unlink()
+    assert d.stale(demo, tmp_path / "out") == [f"x's {d.LOOP_MP4} is not committed"]
+    (readme.parent / "screen.png").unlink()
+    assert d.stale(demo, tmp_path / "out") == ["x's screen.png is not this run's capture",
+                                               f"x's {d.LOOP_MP4} is not committed"]
+
+
+def test_a_loop_that_follows_no_step_is_refused_before_a_call(
+        tmp_path: Path, log: Path) -> None:
+    with pytest.raises(ValueError, match="which is no step of it"):
+        d.main(_demo(tmp_path, loop=d.Loop("nope")), ["--transcript",
+                                                     str(tmp_path / "t.md")])
+    assert _calls(log) == []
 
 
 def _highlighted(tmp_path: Path) -> d.Demo:

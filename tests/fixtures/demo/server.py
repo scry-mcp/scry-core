@@ -58,6 +58,18 @@ def picture(dest: str) -> CallToolResult:
 
 
 @server.tool()
+def record(frames: int, dest: str) -> CallToolResult:
+    """A recording as both servers answer it: the AVI at `dest`, and the file's own numbers."""
+    path = Path(dest)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    avi = (Path(__file__).parent / "screen.avi").read_bytes()
+    path.write_bytes(avi)
+    return _answer({"status": "ok", "summary": f"record: {frames} frames",
+                    "path": str(path), "frames": frames, "bytes": len(avi),
+                    "avi_frames": 2, "began": True, "ended": True})
+
+
+@server.tool()
 def plain(text: str = "not a document") -> CallToolResult:
     """Text only, with no structured document: what a client must still read."""
     return CallToolResult(content=[TextContent(type="text", text=text)])

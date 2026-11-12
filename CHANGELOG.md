@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.demo`: a demo declares a `Loop` and the runner records it, right after the step the
+  loop names, as one `record` call whose reply joins the transcript; `--update-readme` converts it
+  to the demo's `loop.mp4` beside the capture, refused past the loop's budget with its bytes and
+  its file named, and `stale` asks that the file is committed, never that its bytes are the run's.
+
 ## 0.107.1
 
 - `scry_core.roster`: the `record` words say what a bound does when its release answers, so a
