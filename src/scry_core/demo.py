@@ -90,6 +90,15 @@ CALL_TIMEOUT_S = 900
 #: The options a demo can offer beyond `--binary`, as its server's `start` spells them.
 OFFERABLE = frozenset({"cwd", "rompath", "shared", "display"})
 
+#: The reason a demo's `host_args` gives for hiding which display a run's window opened on.
+DISPLAY = "the host's display layout"
+
+
+def window_args(run: Run) -> dict[str, Any]:
+    """What a demo's `start` asks of the window: watched, behind so it takes nobody's focus, on
+    the display `--display` names and the host's main one otherwise."""
+    return {"shared": True, "background": True, "display": run.options.get("display", 0)}
+
 #: Reply keys whose values differ between two honest runs, each with the reason. A demo adds
 #: its own through `Demo.volatile`, and a step those that vary in it alone through
 #: `Step.volatile`.

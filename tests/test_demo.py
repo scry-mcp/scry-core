@@ -248,6 +248,12 @@ def test_the_display_the_run_opens_on_reaches_the_options_step(tmp_path: Path,
     assert "display" not in call, "an option left out is absent"
 
 
+def test_the_window_a_demo_asks_for_is_watched_behind_and_on_its_display(tmp_path: Path) -> None:
+    assert d.window_args(d.Run(dir=tmp_path)) == {"shared": True, "background": True, "display": 0}
+    named = d.Run(dir=tmp_path, options={"display": 1})
+    assert d.window_args(named)["display"] == 1
+
+
 def test_a_step_takes_only_the_options_it_names(tmp_path: Path, log: Path) -> None:
     demo = _demo(tmp_path, offers=frozenset({"shared"}), reads=frozenset({"shared"}), steps=[
         d.Step("boot", "start", lambda run: {"value": 9 if run.options.get("shared") else 7},
