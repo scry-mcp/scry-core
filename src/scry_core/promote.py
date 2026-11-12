@@ -74,10 +74,8 @@ class PromoteFields(TypedDict, total=False):
     unchanged: Annotated[list[str], When("a review")]
     unwritable: Annotated[list[Any], When("a review holding an entry it cannot write")]
     written: Annotated[list[Any], When("an approval")]
-    would_create: Annotated[list[str], When("a review of a store missing its folder, `about.json` "
-                                            "or `README.md`")]
-    created: Annotated[list[str], When("an approval that made the folder, `about.json` or "
-                                       "`README.md`")]
+    would_create: Annotated[list[str], When("a review", "not yet there")]
+    created: Annotated[list[str], When("an approval", "not yet there")]
     draft: Annotated[list[str], When("an approval")]
     total_bytes: Annotated[int, When("a review")]
     store: Required[str]

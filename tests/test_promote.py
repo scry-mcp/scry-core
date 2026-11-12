@@ -16,6 +16,7 @@ from scry_core import (
     project_store,
     promote,
     promote_diff,
+    reply_schema,
     screen_map,
     scry_readme,
 )
@@ -1421,3 +1422,8 @@ def test_a_variable_holding_a_filesystem_root_covers_no_path(
     candidate = promote.Candidate("start", "x", start_doc(system="x", rompath=drive), ("rompath",))
     with pytest.raises(Invalid, match="rompath"):
         promote.tracked(candidate, repo(tmp_path), environ={"OLDPWD": root_value})
+
+
+def test_the_promote_description_says_the_conditions_its_reply_model_promises() -> None:
+    doc = promote.DOC_VALUES["PROMOTE"]
+    assert reply_schema.conditions_unsaid(doc, promote.PromoteFields) == []

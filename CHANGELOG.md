@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.promote`: the conditions of `would_create` and `created` use words the `promote`
+  description says, so a server's reply-model check no longer refuses the description it takes
+  from here.
+
 ## 0.105.0
 
 - `scry_core.promote`: an approved `promote` that is given the promoting server's name
