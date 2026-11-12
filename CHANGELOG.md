@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.109.4
+
+- `scry_core.demo`: `window_args` is what a demo's `start` asks of the window (watched,
+  behind, on the display the run names), so both servers' demos declare one policy and the
+  reason their `host_args` hides the display is written once.
+
 ## 0.109.3
 
 - `scry_core.demo`: a loop whose recording a bound or a stop cut is a failed step, not a
