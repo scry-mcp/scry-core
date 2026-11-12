@@ -136,7 +136,7 @@ What a server author notices. A client's view of each server is in that server's
   day and beyond the three newest, and says how many; a pooled job removes none.
   `LiveRun.leave` says `kept` with the path when the scratch could not be removed.
 - The probe's model call runs with auto memory off, so a run leaves no folder per call under the
-  caller's Claude Code configuration.
+  caller's configuration.
 - `scripts/windows/run-task.sh` fetches into `scry-win-*` under `TMPDIR` and removes from the
   host the logs of a step that ended and was fetched.
 
@@ -365,9 +365,9 @@ and `recording.EXPORT_REPLY`, which nothing read, are gone.
 
 ### Added
 
-- `live_ledger`: the bookkeeping both live matrices keep — the sections a run plans and the cells
+- `live_ledger`: the bookkeeping both live matrices keep: the sections a run plans and the cells
   each promises, the calls it records, the tally and the transcript, the evidence a FAIL leaves,
-  and the jobs it pools — with `Cell`, `Section`, `Blocked`, `chosen_sections`,
+  and the jobs it pools, with `Cell`, `Section`, `Blocked`, `chosen_sections`,
   `cannot_be_judged` and `Ledger`, whose `run(..., name=)` speaks the verdict of the run it ran.
 - `live_focus`: the focus section both matrices run, judged into the ledger that ran them.
 
