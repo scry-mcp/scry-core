@@ -2,6 +2,11 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.109.0
+
+- `scry_core.demo`: `--display` picks the display a watched run's window opens on, so a
+  demo records itself on one of the host's own displays instead of the main one.
+
 ## 0.108.0
 
 - `scry_core.demo`: a demo declares a `Loop` and the runner records it, right after the step the
