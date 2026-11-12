@@ -3,13 +3,14 @@
 One template, shipped by scry-core, renders every repository's `.scry/README.md`, so a reader
 meets the same page everywhere and a change to `.scry/` reaches every repository by a re-render.
 
-## How a repository gets it
+## Set up SCRY in a new project
 
-A server's approved `promote` sets the folder up in the same call, so a repository that has none
-needs nothing else: given the server's name, it creates `.scry/`, writes the entries chosen, builds `about.json` and
-renders the page, replacing any page already there. `promote(dry_run=true, root=<the repository>)` lists beforehand what would be
-created (`would_create`), and the approved reply says what was (`created`). Nothing is written
-without that approval.
+A repository with no `.scry/` gets one when a session promotes what it learned; there is
+nothing to install or write by hand. An approved `promote` creates `.scry/`, writes the entries
+you chose, builds `about.json` and renders the page, replacing any page already there.
+`promote(dry_run=true, root=<the repository>)` lists beforehand what would be created
+(`would_create`), and the approved reply says what was (`created`). Nothing is written without
+that approval.
 
 `about.json` is built from the entries alone. `server` is the one that promotes; `purpose` says
 the folder is what the repository declares for that server; each `files` line is derived from its
