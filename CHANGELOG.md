@@ -2,6 +2,15 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.promote`: a `root` that reaches the store through `..` is refused as naming the store
+  itself, instead of creating a store inside the store.
+- `scry_core.hook`: a Lua string's `\z` continuation is part of the string, so the text after it
+  is not counted as a comment.
+- `scry_core.scry_readme`: the page's introduction no longer names the two servers, so a server
+  whose profile forbids naming its sibling renders a page that holds.
+
 ## 0.106.0
 
 - `scry_core.promote`: the conditions of `would_create` and `created` use words the `promote`

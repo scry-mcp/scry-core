@@ -243,8 +243,16 @@ def lua_prose_bytes(source: bytes) -> int:
         if c in (b'"', b"'"):
             i += 1
             while i < size and source[i:i + 1] != c and source[i:i + 1] != b"\n":
-                escaped = source[i:i + 1] == b"\\"
-                i += 1 + escaped + (escaped and source.startswith(b"\r\n", i + 1))
+                if source[i:i + 1] != b"\\":
+                    i += 1
+                    continue
+                escaped = source[i + 1:i + 2]
+                i += 2
+                if escaped == b"z":     # \z swallows the whitespace that follows, newlines
+                    while i < size and source[i:i + 1] in b" \t\r\n\v\f":
+                        i += 1
+                elif escaped == b"\r" and source[i:i + 1] == b"\n":
+                    i += 1
             i += 1
         elif (long := _LUA_LONG.match(source, i)) is not None:
             end = source.find(b"]" + long.group(1) + b"]", long.end())

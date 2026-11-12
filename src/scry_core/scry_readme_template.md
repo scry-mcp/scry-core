@@ -2,10 +2,9 @@
 
 $purpose
 
-SCRY is a set of MCP servers (`mame`, `dosbox-x`) that let an assistant run a program in an
-emulator and inspect it live. This folder is what this repository declares for it: how the
-program starts and, where it has them, what its screens look like and a session that
-drives it.
+SCRY is a set of MCP servers that let an assistant run a program in an emulator and inspect it
+live. This folder is what this repository declares for it: how the program starts and, where it
+has them, what its screens look like and a session that drives it.
 
 $build
 

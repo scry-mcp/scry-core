@@ -2,10 +2,11 @@
 
 A `start`, a map's `add` and a `perform_export` keep what they learned, keyed by (kind, name);
 `promote(dry_run)` reviews those against the store and `promote(entries)` writes the ones chosen,
-creating `.scry/` only then, with its `about.json` and README. A candidate is complete only with
-what the reader of its kind accepts, and a name the store already holds is an update, shown as
-its diff. A path a candidate declares is written as `project_store`'s own placeholders; a review
-lists apart one that would leave them, and an approval refuses it (`tracked`).
+creating `.scry/` only then, and with the server's name also its `about.json` and README. A
+candidate is complete only with what the reader of its kind accepts, and a name the store already
+holds is an update, shown as its diff. A path a candidate declares is written as
+`project_store`'s own placeholders; a review lists apart one that would leave them, and an
+approval refuses it (`tracked`).
 """
 
 from __future__ import annotations
@@ -212,7 +213,7 @@ def store(starting: Iterable[str | Path], root: str = "") -> Path:
         if not base.is_absolute():
             raise Invalid("bad_argument", f"root={root!r} is not absolute: name the repository, "
                           "absolute or `~`-led")
-        if base.name == STORE:
+        if base.resolve().name == STORE:
             raise Invalid("bad_argument", f"root={base} names the store itself, not the "
                           "repository that holds it")
         if not base.is_dir():

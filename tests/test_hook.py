@@ -499,6 +499,8 @@ def test_lua_prose_is_its_comments_and_never_a_string_or_a_slot() -> None:
     (b'x = "a\\\r\nb -- no"\r\n', []),
     (b"--[==[ a ]] b ]==] x = [=[ -- no ]] ]=]\n", [b"--[==[ a ]] b ]==]"]),
     (b"--[ x\n---[[ y\n", [b"--[ x", b"---[[ y"]),
+    (b'local s = "a\\z\n  -- no"\n', []),
+    (b'local s = "a\\z\n-- no"\n-- c\n', [b"-- c"]),
 ])
 def test_lua_prose_counts_each_line_form_alike(source: bytes, expected: list[bytes]) -> None:
     assert hook.lua_prose_bytes(source) == sum(map(len, expected))

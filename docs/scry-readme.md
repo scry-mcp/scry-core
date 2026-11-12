@@ -1,12 +1,12 @@
 # The `.scry/README.md` of a repository
 
 One template, shipped by scry-core, renders every repository's `.scry/README.md`, so a reader
-meets the same page everywhere and a change to `.scry/` reaches every repository by a re-render.
+meets the same page everywhere and a change to the template reaches every repository by a re-render.
 
 ## Set up SCRY in a new project
 
 A repository with no `.scry/` gets one when a session promotes what it learned; there is
-nothing to install or write by hand. An approved `promote` creates `.scry/`, writes the entries
+nothing to install or write by hand. A server's approved `promote` creates `.scry/`, writes the entries
 you chose, builds `about.json` and renders the page, replacing any page already there.
 `promote(dry_run=true, root=<the repository>)` lists beforehand what would be created
 (`would_create`), and the approved reply says what was (`created`). Nothing is written without
@@ -18,7 +18,9 @@ file: a recipe boots its `program` or, without one, its `system`; a map shows th
 application; a session replays its steps. A later `promote` keeps every line that is already
 there, so one written by hand survives, gives a derived line only to a file that has none, and
 renders the page again. A manifest it cannot render from (not JSON, or a line for a file that is
-gone) refuses the promotion before anything is written.
+gone) refuses the promotion before anything is written. The folder holds how a program starts, not
+what its trace means; that belongs to the repository's own rules and tests: which stop serves a
+case, how a key is spelled, what a screen delta proves.
 
 To render by hand, run the command from a scry-core checkout, naming the repository:
 
