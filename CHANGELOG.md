@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.109.3
+
+- `scry_core.demo`: a loop whose recording a bound or a stop cut is a failed step, not a
+  loop, and the note a stop leaves with it is reported as the host's like the rest of the
+  stop it describes.
+
 ## 0.109.2
 
 - `scry_core.demo`: the loop step also reports the stop that ended the recording (its
