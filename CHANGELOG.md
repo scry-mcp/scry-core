@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.103.0
 
 - `scry_core.hook`: the prose ceiling judges `*.lua` as it judges `*.py`, per file, counting
   line and block comments and never a string's text or a statement-slot line
