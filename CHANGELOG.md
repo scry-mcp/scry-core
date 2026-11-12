@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.105.0
 
 - `scry_core.promote`: an approved `promote` that is given the promoting server's name
   (`server=`, `mame` or `dosbox-x`) also writes the store's `about.json` and the rendered
