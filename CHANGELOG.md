@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.107.1
 
 - `scry_core.roster`: the `record` words say what a bound does when its release answers, so a
   server that answers `ended: false` over a capture it could not turn off is not contradicted;
