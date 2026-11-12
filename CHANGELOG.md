@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.107.0
 
 - `scry_core.promote`: a `root` that reaches the store through `..` is refused as naming the store
   itself, instead of creating a store inside the store.
