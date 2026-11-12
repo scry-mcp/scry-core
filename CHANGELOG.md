@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.109.1
+
+- `scry_core.demo`: a demo's loop reports what the recording's own start decides (the
+  frames it got, the clock and cycles around them, the place it stopped and the file's
+  size) as volatile, and its line names the frames the demo asked for, so a demo whose
+  picture is taken where the host reached records the same transcript twice.
+
 ## 0.109.0
 
 - `scry_core.demo`: `--display` picks the display a watched run's window opens on, so a
