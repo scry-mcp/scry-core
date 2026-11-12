@@ -3,7 +3,23 @@
 One template, shipped by scry-core, renders every repository's `.scry/README.md`, so a reader
 meets the same page everywhere and a change to `.scry/` reaches every repository by a re-render.
 
-Run it inside the repository, under its own `uv run`:
+## How a repository gets it
+
+A server's approved `promote` sets the folder up in the same call, so a repository that has none
+needs nothing else: given the server's name, it creates `.scry/`, writes the entries chosen, builds `about.json` and
+renders the page, replacing any page already there. `promote(dry_run=true, root=<the repository>)` lists beforehand what would be
+created (`would_create`), and the approved reply says what was (`created`). Nothing is written
+without that approval.
+
+`about.json` is built from the entries alone. `server` is the one that promotes; `purpose` says
+the folder is what the repository declares for that server; each `files` line is derived from its
+file: a recipe boots its `program` or, without one, its `system`; a map shows the screens of its
+application; a session replays its steps. A later `promote` keeps every line that is already
+there, so one written by hand survives, gives a derived line only to a file that has none, and
+renders the page again. A manifest it cannot render from (not JSON, or a line for a file that is
+gone) refuses the promotion before anything is written.
+
+To render by hand, run the command from a scry-core checkout, naming the repository:
 
     uv run python -m scry_core.scry_readme [--check] [DIR]
 

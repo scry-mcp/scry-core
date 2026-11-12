@@ -2,6 +2,18 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.promote`: an approved `promote` that is given the promoting server's name
+  (`server=`, `mame` or `dosbox-x`) also writes the store's `about.json` and the rendered
+  `.scry/README.md`. `dry_run` lists what would be created (`would_create`), the approval what was
+  (`created`), and `promote_line` says it. A line already in `about.json` is kept and only a new
+  file gets a line derived from it; a manifest the page cannot be rendered from refuses the call
+  before anything is written. `kept_line` and `after_export` take `has_store`, and with no
+  `.scry/` above the project say so and how to see what an approval would create.
+- `scry_core.scry_readme`: the footer of every page says it is rendered by `promote`, and that by
+  hand the command runs from a scry-core checkout against the repository.
+
 ## 0.104.0
 
 - `scry_core.scry_readme`: one template for every repository's `.scry/README.md`, rendered by

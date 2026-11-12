@@ -1,7 +1,8 @@
 """`scry_readme` -- renders a repository's `.scry/README.md` from one template and its folder.
 
-Run `python -m scry_core.scry_readme [--check] [DIR]` inside a repository, under its own `uv
-run`. The page is always rendered whole, so a re-render is safe and brings a changed template to
+Run `uv run python -m scry_core.scry_readme [--check] [DIR]` from a scry-core checkout, DIR being
+the repository (default: the current directory). The servers' approved `promote` renders the same
+page. The page is always rendered whole, so a re-render is safe and brings a changed template to
 every repository. What the folder cannot say for itself is in `.scry/about.json`
 (`scry-about/1`): `purpose` and `server` (`mame` or `dosbox-x`) are required; `build` is
 `{"command", "note"?}`; `notes` is a list of paragraphs; `files` gives one line per file of
@@ -21,6 +22,7 @@ import re
 import string
 import sys
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 
 from scry_core import project_store
@@ -85,6 +87,12 @@ def _entries(store: Path) -> list[str]:
     return found
 
 
+def _server(value: object) -> str:
+    if value not in SERVERS:
+        raise Refused(f"server must be one of {', '.join(SERVERS)}, not {value!r}")
+    return str(value)
+
+
 def _build(value: object) -> str:
     if value is None:
         return ""
@@ -125,25 +133,105 @@ def _files(entries: list[str], lines: Mapping[str, object], server: str) -> tupl
     return start, "\n\n".join(sections)
 
 
-def render(root: Path) -> str:
-    store = root / project_store.STORE
-    data = _manifest(store)
+def _render(data: Mapping[str, object], entries: list[str]) -> str:
     purpose = _text(data.get("purpose"), "purpose")
-    server = data.get("server")
-    if server not in SERVERS:
-        raise Refused(f"server must be one of {', '.join(SERVERS)}, not {server!r}")
+    server = _server(data.get("server"))
     lines = data.get("files")
     if not isinstance(lines, dict):
         raise Refused("files must map each file of start/, maps/ and perform/ to its line")
     notes = data.get("notes", [])
     if not isinstance(notes, list):
         raise Refused("notes must be a list of paragraphs")
-    start, files = _files(_entries(store), lines, str(server))
+    start, files = _files(entries, lines, server)
     values = {"purpose": purpose, "build": _build(data.get("build")), "start": start,
               "files": files,
               "notes": "\n\n".join(_text(n, "a note") for n in notes)}
     text = string.Template(TEMPLATE.read_text(encoding="utf-8")).substitute(values)
     return re.sub(r"\n{3,}", "\n\n", text).rstrip("\n") + "\n"
+
+
+def render(root: Path) -> str:
+    store = root / project_store.STORE
+    return _render(_manifest(store), _entries(store))
+
+
+def derived_line(kind: str, name: str, document: object) -> str:
+    """The `files` line an entry earns with no hand-written one, from the entry alone
+    (docs/scry-readme.md says what each kind says)."""
+    doc = document if isinstance(document, dict) else {}
+    if kind == "start":
+        for key in ("program", "system"):
+            if value := _flat(doc.get(key)):
+                return f"boots `{value}`."
+        return "a run recipe."
+    if kind == "maps":
+        return f"the screens of {_flat(doc.get('application')) or name}."
+    steps = doc.get("steps")
+    if not isinstance(steps, list):
+        return "a session."
+    return f"replays {len(steps)} step{'' if len(steps) == 1 else 's'}."
+
+
+@dataclass(frozen=True)
+class Setup:
+    """What an approved promotion leaves in the store besides its entries: `about` (None when
+    the manifest already covers every file and stays as it is), the rendered `page`, and what
+    did not exist before, as paths from the repository."""
+
+    about: bytes | None
+    page: bytes
+    created: tuple[str, ...]
+
+
+def scaffold(root: Path, server: str, entries: Mapping[str, object]) -> Setup:
+    """`root`'s `.scry/about.json` and README as they stand once `entries` (each file of the
+    store, `start/x.json`, with its document) are written. A manifest that exists keeps every
+    line it has and gains one derived line per file it lacks; one that does not is made from
+    `server`, with a line for every file the store will hold. Nothing is written."""
+    store = root / project_store.STORE
+    _server(server)
+    for name in (ABOUT, README):
+        if (store / name).exists() and not (store / name).is_file():
+            raise Refused(f"{store / name} is not a file")
+    if (store / ABOUT).exists():
+        data = _manifest(store)
+        held = data.get("files")
+        lines = dict(held) if isinstance(held, dict) else held
+    else:
+        data = {"format": FORMAT,
+                "purpose": f"What this repository declares for SCRY's `{server}` server.",
+                "server": server}
+        lines = {}
+    names = sorted(set(_entries(store)) | set(entries))
+    changed = False
+    if isinstance(lines, dict):
+        for name in names:
+            if name not in lines:
+                kind = name.partition("/")[0]
+                document = entries[name] if name in entries else _read(store / name)
+                lines[name] = derived_line(kind, project_store.entry_of(Path(name), kind),
+                                           document)
+                changed = True
+        data = {**data, "files": lines}
+    text = _render(data, names)
+    created = tuple(path for path, absent in (
+        (f"{project_store.STORE}/", not store.exists()),
+        (f"{project_store.STORE}/{ABOUT}", not (store / ABOUT).exists()),
+        (f"{project_store.STORE}/{README}", not (store / README).exists())) if absent)
+    about = (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    return Setup(about if changed or not (store / ABOUT).exists() else None,
+                 text.encode("utf-8"), created)
+
+
+def _flat(value: object) -> str:
+    return " ".join(value.split()) if isinstance(value, str) else ""
+
+
+def _read(path: Path) -> object:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
 
 
 def main(argv: list[str] | None = None) -> int:

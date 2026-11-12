@@ -2,10 +2,10 @@
 
 A `start`, a map's `add` and a `perform_export` keep what they learned, keyed by (kind, name);
 `promote(dry_run)` reviews those against the store and `promote(entries)` writes the ones chosen,
-creating `.scry/` only then. A candidate is complete only with what the reader of its kind
-accepts, and a name the store already holds is an update, shown as its diff. A path a candidate
-declares is written as `project_store`'s own placeholders; a review lists apart one that would
-leave them, and an approval refuses it (`tracked`).
+creating `.scry/` only then, with its `about.json` and README. A candidate is complete only with
+what the reader of its kind accepts, and a name the store already holds is an update, shown as
+its diff. A path a candidate declares is written as `project_store`'s own placeholders; a review
+lists apart one that would leave them, and an approval refuses it (`tracked`).
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from typing import Annotated, Any, Required
 
 from typing_extensions import TypedDict
 
-from scry_core import fresh, project_store, promote_paths, prose, recording, screen_map
+from scry_core import fresh, project_store, promote_paths, prose, recording, screen_map, scry_readme
 from scry_core.promote_diff import difference
 from scry_core.promote_paths import LISTS, Places
 from scry_core.reply_contract import Invalid, When
@@ -48,14 +48,17 @@ DOC_VALUES = {
         "file, its size and whether it is new or an update, an update with its diff; `entries`\n"
         "(`<kind>/<name>`, the kind one of `start`, `maps`, `perform`) writes only those,\n"
         "`names` renames one as it is written, and only\n"
-        "that approved call creates `.scry/`. `root` names the repository the store is in or\n"
-        "becomes; without it the first `.scry/` found walking up from the file a loaded recipe\n"
-        "came from, the draft's paths, then this server's directory, is used, and a promotion\n"
-        "that finds none is refused. Every path is\n"
+        "that approved call creates `.scry/`, and with the server's name also `about.json` and\n"
+        "the rendered `README.md`; `dry_run`\n"
+        "names those in `would_create`, the approval in `created`. `root` names the repository\n"
+        "the store is in or becomes; without it the first `.scry/` found walking up from the file\n"
+        "a loaded recipe came from, the draft's paths, then this server's directory, is used,\n"
+        "and a promotion that finds none is refused. Every path is\n"
         "written as a `project_store` placeholder, since a tracked file carries no path of this\n"
         "machine; an approval of an entry a review calls unwritable is refused. Reply: `store`,\n"
         "`candidates` and `unchanged` (a review), `unwritable`, each entry with its reason\n"
         "(a review holding an entry it cannot write), `written` and `draft` (an approval),\n"
+        "`would_create` and `created` (the store, `about.json`, `README.md` not yet there),\n"
         "`total_bytes`,\n"
         "`store_bytes`; `close` names what was left unkept, which stays in the draft until the\n"
         "server ends. Refused: nothing kept (`needs_call`); an entry the draft does not hold; two\n"
@@ -71,6 +74,10 @@ class PromoteFields(TypedDict, total=False):
     unchanged: Annotated[list[str], When("a review")]
     unwritable: Annotated[list[Any], When("a review holding an entry it cannot write")]
     written: Annotated[list[Any], When("an approval")]
+    would_create: Annotated[list[str], When("a review of a store missing its folder, `about.json` "
+                                            "or `README.md`")]
+    created: Annotated[list[str], When("an approval that made the folder, `about.json` or "
+                                       "`README.md`")]
     draft: Annotated[list[str], When("an approval")]
     total_bytes: Annotated[int, When("a review")]
     store: Required[str]
@@ -189,9 +196,14 @@ def starting(drafts: Drafts, paths: Callable[[Mapping[str, Any]], Iterable[str]]
     return [*starts, os.getcwd()]
 
 
-def kept_line(drafts: Drafts) -> str:
-    """The one line a reply that kept a candidate says."""
-    return f"kept {len(drafts)} (promote to review)"
+def kept_line(drafts: Drafts, has_store: bool = True) -> str:
+    """The one line a reply that kept a candidate says; with no `.scry/` above the project it
+    says so and how to see what an approval would create."""
+    line = f"kept {len(drafts)} (promote to review)"
+    if has_store:
+        return line
+    return (f"{line}; there is no {STORE}/ above this project: promote(dry_run=true, "
+            "root=<the repository>) lists what an approval would create")
 
 
 def store(starting: Iterable[str | Path], root: str = "") -> Path:
@@ -226,24 +238,29 @@ def store(starting: Iterable[str | Path], root: str = "") -> Path:
 def promote(drafts: Drafts, *, dry_run: bool = False,
             entries: Sequence[str] | None = None, names: Mapping[str, str] | None = None,
             root: str = "", starting: Iterable[str | Path] = (), state: str = "",
-            environ: Mapping[str, str] | None = None) -> dict[str, Any]:
-    """One gesture: `dry_run` reviews every candidate, `entries` approves some."""
+            environ: Mapping[str, str] | None = None, server: str = "") -> dict[str, Any]:
+    """One gesture: `dry_run` reviews every candidate, `entries` approves some. `server`, the
+    name of the server that promotes, sets up the store's `about.json` and README too; with
+    none, entries are all a promotion touches."""
     if dry_run:
         if entries:
             raise Invalid("bad_argument", "dry_run reviews every candidate and entries approves "
                           "some: give one, not both")
-        return review(drafts, starting=starting, root=root, state=state, environ=environ)
+        return review(drafts, starting=starting, root=root, state=state, environ=environ,
+                      server=server)
     if not entries:
         raise Invalid("bad_argument", "name the entries to write in `entries` "
                       "(`<kind>/<name>`), or review them with `dry_run=true`")
     return write(drafts, entries=entries, names=names, starting=starting, root=root,
-                 state=state, environ=environ)
+                 state=state, environ=environ, server=server)
 
 
 def review(drafts: Drafts, *, starting: Iterable[str | Path] = (), root: str = "",
-           state: str = "", environ: Mapping[str, str] | None = None) -> dict[str, Any]:
+           state: str = "", environ: Mapping[str, str] | None = None,
+           server: str = "") -> dict[str, Any]:
     """Each candidate that would change the store as it would be written: its target, its size,
-    and for an update what changes; the others are named. Nothing is written or made."""
+    and for an update what changes; the others are named, and so is what an approval would
+    create beside them. Nothing is written or made."""
     store_dir = store(starting, root)
     if not drafts:
         raise Invalid("needs_call", "nothing is kept: a `start`, a map's `add` and a "
@@ -256,23 +273,28 @@ def review(drafts: Drafts, *, starting: Iterable[str | Path] = (), root: str = "
             planned.append(planned_entry(candidate, store_dir, state, environ))
         except Invalid as exc:
             unwritable.append({"entry": f"{kind}/{name}", "reason": str(exc)})
-    _within(planned, store_dir)
     changed = [entry for entry in planned if not _unchanged(entry[3])]
+    setup = _setup(planned, store_dir, server)
+    extra = _setup_files(store_dir, setup)
+    _within(planned, store_dir, extra)
     reply: dict[str, Any] = {
         "store": str(store_dir), "candidates": [item for *_, item in changed],
         "unchanged": [str(item["entry"]) for *_, item in planned if _unchanged(item)],
         "total_bytes": sum(len(data) for _, _, data, _ in changed),
-        "store_bytes": _store_bytes(store_dir, planned)}
+        "store_bytes": _store_bytes(store_dir, planned, extra)}
     if unwritable:
         reply["unwritable"] = unwritable
+    if setup and setup.created:
+        reply["would_create"] = list(setup.created)
     return reply
 
 
 def write(drafts: Drafts, *, entries: Sequence[str], names: Mapping[str, str] | None = None,
           starting: Iterable[str | Path] = (), root: str = "", state: str = "",
-          environ: Mapping[str, str] | None = None) -> dict[str, Any]:
-    """The entries chosen, each written to its own file in the store, and what the draft still
-    holds. Only this call creates `.scry/` and its kind directories."""
+          environ: Mapping[str, str] | None = None, server: str = "") -> dict[str, Any]:
+    """The entries chosen, each written to its own file in the store, then the store's
+    `about.json` and README, and what the draft still holds. Only this call creates `.scry/`
+    and its kind directories."""
     store_dir = store(starting, root)
     unknown = sorted(set(names or {}) - set(entries))
     if unknown:
@@ -296,20 +318,31 @@ def write(drafts: Drafts, *, entries: Sequence[str], names: Mapping[str, str] | 
     if repeated:
         raise Invalid("bad_argument", f"{_listed(repeated)} would be written twice: `names` "
                       "leaves each entry in its own file")
-    _within(planned, store_dir)
+    setup = _setup(planned, store_dir, server)
+    extra = _setup_files(store_dir, setup)
+    _within(planned, store_dir, extra)
     written: list[tuple[Candidate, Path, bytes, dict[str, Any]]] = []
-    for candidate, target, data, item in planned:
+    done: list[str] = []
+    jobs: list[tuple[str, Path, bytes, tuple[Candidate, Path, bytes, dict[str, Any]] | None]] = [
+        (str(each[3]["entry"]), each[1], each[2], each) for each in planned]
+    jobs += [(path.name, path, text, None) for path, text in extra]
+    for label, target, data, job in jobs:
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
-            fresh.replace(target, data, "the store entry")
+            fresh.replace(target, data, "the store file")
         except (OSError, Invalid) as exc:
             _dropped(drafts, written)
-            raise Invalid("host_failed", f"{item['entry']} could not be written ({exc}); "
-                          f"written before it: {_entries(written) or 'none'}") from None
-        written.append((candidate, target, data, item))
+            raise Invalid("host_failed", f"{label} could not be written ({exc}); "
+                          f"written before it: {', '.join(done) or 'none'}") from None
+        done.append(label)
+        if job is not None:
+            written.append(job)
     _dropped(drafts, written)
-    return {"store": str(store_dir), "written": [item for *_, item in written],
-            "draft": drafts.entries(), "store_bytes": _store_bytes(store_dir, [])}
+    reply = {"store": str(store_dir), "written": [item for *_, item in written],
+             "draft": drafts.entries(), "store_bytes": _store_bytes(store_dir, [])}
+    if setup and setup.created:
+        reply["created"] = list(setup.created)
+    return reply
 
 
 def planned_entry(candidate: Candidate, store_dir: Path, state: str,
@@ -378,8 +411,8 @@ def serialised(kind: str, document: Mapping[str, Any]) -> bytes:
     return (json.dumps(document, indent=indent, sort_keys=sorted_keys) + "\n").encode()
 
 
-def after_export(drafts: Drafts, reply: dict[str, Any],
-                 path_keys: Collection[str]) -> dict[str, Any]:
+def after_export(drafts: Drafts, reply: dict[str, Any], path_keys: Collection[str],
+                 has_store: bool = True) -> dict[str, Any]:
     """The document an export wrote is a candidate, named by the entry this session replayed or
     by the file it wrote."""
     path = str(reply.get("path") or "")
@@ -389,7 +422,7 @@ def after_export(drafts: Drafts, reply: dict[str, Any],
         kept = drafts.keep("perform", name, document, path_keys=path_keys)
     except Invalid:             # a file whose name is no entry's is written and not proposed
         kept = False
-    return {**reply, "kept": kept_line(drafts)} if kept else reply
+    return {**reply, "kept": kept_line(drafts, has_store)} if kept else reply
 
 
 def after_close(drafts: Drafts, reply: dict[str, Any], *,
@@ -403,12 +436,15 @@ def after_close(drafts: Drafts, reply: dict[str, Any], *,
 def promote_line(args: Mapping[str, Any], reply: Mapping[str, Any]) -> str:
     """`promote`'s summary line: what a review lists, or what an approval wrote."""
     if "written" in reply:
-        return (f"promote: {prose.counted(len(reply['written']), 'entry', 'entries')} written "
+        line = (f"promote: {prose.counted(len(reply['written']), 'entry', 'entries')} written "
                 f"to {reply['store']}, "
                 f"{prose.counted(len(reply['draft']), 'entry', 'entries')} still kept")
+        return f"{line}; created {', '.join(reply['created'])}" if reply.get("created") else line
     line = f"promote: {prose.counted(len(reply['candidates']), 'candidate')} in {reply['store']}"
     if unwritable := reply.get("unwritable"):
         line += f", {prose.counted(len(unwritable), 'entry', 'entries')} cannot be written"
+    if would := reply.get("would_create"):
+        line += f"; would create {', '.join(would)}"
     return line
 
 
@@ -461,8 +497,31 @@ def _unchanged(item: Mapping[str, Any]) -> bool:
         diff.get(key) for key in ("added", "removed", "changed"))
 
 
+def _setup(planned: Sequence[tuple[Candidate, Path, bytes, dict[str, Any]]],
+           store_dir: Path, server: str) -> scry_readme.Setup | None:
+    """What the store gets beside `planned`: its `about.json` and README, or None when no server
+    asked for them or nothing is planned."""
+    if not server or not planned:
+        return None
+    files = {f"{item['kind']}/{project_store.file_name(str(item['kind']), str(item['name']))}":
+             json.loads(data) for _candidate, _target, data, item in planned}
+    try:
+        return scry_readme.scaffold(store_dir.parent, server, files)
+    except scry_readme.Refused as exc:
+        raise Invalid("bad_argument", f"{exc}: a promotion renders the store's README from "
+                      "its about.json, so fix or remove it") from None
+
+
+def _setup_files(store_dir: Path, setup: scry_readme.Setup | None) -> list[tuple[Path, bytes]]:
+    """The files `setup` writes, in the order it writes them."""
+    if setup is None:
+        return []
+    return [*([(store_dir / scry_readme.ABOUT, setup.about)] if setup.about is not None else []),
+            (store_dir / scry_readme.README, setup.page)]
+
+
 def _within(planned: Sequence[tuple[Candidate, Path, bytes, dict[str, Any]]],
-            store_dir: Path) -> None:
+            store_dir: Path, extra: Sequence[tuple[Path, bytes]] = ()) -> None:
     """Refuse a promotion the store's caps cannot hold, naming the entries that would exceed."""
     by_kind: dict[str, set[str]] = {}
     for _candidate, _target, _data, item in planned:
@@ -477,7 +536,7 @@ def _within(planned: Sequence[tuple[Candidate, Path, bytes, dict[str, Any]]],
             raise Invalid("bad_argument", f"{STORE}/{kind}/ would hold "
                           f"{len(present | names)} entries after {_entries(planned, kind)}, "
                           f"past the {project_store.ENTRIES_MAX} a kind directory holds")
-    total = _store_bytes(store_dir, planned)
+    total = _store_bytes(store_dir, planned, extra)
     if total > project_store.STORE_BYTES_MAX:
         raise Invalid("bad_argument", f"{_entries(planned)} would leave {store_dir} at {total} "
                       f"bytes, past the {project_store.STORE_BYTES_MAX} a store holds: promote "
@@ -485,13 +544,16 @@ def _within(planned: Sequence[tuple[Candidate, Path, bytes, dict[str, Any]]],
 
 
 def _store_bytes(store_dir: Path, planned: Sequence[tuple[Candidate, Path, bytes,
-                                                          dict[str, Any]]]) -> int:
-    """The store's bytes with `planned` written: every file it holds now, minus what each
-    promotion replaces, plus what it writes."""
-    targets = {target for _candidate, target, _data, _item in planned}
+                                                          dict[str, Any]]],
+                 extra: Sequence[tuple[Path, bytes]] = ()) -> int:
+    """The store's bytes with `planned` and `extra` written: every file it holds now, minus
+    what each promotion replaces, plus what it writes."""
+    targets = {target for _candidate, target, _data, _item in planned} | {
+        path for path, _data in extra}
     kept = sum(path.stat().st_size for path in store_dir.rglob("*")
                if path.is_file() and path not in targets)
-    return kept + sum(len(data) for _candidate, _target, data, _item in planned)
+    return (kept + sum(len(data) for _candidate, _target, data, _item in planned)
+            + sum(len(data) for _path, data in extra))
 
 
 def _entries(planned: Sequence[tuple[Candidate, Path, bytes, dict[str, Any]]],

@@ -215,3 +215,30 @@ def test_a_page_that_cannot_be_read_or_written_is_invalid_not_drift(
 
 def test_the_page_lists_exactly_the_kinds_the_store_holds() -> None:
     assert tuple(kind for kind, _, _ in scry_readme._KINDS) == project_store.KINDS
+
+
+@pytest.mark.parametrize("kind, name, document, line", [
+    ("start", "dos", {"program": "GAME.EXE", "system": "x"}, "boots `GAME.EXE`."),
+    ("start", "v30", {"system": "lineup"}, "boots `lineup`."),
+    ("start", "v30", {"program": "a\nb  c"}, "boots `a b c`."),
+    ("start", "v30", {"program": ["a"], "system": ""}, "a run recipe."),
+    ("start", "v30", {}, "a run recipe."),
+    ("start", "v30", "not a document", "a run recipe."),
+    ("maps", "lineup", {"application": "lineup"}, "the screens of lineup."),
+    ("maps", "lineup", {}, "the screens of lineup."),
+    ("maps", "lineup", {"application": "a\nb"}, "the screens of a b."),
+    ("maps", "lineup", {"application": " "}, "the screens of lineup."),
+    ("perform", "tour", {"steps": [{}]}, "replays 1 step."),
+    ("perform", "tour", {"steps": [{}, {}, {}]}, "replays 3 steps."),
+    ("perform", "tour", {"steps": "none"}, "a session."),
+])
+def test_a_line_is_derived_from_the_entry_alone(
+        kind: str, name: str, document: object, line: str) -> None:
+    assert scry_readme.derived_line(kind, name, document) == line
+
+
+def test_the_footer_names_what_a_repository_without_scry_core_can_do(tmp_path: Path) -> None:
+    text = scry_readme.render(_store(tmp_path, ABOUT))
+    footer = text.rsplit("---", 1)[1]
+    assert "`promote`" in footer and "scry-core checkout" in footer
+    assert "inside" not in footer

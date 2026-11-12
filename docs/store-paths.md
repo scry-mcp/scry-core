@@ -13,4 +13,5 @@ placeholder:
 | `${env:NAME}` | the environment variable `NAME`; refused by name when it is unset |
 
 Any other `${...}` is refused. `promote` writes each path in these terms, and lists apart an entry
-with a path none of them covers.
+with a path none of them covers. A promotion made by a server also writes the folder's `about.json` and
+README: [docs/scry-readme.md](scry-readme.md).

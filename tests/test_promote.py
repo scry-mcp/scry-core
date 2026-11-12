@@ -10,7 +10,15 @@ from typing import Any
 
 import pytest
 
-from scry_core import file_names, fresh, project_store, promote, promote_diff, screen_map
+from scry_core import (
+    file_names,
+    fresh,
+    project_store,
+    promote,
+    promote_diff,
+    screen_map,
+    scry_readme,
+)
 from scry_core.promote import Drafts
 from scry_core.reply_contract import Invalid
 
@@ -178,6 +186,205 @@ def test_an_approved_promotion_creates_the_store_and_its_kind_directory(
     target = root / ".scry" / "start" / "lineup.json"
     assert reply["written"][0]["change"] == "new"
     assert json.loads(target.read_text()) == start_doc(system="lineup")
+
+
+def _about(root: Path) -> dict[str, Any]:
+    return json.loads((root / ".scry" / "about.json").read_text())  # type: ignore[no-any-return]
+
+
+def _lineup() -> Drafts:
+    return drafted("start", "lineup", start_doc(system="lineup"), needs=("system",))
+
+
+def test_an_approved_promotion_into_a_bare_repository_sets_up_the_whole_store(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    reply = write(_lineup(), root, ["start/lineup"], server="dosbox-x")
+    assert reply["created"] == [".scry/", ".scry/about.json", ".scry/README.md"]
+    assert _about(root) == {
+        "format": "scry-about/1", "server": "dosbox-x",
+        "purpose": "What this repository declares for SCRY's `dosbox-x` server.",
+        "files": {"start/lineup.json": "boots `lineup`."}}
+    page = (root / ".scry" / "README.md").read_bytes()
+    assert page == scry_readme.render(root).encode()
+    assert scry_readme.main(["--check", str(root)]) == 0
+
+
+def test_a_review_lists_what_an_approval_would_create_and_writes_nothing(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    reply = review(_lineup(), root, server="mame")
+    assert reply["would_create"] == [".scry/", ".scry/about.json", ".scry/README.md"]
+    assert not (root / ".scry").exists()
+    assert promote.promote_line({}, reply).endswith(
+        "; would create .scry/, .scry/about.json, .scry/README.md")
+
+
+def test_the_approved_line_says_what_it_created(tmp_path: Path) -> None:
+    reply = write(_lineup(), repo(tmp_path), ["start/lineup"], server="mame")
+    assert promote.promote_line({}, reply).endswith(
+        "0 entries still kept; created .scry/, .scry/about.json, .scry/README.md")
+
+
+def test_a_promotion_with_no_server_writes_the_entry_and_nothing_else(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    assert "would_create" not in review(_lineup(), root)
+    reply = write(_lineup(), root, ["start/lineup"])
+    assert "created" not in reply
+    assert sorted(p.name for p in (root / ".scry").rglob("*")) == ["lineup.json", "start"]
+
+
+def test_a_server_the_readme_does_not_know_is_refused_before_anything_is_written(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    with pytest.raises(Invalid, match="bochs"):
+        write(_lineup(), root, ["start/lineup"], server="bochs")
+    assert not (root / ".scry").exists()
+
+
+def test_a_later_promotion_keeps_the_lines_written_by_hand_and_names_only_the_new_entry(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    write(_lineup(), root, ["start/lineup"], server="mame")
+    about = _about(root)
+    about["files"]["start/lineup.json"] = "boots the arcade board the way the bench does."
+    about["server"] = "dosbox-x"
+    (root / ".scry" / "about.json").write_text(json.dumps(about))
+    reply = write(drafted("maps", "lineup", map_doc("play")), root, ["maps/lineup"],
+                  server="mame")
+    assert "created" not in reply
+    assert _about(root)["files"] == {
+        "start/lineup.json": "boots the arcade board the way the bench does.",
+        "maps/lineup-screen-map.json": "the screens of lineup."}
+    assert _about(root)["server"] == "dosbox-x"
+    page = (root / ".scry" / "README.md").read_text()
+    assert "boots the arcade board the way the bench does." in page
+    assert page == scry_readme.render(root)
+
+
+def test_a_manifest_that_already_covers_every_entry_is_left_as_it_is(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    write(_lineup(), root, ["start/lineup"], server="mame")
+    handwritten = json.dumps(_about(root), indent=4) + "\n"
+    (root / ".scry" / "about.json").write_text(handwritten)
+    changed = drafted("start", "lineup", start_doc(system="lineup", boot_seconds=3.0),
+                      needs=("system",))
+    write(changed, root, ["start/lineup"], server="mame")
+    assert (root / ".scry" / "about.json").read_text() == handwritten
+
+
+def test_a_store_with_no_manifest_gets_a_line_for_every_file_it_holds(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    (root / ".scry" / "start").mkdir(parents=True)
+    (root / ".scry" / "start" / "old.json").write_text(json.dumps(start_doc(program="OLD.EXE")))
+    (root / ".scry" / "start" / "bad.json").write_text("not json")
+    reply = write(_lineup(), root, ["start/lineup"], server="mame")
+    assert reply["created"] == [".scry/about.json", ".scry/README.md"]
+    assert _about(root)["files"] == {
+        "start/bad.json": "a run recipe.", "start/lineup.json": "boots `lineup`.",
+        "start/old.json": "boots `OLD.EXE`."}
+
+
+def test_a_renamed_entry_gets_its_line_under_the_name_it_is_written_as(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    write(_lineup(), root, ["start/lineup"], names={"start/lineup": "dos"}, server="mame")
+    assert list(_about(root)["files"]) == ["start/dos.json"]
+
+
+@pytest.mark.parametrize("make, message", [
+    (lambda about: about.write_text("{not json"), "not JSON"),
+    (lambda about: about.write_text(json.dumps({"format": "scry-about/1", "purpose": "p",
+                                                "server": "mame",
+                                                "files": {"start/ghost.json": "gone."}})),
+     r"start/ghost\.json"),
+    (lambda about: about.mkdir(), "about.json is not a file"),
+    (lambda about: about.write_text(json.dumps({"format": "scry-about/1", "purpose": "p",
+                                                "server": "mame", "files": ["start/x.json"]})),
+     "files must map"),
+])
+def test_a_manifest_the_page_cannot_be_rendered_from_refuses_the_whole_promotion(
+        tmp_path: Path, make: Any, message: str) -> None:
+    root = repo(tmp_path)
+    (root / ".scry").mkdir()
+    make(root / ".scry" / "about.json")
+    with pytest.raises(Invalid, match=message):
+        write(_lineup(), root, ["start/lineup"], server="mame")
+    assert not (root / ".scry" / "start").exists()
+    with pytest.raises(Invalid, match=message):
+        review(_lineup(), root, server="mame")
+
+
+def test_a_page_that_is_a_directory_refuses_the_promotion_before_the_entry_is_written(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    (root / ".scry" / "README.md").mkdir(parents=True)
+    with pytest.raises(Invalid, match="README.md is not a file"):
+        write(_lineup(), root, ["start/lineup"], server="mame")
+    assert not (root / ".scry" / "start").exists()
+
+
+def test_a_review_with_nothing_to_change_has_nothing_to_create(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    write(_lineup(), root, ["start/lineup"], server="mame")
+    again = review(_lineup(), root, server="mame")
+    assert again["candidates"] == [] and "would_create" not in again
+
+
+def test_the_store_s_total_with_its_setup_is_the_same_before_and_after(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    before = review(_lineup(), root, server="mame")["store_bytes"]
+    after = write(_lineup(), root, ["start/lineup"], server="mame")["store_bytes"]
+    assert before == after > len(scry_readme.render(root))
+
+
+def test_the_setup_counts_toward_the_store_s_cap(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    plain, set_up = tmp_path / "plain", tmp_path / "set_up"
+    plain.mkdir()
+    set_up.mkdir()
+    monkeypatch.setattr(project_store, "STORE_BYTES_MAX",
+                        review(_lineup(), plain)["total_bytes"] + 10)
+    assert write(_lineup(), plain, ["start/lineup"])["written"]
+    with pytest.raises(Invalid, match="past the"):
+        write(_lineup(), set_up, ["start/lineup"], server="mame")
+
+
+def test_a_setup_that_fails_to_land_says_what_was_written_before_it(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = repo(tmp_path)
+    real = fresh.replace
+
+    def refuse_the_manifest(path: Path, data: bytes, what: str, *rest: Any) -> None:
+        if path.name == "about.json":
+            raise Invalid("host_failed", "disk full")
+        real(path, data, what, *rest)
+
+    monkeypatch.setattr(fresh, "replace", refuse_the_manifest)
+    drafts = _lineup()
+    with pytest.raises(Invalid, match=r"about\.json could not be written.*before it: start/lineup"):
+        write(drafts, root, ["start/lineup"], server="mame")
+    assert drafts.entries() == []
+
+
+def test_a_server_the_readme_does_not_know_is_refused_whatever_the_store_holds(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    write(_lineup(), root, ["start/lineup"], server="mame")
+    with pytest.raises(Invalid, match="bochs"):
+        write(drafted("maps", "lineup", map_doc("play")), root, ["maps/lineup"], server="bochs")
+    assert not (root / ".scry" / "maps").exists()
+
+
+def test_a_review_of_unchanged_entries_still_names_the_setup_an_approval_would_create(
+        tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    write(_lineup(), root, ["start/lineup"])
+    again = review(_lineup(), root, server="mame")
+    assert again["candidates"] == []
+    assert again["would_create"] == [".scry/about.json", ".scry/README.md"]
+    assert write(_lineup(), root, ["start/lineup"], server="mame")["created"] == \
+        again["would_create"]
 
 
 def test_only_the_entries_chosen_are_written_and_the_rest_stay_kept(tmp_path: Path) -> None:
@@ -848,6 +1055,9 @@ def test_kept_line_and_the_close_and_summary_helpers_say_what_they_mean() -> Non
     drafts = Drafts()
     drafts.keep("start", "x", start_doc(system="x"), needs=("system",))
     assert promote.kept_line(drafts) == "kept 1 (promote to review)"
+    assert promote.kept_line(drafts, has_store=False) == (
+        "kept 1 (promote to review); there is no .scry/ above this project: "
+        "promote(dry_run=true, root=<the repository>) lists what an approval would create")
     reply = promote.after_close(drafts, {"closed": True}, starting=lambda: [])
     assert reply["draft"] == ["start/x"]
     empty = promote.after_close(Drafts(), {"closed": False}, starting=lambda: [])
@@ -865,6 +1075,8 @@ def test_an_export_is_kept_from_the_file_it_wrote(tmp_path: Path) -> None:
     reply = promote.after_export(drafts, {"path": str(path)}, ("rompath",))
     assert reply["kept"] == "kept 1 (promote to review)"
     assert drafts.entries() == ["perform/session"]
+    bare = promote.after_export(Drafts(), {"path": str(path)}, ("rompath",), has_store=False)
+    assert "no .scry/ above this project" in bare["kept"]
 
 
 def test_a_write_that_fails_says_what_landed_and_keeps_the_rest(
