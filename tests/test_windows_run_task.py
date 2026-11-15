@@ -83,3 +83,13 @@ def test_the_fetch_lands_in_a_folder_of_its_own_under_the_callers_temporary_fold
     out = Path(ran.stdout.split("out=")[1].split()[0])
     assert out.parent == tmp_path / "temp" and out.name.startswith("scry-win-"), out
     assert (out / "build" / "battery.log").read_text(encoding="utf-8") == "fetched\n"
+
+
+def test_the_host_sync_fails_when_a_bundle_could_not_be_fetched(tmp_path: Path) -> None:
+    """`sync.sh` runs in the host's run root; with no mirror there every fetch fails."""
+    sync = tmp_path / "sync.sh"
+    sync.write_bytes((SCRIPT.parent / "sync.sh").read_bytes())
+    ran = subprocess.run(["bash", str(sync)], capture_output=True, text=True, timeout=60,
+                         check=False)
+    assert "scry-core fetch-bundle rc=" in ran.stdout, ran.stdout + ran.stderr
+    assert ran.returncode != 0, ran.stdout
