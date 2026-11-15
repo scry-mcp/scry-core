@@ -9,7 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from typing import Any
 
@@ -397,9 +397,11 @@ def test_a_loop_is_converted_from_a_tiny_avi_within_the_budget(tmp_path: Path) -
     assert not (run / d.LOOP_MP4).exists(), "the staged conversion was left in the run"
 
 
+@pytest.mark.parametrize("found", ["/opt/homebrew/bin/ffmpeg", r"C:\tools\ffmpeg\bin\ffmpeg.EXE"])
 def test_the_conversion_is_the_command_the_plan_decided(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, found: str) -> None:
     """H.264 to a muted MP4 at most three seconds long, trimmed by time, startable early."""
+    monkeypatch.setattr(shutil, "which", lambda name: found if name == "ffmpeg" else None)
     run = tmp_path / "run"
     run.mkdir()
     avi = run / d.LOOP_AVI
@@ -414,7 +416,8 @@ def test_the_conversion_is_the_command_the_plan_decided(
     monkeypatch.setattr(subprocess, "run", fake)
     assert d._convert_loop(avi, tmp_path / d.LOOP_MP4) == b"an mp4"
     (argv,) = seen
-    assert Path(argv[0]).name == "ffmpeg" and argv[1:] == [
+    assert argv[0] == found and PureWindowsPath(found).stem.lower() == "ffmpeg"
+    assert argv[1:] == [
         "-y", "-i", str(avi), "-t", str(d.LOOP_SECONDS), "-an", "-c:v", "libx264", "-pix_fmt",
         "yuv420p", "-crf", "30", "-preset", "slow", "-movflags", "+faststart",
         str(run / d.LOOP_MP4)]
