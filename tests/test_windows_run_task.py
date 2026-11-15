@@ -54,8 +54,10 @@ def test_a_fetched_steps_logs_are_removed_from_the_host(tmp_path: Path) -> None:
     ran, calls = _run(tmp_path)
     assert ran.returncode == 0, ran.stdout + ran.stderr
     removal = [c for c in calls if "Remove-Item" in c]
-    names = ("logs\\build", "logs\\build.log", "logs\\build.done")
-    assert len(removal) == 1 and all(name in removal[0] for name in names), calls
+    assert len(removal) == 1, calls
+    removed = removal[0].split("SilentlyContinue ", 1)[1].split(", ")
+    assert removed == ["C:\\run\\logs\\build", "C:\\run\\logs\\build.log",
+                       "C:\\run\\logs\\build.done"], removed
     assert "host_logs_removed_rc=0" in ran.stdout, ran.stdout
 
 
