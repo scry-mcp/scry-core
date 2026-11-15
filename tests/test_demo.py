@@ -398,7 +398,7 @@ def test_a_loop_is_converted_from_a_tiny_avi_within_the_budget(tmp_path: Path) -
 
 
 @pytest.mark.parametrize("found", ["/opt/homebrew/bin/ffmpeg", r"C:\tools\ffmpeg\bin\ffmpeg.EXE"])
-def test_the_conversion_is_the_command_the_plan_decided(
+def test_the_loop_is_converted_to_a_muted_h264_mp4_trimmed_by_time(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, found: str) -> None:
     """H.264 to a muted MP4 at most three seconds long, trimmed by time, startable early."""
     monkeypatch.setattr(shutil, "which", lambda name: found if name == "ffmpeg" else None)
