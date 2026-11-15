@@ -7,6 +7,9 @@ What a server author notices. A client's view of each server is in that server's
 - `scry_core.hook` starts `jscpd` as `PATH` and `PATHEXT` resolve it, so on Windows it runs the
   `jscpd.cmd` npm installs and not the extensionless shim beside it, which Windows cannot start
   (WinError 193): the duplication check, and a server's hook cases with it, run there too.
+- `scry_core.host_program.release_fifo` releases a reader that opens the FIFO after it is called,
+  within `seconds` (`RELEASE_S` when left out), and with no reader by then returns: it used to try
+  once, find no reader yet, and return, leaving the late reader blocked for good.
 
 ## 0.111.1
 

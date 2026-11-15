@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import contextlib
+import errno
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
@@ -52,8 +53,20 @@ def fifo(path: Path) -> None:
         os.mkfifo(path)
 
 
-def release_fifo(path: Path) -> None:
-    """A reader blocked on the FIFO at `path`, released."""
+RELEASE_S = 1.0
+RELEASE_POLL_S = 0.01
+
+
+def release_fifo(path: Path, seconds: float = RELEASE_S) -> None:
+    """The FIFO's reader released, blocked now or opening within `seconds`: with none yet the
+    writing end refuses to open (ENXIO), so it is tried until then, and the call returns."""
     if sys.platform != "win32":
-        with contextlib.suppress(OSError):
-            os.close(os.open(path, os.O_WRONLY | os.O_NONBLOCK))
+        deadline = time.monotonic() + seconds
+        while True:
+            try:
+                os.close(os.open(path, os.O_WRONLY | os.O_NONBLOCK))
+                return
+            except OSError as e:
+                if e.errno != errno.ENXIO or time.monotonic() >= deadline:
+                    return
+            time.sleep(RELEASE_POLL_S)

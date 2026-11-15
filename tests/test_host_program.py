@@ -6,6 +6,7 @@ import stat
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -36,8 +37,32 @@ def test_a_fifo_blocks_its_reader_until_it_is_released(tmp_path: Path) -> None:
     assert read == [b""], "the reader was not released"
 
 
-def test_releasing_what_no_reader_holds_is_no_error(tmp_path: Path) -> None:
-    host_program.release_fifo(tmp_path / "absent")
+def test_a_release_sent_before_the_reader_opens_still_releases_it(tmp_path: Path) -> None:
+    path = tmp_path / "f"
+    host_program.fifo(path)
+    releaser = threading.Thread(target=host_program.release_fifo, args=(path,), daemon=True)
+    releaser.start()
+    time.sleep(0.2)
+    read: list[bytes] = []
+    reader = threading.Thread(target=lambda: read.append(path.read_bytes()), daemon=True)
+    reader.start()
+    reader.join(5)
+    assert read == [b""], "a reader that opened after the release was left blocked"
+
+
+@pytest.mark.parametrize(("name", "bound"), [("absent", 0.0), ("f", 0.2)])
+def test_a_release_no_reader_takes_returns_within_its_bound(tmp_path: Path, name: str,
+                                                             bound: float) -> None:
+    """A path that is gone returns at once; a FIFO nobody opens, once its bound has passed."""
+    if name == "f":
+        host_program.fifo(tmp_path / name)
+    releaser = threading.Thread(target=host_program.release_fifo,
+                                args=(tmp_path / name, 5.0 if name == "absent" else bound),
+                                daemon=True)
+    began = time.monotonic()
+    releaser.start()
+    releaser.join(3)
+    assert not releaser.is_alive() and time.monotonic() - began < bound + 1.0
 
 
 def test_an_absolute_path_is_one_this_host_calls_absolute() -> None:
