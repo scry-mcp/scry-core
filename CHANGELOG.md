@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.111.1
 
 - `scry_core.stop_wait.GRAMMAR`, the condition grammar a server puts in `screen_wait`'s
   description, names a register of the stopped cpu instead of `AX` and `d0`: `d0` is no register
