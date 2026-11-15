@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.111.2
 
 - `scry_core.hook` starts `jscpd` as `PATH` and `PATHEXT` resolve it, so on Windows it runs the
   `jscpd.cmd` npm installs and not the extensionless shim beside it, which Windows cannot start
