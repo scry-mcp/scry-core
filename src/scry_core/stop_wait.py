@@ -26,9 +26,9 @@ _OPS: dict[str, Callable[[int, int], bool]] = {
     ">=": lambda a, b: a >= b, "<": lambda a, b: a < b, ">": lambda a, b: a > b}
 _TERM = re.compile(r"^(?:([bwd])@([^\s=!<>&|]+)|([A-Za-z][A-Za-z0-9]*))\s*(==|!=|<=|>=|<|>)\s*"
                    r"(?:0[xX])?([0-9A-Fa-f]+)$")
-GRAMMAR = (f"up to {TERMS_MAX} terms joined by `&&`, each a register (`AX`, `d0`) or a memory "
-           "read (`b@ref`, `w@ref`, `d@ref`), a comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`) "
-           "and a hex value (`0x` allowed)")
+GRAMMAR = (f"up to {TERMS_MAX} terms joined by `&&`, each a register of the stopped cpu or a "
+           "memory read (`b@ref`, `w@ref`, `d@ref`), a comparison (`==`, `!=`, `<`, `<=`, `>`, "
+           "`>=`) and a hex value (`0x` allowed)")
 
 
 @dataclass(frozen=True)
