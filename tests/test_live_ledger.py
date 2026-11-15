@@ -62,6 +62,25 @@ def test_the_sections_a_run_names(raw: str, names: list[str]) -> None:
     assert ledger.chosen_sections(raw) == names
 
 
+@pytest.mark.parametrize("raw", ["AA", " aa ", "BAA"])
+def test_a_value_with_no_comma_that_holds_a_two_letter_section_s_name_is_refused(raw: str) -> None:
+    with pytest.raises(ValueError, match="`AA,`"):
+        ledger.chosen_sections(raw, ["A", "B", "AA"])
+
+
+@pytest.mark.parametrize(("raw", "names"), [
+    ("A", ["A"]), ("AB", ["A", "B"]), ("AA,", ["AA"]), ("AA, B", ["AA", "B"]), ("", [])])
+def test_the_spellings_that_name_sections_are_kept_beside_a_two_letter_name(
+        raw: str, names: list[str]) -> None:
+    assert ledger.chosen_sections(raw, ["A", "B", "AA"]) == names
+
+
+@pytest.mark.parametrize("raw", [",", " , ", ",,"])
+def test_a_value_that_names_no_section_is_refused_not_read_as_all(raw: str) -> None:
+    with pytest.raises(ValueError, match="names no section"):
+        ledger.chosen_sections(raw)
+
+
 def test_a_section_that_spans_the_run_comes_last_and_opens_comes_first() -> None:
     chosen = sorted([_section("B", spans=True), _section("Z"), _section("A", opens=True)],
                     key=lambda s: (s.place, s.block))

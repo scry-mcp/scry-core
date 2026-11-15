@@ -10,6 +10,10 @@ What a server author notices. A client's view of each server is in that server's
 - `scry_core.host_program.release_fifo` releases a reader that opens the FIFO after it is called,
   within `seconds` (`RELEASE_S` when left out), and with no reader by then returns: it used to try
   once, find no reader yet, and return, leaving the late reader blocked for good.
+- `scry_core.live_ledger.chosen_sections` takes the run's section `names`, and refuses a value with
+  no comma that holds a two-letter section's name (`AA`, `BAA`), naming the comma form (`AA,`),
+  and a value that names no section (`,`): read as letters the first ran other sections, and the
+  second ran every one, both saying nothing.
 
 ## 0.111.1
 

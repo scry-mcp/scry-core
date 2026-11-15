@@ -15,7 +15,7 @@ import tempfile
 import threading
 import time
 import traceback
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Collection, Iterator
 from dataclasses import dataclass, field
 from itertools import count
 from pathlib import Path
@@ -73,11 +73,19 @@ class Section:
         return [c.label for c in self.cells]
 
 
-def chosen_sections(raw: str) -> list[str]:
+def chosen_sections(raw: str, names: Collection[str] = ()) -> list[str]:
     """The sections a run names: one letter each, or comma-separated names once a name has two
-    letters (`AA,B`); a lone name with two letters ends in a comma (`AA,`)."""
+    letters (`AA,B`); a lone name with two letters ends in a comma (`AA,`). ValueError for a value
+    that names nothing, and for one with no comma that holds a longer name of `names`: read as
+    letters it would run other sections."""
     raw = raw.strip().upper()
-    return [n.strip() for n in raw.split(",") if n.strip()] if "," in raw else list(raw)
+    chosen = [n.strip() for n in raw.split(",") if n.strip()] if "," in raw else list(raw)
+    if raw and not chosen:
+        raise ValueError(f"{raw!r} names no section")
+    if "," not in raw and (held := [n for n in names if len(n) > 1 and n in raw]):
+        raise ValueError(f"{raw} reads as the sections {', '.join(raw)}; section "
+                         f"{held[0]} is named with commas: `{held[0]},`")
+    return chosen
 
 
 def cannot_be_judged(chosen: list[Section]) -> list[tuple[str, str]]:
