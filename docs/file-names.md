@@ -4,9 +4,10 @@ A file a server writes is named in lowercase ASCII letters and digits, in words 
 hyphens, then one dot and an extension of lowercase letters and digits (`snapshot-3.png`,
 `f000012.png`): `^[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+$`. A value that comes from outside (an
 argument, a profile, a system's name, the last component of a path the caller names) is
-normalised into that rule by `scry_core.file_names`, or refused when nothing of it fits or what
-fits is longer than its `WORD_MAX`, and the
-server's reply names the file that was written.
+normalised into that rule by `scry_core.file_names`, or refused when nothing of it fits; a value
+other than a caller's file name is refused too when what fits is longer than its `WORD_MAX`,
+since a caller's whole file name is the host's to bound. The server's reply names the file that
+was written.
 
 The data a repository tracks for its servers (its fixtures, demos and `.scry/` files) follows the
 same rule, with two exceptions. A file a DOS program runs, reads or writes by its own name keeps
