@@ -150,8 +150,8 @@ def request(display: int | None, fullscreen: bool | None, *, shared: bool,
 
 @dataclass(frozen=True)
 class WindowState:
-    """Where the window is and whether it is shown; `front` is no other application's window
-    covering its centre."""
+    """Where the window is and whether it is shown; `front` is on screen with no other
+    application's window covering its centre."""
 
     display: int
     bounds: Rect
