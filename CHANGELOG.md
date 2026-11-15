@@ -237,6 +237,11 @@ and `recording.EXPORT_REPLY`, which nothing read, are gone.
 - `only_the_run` and `starting` are shared by both servers; `PerformFields` and `perform`'s
   description halves are too.
 
+A server's tests can run on a Windows host with the helpers in `scripts/windows/`: `bundle.sh`
+and `push-tree.sh` carry the repositories, or a working tree under test, there, and `run-task.sh`
+runs a step as a scheduled task and fetches its logs. Set `SCRY_WIN_SSH` and `SCRY_WIN_ROOT` to
+the host and its run root.
+
 ## 0.93.0
 
 ### Changed
