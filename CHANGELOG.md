@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.hook` starts `jscpd` as `PATH` and `PATHEXT` resolve it, so on Windows it runs the
+  `jscpd.cmd` npm installs and not the extensionless shim beside it, which Windows cannot start
+  (WinError 193): the duplication check, and a server's hook cases with it, run there too.
+
 ## 0.111.1
 
 - `scry_core.stop_wait.GRAMMAR`, the condition grammar a server puts in `screen_wait`'s

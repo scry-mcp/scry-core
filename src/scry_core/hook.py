@@ -39,6 +39,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -96,6 +97,9 @@ def duplication(root: Path, scratch: Path) -> str:
                       "against. It is tracked; restore it, or create one with:\n"
                       f"    jscpd . --baseline {BASELINE} --update-baseline")
     jscpd = os.environ.get("PRECOMMIT_JSCPD") or "jscpd"
+    # On Windows npm's extensionless shim sits beside jscpd.cmd and cannot be started: `which`
+    # takes the PATHEXT name, as cmd.exe does.
+    jscpd = shutil.which(jscpd) or jscpd
     rc, said = _run([jscpd, ".", "--baseline", BASELINE, "--fail-on-new-clones",
                      "--reporters", "json", "--output", str(scratch)], "jscpd", root,
                     "PRECOMMIT_JSCPD")

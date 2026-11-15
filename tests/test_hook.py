@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -134,6 +135,33 @@ def test_a_jscpd_that_cannot_be_run_is_invalid(
     rc, said = _hook(capsys)
     assert rc == verdict.EXIT_INVALID and "jscpd could not be run" in said
     assert "it is PRECOMMIT_JSCPD's value" in said, said
+
+
+def test_on_windows_the_jscpd_started_is_the_one_pathext_names(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """npm installs `jscpd` as a POSIX shim with no extension beside `jscpd.cmd`; Windows cannot
+    start the first (WinError 193), so the name is resolved as `cmd.exe` would, by PATHEXT."""
+    npm = tmp_path / "npm"
+    npm.mkdir()
+    for shim in ("jscpd", "jscpd.cmd"):
+        (npm / shim).write_text("")
+        (npm / shim).chmod(0o755)
+    (tmp_path / hook.BASELINE).write_text("{}")
+    monkeypatch.delenv("PRECOMMIT_JSCPD", raising=False)
+    monkeypatch.setenv("PATH", str(npm))
+    # lower case, as npm names the shim, so a case-sensitive volume finds it too
+    monkeypatch.setenv("PATHEXT", os.pathsep.join((".com", ".exe", ".bat", ".cmd")))
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(shutil, "_win_path_needs_curdir", lambda cmd, mode: False, raising=False)
+    started: list[str] = []
+
+    def run(argv: list[str], **kw: object) -> subprocess.CompletedProcess[str]:
+        started.append(argv[0])
+        return subprocess.CompletedProcess(argv, 0, "", "")
+    monkeypatch.setattr(subprocess, "run", run)
+    with pytest.raises(verdict.Invalid, match="wrote no report"):
+        hook.duplication(tmp_path, tmp_path / "out")
+    assert started == [str(npm / "jscpd.cmd")]
 
 
 def test_an_uncovered_tool_blocks_naming_the_hole_and_how_to_measure_after(
