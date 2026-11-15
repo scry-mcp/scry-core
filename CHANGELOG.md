@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.111.0
 
 - `scry_core.log_wait.timeout_note` takes the clause that closes the note as `run_state`, by
   keyword; left out it is `STILL_RUNNING`, the clause it always closed on, for a caller that
