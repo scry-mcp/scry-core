@@ -65,14 +65,16 @@ def test_logs_that_were_not_fetched_stay_on_the_host(tmp_path: Path) -> None:
     ran, calls = _run(tmp_path, SCP_FAILS="1")
     assert not [c for c in calls if "Remove-Item" in c], calls
     assert "fetch_rc=1" in ran.stdout, ran.stdout
+    assert ran.returncode != 0, "a step whose logs did not come back is no pass"
 
 
 @pytest.mark.parametrize("how", [{"LAUNCH_FAILS": "1"}, {"LAUNCH_SAYS": "TIMEOUT"}])
 def test_a_step_that_did_not_end_keeps_its_logs_on_the_host(
         tmp_path: Path, how: dict[str, str]) -> None:
     """Its log came back cut, or it may still be writing."""
-    _, calls = _run(tmp_path, **how)
+    ran, calls = _run(tmp_path, **how)
     assert not [c for c in calls if "Remove-Item" in c], calls
+    assert ran.returncode != 0, ran.stdout
 
 
 def test_the_fetch_lands_in_a_folder_of_its_own_under_the_callers_temporary_folder(

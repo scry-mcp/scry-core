@@ -3,6 +3,7 @@
 # fetch its logs into a directory of this run, which it names and its caller removes once read.
 # The logs of a step that ended and was fetched are removed from the host; one that timed out or
 # whose launch failed keeps them there, since its log came back cut or it may still be writing.
+# It exits 0 only for a step that ended, left no task and whose logs came back.
 set -uo pipefail
 : "${SCRY_WIN_SSH:?set SCRY_WIN_SSH to the Windows host, user@host}"
 : "${SCRY_WIN_ROOT:?set SCRY_WIN_ROOT to the Windows run root, C:/.../scry-win}"
@@ -24,11 +25,12 @@ echo "tasks_left=$left"
 scp -q -r "$SCRY_WIN_SSH:$SCRY_WIN_ROOT/logs/$step" "$out/"
 fetch_rc=$?
 echo "fetch_rc=$fetch_rc files=$(find "$out/$step" -type f 2>/dev/null | wc -l) out=$out"
-if [ "$fetch_rc" -eq 0 ] && [ "$launch_rc" -eq 0 ] && [ "$(head -n 1 "$out/$step.out")" = DONE ]; then
+ended=$(head -n 1 "$out/$step.out")
+if [ "$fetch_rc" -eq 0 ] && [ "$launch_rc" -eq 0 ] && [ "$ended" = DONE ]; then
   ssh -o BatchMode=yes "$SCRY_WIN_SSH" "powershell -NoProfile -Command Remove-Item -Recurse" \
     "-Force -ErrorAction SilentlyContinue $root\\logs\\$step, $root\\logs\\$step.log," \
     "$root\\logs\\$step.done"
   echo "host_logs_removed_rc=$?"
 fi
 cat "$out/$step.out"
-[ "$launch_rc" -eq 0 ] && [ "$left" = "0" ]
+[ "$launch_rc" -eq 0 ] && [ "$left" = "0" ] && [ "$fetch_rc" -eq 0 ] && [ "$ended" = DONE ]
