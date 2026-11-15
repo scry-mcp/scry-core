@@ -2,6 +2,22 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.stop_wait.GRAMMAR`, the condition grammar a server puts in `screen_wait`'s
+  description, names a register of the stopped cpu instead of `AX` and `d0`: `d0` is no register
+  DOSBox-X's pre-gate takes, so the description offered a call its own server refuses.
+- `scry_core.promote.Drafts.loaded_entry` keeps the entry's name as `keep` spells it, so an
+  update of a store entry whose stem predates the file-name rule (`Intro_Run`) is still the
+  entry read and stays bound to that entry's store.
+- `scry_core.window_host.screens` asks its child with a bound (`SCREENS_TIMEOUT_S`), and
+  `screens_for` keeps no answer of no screen, so one failed child no longer stands for the
+  displays until their bounds move.
+- `scripts/windows/run-task.sh` exits 0 only for a step that said `DONE`, left no task and whose
+  logs came back; `sync.sh` exits 1 when a repository did not come over; `push-tree.sh` carries a
+  tracked file deleted in the working tree to the host, and no longer ends before the copy when
+  the file it skips sorts last.
+
 ## 0.111.0
 
 - `scry_core.log_wait.timeout_note` takes the clause that closes the note as `run_state`, by
