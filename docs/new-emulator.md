@@ -57,8 +57,7 @@ judge; a size the caller stated is judged against what the host lists.
    directory never lends its store.
 3. Keep in the server's own tests only what the contracts cannot know: the owned flags and the
    full screen the emulator cannot show for its own reasons; the words are tested in core.
-4. Put `not window` in `addopts` (`-m 'not live and not window'`); the marker, the fixture and the
-   stand-in windows arrive with this package. The desk tier uses `under_a_cover` and
+4. Put `not window` in `addopts`, as README, *On-demand tiers*, says. The desk tier uses `under_a_cover` and
    `comes_forward` of `window_stand_ins`, so a server's tier test is its `start` and one line per
    case, run for a foreground and for a `background=true` session. Command and conditions: README, *On-demand tiers*.
 
@@ -69,8 +68,8 @@ Read from the two servers; none of it is proved by the null server.
 - `server.py`: a `roster.Roster`, an `envelope.Envelope`, a `recording.Recorder` and a
   `boundary.Boundary`, tools registered through `Boundary.tool`, and the closing calls
   (`strict_arguments`, `reply_schema.declare`, `reference.Registry`, `signalled_end.SignalledEnd`).
-- `pyproject.toml`: `reply_shapes_anchors = ["scry_core.reply_contract", "scry_core.boundary"]`.
-  The `reply_shapes` and `window_tier` plugins load by installing this package.
+- `pyproject.toml`: the `reply_shapes_anchors` README's `reply_shapes` paragraph gives; the
+  `reply_shapes` and `window_tier` plugins load by installing this package.
 - The store: `start` runs its launch inside `Drafts.starting(profile=, anchor=, live=)`, naming
   the profile it read, where its program lives (none when the arguments do not say) and how to
   read its live session, keeps its recipe with `Drafts.keep` and answers `kept` with
