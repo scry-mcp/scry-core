@@ -1,4 +1,4 @@
-"""A promotion on `scry_core.promote` alone, and three that each break one rule."""
+"""A promotion on `scry_core.promote` alone, and four that each carry one defect."""
 
 from __future__ import annotations
 
