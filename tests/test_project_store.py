@@ -48,6 +48,63 @@ def test_no_store_at_or_above_is_none(tmp_path: Path) -> None:
     assert ps.root([tmp_path]) is None
 
 
+def test_a_project_is_the_nearest_directory_holding_a_store(tmp_path: Path) -> None:
+    (tmp_path / ps.STORE).mkdir()
+    (tmp_path / "game" / ".git").mkdir(parents=True)
+    guest = tmp_path / "game" / "guest"
+    guest.mkdir()
+    assert ps.project(str(guest)) == str(tmp_path)
+    assert ps.project(str(guest / "run.conf")) == str(tmp_path)
+
+
+def test_with_no_store_above_a_project_is_the_nearest_repository(tmp_path: Path) -> None:
+    (tmp_path / "game").mkdir()
+    (tmp_path / "game" / ".git").write_text("gitdir: elsewhere\n", encoding="utf-8")
+    guest = tmp_path / "game" / "guest"
+    guest.mkdir()
+    assert ps.project(str(guest)) == str(tmp_path / "game")
+
+
+def test_with_neither_a_project_is_the_directory_itself_or_the_files(tmp_path: Path) -> None:
+    guest = tmp_path / "guest"
+    guest.mkdir()
+    assert ps.project(str(guest)) == str(guest)
+    assert ps.project(str(guest / "run.conf")) == str(guest)
+
+
+@pytest.mark.parametrize("anchor", ["", "guest", "./guest"])
+def test_a_path_that_names_no_place_of_its_own_is_no_project(anchor: str) -> None:
+    assert ps.project(anchor) == ""
+
+
+def test_a_directory_that_cannot_be_read_holds_no_marker(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "game" / ps.STORE).mkdir(parents=True)
+    (tmp_path / "game" / ".git").mkdir()
+
+    def unreadable(path: Path) -> bool:
+        raise PermissionError(f"{path}: not readable")
+    monkeypatch.setattr(Path, "is_dir", unreadable)
+    assert ps.project(str(tmp_path / "game")) == str(tmp_path / "game")
+
+
+def test_a_project_is_named_by_the_directory_itself_whatever_the_spelling(
+        tmp_path: Path) -> None:
+    (tmp_path / "game" / ps.STORE).mkdir(parents=True)
+    (tmp_path / "sub" / ps.STORE).mkdir(parents=True)
+    (tmp_path / "link").symlink_to(tmp_path / "game", target_is_directory=True)
+    assert ps.project(str(tmp_path / "link" / "guest")) == ps.project(str(tmp_path / "game"))
+    assert ps.project(str(tmp_path / "sub" / ".." / "game")) == str(tmp_path / "game")
+
+
+def test_a_project_is_found_from_a_tilde_path(tmp_path: Path,
+                                              monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    (tmp_path / "game" / ps.STORE).mkdir(parents=True)
+    assert ps.project("~/game/guest") == str(tmp_path / "game")
+
+
 def test_a_name_is_found_in_its_kinds_directory(tmp_path: Path) -> None:
     path = stored(tmp_path)
     assert ps.locate([tmp_path], "dos") == path

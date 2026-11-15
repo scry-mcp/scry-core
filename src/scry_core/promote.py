@@ -1,12 +1,14 @@
 """The session's draft and the promotion that writes it into the repository's store.
 
-A `start`, a map's `add` and a `perform_export` keep what they learned, keyed by (kind, name);
-`promote(dry_run)` reviews those against the store and `promote(entries)` writes the ones chosen,
-creating `.scry/` only then, and with the server's name also its `about.json` and README. A
-candidate is complete only with what the reader of its kind accepts, and a name the store already
-holds is an update, shown as its diff. A path a candidate declares is written as
-`project_store`'s own placeholders; a review lists apart one that would leave them, and an
-approval refuses it (`tracked`).
+A `start`, a map's `add` and a `perform_export` keep what they learned, keyed by (project, kind,
+name): each entry belongs, from the moment it is kept, to one project, and this module alone
+decides which store it may be written to. `promote(dry_run)` reviews those against the store and
+`promote(entries)` writes the ones chosen, creating `.scry/` only then, and with the server's
+name also its `about.json` and README. Without `root` an entry is written only into its own
+project's store, and one whose project has none is refused by name. A candidate is complete only
+with what the reader of its kind accepts, and a name the store already holds is an update, shown
+as its diff. A path a candidate declares is written as `project_store`'s own placeholders; a
+review lists apart one that would leave them, and an approval refuses it (`tracked`).
 """
 
 from __future__ import annotations
@@ -14,7 +16,8 @@ from __future__ import annotations
 import copy
 import json
 import os
-from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Any, Required
@@ -40,8 +43,12 @@ DOC_VALUES = {
         "approved. `start` keeps the recipe it ran, a map's `add` keeps the map, a\n"
         "`perform_export` keeps the script; each is complete only with what its reader accepts\n"
         "(the arguments a recipe cannot boot without, a map the map reader parses, a script\n"
-        "with a check), and a reply that keeps one says `kept N (promote to review)`. The\n"
-        "identity is (kind, name): an entry a call loaded (`start(profile=)`,\n"
+        "with a check), and a reply that keeps one says `kept N (promote to review)`, naming\n"
+        "each repository of the draft with no store and the `root` it takes. An entry belongs\n"
+        "to the repository it was learned in: the one whose store a call loaded it from, else\n"
+        "the current `start`'s, its profile's or where its program runs, where the server can\n"
+        "tell. The identity is\n"
+        "(repository, kind, name): an entry a call loaded (`start(profile=)`,\n"
         "`screen_map_write` `load`, `perform(path=)`) names what is learned next, and a name\n"
         "the store already holds is an update, which keeps the keys a run owns as the\n"
         "store has them, and one that changes nothing is named in `unchanged`, not offered.\n"
@@ -51,10 +58,10 @@ DOC_VALUES = {
         "`names` renames one as it is written, and only\n"
         "that approved call creates `.scry/`, and with the server's name also `about.json` and\n"
         "the rendered `README.md`; `dry_run`\n"
-        "names those in `would_create`, the approval in `created`. `root` names the repository\n"
-        "the store is in or becomes; without it the first `.scry/` found walking up from the file\n"
-        "a loaded recipe came from, the draft's paths, then this server's directory, is used,\n"
-        "and a promotion that finds none is refused. Every path is\n"
+        "names those in `would_create`, the approval in `created`. Without `root` each entry\n"
+        "goes only to its own repository's store, one store a call, and one whose repository\n"
+        "has none is unwritable; `root` names the repository whose store a call writes every\n"
+        "entry to, a candidate from another saying `from`. Every path is\n"
         "written as a `project_store` placeholder, since a tracked file carries no path of this\n"
         "machine; an approval of an entry a review calls unwritable is refused. Reply: `store`,\n"
         "`candidates` and `unchanged` (a review), `unwritable`, each entry with its reason\n"
@@ -62,8 +69,10 @@ DOC_VALUES = {
         "`would_create` and `created` (the store, `about.json`, `README.md` not yet there),\n"
         "`total_bytes`,\n"
         "`store_bytes`; `close` names what was left unkept, which stays in the draft until the\n"
-        "server ends. Refused: nothing kept (`needs_call`); an entry the draft does not hold; two\n"
-        "entries written to one file; a kind or a store past its cap."),
+        "server ends. Refused: nothing kept (`needs_call`); an entry the draft does not hold;\n"
+        "without `root`, a call none of whose entries has a store, or entries of two stores; a\n"
+        "name two repositories hold, unless `root` is one of them; two entries written to one\n"
+        "file; a kind or a store past its cap."),
 }
 
 
@@ -86,27 +95,62 @@ class PromoteFields(TypedDict, total=False):
 @dataclass(frozen=True)
 class Candidate:
     """One thing a session learned: what it is, the pair it is keyed by, the document a
-    promotion writes and which of that document's keys hold paths."""
+    promotion writes, which of that document's keys hold paths, and the project it belongs to
+    ("" when nothing the session read says which)."""
 
     kind: str
     name: str
     document: dict[str, Any]
     path_keys: tuple[str, ...] = ()
     own: tuple[str, ...] = ()
+    project: str = ""
+
+    @property
+    def entry(self) -> str:
+        return f"{self.kind}/{self.name}"
+
+    @property
+    def key(self) -> tuple[str, str, str]:
+        return self.project, self.kind, self.name
 
 
 @dataclass
 class Drafts:
-    """What the session kept, for the server's life: one candidate per (kind, name), and the
-    name of the file each kind was last read from, which keys what that read learns, and where
-    that file is, which says whose store it belongs to."""
+    """What the session kept, for the server's life: one candidate per (project, kind, name);
+    the entry each kind was last read from and the file it was read in, which keys what that read
+    learns; and the project the session's current `start` runs in, which whatever is kept with no
+    store file of its own belongs to."""
 
-    kept: dict[tuple[str, str], Candidate] = field(default_factory=dict)
+    kept: dict[tuple[str, str, str], Candidate] = field(default_factory=dict)
     loaded: dict[str, str] = field(default_factory=dict)
     sources: dict[str, str] = field(default_factory=dict)
+    started_in: str = ""
 
     def __len__(self) -> int:
         return len(self.kept)
+
+    @contextmanager
+    def starting(self, *, profile: str = "", anchor: str = "",
+                 live: Callable[[], object] = lambda: None) -> Iterator[None]:
+        """A `start` runs: `profile` names the store file it read, `anchor` where the server says
+        its program lives, `live` the server's live session. What is kept from here on belongs to
+        the profile's project, else the anchor's, and a script the last session replayed no
+        longer names what is learned. A start that raises leaving no session of its own live
+        leaves the draft as it was."""
+        before, session = (dict(self.loaded), dict(self.sources), self.started_in), live()
+        if profile:
+            self.loaded_entry("start", project_store.entry_of(Path(profile), "start"),
+                              source=profile)
+        else:
+            self.forget("start")
+        self.forget("perform")
+        self.started_in = project_store.project(profile if _in_store(profile) else anchor)
+        try:
+            yield
+        except BaseException:
+            if live() in (None, session):
+                self.loaded, self.sources, self.started_in = before
+            raise
 
     def loaded_entry(self, kind: str, name: str, source: str = "") -> None:
         """`kind` was read from the entry `name`, in the file `source`: what the session learns
@@ -127,10 +171,11 @@ class Drafts:
     def keep(self, kind: str, name: str, document: dict[str, Any], *,
              needs: Collection[str] = (), path_keys: Collection[str] = (),
              own: Collection[str] = ()) -> bool:
-        """`document` as the candidate (kind, name), replacing an earlier one, and whether it
-        entered; an incomplete act proposes nothing and leaves what was kept. `needs` names the
-        keys a `start` recipe cannot do without; `own` the keys the run owns, which a candidate
-        leaves out and an update therefore keeps as the store holds them."""
+        """`document` as the candidate (kind, name) of its project, replacing an earlier one
+        there, and whether it entered; an incomplete act proposes nothing and leaves what was
+        kept. `needs` names the keys a `start` recipe cannot do without; `own` the keys the run
+        owns, which a candidate leaves out and an update therefore keeps as the store holds
+        them."""
         if kind not in KINDS:
             raise Invalid("bad_argument", f"{kind!r} is not a kind: a store holds "
                           f"{', '.join(KINDS)}")
@@ -140,12 +185,26 @@ class Drafts:
                           f"{type(document).__name__}, not a document")
         if not complete(kind, document, needs):
             return False
-        self.kept[kind, name] = Candidate(kind, name, document, tuple(path_keys), tuple(own))
+        held = Candidate(kind, name, document, tuple(path_keys), tuple(own),
+                         self.project_of(kind, name))
+        self.kept[held.key] = held
         return True
 
+    def project_of(self, kind: str, name: str) -> str:
+        """The project an entry kept now belongs to: the one whose store the session read it
+        from, when it updates that entry, else the one the current `start` runs in."""
+        source = self.sources.get(kind, "") if self.loaded.get(kind) == name else ""
+        return project_store.project(source) if _in_store(source) else self.started_in
+
+    def held(self, kind: str, name: str) -> list[Candidate]:
+        """The candidates (kind, name) the draft holds, one per project that kept it."""
+        return [candidate for _key, candidate in sorted(self.kept.items())
+                if (candidate.kind, candidate.name) == (kind, name)]
+
     def entries(self) -> list[str]:
-        """The draft's entries, `<kind>/<name>`, sorted."""
-        return sorted(f"{kind}/{name}" for kind, name in self.kept)
+        """The draft's entries, `<kind>/<name>`, sorted; a name two projects hold is listed
+        twice."""
+        return sorted(candidate.entry for candidate in self.kept.values())
 
 
 def complete(kind: str, document: Mapping[str, Any], needs: Collection[str]) -> bool:
@@ -163,18 +222,21 @@ def complete(kind: str, document: Mapping[str, Any], needs: Collection[str]) -> 
         isinstance(step, dict) and step.get("recorded") for step in steps)
 
 
-def unkept(drafts: Drafts, starting: Callable[[], Iterable[str | Path]],
-           state: str = "") -> list[str]:
-    """What `close` names: the entries left waiting for an approval, less any the store already
-    holds as they are. With no store to compare, or one that cannot be reviewed, all of them:
-    the session has already closed, and this must not cost the reply."""
-    if not drafts:
-        return []
-    try:
-        same = review(drafts, starting=starting(), state=state)["unchanged"]
-    except (Invalid, OSError):
-        same = []
-    return [entry for entry in drafts.entries() if entry not in same]
+def unkept(drafts: Drafts, state: str = "") -> list[str]:
+    """What `close` names: the entries left waiting for an approval, less any its own project's
+    store already holds as it is. One with no store to compare, or one that cannot be reviewed,
+    is named: the session has already closed, and this must not cost the reply."""
+    left = []
+    for candidate in drafts.kept.values():
+        try:
+            store_dir = own_store(candidate.project)
+            same = store_dir is not None and _unchanged(
+                planned_entry(candidate, store_dir, state, None)[3])
+        except (Invalid, OSError):
+            same = False
+        if not same:
+            left.append(candidate.entry)
+    return sorted(left)
 
 
 def only_the_run(names: frozenset[str] | None, run_own: frozenset[str]) -> bool:
@@ -182,49 +244,44 @@ def only_the_run(names: frozenset[str] | None, run_own: frozenset[str]) -> bool:
     return names is not None and names <= run_own
 
 
-def starting(drafts: Drafts, paths: Callable[[Mapping[str, Any]], Iterable[str]]) -> list[str]:
-    """Where the store is looked for: the files this session loaded, the paths `paths` reads from
-    each recipe the draft holds, then this process's directory."""
-    starts = [source for source in drafts.sources.values() if source]
+def kept_line(drafts: Drafts) -> str:
+    """The one line a reply that kept a candidate says, and for each project of the draft with no
+    store, its entries and the `root` that would give them one."""
+    homeless: dict[str, list[str]] = {}
     for candidate in drafts.kept.values():
-        block = (candidate.document if candidate.kind == "start"
-                 else candidate.document.get("start"))
-        if candidate.kind != "maps" and isinstance(block, Mapping):
-            starts += [os.path.expanduser(part.strip()) for part in paths(block)
-                       if project_store.absolute(part.strip())]
-    return [*starts, os.getcwd()]
+        if not _has_store(candidate.project):
+            homeless.setdefault(candidate.project, []).append(candidate.entry)
+    said = [f"kept {len(drafts)} (promote to review)"]
+    said += [f"{', '.join(sorted(entries))}: {_storeless(project)}: promote(dry_run=true, "
+             f"root={project or '<the repository>'}) lists what an approval would create"
+             for project, entries in sorted(homeless.items())]
+    return "; ".join(said)
 
 
-def kept_line(drafts: Drafts, has_store: bool = True) -> str:
-    """The one line a reply that kept a candidate says; with no `.scry/` above the project it
-    says so and how to see what an approval would create."""
-    line = f"kept {len(drafts)} (promote to review)"
-    if has_store:
-        return line
-    return (f"{line}; there is no {STORE}/ above this project: promote(dry_run=true, "
-            "root=<the repository>) lists what an approval would create")
+def store(root: str) -> Path:
+    """The `.scry/` of the repository `root` names, which a promotion naming it writes into."""
+    base = Path(os.path.expanduser(root))
+    if not base.is_absolute():
+        raise Invalid("bad_argument", f"root={root!r} is not absolute: name the repository, "
+                      "absolute or `~`-led")
+    if base.resolve().name == STORE:
+        raise Invalid("bad_argument", f"root={base} names the store itself, not the "
+                      "repository that holds it")
+    if not base.is_dir():
+        raise Invalid("bad_argument", f"root={base} is not a directory")
+    return _checked(base / STORE)
 
 
-def store(starting: Iterable[str | Path], root: str = "") -> Path:
-    """The `.scry/` a promotion writes: `root` names the repository that holds it, else the
-    nearest one above `starting`."""
-    if root:
-        base = Path(os.path.expanduser(root))
-        if not base.is_absolute():
-            raise Invalid("bad_argument", f"root={root!r} is not absolute: name the repository, "
-                          "absolute or `~`-led")
-        if base.resolve().name == STORE:
-            raise Invalid("bad_argument", f"root={base} names the store itself, not the "
-                          "repository that holds it")
-        if not base.is_dir():
-            raise Invalid("bad_argument", f"root={base} is not a directory")
-    else:
-        found = project_store.root(starting)
-        if found is None:
-            raise Invalid("bad_argument", f"no {STORE}/ above {_listed(starting)}: pass "
-                          f"root=<the repository>, and an approved promotion creates it there")
-        base = found
-    store_dir = base / STORE
+def own_store(project: str) -> Path | None:
+    """The store an entry of `project` is written to without `root`: the project's own `.scry/`,
+    or None when it holds none. Never another project's."""
+    if not project:
+        return None
+    store_dir = _checked(Path(project) / STORE)
+    return store_dir if store_dir.is_dir() else None
+
+
+def _checked(store_dir: Path) -> Path:
     if store_dir.is_symlink():
         raise Invalid("bad_argument", f"{store_dir} is a link: a store is the repository's own, "
                       "and its caps cannot see through one")
@@ -236,8 +293,8 @@ def store(starting: Iterable[str | Path], root: str = "") -> Path:
 
 def promote(drafts: Drafts, *, dry_run: bool = False,
             entries: Sequence[str] | None = None, names: Mapping[str, str] | None = None,
-            root: str = "", starting: Iterable[str | Path] = (), state: str = "",
-            environ: Mapping[str, str] | None = None, server: str = "") -> dict[str, Any]:
+            root: str = "", state: str = "", environ: Mapping[str, str] | None = None,
+            server: str = "") -> dict[str, Any]:
     """One gesture: `dry_run` reviews every candidate, `entries` approves some. `server`, the
     name of the server that promotes, sets up the store's `about.json` and README too; with
     none, entries are all a promotion touches."""
@@ -245,33 +302,33 @@ def promote(drafts: Drafts, *, dry_run: bool = False,
         if entries:
             raise Invalid("bad_argument", "dry_run reviews every candidate and entries approves "
                           "some: give one, not both")
-        return review(drafts, starting=starting, root=root, state=state, environ=environ,
-                      server=server)
+        return review(drafts, root=root, state=state, environ=environ, server=server)
     if not entries:
         raise Invalid("bad_argument", "name the entries to write in `entries` "
                       "(`<kind>/<name>`), or review them with `dry_run=true`")
-    return write(drafts, entries=entries, names=names, starting=starting, root=root,
-                 state=state, environ=environ, server=server)
+    return write(drafts, entries=entries, names=names, root=root, state=state, environ=environ,
+                 server=server)
 
 
-def review(drafts: Drafts, *, starting: Iterable[str | Path] = (), root: str = "",
-           state: str = "", environ: Mapping[str, str] | None = None,
-           server: str = "") -> dict[str, Any]:
+def review(drafts: Drafts, *, root: str = "", state: str = "",
+           environ: Mapping[str, str] | None = None, server: str = "") -> dict[str, Any]:
     """Each candidate that would change the store as it would be written: its target, its size,
     and for an update what changes; the others are named, and so is what an approval would
     create beside them. Nothing is written or made."""
-    store_dir = store(starting, root)
+    named = store(root) if root else None
     if not drafts:
         raise Invalid("needs_call", "nothing is kept: a `start`, a map's `add` and a "
                       "`perform_export` keep what they learn, and a complete one is a recipe "
                       "of what it boots with, a map its reader parses or a script with a check")
+    every = sorted(drafts.kept.values(), key=lambda held: (held.entry, held.project))
+    chosen, unwritable = _one_per_name(every, named)
+    store_dir, placed = _placed(chosen, named, unwritable)
     planned = []
-    unwritable = []
-    for (kind, name), candidate in sorted(drafts.kept.items()):
+    for candidate in placed:
         try:
             planned.append(planned_entry(candidate, store_dir, state, environ))
         except Invalid as exc:
-            unwritable.append({"entry": f"{kind}/{name}", "reason": str(exc)})
+            unwritable.append({"entry": candidate.entry, "reason": str(exc)})
     changed = [entry for entry in planned if not _unchanged(entry[3])]
     setup = _setup(planned, store_dir, server)
     extra = _setup_files(store_dir, setup)
@@ -282,33 +339,41 @@ def review(drafts: Drafts, *, starting: Iterable[str | Path] = (), root: str = "
         "total_bytes": sum(len(data) for _, _, data, _ in changed),
         "store_bytes": _store_bytes(store_dir, planned, extra)}
     if unwritable:
-        reply["unwritable"] = unwritable
+        reply["unwritable"] = sorted(unwritable, key=lambda item: str(item["entry"]))
     if setup and setup.created:
         reply["would_create"] = list(setup.created)
     return reply
 
 
 def write(drafts: Drafts, *, entries: Sequence[str], names: Mapping[str, str] | None = None,
-          starting: Iterable[str | Path] = (), root: str = "", state: str = "",
-          environ: Mapping[str, str] | None = None, server: str = "") -> dict[str, Any]:
+          root: str = "", state: str = "", environ: Mapping[str, str] | None = None,
+          server: str = "") -> dict[str, Any]:
     """The entries chosen, each written to its own file in the store, then the store's
     `about.json` and README, and what the draft still holds. Only this call creates `.scry/`
     and its kind directories."""
-    store_dir = store(starting, root)
+    named = store(root) if root else None
     unknown = sorted(set(names or {}) - set(entries))
     if unknown:
         raise Invalid("bad_argument", f"names names {_listed(unknown)}, which entries does not: "
                       "a name is given for an entry written by this call")
     chosen: list[tuple[str, Candidate]] = []
     for entry in entries:
-        key = _split(entry)
-        if any(named == entry for named, _ in chosen):
+        kind, name = _split(entry)
+        if any(given == entry for given, _ in chosen):
             raise Invalid("bad_argument", f"entry {entry!r} is named twice")
-        candidate = drafts.kept.get(key)
-        if candidate is None:
+        held = drafts.held(kind, name)
+        if not held:
             raise Invalid("bad_argument", f"entry {entry!r} is not in the draft: it holds "
                           f"{', '.join(drafts.entries()) or 'nothing'}")
+        candidate, why = _one_of(held, named)
+        if candidate is None:
+            raise Invalid("bad_argument", f"entry {entry!r} is {why}")
         chosen.append((entry, candidate))
+    apart: list[dict[str, Any]] = []
+    store_dir, _ = _placed([candidate for _entry, candidate in chosen], named, apart)
+    if apart:
+        raise Invalid("bad_argument", "; ".join(f"{item['entry']} cannot be written: "
+                                                f"{item['reason']}" for item in apart))
     planned = [planned_entry(candidate, store_dir, state, environ, entry=entry,
                              name=(names or {}).get(entry, candidate.name))
                for entry, candidate in chosen]
@@ -380,6 +445,8 @@ def planned_entry(candidate: Candidate, store_dir: Path, state: str,
         "bytes": len(data), "change": change}
     if change == "update":
         item["diff"] = difference(old, document)
+    if candidate.project and not _same(candidate.project, store_dir.parent):
+        item["from"] = candidate.project
     return candidate, target, data, item
 
 
@@ -410,8 +477,8 @@ def serialised(kind: str, document: Mapping[str, Any]) -> bytes:
     return (json.dumps(document, indent=indent, sort_keys=sorted_keys) + "\n").encode()
 
 
-def after_export(drafts: Drafts, reply: dict[str, Any], path_keys: Collection[str],
-                 has_store: bool = True) -> dict[str, Any]:
+def after_export(drafts: Drafts, reply: dict[str, Any],
+                 path_keys: Collection[str]) -> dict[str, Any]:
     """The document an export wrote is a candidate, named by the entry this session replayed or
     by the file it wrote."""
     path = str(reply.get("path") or "")
@@ -421,13 +488,12 @@ def after_export(drafts: Drafts, reply: dict[str, Any], path_keys: Collection[st
         kept = drafts.keep("perform", name, document, path_keys=path_keys)
     except Invalid:             # a file whose name is no entry's is written and not proposed
         kept = False
-    return {**reply, "kept": kept_line(drafts, has_store)} if kept else reply
+    return {**reply, "kept": kept_line(drafts)} if kept else reply
 
 
-def after_close(drafts: Drafts, reply: dict[str, Any], *,
-                starting: Callable[[], Iterable[str | Path]], state: str = "") -> dict[str, Any]:
+def after_close(drafts: Drafts, reply: dict[str, Any], *, state: str = "") -> dict[str, Any]:
     """`close` names what the session left waiting for an approval."""
-    if draft := unkept(drafts, starting, state):
+    if draft := unkept(drafts, state):
         reply["draft"] = draft
     return reply
 
@@ -565,7 +631,101 @@ def _dropped(drafts: Drafts,
              written: Sequence[tuple[Candidate, Path, bytes, dict[str, Any]]]) -> None:
     """The draft entries whose file landed: a promotion is done for them and for none other."""
     for candidate, _target, _data, _item in written:
-        drafts.kept.pop((candidate.kind, candidate.name), None)
+        drafts.kept.pop(candidate.key, None)
+
+
+def _placed(candidates: Sequence[Candidate], named: Path | None,
+            apart: list[dict[str, Any]]) -> tuple[Path, list[Candidate]]:
+    """The one store a call writes and what goes there, the rest added to `apart` with the
+    reason. With `named` (a `root`'s store) every candidate goes there. Without it each goes to
+    its own project's store, and only one store is written: entries of two are refused, naming
+    both."""
+    if named is not None:
+        return named, list(candidates)
+    stores: dict[Path, list[Candidate]] = {}
+    for candidate in candidates:
+        try:
+            own = own_store(candidate.project)
+        except (Invalid, OSError) as exc:
+            apart.append({"entry": candidate.entry, "reason": str(exc)})
+            continue
+        if own is None:
+            apart.append({"entry": candidate.entry, "reason": (
+                f"{_storeless(candidate.project)}: pass root="
+                f"{candidate.project or '<the repository>'}, and an approved promotion creates "
+                f"its {STORE}/ there")})
+        else:
+            stores.setdefault(own, []).append(candidate)
+    if len(stores) > 1:
+        raise Invalid("bad_argument", "; ".join(
+            f"{', '.join(one.entry for one in held)} go to {own}" for own, held in stores.items())
+            + ": a promotion writes one store, so review one with its repository in `root`, or "
+            "approve one store's entries in `entries`")
+    if not stores:
+        raise Invalid("bad_argument", "no store to write into without `root`: " + "; ".join(
+            f"{item['entry']}: {item['reason']}" for item in apart))
+    [(own, held)] = stores.items()
+    return own, held
+
+
+def _one_per_name(candidates: Sequence[Candidate], named: Path | None
+                  ) -> tuple[list[Candidate], list[dict[str, Any]]]:
+    """`candidates` with each name once, as `_one_of` chooses it, the rest set apart."""
+    placed: list[Candidate] = []
+    apart: list[dict[str, Any]] = []
+    for candidate in candidates:
+        chosen, why = _one_of([one for one in candidates if one.entry == candidate.entry], named)
+        if chosen is candidate:
+            placed.append(candidate)
+        else:
+            apart.append({"entry": candidate.entry, "reason": why or (
+                f"the one kept in {candidate.project or 'no repository'}: "
+                f"{named.parent if named else ''} holds its own {candidate.entry}, which this "
+                "call writes")})
+    return placed, apart
+
+
+def _one_of(held: Sequence[Candidate], named: Path | None) -> tuple[Candidate | None, str]:
+    """Which of `held`, the candidates of one name, a call writes: the only one, or the one of
+    `named`'s repository; else none, and why."""
+    if len(held) == 1:
+        return held[0], ""
+    ours = [one for one in held if named is not None and _same(one.project, named.parent)]
+    if len(ours) == 1:
+        return ours[0], ""
+    return None, (f"kept in {_listed(_repositories(held))}: name the one to write with its "
+                  "repository in `root`")
+
+
+def _repositories(candidates: Iterable[Candidate]) -> list[str]:
+    return [candidate.project or "no repository" for candidate in candidates]
+
+
+def _same(project: str, base: Path) -> bool:
+    """Whether `project` is the directory `base`, by its spelling or by what the host says."""
+    return bool(project) and (os.path.normpath(project) == os.path.normpath(base)
+                              or promote_paths.same_on_host(project, str(base)))
+
+
+def _has_store(project: str) -> bool:
+    """Whether `project` holds the store `own_store` writes to; one it cannot judge answers yes,
+    so a reply that kept a candidate never claims what it could not read."""
+    try:
+        return own_store(project) is not None
+    except (Invalid, OSError):
+        return True
+
+
+def _in_store(path: str) -> bool:
+    """Whether the file `path` lies in a store, the one place a file says whose an entry is."""
+    return bool(path) and STORE in Path(path).parts
+
+
+def _storeless(project: str) -> str:
+    """Why an entry of `project` has no store to be written to without `root`."""
+    if not project:
+        return "nothing this session read names its repository"
+    return f"no {STORE}/ in {project}, the repository it was kept in"
 
 
 def _existing(target: Path) -> Any:
@@ -588,7 +748,7 @@ def _split(entry: str) -> tuple[str, str]:
 
 
 def _listed(values: Iterable[Any]) -> str:
-    return ", ".join(str(value) for value in values) or "this process's directory"
+    return ", ".join(str(value) for value in values)
 
 
 def _carries(value: Any) -> bool:

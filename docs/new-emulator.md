@@ -2,8 +2,9 @@
 
 What a server for another emulator takes from this package and what it writes itself. The window
 half is exercised by `tests/null_server.py`, a server with no emulator behind it that passes
-`scry_core.conformance` against window doubles (the real hosts are the desk tier's); the rest is
-how the two existing servers are wired.
+`scry_core.conformance` against window doubles (the real hosts are the desk tier's), and the
+store's by `tests/null_promoter.py`, which passes its `PromoteContract`; the rest is how the two
+existing servers are wired.
 
 ## The window, from core
 
@@ -49,9 +50,14 @@ judge; a size the caller stated is judged against what the host lists.
    which is what `window_stand_ins.hosts.Obeying` reads to open a window where it was asked. The
    subject also says `shows_fullscreen` and `takes_fullscreen` (whether `start` has the argument at
    all); the full-screen rules are skipped for a server whose `start` has none.
-2. Keep in the server's own tests only what the contract cannot know: the owned flags and the full
-   screen the emulator cannot show for its own reasons; the words are tested in core.
-3. Put `not window` in `addopts` (`-m 'not live and not window'`); the marker, the fixture and the
+2. Subclass `conformance.PromoteContract` the same way, over the server's own promotion with the
+   launch faked and an empty draft: a `subject` with `start(project, name)`, `promote(**arguments)`
+   and `close()`. Its rules: without `root` an entry is written only into its own project's
+   store, an entry whose project has none is named with the `root` it takes, and the server's own
+   directory never lends its store.
+3. Keep in the server's own tests only what the contracts cannot know: the owned flags and the
+   full screen the emulator cannot show for its own reasons; the words are tested in core.
+4. Put `not window` in `addopts` (`-m 'not live and not window'`); the marker, the fixture and the
    stand-in windows arrive with this package. The desk tier uses `under_a_cover` and
    `comes_forward` of `window_stand_ins`, so a server's tier test is its `start` and one line per
    case, run for a foreground and for a `background=true` session. Command and conditions: README, *On-demand tiers*.
@@ -65,6 +71,12 @@ Read from the two servers; none of it is proved by the null server.
   (`strict_arguments`, `reply_schema.declare`, `reference.Registry`, `signalled_end.SignalledEnd`).
 - `pyproject.toml`: `reply_shapes_anchors = ["scry_core.reply_contract", "scry_core.boundary"]`.
   The `reply_shapes` and `window_tier` plugins load by installing this package.
+- The store: `start` runs its launch inside `Drafts.starting(profile=, anchor=, live=)`, naming
+  the profile it read, where its program lives (none when the arguments do not say) and how to
+  read its live session, keeps its recipe with `Drafts.keep` and answers `kept` with
+  `promote.kept_line`; `perform_export`,
+  `close` and `promote` are `promote.after_export`, `promote.after_close` and `promote.promote`.
+  Which store an entry may be written to is decided there and never by the server.
 - Reference pages: `python -m scry_core.reference <package>.server:REFERENCE --write`.
 - Probe: `mcp_probe/servers.py`, `mcp_probe/tasks/`, run with
   `python -m scry_core.probe <name> --servers ... --tasks ... --check`.

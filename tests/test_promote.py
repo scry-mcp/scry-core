@@ -56,7 +56,7 @@ def drafted(kind: str, name: str, document: dict[str, Any], **keep: Any) -> Draf
 
 
 def review(drafts: Drafts, root: Path, **values: Any) -> dict[str, Any]:
-    return promote.promote(drafts, dry_run=True, starting=[root], root=str(root), **values)
+    return promote.promote(drafts, dry_run=True, root=str(root), **values)
 
 
 def refused(drafts: Drafts, root: Path, **values: Any) -> str:
@@ -67,7 +67,7 @@ def refused(drafts: Drafts, root: Path, **values: Any) -> str:
 
 
 def write(drafts: Drafts, root: Path, entries: list[str], **values: Any) -> dict[str, Any]:
-    return promote.promote(drafts, entries=entries, starting=[root], root=str(root), **values)
+    return promote.promote(drafts, entries=entries, root=str(root), **values)
 
 
 def test_a_start_without_its_program_proposes_nothing() -> None:
@@ -91,11 +91,136 @@ def test_a_perform_with_a_check_is_kept_and_one_without_is_not() -> None:
     assert drafted("perform", "dos", perform_doc(checks=0)).entries() == []
 
 
-def test_the_identity_is_the_pair_kind_and_name() -> None:
+def test_within_a_project_the_identity_is_the_pair_kind_and_name() -> None:
     drafts = drafted("start", "lineup", start_doc(system="lineup"), needs=("system",))
     drafts.keep("start", "lineup", start_doc(system="speedf"), needs=("system",))
     assert drafts.entries() == ["start/lineup"]
-    assert drafts.kept["start", "lineup"].document["system"] == "speedf"
+    assert drafts.held("start", "lineup")[0].document["system"] == "speedf"
+
+
+def started(drafts: Drafts, anchor: Path | str = "", profile: Path | str = "") -> Drafts:
+    """`drafts` after a start whose program lives at `anchor`, read from `profile`."""
+    with drafts.starting(profile=str(profile), anchor=str(anchor)):
+        pass
+    return drafts
+
+
+def two_projects(tmp_path: Path) -> tuple[Path, Path, Drafts]:
+    """A session that kept `alpha` in a project with a store, then `beta` in one without."""
+    game, bare = tmp_path / "game", tmp_path / "bare"
+    (game / ".scry").mkdir(parents=True)
+    (bare / ".git").mkdir(parents=True)
+    drafts = Drafts()
+    started(drafts, anchor=game).keep("start", "alpha", start_doc(system="alpha"),
+                                      needs=("system",))
+    started(drafts, anchor=bare).keep("start", "beta", start_doc(system="beta"),
+                                      needs=("system",))
+    return game, bare, drafts
+
+
+def files(root: Path) -> list[str]:
+    return sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file())
+
+
+def test_the_same_pair_kept_in_two_projects_is_two_entries(tmp_path: Path) -> None:
+    (tmp_path / "a").mkdir()
+    (tmp_path / "c").mkdir()
+    drafts = started(Drafts(), anchor=tmp_path / "a")
+    drafts.keep("start", "dos", start_doc(system="a"), needs=("system",))
+    started(drafts, anchor=tmp_path / "c").keep("start", "dos", start_doc(system="c"),
+                                                needs=("system",))
+    assert drafts.entries() == ["start/dos", "start/dos"] and len(drafts) == 2
+    assert [held.project for held in drafts.held("start", "dos")] == [
+        str(tmp_path / "a"), str(tmp_path / "c")]
+
+
+def test_an_entry_belongs_to_the_project_its_start_runs_in(tmp_path: Path) -> None:
+    (tmp_path / "game" / ".git").mkdir(parents=True)
+    guest = tmp_path / "game" / "guest"
+    guest.mkdir()
+    drafts = started(Drafts(), anchor=guest)
+    drafts.keep("maps", "game", map_doc("play", application="game"))
+    assert drafts.held("maps", "game")[0].project == str(tmp_path / "game")
+
+
+def test_a_start_read_from_a_profile_belongs_to_the_profiles_store(tmp_path: Path) -> None:
+    profile = tmp_path / "game" / ".scry" / "start" / "dos.json"
+    profile.parent.mkdir(parents=True)
+    profile.write_text(json.dumps(start_doc(system="dos")))
+    (tmp_path / "bench").mkdir()
+    drafts = started(Drafts(), anchor=tmp_path / "bench", profile=profile)
+    assert drafts.loaded_name("start") == "dos"
+    drafts.keep("start", "dos", start_doc(system="dos", boot_seconds=9.0), needs=("system",))
+    assert drafts.held("start", "dos")[0].project == str(tmp_path / "game")
+
+
+def test_an_update_of_a_script_read_from_a_store_belongs_to_that_store(tmp_path: Path) -> None:
+    (tmp_path / "game").mkdir()
+    replayed = tmp_path / "other" / ".scry" / "perform" / "dos.json"
+    replayed.parent.mkdir(parents=True)
+    drafts = started(Drafts(), anchor=tmp_path / "game")
+    drafts.loaded_entry("perform", "dos", source=str(replayed))
+    drafts.keep("perform", "dos", perform_doc())
+    drafts.keep("perform", "run", perform_doc())
+    assert [(held.name, held.project) for held in drafts.kept.values()] == [
+        ("dos", str(tmp_path / "other")), ("run", str(tmp_path / "game"))]
+
+
+def test_a_script_replayed_from_outside_a_store_belongs_to_the_start(tmp_path: Path) -> None:
+    (tmp_path / "game").mkdir()
+    drafts = started(Drafts(), anchor=tmp_path / "game")
+    drafts.loaded_entry("perform", "run", source=str(tmp_path / "scratch" / "run.json"))
+    drafts.keep("perform", "run", perform_doc())
+    assert drafts.held("perform", "run")[0].project == str(tmp_path / "game")
+
+
+def test_a_start_that_is_refused_leaves_the_live_sessions_project(tmp_path: Path) -> None:
+    (tmp_path / "game").mkdir()
+    (tmp_path / "other").mkdir()
+    profile = tmp_path / "other" / ".scry" / "start" / "x.json"
+    drafts = started(Drafts(), anchor=tmp_path / "game")
+    with pytest.raises(Invalid), drafts.starting(profile=str(profile)):
+        raise Invalid("session_live", "a session is already live")
+    assert drafts.started_in == str(tmp_path / "game") and drafts.loaded == {}
+    drafts.keep("maps", "game", map_doc("play", application="game"))
+    assert drafts.held("maps", "game")[0].project == str(tmp_path / "game")
+
+
+def test_a_start_that_raises_with_its_own_session_live_keeps_its_project(
+        tmp_path: Path) -> None:
+    (tmp_path / "game").mkdir()
+    (tmp_path / "other").mkdir()
+    drafts = started(Drafts(), anchor=tmp_path / "game")
+    live: list[object] = [object()]
+    with pytest.raises(Invalid), drafts.starting(anchor=str(tmp_path / "other"),
+                                                 live=lambda: live[-1]):
+        live.append(object())
+        raise Invalid("window_not_visible", "the window never appeared")
+    assert drafts.started_in == str(tmp_path / "other")
+
+
+def test_a_profile_outside_a_store_says_nothing_of_the_project(tmp_path: Path) -> None:
+    (tmp_path / "game" / ".git").mkdir(parents=True)
+    drafts = started(Drafts(), anchor=tmp_path / "game", profile=tmp_path / "scratch" / "p.json")
+    assert drafts.started_in == str(tmp_path / "game")
+
+
+def test_a_new_start_forgets_the_script_the_last_session_replayed(tmp_path: Path) -> None:
+    replayed = tmp_path / "game" / ".scry" / "perform" / "dos.json"
+    replayed.parent.mkdir(parents=True)
+    (tmp_path / "bare").mkdir()
+    drafts = Drafts()
+    drafts.loaded_entry("perform", "dos", source=str(replayed))
+    started(drafts, anchor=tmp_path / "bare")
+    assert drafts.loaded_name("perform") == ""
+    drafts.keep("perform", "run", perform_doc())
+    assert drafts.held("perform", "run")[0].project == str(tmp_path / "bare")
+
+
+def test_with_no_start_an_entry_belongs_to_no_project() -> None:
+    drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
+    assert drafts.held("start", "x")[0].project == ""
+    assert started(drafts).started_in == ""
 
 
 def test_two_kinds_may_share_a_name() -> None:
@@ -411,10 +536,9 @@ def test_a_promotion_names_one_gesture(tmp_path: Path) -> None:
     root = repo(tmp_path)
     drafts = drafted("start", "lineup", start_doc(system="lineup"), needs=("system",))
     with pytest.raises(Invalid, match="dry_run"):
-        promote.promote(drafts, dry_run=True, entries=["start/lineup"],
-                        starting=[root], root=str(root))
+        promote.promote(drafts, dry_run=True, entries=["start/lineup"], root=str(root))
     with pytest.raises(Invalid, match="entries"):
-        promote.promote(drafts, starting=[root], root=str(root))
+        promote.promote(drafts, root=str(root))
 
 
 def test_an_entry_can_be_renamed_as_it_is_written(tmp_path: Path) -> None:
@@ -442,9 +566,130 @@ def test_an_entry_is_kept_written_and_approved_under_one_spelling_of_its_name(
 
 
 def test_without_a_store_or_a_root_the_promotion_names_root(tmp_path: Path) -> None:
-    with pytest.raises(Invalid, match="root"):
-        promote.promote(drafted("start", "x", start_doc(system="x"), needs=("system",)),
-                        dry_run=True, starting=[repo(tmp_path)])
+    drafts = started(Drafts(), anchor=repo(tmp_path))
+    drafts.keep("start", "x", start_doc(system="x"), needs=("system",))
+    with pytest.raises(Invalid, match=f"no .scry/ in {re.escape(str(tmp_path / 'repo'))}.*"
+                                      f"root={re.escape(str(tmp_path / 'repo'))}"):
+        promote.promote(drafts, dry_run=True)
+    assert not (tmp_path / "repo" / ".scry").exists()
+
+
+def test_without_root_each_entry_goes_only_to_its_own_projects_store(tmp_path: Path) -> None:
+    game, bare, drafts = two_projects(tmp_path)
+    review = promote.promote(drafts, dry_run=True)
+    assert review["store"] == str(game / ".scry")
+    assert [c["entry"] for c in review["candidates"]] == ["start/alpha"]
+    [apart] = review["unwritable"]
+    assert apart["entry"] == "start/beta"
+    assert f"no .scry/ in {bare}" in apart["reason"] and f"root={bare}" in apart["reason"]
+    with pytest.raises(Invalid, match="start/beta cannot be written"):
+        promote.promote(drafts, entries=["start/alpha", "start/beta"])
+    assert files(tmp_path) == [], "an approval it refuses writes nothing"
+    written = promote.promote(drafts, entries=["start/alpha"])
+    assert [w["file"] for w in written["written"]] == [".scry/start/alpha.json"]
+    assert files(tmp_path) == ["game/.scry/start/alpha.json"]
+    assert written["draft"] == ["start/beta"]
+
+
+def test_with_root_an_entry_whose_project_has_no_store_is_written_there(tmp_path: Path) -> None:
+    _game, bare, drafts = two_projects(tmp_path)
+    promote.promote(drafts, entries=["start/alpha"])
+    written = promote.promote(drafts, entries=["start/beta"], root=str(bare), server="mame")
+    assert written["created"] == [".scry/", ".scry/about.json", ".scry/README.md"]
+    assert "from" not in written["written"][0]
+    assert (bare / ".scry" / "start" / "beta.json").is_file()
+
+
+def test_the_kept_line_names_each_project_with_no_store(tmp_path: Path) -> None:
+    game, bare, drafts = two_projects(tmp_path)
+    assert promote.kept_line(drafts) == (
+        f"kept 2 (promote to review); start/beta: no .scry/ in {bare}, the repository it was "
+        f"kept in: promote(dry_run=true, root={bare}) lists what an approval would create")
+    (bare / ".scry").mkdir()
+    assert promote.kept_line(drafts) == "kept 2 (promote to review)"
+    nameless = drafted("start", "x", start_doc(system="x"), needs=("system",))
+    assert promote.kept_line(nameless) == (
+        "kept 1 (promote to review); start/x: nothing this session read names its repository: "
+        "promote(dry_run=true, root=<the repository>) lists what an approval would create")
+    assert str(game) not in promote.kept_line(drafts)
+
+
+def test_the_servers_own_directory_never_lends_its_store(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    clone = tmp_path / "clone"
+    (clone / ".scry").mkdir(parents=True)
+    monkeypatch.chdir(clone)
+    drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
+    with pytest.raises(Invalid, match="nothing this session read names its repository"):
+        promote.promote(drafts, entries=["start/x"])
+    assert files(clone) == []
+
+
+def test_entries_of_two_stores_are_refused_without_root_naming_both(tmp_path: Path) -> None:
+    game, other = tmp_path / "game", tmp_path / "other"
+    (game / ".scry").mkdir(parents=True)
+    (other / ".scry").mkdir(parents=True)
+    drafts = started(Drafts(), anchor=game)
+    drafts.keep("start", "alpha", start_doc(system="alpha"), needs=("system",))
+    started(drafts, anchor=other).keep("start", "gamma", start_doc(system="gamma"),
+                                       needs=("system",))
+    for call in ({"dry_run": True}, {"entries": ["start/alpha", "start/gamma"]}):
+        with pytest.raises(Invalid, match=f"start/alpha go to {re.escape(str(game / '.scry'))}"
+                                          f".*start/gamma go to {re.escape(str(other))}"):
+            promote.promote(drafts, **call)
+    assert files(tmp_path) == []
+    promote.promote(drafts, entries=["start/gamma"])
+    assert files(tmp_path) == ["other/.scry/start/gamma.json"]
+
+
+def test_a_name_two_projects_hold_needs_the_root_of_the_one_to_write(tmp_path: Path) -> None:
+    game, other = tmp_path / "game", tmp_path / "other"
+    (game / ".scry").mkdir(parents=True)
+    (other / ".scry").mkdir(parents=True)
+    drafts = started(Drafts(), anchor=game)
+    drafts.keep("start", "dos", start_doc(system="game"), needs=("system",))
+    started(drafts, anchor=other).keep("start", "dos", start_doc(system="other"),
+                                       needs=("system",))
+    with pytest.raises(Invalid, match=f"kept in {re.escape(str(game))}, {re.escape(str(other))}"):
+        promote.promote(drafts, entries=["start/dos"])
+    reviewed = promote.promote(drafts, dry_run=True, root=str(other))
+    assert [c["entry"] for c in reviewed["candidates"]] == ["start/dos"]
+    assert "from" not in reviewed["candidates"][0]
+    assert [u["entry"] for u in reviewed["unwritable"]] == ["start/dos"]
+    promote.promote(drafts, entries=["start/dos"], root=str(other))
+    assert json.loads((other / ".scry" / "start" / "dos.json").read_text())["system"] == "other"
+    assert [held.project for held in drafts.held("start", "dos")] == [str(game)]
+
+
+def test_a_project_whose_store_is_a_link_is_set_apart_and_its_line_claims_nothing(
+        tmp_path: Path) -> None:
+    game, bare, drafts = two_projects(tmp_path)
+    (tmp_path / "elsewhere").mkdir()
+    (bare / ".scry").symlink_to(tmp_path / "elsewhere", target_is_directory=True)
+    assert promote.kept_line(drafts) == "kept 2 (promote to review)"
+    review = promote.promote(drafts, dry_run=True)
+    assert review["store"] == str(game / ".scry")
+    assert [(u["entry"], "is a link" in u["reason"]) for u in review["unwritable"]] == [
+        ("start/beta", True)]
+
+
+def test_a_review_never_offers_a_name_its_approval_would_refuse(tmp_path: Path) -> None:
+    game, bare, drafts = two_projects(tmp_path)
+    started(drafts, anchor=game).keep("start", "beta", start_doc(system="b"), needs=("system",))
+    review = promote.promote(drafts, dry_run=True)
+    assert [c["entry"] for c in review["candidates"]] == ["start/alpha"], review
+    assert [u["entry"] for u in review["unwritable"]] == ["start/beta", "start/beta"]
+    assert all(f"kept in {bare}, {game}" in u["reason"] or f"kept in {game}, {bare}" in u["reason"]
+               for u in review["unwritable"]), review["unwritable"]
+    with pytest.raises(Invalid, match="kept in"):
+        promote.promote(drafts, entries=["start/beta"])
+
+
+def test_with_root_a_candidate_kept_in_another_project_says_from(tmp_path: Path) -> None:
+    game, bare, drafts = two_projects(tmp_path)
+    reviewed = promote.promote(drafts, dry_run=True, root=str(bare))
+    assert {c["entry"]: c.get("from") for c in reviewed["candidates"]} == {
+        "start/alpha": str(game), "start/beta": None}
 
 
 def test_a_root_that_names_the_store_itself_is_refused(tmp_path: Path) -> None:
@@ -455,14 +700,14 @@ def test_a_root_that_names_the_store_itself_is_refused(tmp_path: Path) -> None:
                root / ".scry")
 
 
-def test_a_store_above_a_starting_directory_is_found(tmp_path: Path) -> None:
+def test_a_store_above_the_directory_a_start_runs_in_is_its_project_s(tmp_path: Path) -> None:
     root = repo(tmp_path)
     (root / ".scry" / "start").mkdir(parents=True)
     below = root / "guest"
     below.mkdir()
-    drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
-    assert promote.promote(drafts, dry_run=True, starting=[below])["store"] == str(
-        root / ".scry")
+    drafts = started(Drafts(), anchor=below)
+    drafts.keep("start", "x", start_doc(system="x"), needs=("system",))
+    assert promote.promote(drafts, dry_run=True)["store"] == str(root / ".scry")
 
 
 def test_a_path_under_the_root_is_written_against_it(tmp_path: Path) -> None:
@@ -542,7 +787,7 @@ def test_a_list_of_paths_is_each_written(tmp_path: Path) -> None:
 def test_a_perform_document_s_paths_are_written_against_the_root(tmp_path: Path) -> None:
     root = repo(tmp_path)
     drafts = drafted("perform", "dos", perform_doc(), path_keys=("rompath",))
-    drafts.kept["perform", "dos"].document["start"]["rompath"] = f"{root}/roms"
+    drafts.held("perform", "dos")[0].document["start"]["rompath"] = f"{root}/roms"
     write(drafts, root, ["perform/dos"])
     written = json.loads((root / ".scry" / "perform" / "dos.json").read_text())
     assert written["start"]["rompath"] == "${root}/roms"
@@ -607,7 +852,7 @@ def test_what_is_left_unkept_is_named_for_close() -> None:
     drafts.keep("start", "lineup", start_doc(system="lineup"), needs=("system",))
     drafts.keep("maps", "lineup", map_doc("play"))
     drafts.loaded_entry("perform", "dos")
-    assert promote.unkept(drafts, lambda: []) == ["maps/lineup", "start/lineup"]
+    assert promote.unkept(drafts) == ["maps/lineup", "start/lineup"]
 
 
 def test_a_map_document_is_written_the_way_its_own_save_writes_it(tmp_path: Path) -> None:
@@ -635,11 +880,11 @@ def test_a_document_that_is_not_an_object_is_refused() -> None:
 def test_a_root_that_is_relative_or_a_file_is_refused(tmp_path: Path) -> None:
     drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
     with pytest.raises(Invalid, match="absolute"):
-        promote.promote(drafts, dry_run=True, starting=[tmp_path], root="repo")
+        promote.promote(drafts, dry_run=True, root="repo")
     file = tmp_path / "repo"
     file.write_text("")
     with pytest.raises(Invalid, match="not a directory"):
-        promote.promote(drafts, dry_run=True, starting=[tmp_path], root=str(file))
+        promote.promote(drafts, dry_run=True, root=str(file))
 
 
 def test_an_entry_named_twice_is_refused(tmp_path: Path) -> None:
@@ -754,10 +999,11 @@ def test_the_root_itself_is_written_as_the_placeholder_alone(tmp_path: Path) -> 
     assert json.loads((root / ".scry" / "start" / "x.json").read_text())["rompath"] == "${root}"
 
 
-def test_with_no_starting_point_the_refusal_says_where_it_looked() -> None:
+def test_an_entry_kept_in_no_project_is_refused_naming_root() -> None:
     drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
-    with pytest.raises(Invalid, match="this process's directory"):
-        promote.promote(drafts, dry_run=True, starting=[])
+    with pytest.raises(Invalid, match="start/x: nothing this session read names its repository: "
+                                      "pass root=<the repository>"):
+        promote.promote(drafts, dry_run=True)
 
 
 def test_keep_says_whether_the_candidate_entered() -> None:
@@ -821,22 +1067,35 @@ def test_close_leaves_out_what_the_store_already_holds_unchanged(tmp_path: Path)
     root = repo(tmp_path)
     write(drafted("start", "same", start_doc(system="s"), needs=("system",)), root,
           ["start/same"])
-    drafts = drafted("start", "same", start_doc(system="s"), needs=("system",))
-    assert "draft" not in promote.after_close(drafts, {}, starting=lambda: [root])
+    drafts = started(Drafts(), anchor=root)
+    drafts.keep("start", "same", start_doc(system="s"), needs=("system",))
+    assert "draft" not in promote.after_close(drafts, {})
     drafts.keep("start", "other", start_doc(system="o"), needs=("system",))
-    assert promote.after_close(drafts, {}, starting=lambda: [root])["draft"] == ["start/other"]
+    assert promote.after_close(drafts, {})["draft"] == ["start/other"]
+
+
+def test_close_compares_each_entry_with_its_own_project_s_store(tmp_path: Path) -> None:
+    game, bare, drafts = two_projects(tmp_path)
+    promote.promote(drafts, entries=["start/alpha"])
+    (bare / ".scry").mkdir()
+    for project in (game, bare):
+        started(drafts, anchor=project).keep("start", "alpha", start_doc(system="alpha"),
+                                             needs=("system",))
+    assert promote.after_close(drafts, {})["draft"] == ["start/alpha", "start/beta"]
 
 
 def test_close_with_no_store_to_compare_names_the_whole_draft(tmp_path: Path) -> None:
-    drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
-    assert promote.after_close(drafts, {}, starting=lambda: [tmp_path])["draft"] == ["start/x"]
+    drafts = started(Drafts(), anchor=tmp_path)
+    drafts.keep("start", "x", start_doc(system="x"), needs=("system",))
+    assert promote.after_close(drafts, {})["draft"] == ["start/x"]
 
 
-def test_close_outlives_a_working_directory_that_is_gone() -> None:
-    def gone() -> list[str]:
-        raise FileNotFoundError("the working directory")
-    drafts = drafted("start", "x", start_doc(system="x"), needs=("system",))
-    assert promote.after_close(drafts, {}, starting=gone)["draft"] == ["start/x"]
+def test_close_outlives_a_store_it_cannot_read(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    (root / ".scry").write_text("a file where the store would be")
+    drafts = started(Drafts(), anchor=root)
+    drafts.keep("start", "x", start_doc(system="x"), needs=("system",))
+    assert promote.after_close(drafts, {})["draft"] == ["start/x"]
 
 
 def stored(root: Path, name: str, document: dict[str, Any]) -> Path:
@@ -895,7 +1154,7 @@ def test_a_perform_start_block_keeps_the_authors_spelling_too(tmp_path: Path) ->
     target.parent.mkdir(parents=True)
     target.write_text(json.dumps(document))
     drafts = drafted("perform", "dos", perform_doc(), path_keys=("rompath",))
-    drafts.kept["perform", "dos"].document["start"]["rompath"] = f"{root}/roms"
+    drafts.held("perform", "dos")[0].document["start"]["rompath"] = f"{root}/roms"
     assert review(drafts, root, environ={})["unchanged"] == ["perform/dos"]
 
 
@@ -1049,19 +1308,17 @@ def test_a_review_leaves_the_draft_s_own_documents_untouched(tmp_path: Path) -> 
     drafts = drafted("start", "x", start_doc(system="x", rompath=f"{root}/roms"),
                      needs=("system",), path_keys=("rompath",))
     review(drafts, root)
-    assert drafts.kept["start", "x"].document["rompath"] == f"{root}/roms"
+    assert drafts.held("start", "x")[0].document["rompath"] == f"{root}/roms"
 
 
-def test_kept_line_and_the_close_and_summary_helpers_say_what_they_mean() -> None:
-    drafts = Drafts()
+def test_kept_line_and_the_close_and_summary_helpers_say_what_they_mean(tmp_path: Path) -> None:
+    (tmp_path / ".scry").mkdir()
+    drafts = started(Drafts(), anchor=tmp_path)
     drafts.keep("start", "x", start_doc(system="x"), needs=("system",))
     assert promote.kept_line(drafts) == "kept 1 (promote to review)"
-    assert promote.kept_line(drafts, has_store=False) == (
-        "kept 1 (promote to review); there is no .scry/ above this project: "
-        "promote(dry_run=true, root=<the repository>) lists what an approval would create")
-    reply = promote.after_close(drafts, {"closed": True}, starting=lambda: [])
+    reply = promote.after_close(drafts, {"closed": True})
     assert reply["draft"] == ["start/x"]
-    empty = promote.after_close(Drafts(), {"closed": False}, starting=lambda: [])
+    empty = promote.after_close(Drafts(), {"closed": False})
     assert empty == {"closed": False}
     assert promote.promote_line({}, {"store": "/s", "candidates": [1, 2]}) == \
         "promote: 2 candidates in /s"
@@ -1072,12 +1329,13 @@ def test_kept_line_and_the_close_and_summary_helpers_say_what_they_mean() -> Non
 def test_an_export_is_kept_from_the_file_it_wrote(tmp_path: Path) -> None:
     path = tmp_path / "session.json"
     path.write_text(json.dumps(perform_doc()))
-    drafts = Drafts()
+    (tmp_path / "game" / ".scry").mkdir(parents=True)
+    drafts = started(Drafts(), anchor=tmp_path / "game")
     reply = promote.after_export(drafts, {"path": str(path)}, ("rompath",))
     assert reply["kept"] == "kept 1 (promote to review)"
     assert drafts.entries() == ["perform/session"]
-    bare = promote.after_export(Drafts(), {"path": str(path)}, ("rompath",), has_store=False)
-    assert "no .scry/ above this project" in bare["kept"]
+    bare = promote.after_export(Drafts(), {"path": str(path)}, ("rompath",))
+    assert "perform/session: nothing this session read names its repository" in bare["kept"]
 
 
 def test_a_write_that_fails_says_what_landed_and_keeps_the_rest(
@@ -1111,7 +1369,8 @@ def test_a_perform_document_with_no_steps_is_written_as_it_is(tmp_path: Path) ->
     document["steps"] = [{"op": "read_memory", "recorded": {"data": "ab"}}]
     del document["steps"]
     drafts = Drafts()
-    drafts.kept["perform", "dos"] = promote.Candidate("perform", "dos", document, ("rompath",))
+    drafts.kept["", "perform", "dos"] = promote.Candidate("perform", "dos", document,
+                                                          ("rompath",))
     write(drafts, root, ["perform/dos"])
     assert "steps" not in json.loads((root / ".scry" / "perform" / "dos.json").read_text())
 
@@ -1362,56 +1621,15 @@ def test_only_the_run_is_a_subset_and_unknown_names_are_never_it() -> None:
     assert not promote.only_the_run(None, own)
 
 
-def rom_paths(block: Any) -> list[str]:
-    return str(block.get("rompath") or "").split(";")
-
-
-def test_the_store_is_looked_for_from_the_loaded_file_first_even_with_no_recipe_kept(
+def test_a_map_kept_after_a_profile_start_lands_in_its_store_wherever_the_server_runs(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    source = tmp_path / "game" / ".scry" / "start" / "x.json"
-    drafts = Drafts()
-    drafts.loaded_entry("start", "x", source=str(source))
-    drafts.keep("maps", "x", map_doc("insert"))
-    assert promote.starting(drafts, rom_paths) == [str(source), os.getcwd()]
-    drafts.forget("start")
-    assert promote.starting(drafts, rom_paths) == [os.getcwd()]
-
-
-def test_the_store_is_looked_for_from_a_perform_documents_start_block(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    document = perform_doc()
-    document["start"] = {"rompath": "/game/roms;/game/more"}
-    drafts = drafted("perform", "x", document)
-    assert promote.starting(drafts, rom_paths) == ["/game/roms", "/game/more", os.getcwd()]
-
-
-def test_the_stores_starting_points_are_absolute_and_stripped(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("USERPROFILE", str(tmp_path))
-    drafts = drafted("start", "x", start_doc(system="x", rompath="~/g;roms; /abs/a;"),
-                     needs=("system",))
-    starts = promote.starting(drafts, rom_paths)
-    assert [Path(start) for start in starts] == [tmp_path / "g", Path("/abs/a"), Path.cwd()]
-
-
-def test_a_found_store_is_the_one_a_write_lands_in_with_the_recipe_elsewhere(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    (tmp_path / "here").mkdir()
-    (tmp_path / "game").mkdir()
-    here = repo(tmp_path / "here")
-    (here / ".scry").mkdir()
-    game = repo(tmp_path / "game")
+    here, game = tmp_path / "here", tmp_path / "game"
+    (here / ".scry").mkdir(parents=True)
     (game / ".scry" / "start").mkdir(parents=True)
     monkeypatch.chdir(here)
-    source = game / ".scry" / "start" / "x.json"
-    drafts = Drafts()
-    drafts.loaded_entry("start", "x", source=str(source))
+    drafts = started(Drafts(), profile=game / ".scry" / "start" / "x.json")
     drafts.keep("maps", "x", map_doc("insert", application="x"))
-    seen = promote.review(drafts, starting=promote.starting(drafts, rom_paths))
+    seen = promote.review(drafts)
     assert Path(seen["store"]).resolve() == (game / ".scry").resolve()
 
 
@@ -1433,4 +1651,4 @@ def test_a_root_that_reaches_the_store_through_dotdot_is_refused(
         tmp_path: Path) -> None:
     (tmp_path / ".scry" / "start").mkdir(parents=True)
     with pytest.raises(Invalid, match="names the store itself"):
-        promote.store([tmp_path], root=str(tmp_path / ".scry" / "start" / ".."))
+        promote.store(str(tmp_path / ".scry" / "start" / ".."))

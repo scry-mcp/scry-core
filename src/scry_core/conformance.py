@@ -1,16 +1,18 @@
-"""The session contract a server runs against its own `start`, `window`, `status` and `close`:
-subclass `SessionContract` in a test file and provide the `subject` fixture. The rules are those
-every server's replies are held to, so a server that passes them answers a caller as the others
-do."""
+"""The contracts a server runs against its own tools: subclass `SessionContract` (`start`,
+`window`, `status`, `close`) or `PromoteContract` (what a `start` keeps and `promote` writes) in a
+test file and provide the `subject` fixture. The rules are those every server's replies are held
+to, so a server that passes them answers a caller as the others do."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Protocol
 
 import pytest
 
 from scry_core import session_block
 from scry_core import window as w
+from scry_core.project_store import STORE
 from scry_core.window_stand_ins import hosts
 
 Reply = dict[str, Any]
@@ -207,3 +209,134 @@ class SessionContract:
         got = subject.start(shared=True, fullscreen=True)
         assert got["status"] == "INVALID" and got["code"] == "window_not_visible", got
         assert got["seen"]["fullscreen"] is False and "fullscreen" in got["message"], got
+
+
+class Promoter(Protocol):
+    """A server's promotion over a launch that runs no emulator, with an empty draft: what its
+    `start` keeps, and its `promote` and `close` tools."""
+
+    def start(self, project: Path, name: str) -> Reply:
+        """`start` of the program `name` whose files sit in `project`, as a session working there
+        calls it. A server that tells a program's project only by the profile it read starts
+        from one it writes into the project's store, when there is one, with an argument the
+        profile lacks so the recipe is kept. The reply carries `kept`."""
+        ...
+
+    def promote(self, **arguments: Any) -> Reply: ...
+
+    def close(self) -> Reply: ...
+
+
+class Places:
+    """Under the home, as on a machine: a store's repository (`game`), a repository with none
+    (`bare`), a second store's (`other`), and the server's own directory, which holds a store
+    too: the documented install runs every server in its own clone."""
+
+    def __init__(self, base: Path) -> None:
+        self.game, self.bare, self.other, self.server = (
+            base / "game", base / "bare", base / "other", base / "server")
+        for store in (self.game, self.other, self.server):
+            (store / STORE).mkdir(parents=True)
+        (self.bare / ".git").mkdir(parents=True)
+
+    def stored(self, place: Path) -> dict[str, bytes]:
+        """The entries `place`'s store holds, `<kind>/<file>` to its bytes."""
+        store = place / STORE
+        return {path.relative_to(store).as_posix(): path.read_bytes()
+                for path in sorted(store.rglob("*")) if path.is_file() and path.parent != store}
+
+
+class PromoteContract:
+    """Without `root` an entry is written only into its own project's store: one whose project
+    has none is refused by name and told to pass `root`, and the server's own directory never
+    lends its store."""
+
+    @pytest.fixture
+    def places(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Places:
+        for home in ("HOME", "USERPROFILE"):
+            monkeypatch.setenv(home, str(tmp_path))
+        places = Places(tmp_path)
+        monkeypatch.chdir(places.server)
+        return places
+
+    @pytest.fixture(autouse=True)
+    def _closed(self, subject: Promoter) -> Any:
+        yield
+        subject.close()
+
+    def test_without_root_an_entry_is_never_written_outside_its_own_project_s_store(
+            self, subject: Promoter, places: Places) -> None:
+        _started(subject, places.game, "alpha")
+        _started(subject, places.bare, "beta")
+        review = subject.promote(dry_run=True)
+        assert review["status"] == "ok" and review["store"] == str(places.game / STORE), review
+        assert [c["entry"] for c in review["candidates"]] == ["start/alpha"], review
+        assert [(u["entry"], "root=" in u["reason"]) for u in review["unwritable"]] == [
+            ("start/beta", True)], review
+        before = places.stored(places.game)
+        refused = subject.promote(entries=["start/alpha", "start/beta"])
+        assert refused["status"] == "INVALID" and "start/beta" in refused["message"], refused
+        assert places.stored(places.game) == before, "a refused approval wrote"
+        assert subject.promote(entries=["start/alpha"])["status"] == "ok"
+        after = places.stored(places.game)
+        assert list(after) == ["start/alpha.json"] and after != before, after
+        assert not (places.bare / STORE).exists() and places.stored(places.server) == {}
+
+    def test_the_kept_line_names_an_entry_with_no_store_and_the_root_it_takes(
+            self, subject: Promoter, places: Places) -> None:
+        assert "root=" not in _started(subject, places.game, "alpha")
+        kept = _started(subject, places.bare, "beta")
+        assert "start/beta" in kept and "root=" in kept, kept
+
+    def test_the_server_s_own_directory_never_lends_its_store(
+            self, subject: Promoter, places: Places) -> None:
+        _started(subject, places.bare, "beta")
+        refused = subject.promote(entries=["start/beta"])
+        assert refused["status"] == "INVALID" and "root=" in refused["message"], refused
+        assert places.stored(places.server) == {}
+
+    def test_with_root_an_entry_is_written_into_that_repository_s_store(
+            self, subject: Promoter, places: Places) -> None:
+        _started(subject, places.bare, "beta")
+        written = subject.promote(entries=["start/beta"], root=str(places.bare))
+        assert written["status"] == "ok" and written["created"], written
+        assert list(places.stored(places.bare)) == ["start/beta.json"]
+
+    def test_entries_of_two_stores_are_written_each_into_its_own_one_call_at_a_time(
+            self, subject: Promoter, places: Places) -> None:
+        _started(subject, places.game, "alpha")
+        _started(subject, places.other, "gamma")
+        before = places.stored(places.game), places.stored(places.other)
+        both = subject.promote(entries=["start/alpha", "start/gamma"])
+        assert both["status"] == "INVALID", both
+        assert (places.stored(places.game), places.stored(places.other)) == before
+        for entry in ("start/alpha", "start/gamma"):
+            assert subject.promote(entries=[entry])["status"] == "ok"
+        after = places.stored(places.game), places.stored(places.other)
+        assert [list(each) for each in after] == [["start/alpha.json"], ["start/gamma.json"]]
+        assert after[0] != before[0] and after[1] != before[1], after
+
+    def test_a_name_two_projects_hold_is_written_only_where_root_names(
+            self, subject: Promoter, places: Places) -> None:
+        _started(subject, places.game, "dos")
+        _started(subject, places.other, "dos")
+        before = places.stored(places.game), places.stored(places.other)
+        refused = subject.promote(entries=["start/dos"])
+        assert refused["status"] == "INVALID" and "root" in refused["message"], refused
+        assert (places.stored(places.game), places.stored(places.other)) == before
+        assert subject.promote(entries=["start/dos"], root=str(places.game))["status"] == "ok"
+        assert places.stored(places.game) != before[0]
+        assert places.stored(places.other) == before[1]
+
+    def test_close_names_what_the_session_left_waiting(
+            self, subject: Promoter, places: Places) -> None:
+        _started(subject, places.bare, "beta")
+        assert subject.close().get("draft") == ["start/beta"]
+
+
+def _started(subject: Promoter, project: Path, name: str) -> str:
+    """`start` of `name` in `project`, then `close`, and the `kept` line the start gave."""
+    got = subject.start(project, name)
+    assert got["status"] == "ok" and "kept" in got, got
+    subject.close()
+    return str(got["kept"])

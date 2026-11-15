@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from collections.abc import Collection, Iterable, Iterator, Mapping
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -49,6 +49,29 @@ def root(starting: Iterable[str | Path]) -> Path | None:
             if (above / STORE).is_dir():
                 return above
     return None
+
+
+def project(anchor: str) -> str:
+    """The project a path belongs to, its links and `..` resolved: the nearest directory at or
+    above it holding `.scry/`, else `.git`, else its own directory; "" for an empty or relative
+    path."""
+    text = os.path.expanduser(anchor.strip())
+    if not text or not Path(text).is_absolute():
+        return ""
+    place = Path(os.path.realpath(text))
+    for marker, is_marker in ((STORE, Path.is_dir), (".git", Path.exists)):
+        for above in _above(place):
+            if _holds(above / marker, is_marker):
+                return str(above)
+    return str(place if _holds(place, Path.is_dir) else place.parent)
+
+
+def _holds(path: Path, test: Callable[[Path], bool]) -> bool:
+    """`test(path)`, an unreadable path answering no."""
+    try:
+        return test(path)
+    except OSError:
+        return False
 
 
 def locate(starting: Iterable[str | Path], name: str, kind: str = "start") -> Path:

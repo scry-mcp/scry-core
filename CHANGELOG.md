@@ -2,6 +2,29 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.promote`: an entry a session keeps belongs to one project, fixed when it is kept:
+  the repository whose store it was read from, else the current start's, which a server names
+  by running its launch inside `Drafts.starting(profile=, anchor=, live=)`: the profile's
+  repository, else the anchor's. A start that raises leaving no session of its own live (`live`
+  answers what it answered before) leaves the draft as it was, and a start forgets the script
+  the last session replayed. The draft is keyed by (project, kind, name) (`Candidate.key`,
+  `Drafts.held`). Without `root` an entry is written only into its own project's store
+  (`own_store`), one store a call: one whose project holds none is `unwritable` in a review and
+  refused in an approval, naming that repository and the `root` to pass; a call none of whose
+  entries has a store, entries of two stores, and a name two projects hold (unless `root` is one
+  of them) are refused naming them; the server's own directory is never searched, and without
+  `root` a review of an empty draft is `needs_call`. With `root` a candidate kept in another
+  project says `from`. `kept_line(drafts)` names each project with no store.
+  Gone: the module function `starting(drafts, paths)`; the `starting` argument of `promote`,
+  `review`, `write`, `unkept` and `after_close`; `store`'s first argument (`store(root)`); and
+  the `has_store` of `kept_line` and `after_export`.
+- `scry_core.project_store.project`: the project a path belongs to, its links and `..` resolved:
+  the nearest directory holding `.scry/`, else `.git`, else its own.
+- `scry_core.conformance.PromoteContract`: the promotion rules a server runs against its own
+  `start`, `promote` and `close`, the way it runs `SessionContract`.
+
 ## 0.109.4
 
 - `scry_core.demo`: `window_args` is what a demo's `start` asks of the window (watched,
