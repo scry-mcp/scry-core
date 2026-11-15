@@ -72,7 +72,7 @@ def _not_blocking(fd: int) -> None:
 
 
 class QueuedConsole:
-    """A FIFO's write end that never blocks its writer: a FIFO holds 8 KiB here, a child's pipe 64,
+    """A FIFO's write end that never blocks its writer: a FIFO holds far less than a child's pipe,
     and an emulator stopped at its debugger reads neither, so what it cannot take yet waits."""
 
     def __init__(self, fd: int) -> None:
