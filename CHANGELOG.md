@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.log_wait.timeout_note` takes the clause that closes the note as `run_state`, by
+  keyword; left out it is `STILL_RUNNING`, the clause it always closed on, for a caller that
+  knows the machine is running. A caller whose own question went unanswered passes what it
+  knows instead of cutting the clause off the text.
+
 ## 0.110.0
 
 - `scry_core.promote`: an entry a session keeps belongs to one project, fixed when it is kept:

@@ -135,15 +135,21 @@ def wait(rx: re.Pattern[str], fresh: Callable[[], list[str]], *, seconds: float,
     return out
 
 
-def timeout_note(pattern: str, ended: Ended, where: str, writer: str) -> str:
-    """The `note` of a wait whose bound ran out; `where` names the span of log examined."""
+#: What a wait that ran out says of the machine when nothing told its caller otherwise.
+STILL_RUNNING = "The machine is still running"
+
+
+def timeout_note(pattern: str, ended: Ended, where: str, writer: str, *,
+                 run_state: str = STILL_RUNNING) -> str:
+    """The `note` of a wait whose bound ran out; `where` names the span of log examined, and
+    `run_state` closes it."""
     silent = ("" if ended.arrived_during else
               f" The {writer} wrote NOTHING at all in this window, so the question may be "
               "whether it is still writing rather than what it wrote.")
     return (f"nothing matched /{pattern}/ in {ended.waited_s} s: "
             f"{prose.counted(ended.arrived_during, 'line')} arrived DURING the wait "
             f"({ended.lines_examined} {where}), so this is a bound that expired and not 'there "
-            f"was nothing to match against'.{silent} The machine is still running")
+            f"was nothing to match against'.{silent} {run_state}")
 
 
 def stopped_message(pattern: str, arrived: int, waited_s: float, *, parked: bool,

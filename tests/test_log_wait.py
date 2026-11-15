@@ -124,6 +124,16 @@ def test_a_timeouts_note_says_what_arrived_and_a_silent_writer() -> None:
     assert "3 lines arrived" in busy and "NOTHING" not in busy
 
 
+def test_a_timeouts_note_closes_on_the_run_state_its_caller_knows() -> None:
+    """A caller whose own question about the machine went unanswered says that instead."""
+    ended = log_wait.Ended("TIMEOUT", 1, 4, 2.0)
+    unknown = "Whether the machine is running or stopped is not known"
+    said = log_wait.timeout_note("GO", ended, "in the log", "guest", run_state=unknown)
+    assert said.endswith(f". {unknown}") and "still running" not in said, said
+    default = log_wait.timeout_note("GO", ended, "in the log", "guest")
+    assert default == said.removesuffix(unknown) + log_wait.STILL_RUNNING, default
+
+
 def test_a_gone_emulator_is_said_with_the_bound() -> None:
     said = log_wait.gone_message("GO", log_wait.Ended("GONE", 0, 0, 1.5), 30.0)
     assert said.startswith("the emulator is GONE, 1.5 s into a 30 s wait for /GO/"), said
