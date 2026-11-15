@@ -484,7 +484,7 @@ def test_the_screens_are_asked_again_only_when_the_displays_move(
     calls: list[int] = []
     def screens() -> list[Any]:
         calls.append(1)
-        return []
+        return [((0, 0, 10, 10), (0, 1, 10, 8), 2.0)]
     monkeypatch.setattr(wh, "screens", screens)
     monkeypatch.setattr(wh, "_SCREENS_READ", {})
     one = [w.Display(0, (0, 0, 10, 10))]
@@ -492,6 +492,25 @@ def test_the_screens_are_asked_again_only_when_the_displays_move(
     assert len(calls) == 1
     wh.screens_for([w.Display(0, (0, 0, 20, 10))])
     assert len(calls) == 2
+
+
+def test_a_child_that_answered_no_screen_is_asked_again(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """A child that failed once (a slow import, a load spike) must not stand for the displays."""
+    answers: list[list[Any]] = [[], [((0, 0, 10, 10), (0, 1, 10, 8), 2.0)]]
+    monkeypatch.setattr(wh, "screens", lambda: answers.pop(0))
+    monkeypatch.setattr(wh, "_SCREENS_READ", {})
+    one = [w.Display(0, (0, 0, 10, 10))]
+    assert wh.screens_for(one) == []
+    assert wh.screens_for(one) == [((0, 0, 10, 10), (0, 1, 10, 8), 2.0)]
+
+
+def test_a_child_that_hangs_gives_no_screen(monkeypatch: pytest.MonkeyPatch) -> None:
+    def run(argv: list[str], **k: Any) -> subprocess.CompletedProcess[str]:
+        assert k.get("timeout") == wh.SCREENS_TIMEOUT_S, k
+        raise subprocess.TimeoutExpired(argv, k["timeout"])
+    monkeypatch.setattr(subprocess, "run", run)
+    assert wh.screens() == []
 
 
 def test_a_desk_that_lists_no_screen_gives_no_usable_area(

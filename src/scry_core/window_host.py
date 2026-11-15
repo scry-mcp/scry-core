@@ -94,6 +94,10 @@ def _send(obj: int, selector: str, restype: Any, *args: int) -> Any:  # needs Ap
     return entry(obj, objc.sel_registerName(selector.encode()), *args)
 
 
+#: A child that has not answered by then has hung.
+SCREENS_TIMEOUT_S = 10.0
+
+
 def screens() -> list[tuple[Rect, Rect, float]]:
     """Each AppKit screen as (frame, visible frame, backing scale), in the window list's
     coordinates. The visible frame excludes the menu bar and the Dock. Asked from a child: AppKit
@@ -101,9 +105,10 @@ def screens() -> list[tuple[Rect, Rect, float]]:
     and a server with no event loop shows as not responding."""
     try:
         out = subprocess.run([sys.executable, "-c", SCREENS_CHILD], capture_output=True,
-                             text=True, env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)})
+                             text=True, env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+                             timeout=SCREENS_TIMEOUT_S)
         return [(tuple(f), tuple(v), float(k)) for f, v, k in json.loads(out.stdout)]
-    except (OSError, ValueError, TypeError):
+    except (OSError, ValueError, TypeError, subprocess.TimeoutExpired):
         return []          # as AppKit with no screen class: the displays keep no usable area
 
 
@@ -113,12 +118,15 @@ _SCREENS_READ: dict[tuple[Rect, ...], list[tuple[Rect, Rect, float]]] = {}
 
 def screens_for(found: list[Display]) -> list[tuple[Rect, Rect, float]]:
     """`screens`, asked again only when the displays' bounds moved: each ask is a child, and the
-    waits read the displays every poll."""
+    waits read the displays every poll. An answer of no screen, a failed child, is not kept."""
     key = tuple(d.bounds for d in found)
-    if key not in _SCREENS_READ:
+    if key in _SCREENS_READ:
+        return _SCREENS_READ[key]
+    answer = screens()
+    if answer:
         _SCREENS_READ.clear()
-        _SCREENS_READ[key] = screens()
-    return _SCREENS_READ[key]
+        _SCREENS_READ[key] = answer
+    return answer
 
 
 SCREENS_CHILD = ("import json; from scry_core import window_host; "
