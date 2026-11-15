@@ -21,6 +21,8 @@ from scry_core import png, verdict
 from scry_core.verdict import EXIT_INVALID
 
 SERVER = Path(__file__).resolve().parent / "fixtures" / "demo" / "server.py"
+needs_ffmpeg = pytest.mark.skipif(shutil.which("ffmpeg") is None,
+                                  reason="a loop is converted by ffmpeg on PATH")
 README = f"# A demo\n\nBefore.\n\n{d.BEGIN}\nold block\n{d.END}\n\nAfter.\n"
 
 
@@ -340,6 +342,7 @@ def test_a_loop_a_bound_or_a_stop_cut_is_a_failed_step(tmp_path: Path, log: Path
             served.check(reply, d.Run(dir=tmp_path))
 
 
+@needs_ffmpeg
 def test_update_readme_converts_the_loop_beside_the_capture(
         tmp_path: Path, log: Path) -> None:
     demo = _loop_demo(tmp_path)
@@ -350,6 +353,7 @@ def test_update_readme_converts_the_loop_beside_the_capture(
     assert loop.read_bytes()[4:8] == b"ftyp", "not an MP4"
 
 
+@needs_ffmpeg
 def test_a_loop_past_its_budget_is_invalid_naming_its_file_and_bytes(
         tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str]) -> None:
@@ -384,6 +388,7 @@ def test_a_run_that_cannot_write_its_readmes_leaves_the_committed_loop_as_it_was
     assert committed.read_bytes() == b"the loop in the repository"
 
 
+@needs_ffmpeg
 def test_a_loop_is_converted_from_a_tiny_avi_within_the_budget(tmp_path: Path) -> None:
     run, demos = tmp_path / "run", tmp_path / "demos"
     run.mkdir()
@@ -467,6 +472,7 @@ def test_a_loop_with_no_ffmpeg_on_the_path_is_invalid(
         d._convert_loop(avi, tmp_path / "loop.mp4")
 
 
+@needs_ffmpeg
 def test_a_loop_ffmpeg_cannot_read_is_invalid_with_its_own_words(
         tmp_path: Path) -> None:
     avi, mp4 = tmp_path / "loop.avi", tmp_path / "loop.mp4"
@@ -476,6 +482,7 @@ def test_a_loop_ffmpeg_cannot_read_is_invalid_with_its_own_words(
     assert not mp4.exists()
 
 
+@needs_ffmpeg
 def test_stale_ignores_a_loop_s_bytes_and_names_one_that_is_not_committed(
         tmp_path: Path, log: Path) -> None:
     demo = _loop_demo(tmp_path)
