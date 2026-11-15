@@ -1,6 +1,6 @@
 [project]
 name = "scry-core"
-version = "0.109.4"
+version = "0.110.0"
 description = "What the Scry emulator MCP servers share, held once: the reply contract, captures and their comparisons, screen maps, the demo runner, the probe and the live bench"
 readme = "README.md"
 requires-python = ">=3.11"

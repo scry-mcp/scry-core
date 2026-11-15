@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.110.0
 
 - `scry_core.promote`: an entry a session keeps belongs to one project, fixed when it is kept:
   the repository whose store it was read from, else the current start's, which a server names
