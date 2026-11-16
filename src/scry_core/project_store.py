@@ -76,7 +76,7 @@ def _holds(path: Path, test: Callable[[Path], bool]) -> bool:
 
 def locate(starting: Iterable[str | Path], name: str, kind: str = "start") -> Path:
     """The entry `name` of `kind` found by walking up from each starting point in order, or the
-    refusal naming the directories searched."""
+    refusal naming the directories searched, in prose and as `searched`."""
     name = entry_name(name)
     if kind not in KINDS:
         raise Invalid("bad_argument", f"a store holds {', '.join(KINDS)}; {kind!r} is not one")
@@ -96,7 +96,8 @@ def locate(starting: Iterable[str | Path], name: str, kind: str = "start") -> Pa
             if found.is_file():
                 return found
     raise Invalid("bad_argument", f"no {STORE}/{kind}/{file_name(kind, name)} above "
-                  f"{_listed(starts)}: searched {_listed(searched)}")
+                  f"{_listed(starts)}: searched {_listed(searched)}",
+                  searched=[str(p) for p in searched])
 
 
 def read(entry: Path, keys: Collection[str], path_keys: Collection[str] = (), *,

@@ -34,6 +34,14 @@ class _WindowRefused(reply_schema.RunEnvelope, tool_replies.WindowRefusedFields,
     pass
 
 
+class _StopWait(reply_schema.RunEnvelope, tool_replies.StopWaitFields, total=False):
+    pass
+
+
+class _ProfileRefused(reply_schema.RunEnvelope, tool_replies.ProfileRefusedFields, total=False):
+    pass
+
+
 SAMPLES: list[tuple[type[TypedDict], dict[str, Any]]] = [  # type: ignore[valid-type]
     (_Captures, {"captures": [], "last_stop": {}, "exit_code": 0}),
     (_Export, {"checks": 1, "cut": {}, "dropped": [], "dropped_total": 0, "path": "p",
@@ -42,6 +50,9 @@ SAMPLES: list[tuple[type[TypedDict], dict[str, Any]]] = [  # type: ignore[valid-
     (_LogWait, {"arrived_during": 0, "lines_examined": 3, "verdict": "TIMEOUT", "waited_s": 1.0}),
     (_CommentWrite, {"added": 1, "comments_total": 4, "path": "c.json"}),
     (_WindowRefused, {"activation": "", "asked_display": 1, "seen": {}}),
+    (_StopWait, {"waited_on": {"kind": "watch", "ref": "lives"}, "firings": 2,
+                 "frames_examined": 1, "fired_line": {"available": False, "why": "none"}}),
+    (_ProfileRefused, {"searched": ["/repo", "/"]}),
 ]
 
 

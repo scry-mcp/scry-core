@@ -24,7 +24,16 @@ from typing import Annotated, Any, Required
 
 from typing_extensions import TypedDict
 
-from scry_core import fresh, project_store, promote_paths, prose, recording, screen_map, scry_readme
+from scry_core import (
+    fresh,
+    given,
+    project_store,
+    promote_paths,
+    prose,
+    recording,
+    screen_map,
+    scry_readme,
+)
 from scry_core.promote_diff import difference
 from scry_core.promote_paths import LISTS, Places
 from scry_core.reply_contract import Invalid, When
@@ -251,6 +260,39 @@ def unkept(drafts: Drafts, state: str = "") -> list[str]:
 def only_the_run(names: frozenset[str] | None, run_own: frozenset[str]) -> bool:
     """Whether the caller gave `start` nothing but `run_own`; names it cannot tell: never."""
     return names is not None and names <= run_own
+
+
+def keep_start(drafts: Drafts, params: Mapping[str, Any], *, guest: str,
+               defaults: Mapping[str, Any], run_own: frozenset[str], needs: Collection[str],
+               path_keys: Collection[str]) -> bool:
+    """A start's recipe as a candidate, named by the profile it read, else by `guest`: what the
+    call set away from `defaults`, outside `run_own`. A loaded profile run again with only
+    `run_own` changed keeps nothing."""
+    loaded = drafts.loaded_name("start")
+    if not (name := loaded or guest):
+        return False
+    if loaded and only_the_run(given.names(), run_own):
+        return False
+    document: dict[str, Any] = {"format": project_store.FORMAT}
+    document.update({key: value for key, value in params.items()
+                     if key in defaults and key not in run_own and value != defaults[key]})
+    return drafts.keep("start", name, document, needs=needs, path_keys=path_keys,
+                       own=sorted(run_own))
+
+
+def after_map(drafts: Drafts, maps: screen_map.Maps, method: str, reply: dict[str, Any], *,
+              guest: str) -> dict[str, Any]:
+    """`screen_map_write`'s reply: a `load` names the entry this session read, and an `add`
+    keeps the map, named by that entry, else by `guest`."""
+    if method == "load":
+        drafts.loaded_entry("maps", str(reply.get("application", "")),
+                            source=str(reply.get("path", "")))
+    application = maps.session_application or guest
+    if method != "add" or not application:
+        return reply
+    if drafts.keep("maps", application, maps.document(application)):
+        return {**reply, "kept": kept_line(drafts)}
+    return reply
 
 
 def kept_line(drafts: Drafts) -> str:

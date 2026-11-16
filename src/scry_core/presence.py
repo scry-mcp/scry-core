@@ -238,7 +238,9 @@ class Slot:
 
 def check_classified(registered: Iterable[str], driving: Collection[str],
                      still: Collection[str]) -> list[str]:
-    """Problems in a driving/still declaration (each registered tool on exactly one side)."""
+    """Problems in a driving/still declaration, each side written out so a new tool is placed on
+    purpose; driving (`acting`) is a call that can move or change the guest, or cannot be told
+    from one."""
     names, drive, rest = set(registered), _names(driving), _names(still)
     problems = [f"{n}: registered but declared neither driving nor still"
                 for n in sorted(names - drive - rest)]

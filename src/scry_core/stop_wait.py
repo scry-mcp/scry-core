@@ -10,7 +10,7 @@ running the machine.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -29,6 +29,10 @@ _TERM = re.compile(r"^(?:([bwd])@([^\s=!<>&|]+)|([A-Za-z][A-Za-z0-9]*))\s*(==|!=
 GRAMMAR = (f"up to {TERMS_MAX} terms joined by `&&`, each a register of the stopped cpu or a "
            "memory read (`b@ref`, `w@ref`, `d@ref`), a comparison (`==`, `!=`, `<`, `<=`, `>`, "
            "`>=`) and a hex value (`0x` allowed)")
+#: What `screen_wait`'s reply carries under `on_*` (`fields`), in its description.
+ON_FIELDS = ("under `on_*`, `waited_on`, `firings`, `frames_examined` (the frames looked at "
+             "after a firing) and `fired_line` in place of `polls` and `sampled_every`")
+DOC_VALUES = {"CONDITION_GRAMMAR": GRAMMAR, "ON_FIELDS": ON_FIELDS}
 
 
 @dataclass(frozen=True)
@@ -136,6 +140,37 @@ def never_fired(spec: StopWait, seconds: float, **more: Any) -> Invalid:
     return Invalid("never_fired", f"the {spec.kind} {spec.ref!r} never fired within {seconds:g} s, "
                    "so no screen was judged: this says nothing about the screen",
                    waited_on=_waited_on(spec), **more)
+
+
+def no_such_row(spec: StopWait, held: Sequence[str], cpu: str = "") -> Invalid:
+    """`unknown_ref`: no declaration of the kind waited on is `spec.ref`; `held` the refs that
+    are, `cpu` the one they were looked for on where the machine has several."""
+    on, there = (f" on {cpu}", " there") if cpu else ("", "")
+    return Invalid("unknown_ref", f"{spec.ref!r} matches no {spec.kind} declaration{on}: "
+                   f"`on_{spec.kind}` names a row `declaration_list` lists. The {spec.kind} "
+                   f"declarations held{there}: "
+                   + (", ".join(repr(r) for r in held) if held else "none at all"))
+
+
+def not_a_change_watch(ref: str, mode: str) -> Invalid:
+    """A watch of another mode never stops the machine, so a wait on it could never judge."""
+    return Invalid("bad_argument", f"the watch {ref!r} is a `{mode}` watch, which never stops "
+                   "the machine: only a `change` watch fires")
+
+
+def follows_pointer(ref: str) -> Invalid:
+    """A watch through a pointer watches bytes that move, so its firing is not told apart."""
+    return Invalid("bad_argument", f"the watch {ref!r} follows a pointer, and its bytes move "
+                   "between stops, so its firing cannot be told from another stop")
+
+
+def timeout_note(said: str, spec: StopWait, firings: int, examined: int, seconds: float, *,
+                 judged_at: str) -> str:
+    """A `TIMEOUT`'s note under `on_*`; `judged_at` where the server judges a firing's frame."""
+    fired = f"{counted(firings, 'firing')} of the {spec.kind} {spec.ref!r} within {seconds:g} s"
+    if not examined:
+        return f"none of {fired} met the condition, so no screen was judged"
+    return f"{said} was not found {judged_at} after any of {fired}"
 
 
 def summary_after(reply: Mapping[str, Any]) -> str | None:

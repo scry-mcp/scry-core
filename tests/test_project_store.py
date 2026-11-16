@@ -136,6 +136,7 @@ def test_a_name_found_nowhere_is_refused_naming_the_directories(tmp_path: Path) 
         ps.locate([below], "dos")
     said = str(refused.value)
     assert str(below) in said and str(tmp_path) in said
+    assert refused.value.fields["searched"][:2] == [str(below), str(tmp_path)]
 
 
 def test_a_search_with_no_starting_directory_is_refused() -> None:

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from scry_core import stop_wait
+from scry_core import stop_wait, tool_replies
 from scry_core.reply_contract import CODES, Invalid
 
 
@@ -105,3 +105,48 @@ def test_a_summary_counts_firings_under_on_and_nothing_else() -> None:
     reply = stop_wait.fields(spec, firings=3, examined=1, fired_line=0)
     assert stop_wait.summary_after(reply) == "after 3 firings of breakpoint 'draw_done'"
     assert stop_wait.summary_after({"polls": 4}) is None
+
+
+def test_a_row_no_declaration_matches_is_refused_naming_the_rows_held() -> None:
+    spec = stop_wait.StopWait("watch", "lives", ())
+    e = stop_wait.no_such_row(spec, ["score", "0x10"])
+    assert e.code == "unknown_ref"
+    assert str(e) == ("'lives' matches no watch declaration: `on_watch` names a row "
+                      "`declaration_list` lists. The watch declarations held: 'score', '0x10'")
+    on_cpu = stop_wait.no_such_row(spec, [], cpu=":maincpu")
+    assert str(on_cpu).startswith("'lives' matches no watch declaration on :maincpu: ")
+    assert str(on_cpu).endswith("The watch declarations held there: none at all")
+
+
+def test_a_watch_that_never_stops_the_machine_is_refused_by_its_mode() -> None:
+    e = stop_wait.not_a_change_watch("lives", "tally")
+    assert e.code == "bad_argument"
+    assert str(e) == ("the watch 'lives' is a `tally` watch, which never stops the machine: "
+                      "only a `change` watch fires")
+
+
+def test_a_watch_that_follows_a_pointer_is_refused() -> None:
+    e = stop_wait.follows_pointer("[0x10]+2")
+    assert e.code == "bad_argument"
+    assert str(e) == ("the watch '[0x10]+2' follows a pointer, and its bytes move between "
+                      "stops, so its firing cannot be told from another stop")
+
+
+def test_a_timeout_note_says_where_it_judged_and_when_nothing_was_judged() -> None:
+    spec = stop_wait.StopWait("breakpoint", "draw_done", ())
+    assert stop_wait.timeout_note("screen 'title'", spec, firings=3, examined=2,
+                                  seconds=5.0, judged_at="at the retrace") == (
+        "screen 'title' was not found at the retrace after any of 3 firings of the breakpoint "
+        "'draw_done' within 5 s")
+    assert stop_wait.timeout_note("screen 'title'", spec, firings=1, examined=0,
+                                  seconds=2.5, judged_at="at the retrace") == (
+        "none of 1 firing of the breakpoint 'draw_done' within 2.5 s met the condition, "
+        "so no screen was judged")
+
+
+def test_the_reply_sentence_names_every_field_a_reply_under_on_carries() -> None:
+    spec = stop_wait.StopWait("breakpoint", "draw_done", ())
+    for name in stop_wait.fields(spec, 1, 1, 0):
+        assert f"`{name}`" in stop_wait.DOC_VALUES["ON_FIELDS"], name
+    assert set(stop_wait.fields(spec, 1, 1, 0)) == set(tool_replies.StopWaitFields.__annotations__)
+    assert stop_wait.DOC_VALUES["CONDITION_GRAMMAR"] == stop_wait.GRAMMAR

@@ -77,3 +77,19 @@ class WindowRefusedFields(TypedDict, total=False):
     activation: Annotated[str, When("`window_not_visible` after an activation")]
     asked_display: Annotated[int, When("`window_not_visible`")]
     seen: Annotated[dict[str, Any], When("`window_not_visible` with a window listed")]
+
+
+class StopWaitFields(TypedDict, total=False):
+    """`screen_wait`'s fields under `on_*` on both servers (`scry_core.stop_wait.fields`)."""
+
+    waited_on: Annotated[dict[str, Any], When("under `on_*`")]
+    firings: Annotated[int, When("under `on_*`")]
+    frames_examined: Annotated[int, When("under `on_*`")]
+    fired_line: Annotated[int | dict[str, Any], When("under `on_*`")]
+
+
+class ProfileRefusedFields(TypedDict, total=False):
+    """`start`'s refusal of a `profile` no store holds, on both servers
+    (`scry_core.project_store.locate`)."""
+
+    searched: Annotated[list[Any], When("a `profile` no directory above holds")]

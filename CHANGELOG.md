@@ -2,6 +2,19 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.stop_wait` builds the refusals of a row a wait under `on_*` cannot judge at
+  (`no_such_row`, `not_a_change_watch`, `follows_pointer`) and the `TIMEOUT` note
+  (`timeout_note`, with where the server judges a firing's frame), and its `DOC_VALUES` carries
+  `ON_FIELDS`, the reply sentence for the four fields `tool_replies.StopWaitFields` declares,
+  beside `CONDITION_GRAMMAR`.
+- `scry_core.promote.keep_start` and `after_map` keep a `start`'s recipe and a map's `add`,
+  named by the entry the session read, else by the guest the server names.
+- `scry_core.project_store.locate`'s refusal carries `searched`, the directories it walked, so
+  a server tells it apart by a field instead of by its words; `tool_replies.ProfileRefusedFields`
+  declares it for `start`.
+
 ## 0.114.0
 
 - `scry_core.file_names.written_as` words the one sentence a reply's `note` carries when a

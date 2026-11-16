@@ -13,6 +13,7 @@ import pytest
 from scry_core import (
     file_names,
     fresh,
+    given,
     project_store,
     promote,
     promote_diff,
@@ -1687,3 +1688,86 @@ def test_a_root_that_reaches_the_store_through_dotdot_is_refused(
     (tmp_path / ".scry" / "start").mkdir(parents=True)
     with pytest.raises(Invalid, match="names the store itself"):
         promote.store(str(tmp_path / ".scry" / "start" / ".."))
+
+
+RUN_OWN = frozenset({"state_dir", "display", "profile"})
+DEFAULTS = {"system": "", "rompath": "", "state_dir": "", "display": 0}
+
+
+def test_a_start_keeps_what_the_call_decided_named_by_its_guest() -> None:
+    drafts = Drafts()
+    params = {"system": "lineup", "rompath": "/roms", "state_dir": "/s", "display": 0}
+    assert promote.keep_start(drafts, params, guest="lineup", defaults=DEFAULTS,
+                              run_own=RUN_OWN, needs=("system",), path_keys=("rompath",))
+    [candidate] = drafts.kept.values()
+    assert candidate.entry == "start/lineup"
+    assert candidate.document == {"format": project_store.FORMAT, "system": "lineup",
+                                  "rompath": "/roms"}
+
+
+def test_a_start_with_no_guest_and_no_profile_keeps_nothing() -> None:
+    drafts = Drafts()
+    assert not promote.keep_start(drafts, {"system": ""}, guest="", defaults=DEFAULTS,
+                                  run_own=RUN_OWN, needs=(), path_keys=())
+    assert len(drafts) == 0
+
+
+def test_a_start_with_no_profile_is_kept_whatever_names_it_was_given() -> None:
+    drafts = Drafts()
+    params = {"system": "lineup", "rompath": "/roms", "state_dir": "/s", "display": 0}
+    with given.remembered({"state_dir"}):
+        assert promote.keep_start(drafts, params, guest="lineup", defaults=DEFAULTS,
+                                  run_own=RUN_OWN, needs=(), path_keys=("rompath",))
+    assert drafts.entries() == ["start/lineup"]
+
+
+def test_a_start_that_only_reruns_its_profile_keeps_nothing_and_one_that_adds_is_named_by_it(
+        tmp_path: Path) -> None:
+    profile = tmp_path / ".scry" / "start" / "game.json"
+    drafts = Drafts()
+    params = {"system": "lineup", "rompath": "/roms", "state_dir": "/s", "display": 0}
+    with drafts.starting(profile=str(profile)):
+        with given.remembered({"profile", "state_dir"}):
+            assert not promote.keep_start(drafts, params, guest="lineup", defaults=DEFAULTS,
+                                          run_own=RUN_OWN, needs=(), path_keys=("rompath",))
+        with given.remembered({"profile", "rompath"}):
+            assert promote.keep_start(drafts, params, guest="lineup", defaults=DEFAULTS,
+                                      run_own=RUN_OWN, needs=(), path_keys=("rompath",))
+    assert drafts.entries() == ["start/game"]
+
+
+def test_a_map_reply_keeps_nothing_but_on_an_add_with_a_name() -> None:
+    drafts, maps = Drafts(), screen_map.Maps()
+    reply = {"status": "ok", "screen": "title"}
+    assert promote.after_map(drafts, maps, "add", reply, guest="") == reply
+    assert promote.after_map(drafts, maps, "match", reply, guest="lineup") == reply
+    maps.session_application = "lineup"
+    assert promote.after_map(drafts, maps, "add", reply, guest="other") == reply, (
+        "a map with no verified screen is not kept")
+    assert len(drafts) == 0
+
+
+def test_a_map_add_with_no_entry_read_is_kept_named_by_the_guest(tmp_path: Path) -> None:
+    path = tmp_path / "lineup-screen-map.json"
+    path.write_text(json.dumps(map_doc("title")), encoding="utf-8")
+    drafts, maps = Drafts(), screen_map.Maps()
+    maps.load(str(path))
+    maps.session_application = ""
+    got = promote.after_map(drafts, maps, "add", {"status": "ok"}, guest="game")
+    assert drafts.entries() == ["maps/game"] and "kept" in got
+
+
+def test_a_map_load_names_the_entry_it_read() -> None:
+    drafts, maps = Drafts(), screen_map.Maps()
+    reply = {"status": "ok", "application": "lineup", "path": "/r/.scry/maps/lineup.json"}
+    assert promote.after_map(drafts, maps, "load", reply, guest="") == reply
+    assert drafts.loaded_name("maps") == "lineup"
+
+
+def test_a_map_add_after_a_load_is_kept_under_the_loaded_entry(tmp_path: Path) -> None:
+    path = tmp_path / "lineup-screen-map.json"
+    path.write_text(json.dumps(map_doc("title")), encoding="utf-8")
+    drafts, maps = Drafts(), screen_map.Maps()
+    maps.load(str(path))
+    got = promote.after_map(drafts, maps, "add", {"status": "ok"}, guest="other")
+    assert drafts.entries() == ["maps/lineup"] and got["kept"] == promote.kept_line(drafts)
