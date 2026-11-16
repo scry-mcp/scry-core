@@ -23,6 +23,7 @@ import platform
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import replace
 from typing import Any, NoReturn
 
@@ -112,21 +113,26 @@ def screens() -> list[tuple[Rect, Rect, float]]:
         return []          # as AppKit with no screen class: the displays keep no usable area
 
 
-#: The displays' bounds the last `screens` answered for, and its answer.
-_SCREENS_READ: dict[tuple[Rect, ...], list[tuple[Rect, Rect, float]]] = {}
+#: A Dock or menu bar that moves changes a visible frame and no bounds: only age retires an answer.
+SCREENS_MAX_AGE_S = 5.0
+
+#: The displays' bounds the last `screens` answered for, when, and its answer.
+_SCREENS_READ: dict[tuple[Rect, ...], tuple[float, list[tuple[Rect, Rect, float]]]] = {}
 
 
-def screens_for(found: list[Display]) -> list[tuple[Rect, Rect, float]]:
-    """`screens`, asked again only when the displays' bounds moved: each ask is a child, and the
-    waits read the displays every poll. An answer of no screen, a failed child, is not kept."""
-    key = tuple(d.bounds for d in found)
-    if key in _SCREENS_READ:
-        return _SCREENS_READ[key]
+def screens_for(found: list[Display], clock: Callable[[], float] = time.monotonic,
+                ) -> list[tuple[Rect, Rect, float]]:
+    """`screens` (a child, and waits poll it) again once the bounds moved or the answer aged past
+    `SCREENS_MAX_AGE_S`; a failed child's empty answer is never kept: an aged one outlives it."""
+    key, now = tuple(d.bounds for d in found), clock()
+    held = _SCREENS_READ.get(key)
+    if held and now - held[0] < SCREENS_MAX_AGE_S:
+        return held[1]
     answer = screens()
     if answer:
         _SCREENS_READ.clear()
-        _SCREENS_READ[key] = answer
-    return answer
+        _SCREENS_READ[key] = now, answer
+    return answer or (held[1] if held else [])
 
 
 SCREENS_CHILD = ("import json; from scry_core import window_host; "

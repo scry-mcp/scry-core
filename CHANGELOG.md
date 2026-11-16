@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.window_host.screens_for` asks the screens again once its answer is older than
+  `SCREENS_MAX_AGE_S`, so a Dock or menu bar that shows, hides or moves is placed around within
+  that age: it changes a display's usable area and not its bounds, and the answer used to stand
+  for the life of the server.
+
 ## 0.112.0
 
 - `scry_core.probe` resolves two marks beside `{root}` in a task file: `{tmp}`, a directory there

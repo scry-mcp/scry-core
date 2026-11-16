@@ -494,6 +494,39 @@ def test_the_screens_are_asked_again_only_when_the_displays_move(
     assert len(calls) == 2
 
 
+#: The screens child's stdout on a Mac with two displays, the Dock hidden.
+SCREENS_CAPTURED = (Path(__file__).parent / "fixtures" / "window_host"
+                    / "screens-child.json").read_text()
+
+
+def test_an_aged_answer_gives_way_to_the_usable_area_a_moved_dock_left(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """A Dock that shows or moves changes a display's visible frame and not its bounds, so the
+    bounds cannot tell the cache it is stale: only its age can."""
+    captured = json.loads(SCREENS_CAPTURED)
+    docked = json.loads(SCREENS_CAPTURED)
+    docked[0][1][3] -= 80                       # the main display's visible frame, Dock shown
+    answers = [SCREENS_CAPTURED, json.dumps(docked)]
+    monkeypatch.setattr(subprocess, "run", lambda argv, **k: subprocess.CompletedProcess(
+        argv, 0, answers.pop(0), ""))
+    monkeypatch.setattr(wh, "_SCREENS_READ", {})
+    found = [w.Display(n, tuple(frame)) for n, (frame, _, _) in enumerate(captured)]
+    now = [0.0]
+
+    def usable() -> Any:
+        return wh.with_usable(found, wh.screens_for(found, clock=lambda: now[0]))[0].usable
+
+    assert usable() == tuple(captured[0][1])
+    now[0] = wh.SCREENS_MAX_AGE_S / 2
+    assert usable() == tuple(captured[0][1]) and len(answers) == 1
+    now[0] = wh.SCREENS_MAX_AGE_S + 0.01
+    assert usable() == tuple(docked[0][1]) != tuple(captured[0][1])
+    assert answers == []
+    answers.append("Traceback")                 # the next ask fails: the aged answer stands
+    now[0] = 2 * wh.SCREENS_MAX_AGE_S + 0.02
+    assert usable() == tuple(docked[0][1]) and answers == []
+
+
 def test_a_child_that_answered_no_screen_is_asked_again(
         monkeypatch: pytest.MonkeyPatch) -> None:
     """A child that failed once (a slow import, a load spike) must not stand for the displays."""
