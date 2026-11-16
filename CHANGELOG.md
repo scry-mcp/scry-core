@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.113.0
 
 - `scry_core.window_host.screens_for` asks the screens again once its answer is older than
   `SCREENS_MAX_AGE_S`, so a Dock or menu bar that shows, hides or moves is placed around within
