@@ -512,7 +512,7 @@ def test_the_marks_resolve_to_the_hosts_spelling_and_mark_it_back() -> None:
                          "back": "{tmp}\\b.png", "binary": "{anchor}opt/c",
                          "other": "{anchor}tmpfile", "fmt": "x/y"})
     assert json.loads(probe.resolve_marks(posix, marked)) == {
-        "ref": "/home/dev/repo/a", "dest": "/tmp/b.png", "dir": "/tmp", "back": "/tmp\\b.png",
+        "ref": f"{posix.root}/a", "dest": "/tmp/b.png", "dir": "/tmp", "back": "/tmp\\b.png",
         "binary": "/opt/c", "other": "/tmpfile", "fmt": "x/y"}
     assert json.loads(probe.resolve_marks(windows, marked)) == {
         "ref": "C:\\Users\\dev\\repo/a", "dest": f"{WINDOWS_TMP}/b.png", "dir": WINDOWS_TMP,
