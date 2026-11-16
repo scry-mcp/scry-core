@@ -645,6 +645,28 @@ def test_a_step_hides_its_own_volatile_keys_and_no_other_step_does(
                                        volatile={"value"})]), [])  # type: ignore[arg-type]
 
 
+def test_a_key_a_reply_carries_only_sometimes_is_dropped_whether_it_came_or_not(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Where a host-timed stop lands is the host's, and a server says so in `note` only there."""
+    def normalised(optional: dict[str, str], note: str) -> str:
+        monkeypatch.setenv("DEMO_NOTE", note)
+        steps = [d.Step("boot", "start", {}, _said("value")),
+                 d.Step("look", "read", {}, _said("value"), optional=optional)]
+        assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_PASS
+        return _norm(tmp_path)
+
+    landed = "the stop landed in the BIOS idle handler"
+    optional = {"note": "the host decides where the stop lands"}
+    came = normalised(optional, landed)
+    assert landed in (tmp_path / "out" / "transcript.md").read_text(), "the run never sent it"
+    assert came == normalised(optional, "") and '"note"' not in came
+    assert normalised({}, landed) != normalised({}, ""), "the control could not tell them apart"
+    for bad, why in (({"note"}, "not a mapping"), ({"value": "x"}, "shows it")):
+        with pytest.raises(ValueError, match=why):
+            d.main(_demo(tmp_path, [d.Step("s", "start", {}, _said("value"), shown=("value",),
+                                           optional=bad)]), [])  # type: ignore[arg-type]
+
+
 def test_a_host_argument_is_hidden_and_the_demos_own_are_not(tmp_path: Path, log: Path) -> None:
     steps = [d.Step("boot", "start", {"value": 7, "binary": "-set sdl display=1"},
                     _said("value"))]

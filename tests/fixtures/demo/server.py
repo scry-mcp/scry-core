@@ -47,7 +47,10 @@ def start(value: int = 7, binary: str = "", shared: bool = False,
 
 @server.tool()
 def read() -> CallToolResult:
-    return _answer({"status": "ok", "summary": "read", "value": _held["value"]})
+    body: dict[str, Any] = {"status": "ok", "summary": "read", "value": _held["value"]}
+    if note := os.environ.get("DEMO_NOTE"):     # a field the server adds only sometimes
+        body["note"] = note
+    return _answer(body)
 
 
 @server.tool()

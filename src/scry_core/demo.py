@@ -35,10 +35,11 @@ sentence on how the call does it, and commits the whole normalised run beside th
 Normalisation hides what differs between two honest runs and nothing else: `$HOME` as `~`, the
 repository root as `.`, the values of `VOLATILE` keys (and the demo's and step's own) in a reply
 as `<volatile>`, a written picture's `bytes` and `sha256` (the pixels are the run's, the bytes
-the host zlib's), and of `host_args` keys in a call's arguments as `<host>`. Hiding is by key, so
-a reply echoing a host argument needs that key in `volatile` too. A value the demo shows is never
-hidden: if it differs between runs the demo is wrong. A step's summary is never searched for
-volatile values, so it quotes only what the demo shows.
+the host zlib's), and of `host_args` keys in a call's arguments as `<host>`; a step's `optional`
+keys, which a server sends only sometimes, are left out whether they came or not. Hiding is by
+key, so a reply echoing a host argument needs that key in `volatile` too. A value the demo shows
+is never hidden: if it differs between runs the demo is wrong. A step's summary is never searched
+for volatile values, so it quotes only what the demo shows.
 """
 
 from __future__ import annotations
@@ -52,7 +53,7 @@ import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -172,8 +173,9 @@ class Step:
     summary printed beside OK and raises `StepFailed` to say why not; a reply whose `status` is
     not `ok` fails before `check`. `options` marks the step the command line's options merge
     into (the server's `start`): `True` for all, or the set it takes. `volatile` hides reply keys
-    in this step alone. `failure` words the FAIL of a non-`ok` reply. A check raising `Invalid`
-    ends the run INVALID."""
+    in this step alone, and `optional` drops from its transcript keys a server sends only
+    sometimes, each with its reason. `failure` words the FAIL of a non-`ok` reply. A check raising
+    `Invalid` ends the run INVALID."""
 
     name: str
     tool: str
@@ -181,6 +183,7 @@ class Step:
     check: Callable[[Reply, Run], str]
     options: bool | frozenset[str] = False
     volatile: Mapping[str, str] = field(default_factory=dict)
+    optional: Mapping[str, str] = field(default_factory=dict)
     failure: Callable[[Reply, Run], str] | None = None
     #: An exception in the call itself (timeout, server gone) is INVALID rather than FAIL.
     broken_is_invalid: bool = False
@@ -309,22 +312,26 @@ class Normaliser:
                               _marked(mark), text)
         return text
 
-    def reply(self, value: Any, also: Mapping[str, str] | None = None) -> Any:
-        """A reply with paths spelled and volatile keys' values hidden, `also` included."""
-        return self._value(value, {**self.volatile, **(also or {})}, VOLATILE_MARK)
+    def reply(self, value: Any, also: Mapping[str, str] | None = None,
+              dropped: Collection[str] = ()) -> Any:
+        """A reply with paths spelled, volatile keys' values hidden, `also` included, and the
+        `dropped` keys left out."""
+        return self._value(value, {**self.volatile, **(also or {})}, VOLATILE_MARK,
+                           frozenset(dropped))
 
     def arguments(self, value: Any) -> Any:
         """The demo's arguments with paths spelled and host-owned keys hidden."""
         return self._value(value, self.host, HOST_MARK)
 
-    def _value(self, value: Any, hidden: Mapping[str, str], mark: str) -> Any:
+    def _value(self, value: Any, hidden: Mapping[str, str], mark: str,
+               dropped: frozenset[str] = frozenset()) -> Any:
         if isinstance(value, dict) and mark == VOLATILE_MARK and _picture(value):
             hidden = {**hidden, **PICTURE_VOLATILE}
         if isinstance(value, dict):
-            return {self.text(k): mark if k in hidden else self._value(v, hidden, mark)
-                    for k, v in value.items()}
+            return {self.text(k): mark if k in hidden else self._value(v, hidden, mark, dropped)
+                    for k, v in value.items() if k not in dropped}
         if isinstance(value, list | tuple):
-            return [self._value(v, hidden, mark) for v in value]
+            return [self._value(v, hidden, mark, dropped) for v in value]
         if isinstance(value, str):
             return self.text(value)
         return value
@@ -434,10 +441,11 @@ class Transcripts:
 
     def add(self, n: int, tool: str, args: Mapping[str, Any], reply: Reply | None,
             line: str, volatile: Mapping[str, str] | None = None,
-            shown: tuple[str, ...] = (), highlight: str = "") -> None:
+            shown: tuple[str, ...] = (), highlight: str = "",
+            optional: Collection[str] = ()) -> None:
         self.whole.append(_entry(n, tool, args, reply, line))
-        normal = None if reply is None else Reply(self.norm.reply(reply.data, volatile),
-                                                  reply.attachments)
+        normal = None if reply is None else Reply(
+            self.norm.reply(reply.data, volatile, optional), reply.attachments)
         normal_args = self.norm.arguments(dict(args))
         self.normalised.append(_entry(n, tool, normal_args, normal, self.norm.text(line)))
         if highlight:
@@ -445,8 +453,8 @@ class Transcripts:
                                      highlight))
         if shown:
             spell = self.flow_norm or self.norm
-            flow_reply = None if reply is None else Reply(spell.reply(reply.data, volatile),
-                                                          reply.attachments)
+            flow_reply = None if reply is None else Reply(
+                spell.reply(reply.data, volatile, optional), reply.attachments)
             self.flow.append(_shown(tool, spell.arguments(dict(args)), flow_reply,
                                     shown))
 
@@ -522,7 +530,7 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                     ok, line, args, reply = await _step(client, step, run)
                     out.lines.append(norm.text(line))
                     out.transcripts.add(n, step.tool, args, reply, line, step.volatile,
-                                        step.shown if ok else (), step.highlight)
+                                        step.shown if ok else (), step.highlight, step.optional)
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
@@ -591,9 +599,11 @@ KNOWN_OPTIONS = OFFERABLE | {"binary"}
 def _declared(demo: Demo) -> None:
     """Refuse unknown option names and malformed declarations."""
     for step in demo.steps:
-        if not isinstance(step.volatile, Mapping):
-            raise ValueError(f"step {step.name}: `volatile` is {step.volatile!r}, not a mapping "
-                             "of keys to their reasons")
+        for declared in ("volatile", "optional"):
+            if not isinstance(getattr(step, declared), Mapping):
+                raise ValueError(f"step {step.name}: `{declared}` is "
+                                 f"{getattr(step, declared)!r}, not a mapping of keys to their "
+                                 "reasons")
         if not (isinstance(step.shown, tuple) and all(isinstance(k, str) for k in step.shown)):
             raise ValueError(f"step {step.name}: `shown` is {step.shown!r}, not a tuple of the "
                              "reply's field names")
@@ -603,6 +613,9 @@ def _declared(demo: Demo) -> None:
         if not isinstance(step.options, bool | frozenset):
             raise ValueError(f"step {step.name}: `options` is {step.options!r}, not True, False "
                              "or a frozenset of option names")
+        if shown_dropped := sorted(set(step.optional) & set(step.shown)):
+            raise ValueError(f"step {step.name}: `optional` drops {shown_dropped}, and `shown` "
+                             "shows it: a key the front door shows comes every run")
     if demo.loop is not None and demo.loop.after not in {step.name for step in demo.steps}:
         raise ValueError(f"the demo {demo.name}'s Loop follows {demo.loop.after!r}, which is no "
                          "step of it")

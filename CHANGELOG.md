@@ -12,6 +12,10 @@ What a server author notices. A client's view of each server is in that server's
   one `locate` looks for under their own name (`Pac_Man.json`, a map without its
   `-screen-map.json`, an entry in a subdirectory), and raises on a store with no entry; a
   server's suite holds its own `.scry/` to it. No lookup takes an older spelling.
+- `scry_core.demo.Step.optional` names reply keys a server sends only sometimes (a `note` on a
+  stop the host placed), each with its reason; the normalised transcript and the front door drop
+  them whether they came or not, so two honest runs write one transcript. A key a step also
+  `shown`s is refused before a call.
 
 ## 0.112.0
 
