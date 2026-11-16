@@ -7,7 +7,11 @@ argument, a profile, a system's name, the last component of a path the caller na
 normalised into that rule by `scry_core.file_names`, or refused when nothing of it fits; a value
 other than a caller's file name is refused too when what fits is longer than its `WORD_MAX`,
 since a caller's whole file name is the host's to bound. The server's reply names the file that
-was written.
+was written, and when its name is not the one the caller gave, the reply's `note` says so in one
+sentence (`file_names.written_as`): a caller reads a file back by the name in the reply. A reply
+that wrote no file (nothing yet, or nothing to write) names none and says nothing of it. A tool
+declares the argument that names its file (`names_file` at registration) and the call boundary
+adds the sentence, so no tool words it.
 
 The data a repository tracks for its servers (its fixtures, demos and `.scry/` files) follows the
 same rule, with two exceptions. A file a DOS program runs, reads or writes by its own name keeps

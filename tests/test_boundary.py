@@ -718,3 +718,57 @@ def test_a_tool_called_directly_knows_the_names_it_was_passed() -> None:
     peek(3)
     assert seen == [frozenset({"x"})]
     assert given.names() is None                 # the names end with the call
+
+
+def test_a_tool_that_names_a_file_says_when_the_name_it_was_given_is_written_otherwise() -> None:
+    s = _Server()
+
+    @s.tool("Write", names_file="dest")
+    def write(dest: str = "", note: str = "", refuse: bool = False) -> dict[str, Any]:
+        if refuse:
+            return {"status": "INVALID", "code": "bad", "message": "no"}
+        return {"status": "ok", "path": dest.replace("Shot_1.PNG", "shot-1.png"),
+                **({"note": note} if note else {})}
+
+    said = "dest 'Shot_1.PNG' is written as 'shot-1.png'"
+    got = write("/d/Shot_1.PNG")
+    assert list(got) == ["summary", "status", "path", "note", "session"]
+    assert got["note"].startswith(said)
+    for own in ("its own", "its own."):
+        assert write("/d/Shot_1.PNG", note=own)["note"].startswith(f"its own. {said}")
+    for quiet in (write("/d/shot-1.png"), write(""), write("/d/Shot_1.PNG", refuse=True)):
+        assert "note" not in quiet, quiet
+
+
+def test_the_sentence_rides_only_on_a_reply_that_names_the_file_written() -> None:
+    s = _Server()
+
+    @s.tool("Write", names_file="dest")
+    def write(dest: str, path: Any = None) -> dict[str, Any]:
+        return {"status": "ok", **({} if path is None else {"trace": {"path": path}})}
+
+    assert "note" in write("/d/Run_1.LOG", "/d/run-1.log"), "a nested path names it"
+    for unwritten in (None, {"available": False, "why": "no event"}, "/d/other.log"):
+        assert "note" not in write("/d/Run_1.LOG", unwritten), unwritten
+
+
+def test_a_step_of_a_sequence_says_its_file_was_written_otherwise() -> None:
+    s = _Server()
+
+    @s.tool("Write", names_file="dest")
+    def write(dest: str) -> dict[str, Any]:
+        return {"status": "ok", "path": dest.replace("Shot_1.PNG", "shot-1.png")}
+
+    @s.tool("Steps")
+    def steps() -> dict[str, Any]:
+        return {"status": "ok", "ran": [write("/d/Shot_1.PNG")]}
+
+    assert steps()["ran"][0]["note"].startswith("dest 'Shot_1.PNG' is written as")
+
+
+def test_a_tool_names_a_file_only_by_an_argument_it_takes() -> None:
+    s = _Server()
+    with pytest.raises(TypeError, match="names_file='dest'"):
+        @s.tool("Read", names_file="dest")
+        def read(path: str) -> dict[str, Any]:
+            return {"status": "ok"}

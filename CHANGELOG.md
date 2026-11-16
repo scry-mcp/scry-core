@@ -2,6 +2,15 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.file_names.written_as` words the one sentence a reply's `note` carries when a
+  caller's file is written under another name than the one given (`'Shot_1.PNG' is written as
+  'shot-1.png'`), and `Boundary.tool(names_file=)` names the argument a tool writes its file by,
+  so the boundary adds that sentence to every `ok` reply that names the file written under a
+  changed name, a step's included. A name already in the rule, or a reply that wrote no file,
+  carries none.
+
 ## 0.113.0
 
 - `scry_core.window_host.screens_for` asks the screens again once its answer is older than

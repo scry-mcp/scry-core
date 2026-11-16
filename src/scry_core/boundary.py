@@ -16,11 +16,12 @@ import inspect
 import threading
 import time
 from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import Any, Protocol
 
 from mcp.types import ToolAnnotations
 
-from scry_core import cancel, given, picture
+from scry_core import cancel, file_names, given, picture
 from scry_core import reply_schema as schema
 from scry_core import session_block as blocks
 from scry_core import strict_arguments as strict
@@ -165,18 +166,24 @@ class Boundary:
     def tool(self, title: str, *, summary: Summary, read_only: bool = False,
              idempotent: bool = False, body_session: bool = False,
              on_cancel: cancel.OnCancel | None = None, replay: Replay | None = None,
+             names_file: str | None = None,
              ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register `fn` as an MCP tool serialised over the one machine.
 
         `read_only` is `readOnlyHint`: anything that advances or writes to the machine or a file
         is not one. `idempotent` is `idempotentHint`: a repeat changes nothing and answers the
-        same. A tool taking `ctx` must declare `on_cancel`."""
+        same. A tool taking `ctx` must declare `on_cancel`. `names_file` is the argument that
+        names a file the tool writes: an `ok` reply's `note` says when its name is written
+        otherwise."""
 
         def register(fn: Callable[..., Any]) -> Callable[..., Any]:
             signature = inspect.signature(fn)
             if "ctx" in signature.parameters and on_cancel is None:
                 raise TypeError(f"{fn.__name__} waits and reports its progress, so it declares "
                                 "how a cancel ends it (`on_cancel`)")
+            if names_file is not None and names_file not in signature.parameters:
+                raise TypeError(f"{fn.__name__} takes no {names_file!r}, so names_file="
+                                f"{names_file!r} names no file it writes")
             self.recorder.declare(fn.__name__, replay, read_only)
             self.summaries[fn.__name__] = summary
             self.bodies[fn.__name__] = fn
@@ -233,6 +240,8 @@ class Boundary:
                                 if parent is None and self._listener is not None:
                                     self._listener.ended(fn.__name__)
                     self.recorder.end(fn.__name__, parent, given, reply, taken)
+                    if names_file is not None:
+                        _say_written_as(reply, names_file, given.get(names_file))
                     if parent is not None:
                         self._answered.append(reply)
                     bound.apply_defaults()
@@ -256,6 +265,28 @@ class Boundary:
         self._keep_cancelled(cancel.recorded(self._take_cancelled(), name,
                                              time.monotonic() - began, left))
         return found
+
+
+def _say_written_as(reply: Reply, what: str, value: object) -> None:
+    """An `ok` reply that names the file `value` asked for, written under another name, says so
+    in its `note`; a reply that wrote no file (nothing yet, nothing to write) says nothing."""
+    if reply.get("status") != "ok" or not isinstance(value, str) or not value:
+        return
+    said = file_names.written_as(what, value)
+    if said is None or not _names(reply, file_names.caller_file(Path(value), what).name):
+        return
+    reply["note"] = f"{str(reply['note']).rstrip('.')}. {said}" if reply.get("note") else said
+
+
+def _names(value: object, name: str) -> bool:
+    """`value` holds, at any depth, a path whose last component is `name`."""
+    if isinstance(value, str):
+        return Path(value).name == name
+    if isinstance(value, dict):
+        return any(_names(v, name) for v in value.values())
+    if isinstance(value, list):
+        return any(_names(v, name) for v in value)
+    return False
 
 
 class ServerLock:

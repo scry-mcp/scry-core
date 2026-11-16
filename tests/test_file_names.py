@@ -117,6 +117,17 @@ def test_a_callers_name_the_rule_cannot_hold_is_refused_by_its_argument(
     assert e.value.code == "bad_argument" and repr(Path(given).name) in str(e.value)
 
 
+def test_a_callers_name_written_otherwise_is_said_in_one_sentence() -> None:
+    assert file_names.written_as("dest", "/d/Shot_1.PNG") == (
+        "dest 'Shot_1.PNG' is written as 'shot-1.png': every file a server writes is named in "
+        "lowercase words joined by hyphens, with one extension")
+
+
+@pytest.mark.parametrize("given", ["/d/shot-1.png", "~/shot-1.png", "/D ir/Sub_Dir/shot-1.png"])
+def test_a_callers_name_already_in_the_rule_says_nothing(given: str) -> None:
+    assert file_names.written_as("dest", given) is None
+
+
 def test_a_folder_is_walked_for_the_files_named_outside_the_rule(tmp_path: Path) -> None:
     (tmp_path / "Sub_Dir" / "snap").mkdir(parents=True)
     for name in ("snapshot-1.png", "Sub_Dir/f000012.png", "Sub_Dir/snap/manifest.json",

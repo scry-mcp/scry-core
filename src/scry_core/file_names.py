@@ -55,6 +55,17 @@ def caller_file(path: Path, what: str) -> Path:
     return path.with_name(f"{words}.{extension}")
 
 
+def written_as(what: str, given: str) -> str | None:
+    """The sentence a reply's `note` carries when `caller_file` writes the caller's `given` under
+    another name; None when the name is kept."""
+    asked = Path(given).name
+    written = caller_file(Path(given), what).name
+    if written == asked:
+        return None
+    return (f"{what} {asked!r} is written as {written!r}: every file a server writes is named in "
+            "lowercase words joined by hyphens, with one extension")
+
+
 def _words(value: str) -> str:
     return _OTHER.sub("-", value.lower()).strip("-")
 
