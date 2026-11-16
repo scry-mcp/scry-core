@@ -8,6 +8,10 @@ What a server author notices. A client's view of each server is in that server's
   `SCREENS_MAX_AGE_S`, so a Dock or menu bar that shows, hides or moves is placed around within
   that age: it changes a display's usable area and not its bounds, and the answer used to stand
   for the life of the server.
+- `scry_core.project_store.misnamed` lists the entries of a store whose file name is not the
+  one `locate` looks for under their own name (`Pac_Man.json`, a map without its
+  `-screen-map.json`, an entry in a subdirectory), and raises on a store with no entry; a
+  server's suite holds its own `.scry/` to it. No lookup takes an older spelling.
 
 ## 0.112.0
 

@@ -15,3 +15,9 @@ DOS's 8.3 form in capitals (`MINES.COM`, `BUILD.BAT`, `MAPDEMO.MAP`):
 `^[A-Z0-9_]{1,8}\.[A-Z0-9]{1,3}$`. And a name a convention fixes keeps it: `README.md`,
 `CHANGELOG.md`, `CONTRIBUTING.md`, `REFERENCE.md`, `TRANSCRIPT.md`, `LICENSE`, a dotfile. Code is
 named by its language (a Python module takes `_`).
+
+A `.scry/` entry is found by its name, so its file is that name as the rule spells it, with its
+kind's suffix (`start/pac-man.json`, `maps/lineup-screen-map.json`), and a stem the rule would
+spell differently (`Pac_Man.json`) is never looked up: `project_store.misnamed` lists the
+entries of a store `locate` cannot find under their own name, and each server's suite holds its
+own `.scry/` to it.

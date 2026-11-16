@@ -1042,6 +1042,27 @@ def test_a_map_document_is_what_its_own_save_writes(tmp_path: Path) -> None:
     assert dest.read_bytes() == promote.serialised("maps", maps.document("lineup"))
 
 
+def test_every_write_into_a_store_names_its_file_by_the_rule(tmp_path: Path) -> None:
+    """A name given as a caller spells it, through each way a file reaches a store: a kept
+    entry, an entry renamed as it is written, and a map saved into the store."""
+    root = repo(tmp_path)
+    drafts = Drafts()
+    drafts.keep("start", "Pac_Man", start_doc(system="pacman"), needs=("system",))
+    drafts.keep("perform", "Intro Run", perform_doc())
+    drafts.keep("maps", "lineup", map_doc("play"))
+    write(drafts, root, ["start/pac-man", "perform/intro-run", "maps/lineup"],
+          names={"perform/intro-run": "Attract_Run", "maps/lineup": "Line_Up"},
+          server="mame")
+    maps = screen_map.Maps()
+    maps.session["play"] = screen_map.parse(map_doc("play"), "the test's map")[2]["play"]
+    maps.save(str(root / ".scry" / "maps" / "Pac_Man-screen-map.json"), overwrite=False)
+    assert project_store.misnamed(root / ".scry") == []
+    assert files(root) == [".scry/README.md", ".scry/about.json",
+                           ".scry/maps/line-up-screen-map.json",
+                           ".scry/maps/pac-man-screen-map.json",
+                           ".scry/perform/attract-run.json", ".scry/start/pac-man.json"]
+
+
 # ---------------------------------------------------------------- the review's blocking fixes
 
 

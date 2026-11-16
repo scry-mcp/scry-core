@@ -186,6 +186,28 @@ def entry_of(path: Path, kind: str) -> str:
     return path.name[:-len(suffix)] if path.name.endswith(suffix) else path.name
 
 
+def misnamed(store: Path) -> list[Path]:
+    """The entries under `store`'s kind directories whose file name is not the one `locate`
+    looks for under their own name, for a battery to hold a store to; a dotfile is no entry. A
+    walk that met no entry judged nothing and raises."""
+    entries = sorted(path for kind in KINDS for path in (store / kind).rglob("*")
+                     if path.is_file() and not path.name.startswith("."))
+    if not entries:
+        raise ValueError(f"{store} holds no entry under {', '.join(KINDS)}, so no name was "
+                         "judged")
+    return [path for path in entries
+            if not _rule_named(path, store / path.relative_to(store).parts[0])]
+
+
+def _rule_named(path: Path, kind_dir: Path) -> bool:
+    kind = kind_dir.name
+    try:
+        return path.parent == kind_dir and path.name == file_name(
+            kind, entry_name(entry_of(path, kind)))
+    except Invalid:
+        return False
+
+
 def _above(start: Path) -> Iterator[Path]:
     """`start` and its ancestors, up to the root the host has."""
     here = start

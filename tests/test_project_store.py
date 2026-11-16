@@ -176,6 +176,31 @@ def test_another_kind_is_found_in_its_own_directory(tmp_path: Path) -> None:
     assert ps.entry_of(path.parent / "lineup.json", "maps") == "lineup.json"
 
 
+def test_an_entry_locate_cannot_find_by_its_own_name_is_misnamed(tmp_path: Path) -> None:
+    """`Pac_Man.json` is listed as `Pac_Man` and looked for as `pac-man.json`."""
+    store = tmp_path / ps.STORE
+    good = [stored(tmp_path), store / "maps" / "lineup-screen-map.json",
+            store / "perform" / "intro-run.json"]
+    bad = [store / "start" / "Pac_Man.json", store / "maps" / "lineup.json",
+           store / "perform" / "deep" / "dos.json", store / "perform" / "perform" / "dos.json",
+           store / "perform" / "___.json"]
+    for path in good[1:] + bad:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}", encoding="utf-8")
+    (store / "README.md").write_text("", encoding="utf-8")
+    (store / "start" / ".DS_Store").write_bytes(b"")     # a dotfile keeps its name
+    assert ps.misnamed(store) == sorted(bad)
+    for path in good:
+        assert ps.locate([tmp_path], ps.entry_of(path, path.parent.name),
+                         kind=path.parent.name) == path
+
+
+def test_a_store_with_no_entry_judges_nothing_and_says_so(tmp_path: Path) -> None:
+    (tmp_path / ps.STORE / "start").mkdir(parents=True)
+    with pytest.raises(ValueError, match="no name was judged"):
+        ps.misnamed(tmp_path / ps.STORE)
+
+
 def test_a_profile_is_read_without_its_format(tmp_path: Path) -> None:
     path = stored(tmp_path, {"program": "LINEUP.EXE", "shared": True})
     assert ps.read(path, KEYS) == {"program": "LINEUP.EXE", "shared": True}
