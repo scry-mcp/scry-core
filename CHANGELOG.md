@@ -11,6 +11,9 @@ What a server author notices. A client's view of each server is in that server's
   relative. `resolve_root` and `mark_root` are now `resolve_marks` and `mark_paths`, which puts
   the three back in a capture's lines, and `ProbeRepo` carries `tmp` and `anchor`.
 - `scry_core.host_program.POSIX_TASKS` is gone: no task file needs to be skipped on Windows.
+- `scripts/windows/bundle.sh` copies the `sync.sh` of the scry-core `main` it carries before it
+  runs it, so the host never runs a stale copy, and a sync that could not bring a repository fails
+  the step.
 
 ## 0.111.2
 
