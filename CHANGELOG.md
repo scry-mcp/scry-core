@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.112.0
 
 - `scry_core.probe` resolves two marks beside `{root}` in a task file: `{tmp}`, a directory there
   to write into (`/tmp` on POSIX, the temporary directory on Windows), and `{anchor}`, the start

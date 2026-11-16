@@ -1179,7 +1179,7 @@ wheels = [
 
 [[package]]
 name = "scry-core"
-version = "0.111.2"
+version = "0.112.0"
 source = { editable = "." }
 dependencies = [
     { name = "mcp" },
