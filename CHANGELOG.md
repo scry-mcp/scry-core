@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.115.0
 
 - `scry_core.stop_wait` builds the refusals of a row a wait under `on_*` cannot judge at
   (`no_such_row`, `not_a_change_watch`, `follows_pointer`) and the `TIMEOUT` note
