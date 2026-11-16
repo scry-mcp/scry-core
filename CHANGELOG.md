@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.114.0
 
 - `scry_core.file_names.written_as` words the one sentence a reply's `note` carries when a
   caller's file is written under another name than the one given (`'Shot_1.PNG' is written as
