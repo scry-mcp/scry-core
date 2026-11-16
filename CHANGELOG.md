@@ -2,6 +2,16 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.probe` resolves two marks beside `{root}` in a task file: `{tmp}`, a directory there
+  to write into (`/tmp` on POSIX, the temporary directory on Windows), and `{anchor}`, the start
+  of an absolute path (`/`, or the root's drive). A task set spelled through them holds before a
+  server's judge on every host; one spelling `/tmp/x` is refused on Windows, where that path is
+  relative. `resolve_root` and `mark_root` are now `resolve_marks` and `mark_paths`, which puts
+  the three back in a capture's lines, and `ProbeRepo` carries `tmp` and `anchor`.
+- `scry_core.host_program.POSIX_TASKS` is gone: no task file needs to be skipped on Windows.
+
 ## 0.111.2
 
 - `scry_core.hook` starts `jscpd` as `PATH` and `PATHEXT` resolve it, so on Windows it runs the

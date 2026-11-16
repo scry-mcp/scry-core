@@ -75,8 +75,7 @@ def test_a_temporary_path_lies_in_a_directory_that_is_there() -> None:
     assert path.is_absolute() and path.parent.is_dir() and path.name == "x.bin"
 
 
-@pytest.mark.parametrize("marker", [host_program.MODE_BITS, host_program.POSIX_NAMES,
-                                    host_program.POSIX_TASKS])
+@pytest.mark.parametrize("marker", [host_program.MODE_BITS, host_program.POSIX_NAMES])
 def test_a_posix_marker_skips_on_windows_alone(marker: pytest.MarkDecorator) -> None:
     assert marker.mark.name == "skipif"
     assert marker.mark.args == (sys.platform == "win32",) and marker.mark.kwargs["reason"]

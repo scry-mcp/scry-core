@@ -81,7 +81,7 @@ def _tasks_by_id(repo: probe.ProbeRepo, tasks_file: Path
 def rejudge(repo: probe.ProbeRepo, surface: probe.Surface, task: dict[str, Any],
             lines: list[str]) -> probe.Verdict:
     """A run's stored lines for one task, judged again as the run's whole answer was."""
-    answers = probe.parse(probe.resolve_root(repo, "\n".join(lines)), [task["id"]])
+    answers = probe.parse(probe.resolve_marks(repo, "\n".join(lines)), [task["id"]])
     return probe.judge(surface, task, answers[task["id"]])
 
 
@@ -171,7 +171,7 @@ def _capture_docs(repo: probe.ProbeRepo, server: str, run_dir: Path,
         if f"\n{probe.task_line(resolved[tid])}\n" not in asked_block:
             raise Invalid(f"{tid} was asked otherwise in {run_dir} than the task file asks now: "
                           "run the probe again")
-        runs = [{"lines": [probe.mark_root(repo, line) for t, line, _ in probe.answer_lines(text)
+        runs = [{"lines": [probe.mark_paths(repo, line) for t, line, _ in probe.answer_lines(text)
                            if t == tid],
                  "right": verdicts[tid]["right"]}
                 for text, verdicts in zip(texts, recorded, strict=True)]

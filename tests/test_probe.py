@@ -17,7 +17,7 @@ import shutil
 import subprocess
 import sys
 import types
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 import pytest
@@ -489,13 +489,71 @@ def test_a_root_json_has_to_escape_resolves_and_marks_as_a_json_string_spells_it
         tmp_path: Path) -> None:
     """A Windows root's backslashes: substituted raw, `C:\\Users` is no JSON at all."""
     repo = dataclasses.replace(REPO, root=tmp_path / "C:\\Users\\x")
-    text = probe.resolve_root(repo, json.dumps({"ref": f"{probe.ROOT_MARK}/a"}))
+    text = probe.resolve_marks(repo, json.dumps({"ref": f"{probe.ROOT_MARK}/a"}))
     assert json.loads(text) == {"ref": f"{repo.root}/a"}
-    assert probe.mark_root(repo, text) == json.dumps({"ref": f"{probe.ROOT_MARK}/a"})
+    assert probe.mark_paths(repo, text) == json.dumps({"ref": f"{probe.ROOT_MARK}/a"})
     # the captures are written whole, an accented root as it is spelled
     accented = dataclasses.replace(REPO, root=tmp_path / "josé")
     line = json.dumps({"ref": f"{accented.root}/a"}, ensure_ascii=False)
-    assert probe.mark_root(accented, line) == json.dumps({"ref": f"{probe.ROOT_MARK}/a"})
+    assert probe.mark_paths(accented, line) == json.dumps({"ref": f"{probe.ROOT_MARK}/a"})
+
+
+#: What `{tmp}` and `{anchor}` stand for on a Windows host.
+WINDOWS_TMP, WINDOWS_ANCHOR = "C:\\Users\\dev\\AppData\\Local\\Temp", "C:\\"
+
+
+def test_the_marks_resolve_to_the_hosts_spelling_and_mark_it_back() -> None:
+    """The temporary directory and the anchor are put back only where a string starts with
+    them, since `/` is in every path; `/tmpfile` is no file in `/tmp`."""
+    posix = dataclasses.replace(REPO, root=Path("/home/dev/repo"), tmp="/tmp", anchor="/")
+    windows = dataclasses.replace(REPO, root=Path("C:\\Users\\dev\\repo"), tmp=WINDOWS_TMP,
+                                  anchor=WINDOWS_ANCHOR)
+    marked = json.dumps({"ref": "{root}/a", "dest": "{tmp}/b.png", "dir": "{tmp}",
+                         "back": "{tmp}\\b.png", "binary": "{anchor}opt/c",
+                         "other": "{anchor}tmpfile", "fmt": "x/y"})
+    assert json.loads(probe.resolve_marks(posix, marked)) == {
+        "ref": "/home/dev/repo/a", "dest": "/tmp/b.png", "dir": "/tmp", "back": "/tmp\\b.png",
+        "binary": "/opt/c", "other": "/tmpfile", "fmt": "x/y"}
+    assert json.loads(probe.resolve_marks(windows, marked)) == {
+        "ref": "C:\\Users\\dev\\repo/a", "dest": f"{WINDOWS_TMP}/b.png", "dir": WINDOWS_TMP,
+        "back": f"{WINDOWS_TMP}\\b.png", "binary": "C:\\opt/c", "other": "C:\\tmpfile",
+        "fmt": "x/y"}
+    for repo in (posix, windows):
+        assert probe.mark_paths(repo, probe.resolve_marks(repo, marked)) == marked
+
+
+def _windows_judge(tool: str, given: dict[str, Any], effective: dict[str, Any]) -> None:
+    """A server's judge reading a path as Windows does, where `/tmp/x` is relative."""
+    if "dest" in given and not PureWindowsPath(given["dest"]).is_absolute():
+        raise Refusal("bad_argument", f"dest={given['dest']!r} must be an absolute path")
+
+
+def test_a_task_spelled_through_the_marks_holds_before_a_windows_judge(tmp_path: Path) -> None:
+    """The marks are resolved before the server's judge reads a task, so one task file holds on
+    every host; the POSIX spelling is the control that judge refuses."""
+    repo = dataclasses.replace(REPO, tmp=WINDOWS_TMP, anchor=WINDOWS_ANCHOR)
+    surface = dataclasses.replace(SURFACES["mame"], check=_windows_judge,
+                                  tools={"memdump": SURFACES["mame"].tools["memdump"]})
+    tasks_file = tmp_path / "mame.json"
+    tasks_file.write_text(json.dumps({"tasks": [
+        {"id": tid, "prompt": f"Dump 32 bytes from PlayerX to {dest}.", "tool": "memdump",
+         "args": {"ref": "PlayerX", "length": 32, "dest": dest}, "allow": ["cpu"]}
+        for tid, dest in (("W1", "{tmp}/w1.bin"), ("W2", "{anchor}opt/w2.bin"),
+                          ("W3", "/tmp/w3.bin"))]}))
+    tasks = probe.read_tasks(repo, tasks_file)
+    assert [t["args"]["dest"] for t in tasks[:2]] == [
+        "C:\\Users\\dev\\AppData\\Local\\Temp/w1.bin", "C:\\opt/w2.bin"]
+    assert probe.task_problems(surface, tasks) == [
+        "mame task W3: its own expected call is refused: the server's check refuses it: "
+        "dest='/tmp/w3.bin' must be an absolute path"]
+
+
+def test_this_host_resolves_the_marks_to_a_directory_there_and_an_absolute_start() -> None:
+    """On POSIX `/tmp` and `/`, so a task file reads as it always did there."""
+    assert Path(REPO.tmp).is_dir() and Path(REPO.tmp).is_absolute()
+    assert Path(REPO.anchor + "opt").is_absolute()
+    if sys.platform != "win32":
+        assert (REPO.tmp, REPO.anchor) == ("/tmp", "/")
 
 
 def test_a_capture_taken_again_replaces_only_its_own_file(

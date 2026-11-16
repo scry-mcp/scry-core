@@ -8,9 +8,10 @@ CAPTURE.
 THE REPOSITORY IS NAMED, NEVER FOUND. `--servers` is a Python file whose `load()` returns each
 server's MODULE by its registered name (`.mcp` is the server, each tool the module attribute of
 the same name), and which defines `ROOT`, the repository's root, which `{root}` in a task stands
-for. It may define `CHECKS`, each server's own pre-gate judge by name, and `CAPTURED`, the servers
-whose real runs the repository keeps. `--tasks` is the directory of `<server>.json`. Both are
-required: this module belongs to no repository, and a default would read another one's.
+for (THE MARKS). It may define `CHECKS`, each server's own pre-gate judge by name, and
+`CAPTURED`, the servers whose real runs the repository keeps. `--tasks` is the directory of
+`<server>.json`. Both are required: this module belongs to no repository, and a default would
+read another one's.
 
 TWO DIRECTORIES ARE DERIVED FROM `ROOT`, and no option moves them: a run writes its directory
 under `ROOT/tmp/mcp_probe/`, and the captures live under
@@ -39,6 +40,11 @@ THE TASK FILE is {"tasks": [...]}, and a task is:
   allow    argument names that may carry any value
   grammar  values the description HAS to hold (an enum word, a lane), exempt from contamination
   expect   "CANNOT" in place of `tool` and `args`, with `about`: the tool whose limit it probes
+
+THE MARKS keep one task file true on every host, resolved before the file is parsed: `{root}` is
+`ROOT`, `{tmp}` a directory there to write into (`/tmp` on POSIX, the temporary directory on
+Windows) and `{anchor}` the start of an absolute path (`/`, or the drive of `ROOT` as in `C:\\`),
+so `{anchor}opt/game.map` is absolute on both. A path spelled `/tmp/x` is relative on Windows.
 
 REFUSED BEFORE ANY MODEL IS ASKED, each naming what it found (INVALID, exit 3):
   - a coverage hole: a tool with no task, a schema property no task's `args` or `allow` names,
@@ -69,7 +75,7 @@ calling `claude`. An output directory is such a directory.
 CAPTURE. `<server> --capture <run directory> --ids <id>[,<id>...]` keeps the named tasks of a
 real run as `ROOT/tests/fixtures/mcp_probe/captured/<server>/<id>.json` (the id as
 `file_names.word` spells it), `{"task": <as its file
-writes it>, "runs": [{"lines": [<every line that answered it, the root's path as {root}>],
+writes it>, "runs": [{"lines": [<every line that answered it, its host paths as marks>],
 "right": <the run's verdict>}]}`. It asks no model and makes no output directory. Exit 0 written; 2
 usage (a server of `CAPTURED`, both options, no `--runs` or
 `--check`, no empty or repeated id); 3 INVALID: anything it cannot prove (a run on another
@@ -123,8 +129,11 @@ from scry_core.verdict import Invalid as Invalid
 RUNS_UNDER_ROOT = Path("tmp") / "mcp_probe"
 CAPTURED_UNDER_ROOT = Path("tests") / "fixtures" / "mcp_probe" / "captured"
 ANSWERS_ENV = "MCP_PROBE_ANSWERS"
-#: In a task file, stands for the repository root so a path stays true in any clone.
-ROOT_MARK = "{root}"
+#: In a task file, the host's spelling of the repository root, of a directory to write into and
+#: of the start of an absolute path: THE MARKS.
+ROOT_MARK, TMP_MARK, ANCHOR_MARK = "{root}", "{tmp}", "{anchor}"
+#: Where a POSIX host's `{tmp}` points: a directory every one has, so a task file reads as written.
+POSIX_TMP = "/tmp"
 CLAUDE_TIMEOUT_S = 600
 DEFAULT_RUNS = 3
 
@@ -205,6 +214,9 @@ class ProbeRepo:
     modules: Mapping[str, ModuleType]
     checks: Mapping[str, Check]
     captured_servers: tuple[str, ...]
+    #: What `{tmp}` and `{anchor}` stand for on this host.
+    tmp: str
+    anchor: str
 
     @property
     def servers(self) -> tuple[str, ...]:
@@ -266,8 +278,10 @@ def configure(servers_file: Path, tasks_dir: Path) -> ProbeRepo:
         raise Invalid(f"--servers {servers_file} names {', '.join(stray)} in `CHECKS` or "
                       f"`CAPTURED`, and loads no such server ({', '.join(modules)})")
     at = root.resolve()
+    tmp = tempfile.gettempdir() if sys.platform == "win32" else POSIX_TMP
     return ProbeRepo(at, tasks_dir, at / RUNS_UNDER_ROOT, at / CAPTURED_UNDER_ROOT,
-                     MappingProxyType(dict(modules)), MappingProxyType(dict(checks)), captured)
+                     MappingProxyType(dict(modules)), MappingProxyType(dict(checks)), captured,
+                     tmp, at.anchor)
 
 
 def load_surface(repo: ProbeRepo, server: str) -> Surface:
@@ -299,26 +313,33 @@ def load_tasks(repo: ProbeRepo, server: str) -> list[dict[str, Any]]:
     return read_tasks(repo, tasks_file(repo, server))
 
 
-def _json_root(repo: ProbeRepo) -> str:
-    """The root as a JSON string spells it: a Windows path's backslashes doubled."""
-    return json.dumps(str(repo.root), ensure_ascii=False)[1:-1]
+def _json(value: str) -> str:
+    """`value` as a JSON string spells it: a Windows path's backslashes doubled."""
+    return json.dumps(value, ensure_ascii=False)[1:-1]
 
 
-def resolve_root(repo: ProbeRepo, text: str) -> str:
-    """JSON `text` with the mark replaced by the root."""
-    return text.replace(ROOT_MARK, _json_root(repo))
+def resolve_marks(repo: ProbeRepo, text: str) -> str:
+    """JSON `text` with each mark replaced by what it stands for on this host."""
+    for mark, value in ((ROOT_MARK, str(repo.root)), (TMP_MARK, repo.tmp),
+                        (ANCHOR_MARK, repo.anchor)):
+        text = text.replace(mark, _json(value))
+    return text
 
 
-def mark_root(repo: ProbeRepo, text: str) -> str:
-    """The inverse of `resolve_root`."""
-    return text.replace(_json_root(repo), ROOT_MARK)
+def mark_paths(repo: ProbeRepo, text: str) -> str:
+    """The inverse of `resolve_marks`: the root wherever it is, then the temporary directory and
+    the anchor only where a string starts with them, since `/` is in every path."""
+    text = text.replace(_json(str(repo.root)), ROOT_MARK)
+    tmp = re.escape('"' + _json(repo.tmp)) + r'(?=/|\\\\|")'
+    text = re.sub(tmp, lambda _: '"' + TMP_MARK, text)
+    return text.replace('"' + _json(repo.anchor), '"' + ANCHOR_MARK)
 
 
 def read_tasks(repo: ProbeRepo, path: Path, *, raw: bool = False) -> list[dict[str, Any]]:
-    """The tasks, `{root}` resolved, or as written with `raw` (how a capture stores them)."""
+    """The tasks, the marks resolved, or as written with `raw` (how a capture stores them)."""
     try:
         text = path.read_text(encoding="utf-8")
-        doc = json.loads(text if raw else resolve_root(repo, text))
+        doc = json.loads(text if raw else resolve_marks(repo, text))
     except (OSError, json.JSONDecodeError) as e:
         raise Invalid(f"{path}: {e}") from None
     # Each way a file can miss is a different edit, so each is named.

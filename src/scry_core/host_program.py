@@ -11,12 +11,10 @@ from pathlib import Path
 
 import pytest
 
-#: The cases only a POSIX host can hold, each skipped on Windows with its reason.
+#: Skipped on Windows, each with its reason.
 MODE_BITS = pytest.mark.skipif(sys.platform == "win32", reason="Windows keeps no mode bit")
 POSIX_NAMES = pytest.mark.skipif(sys.platform == "win32",
                                  reason="Windows forbids that character in a file name")
-POSIX_TASKS = pytest.mark.skipif(sys.platform == "win32",
-                                 reason="the task file spells POSIX paths")
 
 #: Itself the process it runs: a venv's `python.exe` on Windows is a launcher.
 INTERPRETER = getattr(sys, "_base_executable", sys.executable)
