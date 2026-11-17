@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
@@ -397,13 +398,45 @@ def judge_background(background: bool | None, watched: bool) -> bool:
 
 def launch_environment(base: Mapping[str, str], background: bool) -> dict[str, str]:
     """`base` with the background hint (`BACKGROUND_VAR`) set or removed, never inherited, so a
-    launch behind never takes the owner's front application and a watched one may."""
+    launch behind never takes the owner's front application on macOS and a watched one may."""
     spawned = dict(base)
     if background:
         spawned[BACKGROUND_VAR] = "1"
     else:
         spawned.pop(BACKGROUND_VAR, None)
     return spawned
+
+
+#: `LockSetForegroundWindow`'s two codes.
+LSFW_LOCK = 1
+LSFW_UNLOCK = 2
+
+
+@contextmanager
+def foreground_kept(background: bool) -> Iterator[None]:
+    """A launch behind, on Windows: no program may take the foreground until the block ends, so
+    an emulator that brings its own window forward as it opens (MAME does, and asks no hint)
+    stays behind; a click or ALT still moves it, as Windows lifts the lock then. The block is the
+    start, which returns once the window is up. Anywhere else, or in front, it does nothing:
+    macOS reads `launch_environment`'s hint."""
+    if not background or not _lock_foreground(LSFW_LOCK):
+        yield
+        return
+    try:
+        yield
+    finally:
+        _lock_foreground(LSFW_UNLOCK)
+
+
+def _lock_foreground(code: int) -> bool:
+    """`LockSetForegroundWindow(code)`: whether Windows took it, which needs this process to be
+    one allowed to set the foreground; false off Windows."""
+    if sys.platform == "win32":
+        import ctypes
+
+        return bool(ctypes.WinDLL("user32").LockSetForegroundWindow(code))
+    else:
+        return False
 
 
 def host(platform: str = sys.platform) -> Host:

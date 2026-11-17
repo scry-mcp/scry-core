@@ -4,6 +4,7 @@ has its own tests in `test_window_host.py`."""
 
 from __future__ import annotations
 
+import sys
 from dataclasses import replace
 from typing import Any
 
@@ -600,6 +601,42 @@ def test_the_background_hint_is_set_or_removed_never_inherited() -> None:
     assert w.launch_environment(base, background=False) == {"PATH": "/bin"}
     assert w.launch_environment({"PATH": "/bin"}, background=True)[w.BACKGROUND_VAR] == "1"
     assert base[w.BACKGROUND_VAR] == "1"            # the caller's mapping is left as it was
+
+
+@pytest.mark.parametrize(("background", "granted", "calls"), [
+    (True, True, [w.LSFW_LOCK, "launch", w.LSFW_UNLOCK]),
+    (True, False, [w.LSFW_LOCK, "launch"]),          # refused: nothing to lift
+    (False, True, ["launch"]),
+])
+def test_a_launch_behind_holds_the_foreground_until_it_is_up(
+        monkeypatch: pytest.MonkeyPatch, background: bool, granted: bool,
+        calls: list[object]) -> None:
+    seen: list[object] = []
+
+    def lock(code: int) -> bool:
+        seen.append(code)
+        return granted
+    monkeypatch.setattr(w, "_lock_foreground", lock)
+    with w.foreground_kept(background):
+        seen.append("launch")
+    assert seen == calls
+
+
+def test_the_foreground_is_lifted_when_the_launch_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[int] = []
+
+    def lock(code: int) -> bool:
+        seen.append(code)
+        return True
+    monkeypatch.setattr(w, "_lock_foreground", lock)
+    with pytest.raises(Invalid), w.foreground_kept(True):
+        raise Invalid("window_not_visible", "never appeared")
+    assert seen == [w.LSFW_LOCK, w.LSFW_UNLOCK]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows takes the lock")
+def test_off_windows_the_foreground_is_never_locked() -> None:
+    assert w._lock_foreground(w.LSFW_LOCK) is False
 
 
 # ---- the size of a requested window ---------------------------------------------------------
