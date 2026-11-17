@@ -25,6 +25,10 @@ Waited = Literal["stopped", "running", "gone"]
 NO_FAILURE_WHY = "no step failed"
 
 
+#: The steps that wait for something to see, whose TIMEOUT fails the list's premise.
+WAITS_TO_SEE = frozenset({"log_wait", "screen_wait"})
+
+
 def _own_words(reply: Mapping[str, Any]) -> str:
     """A missed step's own account of the miss, its summary and its `verify` note, as a clause
     the list's note ends with; "" when the reply says nothing."""
@@ -142,8 +146,12 @@ class SequenceMachine(ABC):
         return {"op": op, "reply": reply}
 
     def missed(self, op: str, reply: dict[str, Any]) -> bool:
-        """Whether the step's own wait ran out, which ends the list."""
-        return False
+        """Whether the step's own wait for what it was to see ran out, which ends the list: a
+        `log_wait` or `screen_wait` TIMEOUT, or an input's `verify` one. A run's TIMEOUT hands
+        back a stopped machine, and the list goes on."""
+        checked = reply.get("verify")
+        return ((op in WAITS_TO_SEE and reply.get("verdict") == contract.TIMEOUT)
+                or (isinstance(checked, dict) and checked.get("verdict") == contract.TIMEOUT))
 
     def rested(self, ran: list[dict[str, Any]]) -> dict[str, Any] | None:
         """The stop reached during the last step, which answered on a running machine."""

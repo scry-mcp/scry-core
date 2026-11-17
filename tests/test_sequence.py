@@ -190,6 +190,20 @@ def test_a_steps_own_missed_wait_ends_the_list_where_the_machine_says_so() -> No
     assert calls == ["log_wait", "status"]
 
 
+@pytest.mark.parametrize(("op", "reply", "ends"), [
+    ("log_wait", {"verdict": "TIMEOUT"}, True),
+    ("screen_wait", {"verdict": "TIMEOUT"}, True),
+    ("send_keys", {"verify": {"verdict": "TIMEOUT"}}, True),
+    ("run_for", {"verdict": "TIMEOUT"}, False),
+    ("screen_wait", {"verdict": "TARGET"}, False),
+])
+def test_a_wait_for_what_the_list_was_to_see_ends_it_on_every_server(
+        op: str, reply: dict[str, Any], ends: bool) -> None:
+    """A run's TIMEOUT hands back a stopped machine and the list goes on; a wait for something
+    to see, or an input's `verify`, that ran out fails what the rest was built on."""
+    assert sequence.SequenceMachine.missed(Double(), op, reply) is ends
+
+
 def test_a_missed_step_s_own_words_are_in_the_list_s_note() -> None:
     """The cause of the miss (no button pressed, not where asked) is in the step's reply: the
     note says it, on every server, rather than leave it to be found in `ran`."""

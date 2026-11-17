@@ -4,6 +4,8 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- `SequenceMachine.missed` holds the one rule both servers follow: a `log_wait` or
+  `screen_wait` TIMEOUT, or an input's `verify` one, ends a list; a run's TIMEOUT does not.
 - A list `sequence.run` ends because a step missed what it waited to see ends its `note` with
   that step's own words (its `summary` and its `verify` note), for every server: the cause was in
   the step's reply and only one server copied it into the note, by matching the note's words.
