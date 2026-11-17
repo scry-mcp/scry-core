@@ -19,6 +19,11 @@ What a server author notices. A client's view of each server is in that server's
 - A demo's README carries a second generated block, between `<!-- demo-motion:begin -->` and
   `<!-- demo-motion:end -->`: the picture, and each moment's sentence.
 - `demo.abridged` and `demo.fenced` are `example.abridged` and `example.fenced`.
+- `python -m scry_core.install <package> [--write]` checks or rewrites the block of a server's
+  README, between `<!-- scry-install:begin -->` and `<!-- scry-install:end -->`, that says how
+  to add the server to each of ten MCP clients. The clients are one table, `install.CLIENTS`:
+  each one's name, its vendor's page, what that page says to do, and the entry in the form that
+  client takes.
 
 ## 0.118.3
 
