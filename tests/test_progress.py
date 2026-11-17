@@ -293,9 +293,15 @@ def test_finish_reports_the_time_it_finished_at(clock: _Clock) -> None:
     assert said == [(4, 4, "done in 3.0s")], said
 
 
-def test_a_step_reports_through_the_sequence_it_runs_in_under_its_prefix() -> None:
+@pytest.mark.parametrize("monotonic_still", [False, True])
+def test_a_step_reports_through_the_sequence_it_runs_in_under_its_prefix(
+        monkeypatch: pytest.MonkeyPatch, monotonic_still: bool) -> None:
     """A tool called as a step of a sequence has no request of its own (`bridge(None)`): inside
-    `within` it reports through the sequence's line, prefixed with which step it is."""
+    `within` it reports through the sequence's line, prefixed with which step it is. Every line
+    arrives even when `time.monotonic` has not moved between them, as on Windows, whose clock for
+    it moves in coarse ticks."""
+    if monotonic_still:
+        monkeypatch.setattr(time, "monotonic", lambda: 100.0)
     said: list[tuple[float, float | None, str]] = []
     outer = progress.RebasedProgress(lambda p, t, m: said.append((p, t, m)))
     assert progress.bridge(None) is progress.no_progress

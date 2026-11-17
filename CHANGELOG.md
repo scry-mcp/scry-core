@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- A sequence's steps report their progress on `time.perf_counter`'s clock: on Windows two steps'
+  lines inside one tick of `time.monotonic` reported the same progress, and the second was
+  dropped.
+
 ## 0.118.0
 
 - `window_capture.capture` captures on Windows too: the window's own picture through

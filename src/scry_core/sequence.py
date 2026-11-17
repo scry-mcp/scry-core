@@ -234,7 +234,7 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
     """The list run, every step already judged. `settle_seconds` bounds each wait for a stop (0:
     none); `tail_wait` False when the caller waits for the list's effect its own way."""
     r = _Run(machine, cycle, running=machine.began_running(), waited=cycle is not None)
-    began = time.monotonic()
+    began = time.perf_counter()        # the clock `progress.within` counts a step's time on
     i = 0
     while i < (cycle.limit if cycle is not None else len(steps)):
         if cycle is not None and cycle.expired():
