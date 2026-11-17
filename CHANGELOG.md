@@ -4,6 +4,11 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- A list `sequence.run` ends because a step missed what it waited to see ends its `note` with
+  that step's own words (its `summary` and its `verify` note), for every server: the cause was in
+  the step's reply and only one server copied it into the note, by matching the note's words.
+- `log_wait.SILENT` is the clause `timeout_note` says of a writer that wrote no line, for a
+  server that adds its own account to say it once.
 - `recording.steps_to_replay` and `read_document` resolve the placeholders of a `perform`
   document a store holds, `state` naming the session's scratch: a promoted document's steps
   were replayed with `${root}` in their paths, and refused.

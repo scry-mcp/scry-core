@@ -137,6 +137,8 @@ def wait(rx: re.Pattern[str], fresh: Callable[[], list[str]], *, seconds: float,
 
 #: What a wait that ran out says of the machine when nothing told its caller otherwise.
 STILL_RUNNING = "The machine is still running"
+#: What `timeout_note` says of a writer that wrote no line, which a server reads to say it once.
+SILENT = "wrote NOTHING at all in this window"
 
 
 def timeout_note(pattern: str, ended: Ended, where: str, writer: str, *,
@@ -144,7 +146,7 @@ def timeout_note(pattern: str, ended: Ended, where: str, writer: str, *,
     """The `note` of a wait whose bound ran out; `where` names the span of log examined, and
     `run_state` closes it."""
     silent = ("" if ended.arrived_during else
-              f" The {writer} wrote NOTHING at all in this window, so the question may be "
+              f" The {writer} {SILENT}, so the question may be "
               "whether it is still writing rather than what it wrote.")
     return (f"nothing matched /{pattern}/ in {ended.waited_s} s: "
             f"{prose.counted(ended.arrived_during, 'line')} arrived DURING the wait "
