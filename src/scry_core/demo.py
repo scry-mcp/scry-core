@@ -683,17 +683,14 @@ def _span(demo: Demo, run: Run, moment: Moment) -> tuple[Path, int, int]:
     if not files:
         raise Invalid(f"the session wrote no video in {folder}, so there is no moment to cut")
     counted: dict[str, int] = {}
-    latest = None
     for name, reply in run.replies.items():
         frame = _last(reply.data, FRAME_KEY)
-        latest = frame if frame is not None else latest
-        if latest is not None:
-            counted[name] = latest
+        if frame is not None or counted:
+            counted[name] = frame if frame is not None else list(counted.values())[-1]
     if lacking := [name for name in (moment.after, moment.until) if name not in counted]:
         raise Invalid(f"no reply up to step {lacking[0]!r} counts a `{FRAME_KEY}`, so the moment "
                       "it bounds cannot be found in the video")
-    if latest is None:
-        raise Invalid(f"no reply of the run counts a `{FRAME_KEY}`")
+    latest = list(counted.values())[-1]
     held = [motion.facts(file)[0] for file in files]
     if sum(held) > latest:
         raise Invalid(f"the session's video holds {sum(held)} frames and the last reply to count "
