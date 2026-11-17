@@ -4,35 +4,39 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
-- A demo is shown moving. `demo.Moment(after, until, caption)` names a stretch of the run, and
-  `--update-readme` cuts the demo's `loop.webp` from the run's own recordings (`motion`): ffmpeg
-  decodes them and libwebp's `img2webp` assembles the file, and without either the update is
-  refused by name. A moment is the file a `record` step wrote (`demo.recording`), or a span of
-  the video of a session that records itself (`Demo.video`), cut by the `frame` its replies
-  carry. A loop holds at most 3 moments of 1 to 3 s, 6 s in all, in 400 KB; past any of them
-  the update is refused. `Demo.loop`, `Loop` and `loop.mp4` are gone.
+- A demo is shown moving: `--update-readme` cuts the demo's clip, `loop.webp`, from the run's
+  own recordings (`motion`). ffmpeg decodes them and libwebp's `img2webp` assembles the file;
+  without either program the update is refused by name.
+- `demo.Moment(after, until, caption)` names the stretch of a run a clip shows. It is the file a
+  `record` step wrote (`demo.recording`), or a span of the video a session records of itself
+  (`Demo.video`), cut by the `frame` its replies carry.
+- A clip holds at most 3 moments of 1 to 3 s, 6 s in all, in 400 KB; past any of them the update
+  is refused. `Demo.loop`, `Loop` and `loop.mp4` are gone.
 - A moment cut from a session's video is found by counting back from the last frame a reply
   counted. A video longer than that frame is refused, naming both: a step after it moved the
-  machine uncounted, and every moment would be read that many frames late. Two steps of one
-  name are refused before any call.
+  machine uncounted, so every moment would be read late.
+- A demo is refused before any call when two steps share a name, a moment runs past its
+  stretch, or an example shows a field its transcript hides. `demo.declared(demo)` is
+  that check, for a server's suite to run on each of its demos.
 - The shared LineUp script records the game in play after its sound is compared
   (`games.lineup.PLAYING`), for each server's demo to show.
-- A demo's README block holds its examples: the steps that carry `ask`, `title` and `reads`,
-  each written as the ask, the call, an excerpt of the reply (the fields `shown` names,
-  `summary` when it names none) and how to read it (`example`). `--update-readme` asks for 2 to
-  4 of them and writes `TRANSCRIPT.md` for every demo. The same examples, without their whole
-  replies, are what a demo writes into its server's README. `Step.highlight` is gone.
+- A demo's README block holds its examples: the steps that carry `ask`, `title` and `reads`.
+  Each is written as the ask, the call, an excerpt of the reply and how to read it (`example`).
+  The excerpt is the fields `shown` names, or `summary` when it names none.
+- `--update-readme` asks for 2 to 4 examples and writes `TRANSCRIPT.md` for every demo. The same
+  examples, without their whole replies, are what a demo writes into its server's README.
+  `Step.highlight` is gone.
 - A demo's README carries a second generated block, between `<!-- demo-motion:begin -->` and
   `<!-- demo-motion:end -->`: the picture, and each moment's sentence.
 - `demo.abridged` and `demo.fenced` are `example.abridged` and `example.fenced`.
 - `python -m scry_core.install <package> [--write]` checks or rewrites the block of a server's
-  README, between `<!-- scry-install:begin -->` and `<!-- scry-install:end -->`, that says how
-  to add the server to each of ten MCP clients. The clients are one table, `install.CLIENTS`:
-  each one's name, its vendor's page, what that page says to do, and the entry in the form that
-  client takes.
+  README that says how to add it to each of ten MCP clients. The block sits between
+  `<!-- scry-install:begin -->` and `<!-- scry-install:end -->`.
+- The clients are one table, `install.CLIENTS`: each one's name, its vendor's page, what that
+  page says to do, and the entry in the form that client takes.
 - The README opens with what SCRY is and where to install a server. The list of modules is
-  `docs/modules.md`, one row each, and what the README said of the focus watch, the tests that
-  open windows and the parallel jobs is `docs/live-tests.md`.
+  `docs/modules.md`, one row each. What the README said of the tests that open windows, the
+  focus check and the parallel jobs is `docs/live-tests.md`.
 
 ## 0.118.3
 

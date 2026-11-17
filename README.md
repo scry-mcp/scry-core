@@ -38,7 +38,7 @@ it in [docs/modules.md](docs/modules.md), which has one row per module.
 | [Files](docs/modules.md#files) | the one rule for a file's name, and files never written over another |
 | [What generates the documents](docs/modules.md#what-generates-the-documents) | the reference pages, the demo pages, the install block |
 | [Tests a server runs](docs/modules.md#tests-a-server-runs) | shared test classes, pytest plugins, the pre-commit check |
-| [Tests against a real emulator](docs/modules.md#tests-against-a-real-emulator) | the test scripts' bookkeeping, and the focus watch |
+| [Tests against a real emulator](docs/modules.md#tests-against-a-real-emulator) | what a test script records, and the check that a run took nobody's focus |
 
 ## How a server uses it
 
@@ -87,8 +87,9 @@ Each server keeps its demos in `demos/<name>/`, run by `scry_core.demo`. A `demo
 calls its README asks an MCP client to make and checks every answer. With `--update-readme` it
 writes the README's examples, `TRANSCRIPT.md`, `screen.png` and `loop.webp` from that run.
 
-A game that exists for both emulators is run by each server through a short `Binding`
-(`scry_core.game_demo`), with the same symbols, screen map and checks on both.
+A game that exists for both emulators has one script, with the same symbols, screen map and
+checks on both. Each server runs it with a short `Binding` (`scry_core.game_demo`), the object
+that holds what its emulator does differently.
 [The list of demos](docs/katas.md) says which server runs each, and
 [docs/new-emulator.md](docs/new-emulator.md) is the checklist for a third server.
 

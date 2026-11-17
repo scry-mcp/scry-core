@@ -22,8 +22,8 @@ uv run pytest -m window --no-cov                        # Windows
   (`-m 'not live and not window'`).
 - `--no-cov` because a partial run cannot check a coverage floor that belongs to the whole
   repository. A `-m` on the command line replaces the one in `addopts`.
-- A run with `-o addopts=` drops the deselection, so it names `-m window` itself. It also keeps
-  `-p pytester`, which that override drops and the shared test classes need.
+- A run with `-o addopts=` drops the deselection, so it names `-m window` itself. It also names
+  `-p pytester` again, which that override drops and the shared test classes need.
 - Check first that nobody else is using the screen: another run on the same machine loses its
   screen and keyboard the same way.
 
@@ -31,12 +31,13 @@ On Windows these tests run on an interactive desktop. What looks like a defect i
 test is usually the desktop: `WindowsHost.activate` says what it takes to bring a window to the
 front.
 
-## The focus watch
+## Showing that a run took nobody's focus
 
 Tests against a real emulator can run beside somebody working, and then they show that they
 took nobody's focus. A run does three things:
 
-1. It wraps itself in `scry_core.focus_watch.FocusWatch`.
+1. It wraps itself in `scry_core.focus_watch.FocusWatch`, which watches the focus from outside
+   the run.
 2. It runs `scry_core.focus_gate.control` the same way: one start that must be seen in front,
    one that must not, and a Space moved and put back.
 3. It ends with `focus_gate.verdict`, which answers OK, FAIL or BLOCKED.
