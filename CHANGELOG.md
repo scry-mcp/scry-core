@@ -7,6 +7,9 @@ What a server author notices. A client's view of each server is in that server's
 - `narrowing.map_rest` says what a short `machine_map` reply asks for the rest (the sections it
   left out, else `dest` for a cut list no file holds), and `narrowing.write_whole` writes every
   row of the sections read to the caller's new file, for both servers.
+- `narrowing.clip_text` bounds a console's text of no known shape for both servers: whole up to
+  `TEXT_MAX` characters, else written whole to the first free `<stem>-N.txt` of the scratch with a
+  preview, `output_chars` and `output_path`.
 
 ## 0.116.0
 

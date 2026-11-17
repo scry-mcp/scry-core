@@ -7,8 +7,13 @@ from collections.abc import Collection, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from scry_core import fresh
+from scry_core import file_names, fresh
 from scry_core.reply_contract import Invalid
+
+#: The characters a console's text of no known shape comes back whole up to, and a longer one's
+#: preview: its first line, up to this many.
+TEXT_MAX = 4000
+TEXT_PREVIEW = 160
 
 #: How a short `machine_map` asks for the rest: the sections it left out, or every row of a cut
 #: list.
@@ -65,3 +70,16 @@ def write_whole(path: Path, whole: Mapping[str, Any]) -> str:
     """`whole`, every row uncut, as JSON at the caller's new `path`; the path written."""
     fresh.create(path, json.dumps(whole, indent=1).encode(), "the map", named_by_caller=True)
     return str(path)
+
+
+def clip_text(output: str, scratch: Path, stem: str) -> dict[str, Any]:
+    """A console's text of no known shape: whole up to `TEXT_MAX` characters, else written whole,
+    as printed, to the first free `<stem>-N.txt` of `scratch`, with a preview of its first line,
+    `output_chars` and `output_path`."""
+    if len(output) <= TEXT_MAX:
+        return {"output": output, "clipped": False}
+    path = fresh.numbered(scratch, lambda n: file_names.name(stem, n, extension="txt"),
+                          output.encode("utf-8"), "the output")
+    preview = output.split("\n", 1)[0][:TEXT_PREVIEW]
+    return {"output": preview + "...", "output_chars": len(output), "output_path": str(path),
+            "clipped": True}

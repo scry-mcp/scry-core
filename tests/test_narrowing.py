@@ -101,3 +101,19 @@ def test_a_whole_map_is_written_once_as_json_and_never_over_a_file(tmp_path: Pat
     with pytest.raises(Invalid) as refused:
         narrowing.write_whole(target, {})
     assert refused.value.code == "bad_argument" and "already there" in str(refused.value)
+
+
+def test_a_text_up_to_the_ceiling_comes_back_whole() -> None:
+    text = "x" * narrowing.TEXT_MAX
+    assert narrowing.clip_text(text, Path("/nonexistent"), "debug") == {"output": text,
+                                                                        "clipped": False}
+
+
+def test_a_longer_text_goes_whole_to_its_own_file_with_a_preview(tmp_path: Path) -> None:
+    text = "first line\n" + "y" * narrowing.TEXT_MAX + "\r\nlast"
+    one = narrowing.clip_text(text, tmp_path, "debug")
+    two = narrowing.clip_text(text, tmp_path, "debug")
+    assert one == {"output": "first line...", "output_chars": len(text),
+                   "output_path": str(tmp_path / "debug-1.txt"), "clipped": True}, one
+    assert Path(one["output_path"]).read_bytes() == text.encode(), "as printed, line ends kept"
+    assert two["output_path"] == str(tmp_path / "debug-2.txt"), "each clip its own file"
