@@ -4,6 +4,9 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- `roster.SHARED_FAMILIES` declares `window` under Session and `screen_wait` under Advance, the
+  two tools both servers register that it left out, so `misfiled` refuses a server filing them
+  elsewhere.
 - `scry_core.reply_differences` compares every tool both servers register, read off all their
   `docs/reference/*.md` pages, into `docs/reply-differences.md` (which replaces
   `docs/advance-differences.md`); the tools only one server has are listed under it.

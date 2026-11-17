@@ -91,10 +91,11 @@ DOC_VALUES: Mapping[str, str] = {"RECORD_ARGS": RECORD_ARGS, "RECORD_CUT": RECOR
 #: The family of every tool both servers have, declared once: a model reading the two rosters
 #: sees one surface, and a server that files a shared name elsewhere is refused by `misfiled`.
 SHARED_FAMILIES: Mapping[str, str] = {
-    **dict.fromkeys(("start", "status", "close"), "Session"),
+    **dict.fromkeys(("start", "status", "window", "close"), "Session"),
     **dict.fromkeys(("machine_map", "log", "log_wait"), "Machine"),
     "symbols_find": "Names",
-    **dict.fromkeys(("run_to", "run_for", "step", "resume", "stop", "trace"), "Advance"),
+    **dict.fromkeys(("run_to", "run_for", "step", "resume", "stop", "trace", "screen_wait"),
+                    "Advance"),
     **dict.fromkeys(("breakpoint_at", "regpoint_add", "watch_add", "declaration_list",
                      "declaration_clear"), "Declarations"),
     **dict.fromkeys(("read_memory", "registers", "disassemble", "find", "memdump",
