@@ -12,8 +12,8 @@ about a single program stays in the server that runs it.
 | dpaint | DOSBox-X | `scry-dosbox-x/demos/dpaint/` | `dpaint-screen-map.json` |
 | dpaint_maps | DOSBox-X | `scry-dosbox-x/demos/dpaint_maps/` | `dpaint-screen-map.json` (its own) |
 | monkey | DOSBox-X | `scry-dosbox-x/demos/monkey/` | `monkey-screen-map.json` |
-| speedf | DOSBox-X, MAME | each server's `demos/speedf/` | none |
-| rechip | DOSBox-X | `scry-dosbox-x/demos/rechip/` | none |
+| speedf | DOSBox-X, MAME | each server's `demos/speedf/`: the arcade board and the PC port are two programs, reached by different controls (the PC port once DOS has loaded it), so their scripts share no logic | none |
+| rechip | DOSBox-X | `scry-dosbox-x/demos/rechip/` | `rechip-screen-map.json` |
 | gridlee | MAME | `scry-mame/demos/gridlee/` | none |
 | starfire | MAME | `scry-mame/demos/starfire/` | none |
 | circus (live fixture) | MAME | `scry-mame/tests/live/` | `circus-screen-map.json` |

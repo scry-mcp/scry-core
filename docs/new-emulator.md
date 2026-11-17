@@ -72,8 +72,10 @@ Read from the two servers; none of it is proved by the null server.
   `reply_shapes` and `window_tier` plugins load by installing this package.
 - The store: `start` runs its launch inside `Drafts.starting(profile=, anchor=, live=)`, naming
   the profile it read, where its program lives (none when the arguments do not say) and how to
-  read its live session, keeps its recipe with `Drafts.keep` and answers `kept` with
-  `promote.kept_line`; `perform_export`,
+  read its live session, and answers with `promote.after_start`, which keeps its recipe
+  (`keep_start`: named by the profile read, else by the guest; nothing kept when a profile is
+  only run again) and adds `kept` and the profile block; `screen_map_write` is
+  `promote.after_map`; `perform_export`,
   `close` and `promote` are `promote.after_export`, `promote.after_close` and `promote.promote`.
   Which store an entry may be written to is decided there and never by the server.
 - Reference pages: `python -m scry_core.reference <package>.server:REFERENCE --write`.
