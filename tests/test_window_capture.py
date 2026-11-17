@@ -8,11 +8,14 @@ import struct
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from scry_core import focus_watch as fw
+from scry_core import png, window, window_host
 from scry_core import window_capture as wc
+from scry_core.reply_contract import Invalid
 
 Pixel = tuple[int, int, int]
 
@@ -164,10 +167,100 @@ def test_the_window_server_lists_windows() -> None:
     assert isinstance(fw.windows(), list)
 
 
-def test_off_macos_a_capture_is_blocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_off_macos_and_windows_a_capture_is_blocked(monkeypatch: pytest.MonkeyPatch,
+                                                    tmp_path: Path) -> None:
     monkeypatch.setattr(sys, "platform", "linux")
-    with pytest.raises(wc.Blocked, match="macOS only"):
+    with pytest.raises(wc.Blocked, match="macOS and Windows only, not linux"):
         wc.capture(1, tmp_path / "w.png")
+
+
+def test_bgra_rows_come_back_as_rgb_and_a_short_row_is_refused() -> None:
+    stored = [bytes((3, 2, 1, 255, 6, 5, 4, 255)) + b"pad", bytes((9, 8, 7, 0, 12, 11, 10, 0))]
+    image = wc.bgra_image(lambda y: stored[y], 2, 2)
+    assert [image.pixels(y) for y in range(2)] == [[(1, 2, 3), (4, 5, 6)],
+                                                   [(7, 8, 9), (10, 11, 12)]]
+    with pytest.raises(ValueError, match="row 0 holds 4 bytes, not the 8"):
+        wc.bgra_image(lambda y: b"\0" * 4, 2, 1)
+
+
+def _windows(monkeypatch: pytest.MonkeyPatch, *, display_on: bool = True,
+             listed: list[window.Seen] | Exception | None = None,
+             frame: object = None) -> list[int]:
+    """`capture` as on Windows, the host's three answers doubled; what it asked for, a listing of
+    the windows as 0 and a frame as the window's number."""
+    asked: list[int] = []
+
+    def windows(_self: object) -> list[window.Seen]:
+        asked.append(0)
+        if isinstance(listed, Exception):
+            raise listed
+        return [] if listed is None else listed
+
+    def window_frame(hwnd: int) -> wc.Image:
+        asked.append(hwnd)
+        if isinstance(frame, Exception):
+            raise frame
+        assert isinstance(frame, wc.Image)
+        return frame
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(wc, "_display_on", lambda: display_on)
+    monkeypatch.setattr(window_host.WindowsHost, "windows", windows)
+    monkeypatch.setattr(wc, "_window_frame", window_frame)
+    return asked
+
+
+def _seen(pid: int, number: int, side: int) -> window.Seen:
+    return window.Seen(pid=pid, number=number, bounds=(0, 0, side, side), onscreen=True)
+
+
+PICTURE = wc.Image.of([[(1, 2, 3), (4, 5, 6)], [(7, 8, 9), (10, 11, 12)]])
+
+
+def test_on_windows_the_largest_window_of_the_pid_is_captured_into_a_png(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    asked = _windows(monkeypatch, listed=[_seen(7, 70, 50), _seen(1, 10, 20), _seen(1, 11, 400)],
+                     frame=PICTURE)
+    assert wc.capture(1, tmp_path / "w.png") == PICTURE
+    assert asked == [0, 11]
+    written = png.decode((tmp_path / "w.png").read_bytes())
+    assert (written.width, written.height, written.pixels) == (2, 2, b"".join(PICTURE.rows))
+
+
+@pytest.mark.parametrize(("kw", "said"), [
+    ({"display_on": False, "frame": PICTURE}, "the display is off"),
+    ({"listed": [_seen(7, 70, 50)], "frame": PICTURE}, "pid 1 owns no window the desktop lists"),
+    ({"listed": [_seen(1, 10, 50)], "frame": OSError("StartCapture answered HRESULT 0x80070005")},
+     "OSError: StartCapture answered HRESULT 0x80070005"),
+    ({"listed": [_seen(1, 10, 50)], "frame": ValueError("row 0 holds 4 bytes")},
+     "ValueError: row 0 holds 4 bytes"),
+    ({"listed": Invalid("host_failed", "this process already chose a DPI awareness")},
+     "Invalid: this process already chose a DPI awareness"),
+    ({"listed": [_seen(1, 10, 50)], "frame": wc.Image.of([[(5, 5, 5)] * 3] * 2)},
+     "holds one colour"),
+])
+def test_on_windows_what_the_host_cannot_capture_is_blocked(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, kw: dict[str, Any], said: str) -> None:
+    _windows(monkeypatch, **kw)
+    with pytest.raises(wc.Blocked, match=said):
+        wc.capture(1, tmp_path / "w.png")
+
+
+def test_on_windows_a_display_off_is_blocked_before_any_window_is_listed(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    asked = _windows(monkeypatch, display_on=False, listed=[_seen(1, 10, 50)], frame=PICTURE)
+    with pytest.raises(wc.Blocked, match="wake the display"):
+        wc.capture(1, tmp_path / "w.png")
+    assert asked == [] and not (tmp_path / "w.png").exists()
+
+
+@pytest.mark.parametrize(("corner", "client", "box"), [
+    ((108, 285), (300, 200), (8, 85, 300, 200)),        # below a title bar, inside the frame
+    ((92, 200), (300, 200), (0, 0, 292, 200)),          # starts left of and above the frame
+    ((108, 285), (500, 300), (8, 85, 346, 259)),        # runs past the frame's right and bottom
+])
+def test_the_client_box_is_the_client_area_cut_to_the_frame(
+        corner: tuple[int, int], client: tuple[int, int], box: tuple[int, int, int, int]) -> None:
+    assert wc.client_box((100, 200), corner, client, (354, 344)) == box
 
 
 def _darwin(monkeypatch: pytest.MonkeyPatch, window: int | None) -> None:

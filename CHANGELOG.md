@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `window_capture.capture` captures on Windows too: the window's own picture through
+  Windows.Graphics.Capture, its client area only, a window behind others included and none
+  brought forward, written as a PNG to `dest`. A display that is off is `Blocked` saying so,
+  since Windows composes no new frame of the window while it is.
+
 ## 0.117.0
 
 - `narrowing.map_rest` says what a short `machine_map` reply asks for the rest (the sections it
