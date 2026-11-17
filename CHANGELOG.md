@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.117.0
 
 - `narrowing.map_rest` says what a short `machine_map` reply asks for the rest (the sections it
   left out, else `dest` for a cut list no file holds), and `narrowing.write_whole` writes every
