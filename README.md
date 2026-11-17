@@ -64,7 +64,7 @@ What the Scry emulator MCP servers ([scry-mame](https://github.com/scry-mcp/scry
 | `scry_core.host_program` | a test double's program and a path as the host runs and spells them, and the markers that skip a case only one host can hold |
 | `scry_core.demo` | the runner of a server's `demos/`: its steps over stdio, their checks, the README block they generate (the steps a demo marks as its highlights, each with how the call does it, and a link to the whole run it commits beside the README), and the flow of the steps it shows in the server's front door |
 | `scry_core.game_demo` | one game's demo written once for both servers: the `Binding` that holds only what a platform cannot say the same way (how it starts, which input fires each of the game's actions, the screen's refresh, the recording its sound is held to) and the steps a script builds from it |
-| `scry_core.games` | the scripts of the games both servers run, one module per game with its one screen map |
+| `scry_core.games` | the scripts of the games both servers run, one module per game; each port's screen map is read from its own `.scry/maps/` |
 | `scry_core.recording` | a session as a bench: what a server did, recorded from its `start` through its call boundary, and exported as `perform`'s own document (`perform_export`); the check a replayed step holds to |
 | `scry_core.comment_file` | the comment file both servers read and write (version 1): its header, columns, text and stamp rules, parse and render, each server's `ref` and `cpu` columns handed in as a `Policy` |
 | `scry_core.replay` | the runner of that document: the server over stdio, its steps in one `perform`, with no model |
@@ -110,12 +110,12 @@ Each server pins it by a release tag, never by a branch:
 dependencies = ["scry-core @ git+https://github.com/scry-mcp/scry-core@<tag>"]
 ```
 
-The probe, the bench and traffic take what they act on as options, so none reads a tree it was
-not pointed at. The probe's paths below, and traffic's servers file, are a server repository's
-own; the bench is the directory a server's live tier resolved, and its manifest is
-`<bench>/bench.json`. The hook takes none: it runs from inside a repository that tracks
-`.jscpd-baseline.json`, has `jscpd` on the path, and checks the probe at `mcp_probe/servers.py` and `mcp_probe/tasks/`
-when the repository keeps one. The reference runs from a server repository too, where `<module>` imports:
+Each command below takes what it acts on as an option or an argument, so none reads a tree it was
+not pointed at; run them from a server repository. The probe's paths and traffic's servers file are
+that repository's own, `<bench>` is the directory its live tier resolved (its manifest
+`<bench>/bench.json`), and `<module>` is one it imports. The hook takes none: it needs `jscpd` on
+the path and a tracked `.jscpd-baseline.json`, and checks the probe at `mcp_probe/servers.py` and
+`mcp_probe/tasks/` when the repository keeps one.
 
 ```sh
 uv run python -m scry_core.probe all --check --servers mcp_probe/servers.py --tasks mcp_probe/tasks
@@ -123,14 +123,15 @@ uv run python -m scry_core.live_bench check --bench <bench>
 uv run python -m scry_core.traffic <server> --servers mcp_probe/servers.py --transcript <jsonl>
 uv run python -m scry_core.hook
 uv run python -m scry_core.scry_readme [--check] [DIR]
-uv run python -m scry_core.window_cli {displays|words|launch|proof}
+uv run python -m scry_core.window_cli displays | words|launch mame|dosbox-x | proof PID
 uv run python -m scry_core.replay <document> [--binary PATH] [--rompath DIR] [--transcript PATH]
-uv run python -m scry_core.reference <module>:<attribute> [--examples JSONL ... [--mark PATH=TEXT ...]] [--write]
+uv run python -m scry_core.reference <module>:<attribute> [--examples JSONL ... [--mark PATH=TEXT ...] [--skip REGEX]] [--write]
 ```
 
-`--help` on each is its contract. A real probe run asks the `claude` CLI and needs the network;
+`--help` on each is its contract, but for `window_cli`, whose contract is its module docstring
+(`uv run python -m pydoc scry_core.window_cli`). A real probe run asks the `claude` CLI and needs the network;
 `--check` and the probe's answers seam (`MCP_PROBE_ANSWERS`) need neither. `fill` runs the `capture` commands its manifest names,
-so it fills only from checkouts you trust. Each repository's `.githooks/pre-commit.sh` is the one
+so it fills only from checkouts you trust. Each server repository's `.githooks/pre-commit.sh` is the one
 line that calls the hook through its own `uv run`.
 
 `reply_shapes` is a pytest plugin, loaded through the `pytest11` entry point wherever this package
@@ -144,11 +145,12 @@ reply_shapes_anchors = ["scry_core.reply_contract", "scry_core.boundary"]
 
 ## Focus watch
 
-A live tier that runs beside somebody working wraps its run in `scry_core.focus_watch.FocusWatch`,
-takes `scry_core.focus_gate.control` in the same harness (one start that must be seen in front,
-one that must not, and the owner's Space moved and put back, which must be seen moved), and
-judges the run after it with `focus_gate.verdict`; each outcome is OK, FAIL or BLOCKED,
-`live_pool`'s words, put on the tier's own cells. The start in front and the Space move take the
+A live tier that runs beside somebody working proves it took nobody's focus in three parts: it
+wraps its run in `scry_core.focus_watch.FocusWatch`; it runs `scry_core.focus_gate.control` in the
+same harness (one start that must be seen in front, one that must not, and the owner's Space moved
+and put back, which must be seen moved); and it judges the run after it with
+`focus_gate.verdict`. Each outcome is OK, FAIL or BLOCKED, `live_pool`'s words, put on the tier's
+own cells. The start in front and the Space move take the
 desk of whoever is working, so they run only with `SCRY_FOCUS_CONTROL=1` on an idle machine;
 unset, those two cells are BLOCKED and the verdict says it is unproven (a stolen focus still
 fails it); run while somebody works, the control takes their desk and its start-in-front cell
@@ -210,10 +212,11 @@ the README's block, which holds every step or, where the demo marks steps as hig
 those with how each call does it and a `TRANSCRIPT.md` beside it with every step,
 `screen.png`, and, for a demo that declares a loop, the `loop.mp4` its own recording converts
 to with `ffmpeg` on `PATH`. `scry_core.demo` is the runner both servers share, and its module
-docstring is the contract. A game that exists on both platforms is one script in `scry_core.games`,
-run by each server's `demos/<game>/` through a short `Binding` (`scry_core.game_demo`): the same
-steps, symbols, screen map and checks on both, which is what proves the two servers answer one
-surface.
+docstring is the contract. A game that exists on both platforms is run by each server's
+`demos/<game>/` through a short `Binding` (`scry_core.game_demo`), with the same symbols, screen
+map and checks on both, which is what proves the two servers answer one surface. Its script is
+one module of `scry_core.games`, unless a port's own checkout declares one in its `.scry/perform/`
+(the LineUp PC port does): that port replays its document and shares only the epilogue.
 
 ## Trying a server by hand
 
