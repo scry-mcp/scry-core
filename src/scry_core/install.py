@@ -207,5 +207,5 @@ def main(argv: Sequence[str] | None = None) -> int:
     return EXIT_PASS
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover -- a thin entry, `main` is what the tests run
     sys.exit(main())

@@ -115,6 +115,15 @@ def test_a_call_no_cut_can_fit_keeps_only_its_tool() -> None:
     assert example.call_text("t" * 120, {"a": 1}) == "t" * 120 + "(…)"
 
 
+def test_a_call_whose_first_value_fits_no_line_keeps_its_argument_names() -> None:
+    """A list of long steps cannot be cut to a line: the call says what it was given, and how
+    much of it."""
+    step = {f"argument_{n}": n for n in range(30)}
+    assert example.call_text("perform", {"steps": [step] * 19, "seconds": 30, "with": {"a": 1},
+                                         "label": "x" * 200}) == (
+        "perform(steps=[… 19 items], seconds=…, with={… 1 key}, label=…)")
+
+
 def test_a_list_of_numbers_in_a_call_is_kept_whole_and_one_of_objects_is_not() -> None:
     wide = {"rect": [1, 2, 3, 4], "note": "n" * 400}
     cut = example.call_text("screen_view", wide)

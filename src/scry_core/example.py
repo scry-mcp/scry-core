@@ -105,6 +105,15 @@ def _short(value: Any) -> Any:
     return value
 
 
+def _counted(value: Any) -> str:
+    """What stands for a value no line has room for: how many items or keys it holds."""
+    if isinstance(value, list | tuple):
+        return f"[{ELIDED} {len(value)} item{'s' * (len(value) != 1)}]"
+    if isinstance(value, dict):
+        return f"{{{ELIDED} {len(value)} key{'s' * (len(value) != 1)}}}"
+    return ELIDED
+
+
 def _wrapped(tool: str, parts: Sequence[str]) -> list[str]:
     """`tool(parts)` broken between arguments where a line fills."""
     lines, line = [], f"{tool}("
@@ -119,8 +128,8 @@ def _wrapped(tool: str, parts: Sequence[str]) -> list[str]:
 
 def call_text(tool: str, args: Mapping[str, Any]) -> str:
     """`tool(argument=value)` within `CALL_LINES` lines of `COLUMNS` columns: whole when it
-    fits, else its long values cut, else its last arguments counted and left out, else the
-    tool alone."""
+    fits, else its long values cut, else its last arguments counted and left out, else its
+    argument names with what each holds counted, else the tool alone."""
     def parts(values: Mapping[str, Any]) -> list[str]:
         return [f"{k}={json.dumps(v, ensure_ascii=False)}" for k, v in values.items()]
 
@@ -138,7 +147,8 @@ def call_text(tool: str, args: Mapping[str, Any]) -> str:
         lines = _wrapped(tool, shown)
         if fits(lines):
             return "\n".join(lines)
-    return f"{tool}({ELIDED})"
+    named = _wrapped(tool, [f"{k}={_counted(v)}" for k, v in args.items()])
+    return "\n".join(named) if fits(named) else f"{tool}({ELIDED})"
 
 
 def excerpt(reply: Mapping[str, Any], fields: Sequence[str]) -> str:

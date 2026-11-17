@@ -150,6 +150,6 @@ def sound(binding: Binding, milliseconds: int, wav: str) -> list[Step]:
                  title="Compare a recording with its reference",
                  ask=("Compare the music you just recorded with the reference recording, sample "
                       "by sample."),
-                 shown=("summary", "exact", "class"),
+                 shown=("summary", "exact"),
                  reads=("`exact` is true only when every sample is equal, so a changed sound, a "
                         "different mixer or a late start fails the run."))]
