@@ -117,12 +117,9 @@ _steps = threading.local()
 
 @contextlib.contextmanager
 def within(report: Progress, prefix: str, began: float | None = None) -> Iterator[None]:
-    """Make `bridge(None)` on this thread report through `report` under `prefix`; `began`, on
-    `time.perf_counter`'s clock, is when the time a step reports counts from.
-
-    The step's progress is that time, and a line whose progress did not grow is dropped, so the
-    clock is one that moves between any two lines: Windows' `time.monotonic` moves in ticks
-    coarser than two lines can be apart."""
+    """Make `bridge(None)` on this thread report through `report` under `prefix`, a step's time
+    counted from `began` on `time.perf_counter`, which moves between any two lines (Windows'
+    `time.monotonic` may not, and a line whose time did not grow is dropped)."""
     stack: list[tuple[Progress, str, float]] = _steps.__dict__.setdefault("stack", [])
     stack.append((report, prefix, time.perf_counter() if began is None else began))
     try:
