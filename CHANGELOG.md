@@ -6,12 +6,11 @@ What a server author notices. A client's view of each server is in that server's
 
 - `window.foreground_kept(background)` holds a launch behind on Windows: no program may take the
   foreground until the block ends (`LockSetForegroundWindow`), so an emulator that brings its
-  window forward as it opens stays behind. Both servers wrap their start in it, up to the proof
-  of the window; on macOS `launch_environment`'s hint still does the work.
+  window forward as it opens stays behind. Both servers wrap their start in it, until its window
+  is up; on macOS `launch_environment`'s hint still does the work.
 - A start profile's `rompath` and `inipath`, `;`-separated lists of folders
   (`project_store.LISTS`, which moves there from `promote_paths`), resolve each folder against
-  the store's base; only the first was resolved, and the rest reached the emulator relative to
-  its working directory.
+  the store's base; only the first was resolved.
 - `python -m scry_core.replay` resolves the placeholders of a store's `perform` document, its
   `start` and its steps, as `perform(path=)` does (`recording.stored`), and refuses one that uses
   `${state}`, naming it; it sent them as typed text.
