@@ -24,6 +24,9 @@ What a server author notices. A client's view of each server is in that server's
   to add the server to each of ten MCP clients. The clients are one table, `install.CLIENTS`:
   each one's name, its vendor's page, what that page says to do, and the entry in the form that
   client takes.
+- The README opens with what SCRY is and where to install a server. The list of modules is
+  `docs/modules.md`, one row each, and what the README said of the focus watch, the tests that
+  open windows and the parallel jobs is `docs/live-tests.md`.
 
 ## 0.118.3
 
