@@ -149,7 +149,8 @@ DOC_VALUES = {
                    "required): a `verified` map judges it there "
                    "(`stale_map` when it no longer holds), a\n`consolidated` one takes it as "
                    "shown. If it names none, a frame at a time until the map "
-                   "names it,\nwithin `seconds`; a `control` is refused there (`bad_argument`). "
+                   "names it,\nwithin `seconds`; a `control` or `disarm_watches` is refused there "
+                   "(`bad_argument`). "
                    "Reply: `screen` (`screen`, `layer`,\n`mode`, `judged`), `frames` run. "
                    "Refused: an unmapped screen (`unknown_ref`)."),
 }
