@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.119.0
 
 - A demo is shown moving: `--update-readme` cuts the demo's clip, `loop.webp`, from the run's
   own recordings (`motion`). ffmpeg decodes them and libwebp's `img2webp` assembles the file;
