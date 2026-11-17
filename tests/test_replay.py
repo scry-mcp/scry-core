@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from scry_core import replay
+from scry_core import recording, replay
 
 FIXTURE = Path(__file__).parent / "fixtures" / "replay_server.py"
 
@@ -261,6 +261,39 @@ def test_a_server_that_breaks_around_the_steps_is_exit_3_too(
     monkeypatch.setenv(env, "1")
     assert _run(monkeypatch, tmp_path, doc) == 3
     assert says in capsys.readouterr().out
+
+
+def _stored(tmp_path: Path, start: dict[str, Any], step: dict[str, Any]) -> Path:
+    """A replay document a `.scry/` store holds, with the double server beside it."""
+    shutil.copyfile(FIXTURE, tmp_path / "server.py")
+    doc = tmp_path / ".scry" / "perform" / "session.json"
+    doc.parent.mkdir(parents=True)
+    doc.write_text(json.dumps({"version": 3, "server": "mame", "entry": "server.py",
+                               "start": start, "steps": [{**HELD1, **step}],
+                               "needs": {"states": [], "declarations": _lists([])}}))
+    return doc
+
+
+def test_a_stored_document_replays_with_its_placeholders_resolved(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        ) -> None:
+    monkeypatch.setenv("REPLAY_BOARD", "board")
+    doc = _stored(tmp_path, {"system": "${env:REPLAY_BOARD}", "binary": "${root}/mame"},
+                  {"path": "${root}/states/boot.sta"})
+    assert recording.read_document(str(doc))["steps"][0]["path"] == f"{tmp_path}/states/boot.sta"
+    assert _run(monkeypatch, tmp_path, doc) == 0
+    out = capsys.readouterr().out
+    assert "OK start: started board on ./mame" in out, out            # the root spelled .
+    assert "REPLAY session: every step held" in out, out
+
+
+def test_a_stored_document_that_needs_a_sessions_scratch_is_exit_3_naming_it(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        ) -> None:
+    doc = _stored(tmp_path, {"system": "board"}, {"path": "${state}/boot.sta"})
+    assert _run(monkeypatch, tmp_path, doc) == 3
+    out = capsys.readouterr().out
+    assert "`${state}`" in out and "perform(path=)" in out and "REPLAY" not in out, out
 
 
 def test_the_lists_a_replay_reads_are_the_ones_the_document_names(

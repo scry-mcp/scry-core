@@ -537,12 +537,20 @@ def read_document(path_arg: object, *, state: str = "") -> dict[str, Any]:
     if not isinstance(steps, list) or not steps or not all(isinstance(s, dict) for s in steps):
         raise Invalid("bad_argument", f"path: {path} holds no steps, or one that is not an "
                       "object, so a replay would run nothing")
-    if project_store.STORE in path.parts and "${" in text:
-        if not state and "${state}" in text:
-            raise Invalid("no_session", f"path: {path} writes paths under `${{state}}`, the "
-                          "session's scratch, so it replays in a live session: `start` one first")
-        doc["steps"] = project_store.placed(steps, path, state=state)
-    return doc
+    return stored(doc, path, ("steps",), state=state)
+
+
+def stored(doc: dict[str, Any], path: Path, parts: Iterable[str], *,
+           state: str = "") -> dict[str, Any]:
+    """`doc`, read from `path`, with the placeholders of its `parts` resolved when a store holds
+    it; refused as `no_session` when it uses `${state}` and `state` names no scratch."""
+    if project_store.STORE not in path.parts or "${" not in json.dumps(doc):
+        return doc
+    if not state and "${state}" in json.dumps(doc):
+        raise Invalid("no_session", f"path: {path} writes paths under `${{state}}`, the "
+                      "session's scratch, so it replays in a live session: `start` one first")
+    return {**doc, **{part: project_store.placed(doc[part], path, state=state)
+                      for part in parts if part in doc}}
 
 
 def check_perform_arguments(steps: list[dict[str, Any]] | None, path: object) -> None:

@@ -1,8 +1,9 @@
 """A double Scry server for the replay runner: `start`, `declaration_list`, `state_list`,
 `perform` and `close` over stdio. Its `perform` answers each step as an advance
 landing at `pc` 0x10 and the frame it was asked to run, holds each step's `recorded` to that answer
-as a real server does, and says how many held. The environment makes it break as a server can:
-an error result, a list refused whole, a death mid-call, a count of held steps that lies."""
+as a real server does, refuses a step whose `path` is not absolute as a real server judges it,
+and says how many held. The environment makes it break as a server can: an error result, a list
+refused whole, a death mid-call, a count of held steps that lies."""
 
 from __future__ import annotations
 
@@ -61,6 +62,10 @@ def perform(steps: list[dict[str, Any]], summaries: bool = False) -> dict[str, A
         if step.get("op") == "fails":
             return {"summary": "perform: INVALID", "status": "INVALID", "code": "step_failed",
                     "message": "no such op", "failed_at": i, "steps_completed": i,
+                    "session": {}}
+        if isinstance(step.get("path"), str) and not os.path.isabs(step["path"]):
+            return {"summary": "perform: INVALID", "status": "INVALID",
+                    "code": "bad_argument", "message": f"step {i}: path is not absolute",
                     "session": {}}
         got = {"status": "ok", "pc": "0x10", "frame": step.get("frames", 0)}
         apart = recording.diverged(step.get(recording.RECORDED) or {}, got)

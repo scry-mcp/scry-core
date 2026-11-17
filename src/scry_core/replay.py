@@ -3,7 +3,9 @@
 with no model. It starts the server the document names (`entry`, a file or a module of the
 repository it runs from) over stdio, calls `start` with the document's arguments and the options
 given, checks that the store declares what the recorded start found declared and that every saved
-state the document loads is there, plays the steps in one `perform`, and closes. It is
+state the document loads is there, plays the steps in one `perform`, and closes. A document a
+`.scry/` store holds has the placeholders of its `start` and steps resolved as `perform(path=)`
+resolves them, and one that uses `${state}`, a live session's scratch, is refused. It is
 `scry_core.demo`'s machinery with the document as its steps, and inherits its exit codes: 0 every
 step held, 1 a step failed or diverged in the server's own words, or the server said it held a
 number of steps the document does not record, 2 usage, 3 nothing was demonstrated (a document that
@@ -22,8 +24,9 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from scry_core import demo, prose
+from scry_core import demo, prose, recording
 from scry_core.recording import DOCUMENT_VERSION, RECORDED
+from scry_core.reply_contract import Invalid as Refusal
 from scry_core.verdict import EXIT_INVALID, Invalid
 
 #: The codes of a `perform` that answered in its own words about a step: a verdict (1), where any
@@ -68,7 +71,14 @@ def _read(path: Path) -> dict[str, Any]:
     if not any(s.get(RECORDED) for s in steps):
         raise Invalid(f"{path}: no step carries `{RECORDED}`, so a replay would hold "
                            "nothing to anything: nothing held to")
-    return doc
+    try:
+        return recording.stored(doc, path.absolute(), ("start", "steps"))
+    except Refusal as e:
+        if e.code == "no_session":
+            raise Invalid(f"{path} writes paths under `${{state}}`, a live session's scratch, "
+                          "which a replay cannot name: replay it with `perform(path=)` in a "
+                          "session") from None
+        raise Invalid(str(e)) from None
 
 
 def _needs(states: Sequence[str]) -> Callable[[demo.Reply, demo.Run], str]:

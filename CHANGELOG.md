@@ -8,6 +8,9 @@ What a server author notices. A client's view of each server is in that server's
   (`project_store.LISTS`, which moves there from `promote_paths`), resolve each folder against
   the store's base; only the first was resolved, and the rest reached the emulator relative to
   its working directory.
+- `python -m scry_core.replay` resolves the placeholders of a store's `perform` document, its
+  `start` and its steps, as `perform(path=)` does (`recording.stored`), and refuses one that uses
+  `${state}`, naming it; it sent them as typed text.
 
 ## 0.118.2
 
