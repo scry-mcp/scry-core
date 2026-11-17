@@ -516,6 +516,21 @@ def test_a_moment_the_demo_s_steps_cannot_give_is_refused_before_a_call(
     assert _calls(log) == []
 
 
+@pytest.mark.parametrize(("step", "demo"), [
+    ({"value": "varies here"}, {}), ({}, {"value": "the host's"}), ({}, {})])
+def test_an_example_that_shows_a_field_its_run_hides_is_refused_before_a_call(
+        tmp_path: Path, log: Path, step: dict[str, str], demo: dict[str, str]) -> None:
+    """A page would print `<volatile>` where it promised a value; `pid` is hidden in every demo."""
+    shown = ("value",) if step or demo else ("pid",)
+    steps = [d.Step("boot", "start", {}, _said("value"), ask="Start it.", title="Start",
+                    reads="It starts.", shown=shown, volatile=step)]
+    hidden = shown[0]
+    with pytest.raises(ValueError, match=rf"step boot: its example shows \['{hidden}'\], which "
+                                         "the transcript hides"):
+        d.main(_demo(tmp_path, steps, volatile=demo), ["--transcript", str(tmp_path / "t.md")])
+    assert _calls(log) == []
+
+
 def test_two_steps_of_one_name_are_refused_before_a_call(tmp_path: Path, log: Path) -> None:
     steps = [d.Step("look", "read", {}, _said("value")), d.Step("look", "read", {}, _said("value"))]
     with pytest.raises(ValueError, match=r"names \['look'\] more than once"):
@@ -750,7 +765,9 @@ def test_a_volatile_key_is_hidden_and_a_shown_value_is_not(tmp_path: Path, log: 
 
 def test_a_demo_declares_its_own_volatile_keys_and_its_arguments_keep_theirs(
         tmp_path: Path, log: Path) -> None:
-    demo = _demo(tmp_path, volatile={"value": "the test says so"})
+    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True),
+             d.Step("look", "read", {}, _said("value"))]
+    demo = _demo(tmp_path, steps, volatile={"value": "the test says so"})
     assert _run(demo, tmp_path) == verdict.EXIT_PASS
     norm = _norm(tmp_path)
     assert '"value": "<volatile>"' in norm, "the reply's value was shown"
@@ -847,7 +864,7 @@ def test_first_difference_names_the_line() -> None:
     assert d.first_difference("a", "a\nb") == "line 2: the README has 1, the run 2"
 
 
-START_SHOWN = ("value", "binary", "pid", "where")
+START_SHOWN = ("value", "binary", "where")
 FRONT = "# The server\n\nWhy.\n\n{begin}\nold flow\n{end}\n\nMore why.\n"
 
 
@@ -914,7 +931,7 @@ def _asked(start: dict[str, Any], shown: tuple[str, ...]) -> list[d.Step]:
 
 def test_a_long_reply_is_shown_in_the_flow_abridged(tmp_path: Path, log: Path) -> None:
     flow = _flow_of(tmp_path, {"value": 7, "binary": "x" * 1000})
-    call, reply = flow.split("Reply, 4 of ", 1)
+    call, reply = flow.split("Reply, 3 of ", 1)
     assert " ... (1000 characters)" in reply and "x" * 61 not in reply, flow
     assert f'binary="{"x" * 16}{example.ELIDED}{"x" * 16}"' in call, "a call's long value is cut"
     assert all(len(line) <= example.COLUMNS for line in flow.splitlines()), flow
@@ -954,7 +971,7 @@ def test_a_field_the_front_door_shows_and_the_reply_lacks_fails_the_step(
 
 def test_a_shown_step_s_flow_is_the_normalised_reply(tmp_path: Path, log: Path) -> None:
     flow = _flow_of(tmp_path, {"value": 7})
-    assert '"pid": "<volatile>"' in flow and str(tmp_path) not in flow, flow
+    assert f'"where": "/path/to/{tmp_path.name}"' in flow and str(tmp_path) not in flow, flow
 
 
 def test_a_front_door_whose_markers_go_mid_run_leaves_both_readmes_as_they_were(

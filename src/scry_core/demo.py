@@ -571,6 +571,11 @@ def declared(demo: Demo) -> None:
             if not step.title.strip():
                 raise ValueError(f"step {step.name}: an example carries a `title`, the few "
                                  "words that head it")
+            hidden = {*VOLATILE, *demo.volatile, *step.volatile}
+            if shown_hidden := sorted(set(step.shown or EXCERPT) & hidden):
+                raise ValueError(f"step {step.name}: its example shows {shown_hidden}, which "
+                                 "the transcript hides as the host's: show fields that read "
+                                 "the same on every run")
         if not isinstance(step.options, bool | frozenset):
             raise ValueError(f"step {step.name}: `options` is {step.options!r}, not True, False "
                              "or a frozenset of option names")
