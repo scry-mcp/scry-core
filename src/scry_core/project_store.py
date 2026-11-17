@@ -320,8 +320,7 @@ def _text(text: str, base: Path, state: str, environ: Mapping[str, str], where: 
 
 
 def _paths(value: object, base: Path, separator: str = "") -> object:
-    """`value`'s paths: a relative one resolves against the base, a list of them each, a string
-    `separator` divides each part, anything else as it came."""
+    """`value`'s relative paths resolved against the base, each part where `separator` splits."""
     if isinstance(value, str):
         if separator:
             return separator.join(str(_paths(part, base)) if part else part

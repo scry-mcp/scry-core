@@ -407,18 +407,15 @@ def launch_environment(base: Mapping[str, str], background: bool) -> dict[str, s
     return spawned
 
 
-#: `LockSetForegroundWindow`'s two codes.
 LSFW_LOCK = 1
 LSFW_UNLOCK = 2
 
 
 @contextmanager
 def foreground_kept(background: bool) -> Iterator[None]:
-    """A launch behind, on Windows: no program may take the foreground until the block ends, so
-    an emulator that brings its own window forward as it opens (MAME does, and asks no hint)
-    stays behind; a click or ALT still moves it, as Windows lifts the lock then. The block is the
-    start, which returns once the window is up. Anywhere else, or in front, it does nothing:
-    macOS reads `launch_environment`'s hint."""
+    """A launch behind, on Windows: no program may take the foreground until the block (the
+    start, its window up) ends, so an emulator that brings its window forward stays behind; a
+    click or ALT still moves it. Elsewhere `launch_environment`'s hint does the work."""
     if not background or not _lock_foreground(LSFW_LOCK):
         yield
         return
@@ -429,8 +426,7 @@ def foreground_kept(background: bool) -> Iterator[None]:
 
 
 def _lock_foreground(code: int) -> bool:
-    """`LockSetForegroundWindow(code)`: whether Windows took it, which needs this process to be
-    one allowed to set the foreground; false off Windows."""
+    """`LockSetForegroundWindow(code)`: whether Windows took it; false off Windows."""
     if sys.platform == "win32":
         import ctypes
 
