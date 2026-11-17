@@ -10,6 +10,9 @@ What a server author notices. A client's view of each server is in that server's
 - `narrowing.clip_text` bounds a console's text of no known shape for both servers: whole up to
   `TEXT_MAX` characters, else written whole to the first free `<stem>-N.txt` of the scratch with a
   preview, `output_chars` and `output_path`.
+- `stop_wait.DISARM_WATCHES` is the sentence both servers' `run_to` and `run_for` say of
+  `disarm_watches`, and `tool_replies.DisarmFields` the two fields it adds (`disarmed_watches`,
+  `not_rearmed`), so a reply that runs without the flag does not list them.
 
 ## 0.116.0
 

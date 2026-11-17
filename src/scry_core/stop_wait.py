@@ -32,7 +32,11 @@ GRAMMAR = (f"up to {TERMS_MAX} terms joined by `&&`, each a register of the stop
 #: What `screen_wait`'s reply carries under `on_*` (`fields`), in its description.
 ON_FIELDS = ("under `on_*`, `waited_on`, `firings`, `frames_examined` (the frames looked at "
              "after a firing) and `fired_line` in place of `polls` and `sampled_every`")
-DOC_VALUES = {"CONDITION_GRAMMAR": GRAMMAR, "ON_FIELDS": ON_FIELDS}
+#: What `run_to` and `run_for` take to run a pass no change watch can cut, in both servers' words.
+DISARM_WATCHES = ("`disarm_watches=true` disarms the watches for this pass, so none of them cuts "
+                  "it")
+DOC_VALUES = {"CONDITION_GRAMMAR": GRAMMAR, "ON_FIELDS": ON_FIELDS,
+              "DISARM_WATCHES": DISARM_WATCHES}
 
 
 @dataclass(frozen=True)

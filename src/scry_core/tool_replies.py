@@ -88,6 +88,14 @@ class StopWaitFields(TypedDict, total=False):
     fired_line: Annotated[int | dict[str, Any], When("under `on_*`")]
 
 
+class DisarmFields(TypedDict, total=False):
+    """What `run_to` and `run_for` add when `disarm_watches` held the change watches for a pass,
+    on both servers (`stop_wait.DISARM_WATCHES`): the watches disarmed, and those not back."""
+
+    disarmed_watches: list[Any]
+    not_rearmed: list[Any]
+
+
 class ProfileRefusedFields(TypedDict, total=False):
     """`start`'s refusal of a `profile` no store holds, on both servers
     (`scry_core.project_store.locate`)."""
