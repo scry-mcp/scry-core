@@ -214,3 +214,14 @@ def test_a_caller_s_text_reads_its_line_ends_as_text_mode_does(tmp_path: Path) -
     f = tmp_path / "t.txt"
     f.write_bytes(b"\xef\xbb\xbfa\r\nb\rc\n")
     assert judges.read_text("types", str(f), "types file") == "a\nb\nc\n"
+
+
+@pytest.mark.parametrize(("pattern", "said"), [
+    (123, r"^pattern is a regular expression; got 123$"),
+    ("", r"^pattern is a non-empty regular expression \('\.' for every line\)$"),
+    ("(", r"^pattern='\(' does not compile: "),
+])
+def test_one_regex_judge_refuses_a_non_string_an_empty_one_and_one_that_does_not_compile(
+        pattern: Any, said: str) -> None:
+    with pytest.raises(Invalid, match=said):
+        judges.regex("pattern", pattern)

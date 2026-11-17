@@ -4,6 +4,8 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- `judges.regex(name, pattern)` judges a caller's regular expression for both servers: a
+  non-string, an empty one and one that does not compile are refused naming the argument.
 - `SequenceMachine.missed` holds the one rule both servers follow: a `log_wait` or
   `screen_wait` TIMEOUT, or an input's `verify` one, ends a list; a run's TIMEOUT does not.
 - A list `sequence.run` ends because a step missed what it waited to see ends its `note` with
