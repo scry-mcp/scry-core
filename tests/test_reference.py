@@ -15,7 +15,7 @@ import pytest
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
-from scry_core import demo, reference, reply_schema, roster
+from scry_core import demo, example, reference, reply_schema, roster
 from scry_core.demo import Normaliser
 from scry_core.reference import begin_marker, end_marker
 from scry_core.strict_arguments import registered, strict_arguments
@@ -379,9 +379,9 @@ def test_an_example_keeps_the_shape_of_a_long_reply_and_spells_the_host_s_paths(
              "path": str(tmp_path / "out.png"), "pid": 4242}
     shown = reference.examples_from([_record("peek", "OK", reply)], {"peek"}, norm)["peek"]
     rows = shown["reply"]["rows"]
-    assert rows[:demo.ABRIDGED_ITEMS] == list(range(demo.ABRIDGED_ITEMS))
-    assert rows[-1] == f"... {20 - demo.ABRIDGED_ITEMS} more", rows
-    assert shown["reply"]["text"] == "x" * demo.ABRIDGED_CHARS + " ... (1000 characters)"
+    assert rows[:example.ABRIDGED_ITEMS] == list(range(example.ABRIDGED_ITEMS))
+    assert rows[-1] == f"... {20 - example.ABRIDGED_ITEMS} more", rows
+    assert shown["reply"]["text"] == "x" * example.ABRIDGED_CHARS + " ... (1000 characters)"
     assert shown["reply"]["path"] == "./out.png"
     assert shown["reply"]["pid"] == demo.VOLATILE_MARK, "a pid is the run's, not the tool's"
 
@@ -784,7 +784,7 @@ def test_an_example_call_is_kept_whole_as_a_reader_would_type_it(tmp_path: Path)
            "args": {"keys": list(range(9))}}
     shown = reference.examples_from([rec], {"peek"}, norm)["peek"]
     assert shown["call"] == {"keys": list(range(9))}, shown
-    assert shown["reply"]["rows"][-1] == f"... {9 - demo.ABRIDGED_ITEMS} more", shown
+    assert shown["reply"]["rows"][-1] == f"... {9 - example.ABRIDGED_ITEMS} more", shown
 
 
 def test_an_examples_entry_that_is_not_an_object_is_invalid(

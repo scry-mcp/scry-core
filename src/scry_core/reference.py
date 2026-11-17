@@ -48,6 +48,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.tools import Tool
 
 from scry_core import demo, file_names, reply_contract
+from scry_core import example as shape
 from scry_core.reply_schema import model_gap, own_fields
 from scry_core.roster import Roster
 from scry_core.strict_arguments import refused, registered
@@ -205,8 +206,8 @@ def _reply_fields(model: type, envelope: type) -> list[str]:
 def _example(example: Mapping[str, Any] | None) -> list[str]:
     if example is None:
         return ["No example yet: a live run's transcript gives it."]
-    return ["Example, from a live run:", "", demo.fenced(example["call"]), "",
-            demo.fenced(example["reply"])]
+    return ["Example, from a live run:", "", shape.fenced(example["call"]), "",
+            shape.fenced(example["reply"])]
 
 
 def tool_block(tool: Tool, model: type, envelope: type,
@@ -471,7 +472,7 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
             (ok if reply["status"] == "ok" else refused).setdefault(str(name), rec)
     return {name: {"from": f"{rec.get('section', '')}: {rec.get('label', '')}",
                    "call": _steady(norm.reply(dict(rec.get("args") or {}), RUN_KEYS)),
-                   "reply": demo.abridged(_steady(norm.reply(
+                   "reply": shape.abridged(_steady(norm.reply(
                        {k: v for k, v in rec["reply"].items() if k not in LEFT_OUT},
                        RUN_KEYS)))}
             for name, rec in sorted({**refused, **ok}.items())}

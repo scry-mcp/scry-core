@@ -147,6 +147,9 @@ def sound(binding: Binding, milliseconds: int, wav: str) -> list[Step]:
                  volatile=in_run),
             Step("heard", "audio_compare", measure, heard, volatile=in_run),
             Step("exact", "audio_compare", diff, exact(binding.sound),
-                 highlight=("The recording is compared with the platform's reference with "
-                            "alignment off: `exact` is true only when every sample is equal, so a "
-                            "changed sound, a different mixer or a drifted start fails the run."))]
+                 title="Compare a recording with its reference",
+                 ask=("Compare the music you just recorded with the reference recording, sample "
+                      "by sample."),
+                 shown=("summary", "exact", "class"),
+                 reads=("`exact` is true only when every sample is equal, so a changed sound, a "
+                        "different mixer or a late start fails the run."))]

@@ -92,10 +92,13 @@ def steps(binding: Binding) -> list[Step]:
         Step("to the high scores", "run_to",
              {"ref": "Draw_High_Scores_Screen", "control": CONTROL, "seconds": WAIT_S},
              arrived("Draw_High_Scores_Screen"),
-             highlight=("`run_to` takes the game's own routine name from the build's symbol map "
-                        "and runs the machine until that routine begins. `control` is a place "
-                        "known to run, and the reply counts its hits meanwhile, so a run that "
-                        "missed its target says whether the machine was running at all.")),
+             title="Run to a routine by its name",
+             ask=("Run the game until it starts drawing its high-score table, and count "
+                  f"`{CONTROL}` on the way."),
+             shown=("summary", "verdict", "control_hits"),
+             reads=("`TARGET` means the game stopped where `Draw_High_Scores_Screen` begins. "
+                    "`control_hits` counts an address that runs on every tick, so a run that "
+                    "misses its target still says the game was running.")),
         *shown("drawn", "hiscores", "the table drawn"),
         Step("is hiscores", "screen_map_find", {}, found("hiscores")),
         Step("no credits", "read_memory", {"ref": "Credits", "length": 2},
@@ -105,10 +108,12 @@ def steps(binding: Binding) -> list[Step]:
         Step("is insert", "screen_map_find", {}, found("insert")),
         Step("credits", "read_memory", {"ref": "Credits", "length": 2},
              word_is("Credits", CREDITS_PER_COIN),
-             highlight=("The script names the game's own variables, and each server resolves them "
-                        "through its build's map: `Credits` is read by name, the same call on the "
-                        "arcade board and on the PC port. The coin the demo dropped is counted as "
-                        "three credits.")),
+             title="Read a variable by its name",
+             ask="Read the game's `Credits` variable now that the coin is in.",
+             shown=("summary", "addr", "hex"),
+             reads=("`Credits` is a name from the game's own symbol map, so the same call works "
+                    "on the arcade board and on the PC port. `hex` is the value, low byte first: "
+                    "three credits for one coin.")),
         pressed["START"],
         Step("to the level", "run_to", {"ref": "Level_Write", "control": CONTROL,
                                         "seconds": WAIT_S}, arrived("Level_Write")),

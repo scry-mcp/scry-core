@@ -2,6 +2,24 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- A demo is shown moving. `demo.Moment(after, until, caption)` names a stretch of the run, and
+  `--update-readme` cuts the demo's `loop.webp` from the run's own recordings (`motion`): ffmpeg
+  decodes them and libwebp's `img2webp` assembles the file, and without either the update is
+  refused by name. A moment is the file a `record` step wrote (`demo.recording`), or a span of
+  the video of a session that records itself (`Demo.video`), cut by the `frame` its replies
+  carry. A loop holds at most 3 moments of 1 to 3 s, 6 s in all, in 400 KB; past any of them
+  the update is refused. `Demo.loop`, `Loop` and `loop.mp4` are gone.
+- A demo's README block holds its examples: the steps that carry `ask`, `title` and `reads`,
+  each written as the ask, the call, an excerpt of the reply (the fields `shown` names,
+  `summary` when it names none) and how to read it (`example`). `--update-readme` asks for 2 to
+  4 of them and writes `TRANSCRIPT.md` for every demo. The same examples, without their whole
+  replies, are what a demo writes into its server's README. `Step.highlight` is gone.
+- A demo's README carries a second generated block, between `<!-- demo-motion:begin -->` and
+  `<!-- demo-motion:end -->`: the picture, and each moment's sentence.
+- `demo.abridged` and `demo.fenced` are `example.abridged` and `example.fenced`.
+
 ## 0.118.3
 
 - `window.foreground_kept(background)` holds a launch behind on Windows: no program may take the

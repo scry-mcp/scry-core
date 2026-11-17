@@ -7,23 +7,26 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import subprocess
 import sys
-from pathlib import Path, PureWindowsPath
-from types import SimpleNamespace
+from pathlib import Path
 from typing import Any
 
 import pytest
 from mcp.client import Client
 
 from scry_core import demo as d
-from scry_core import png, verdict
+from scry_core import example, motion, png, verdict
 from scry_core.verdict import EXIT_INVALID
 
 SERVER = Path(__file__).resolve().parent / "fixtures" / "demo" / "server.py"
-needs_ffmpeg = pytest.mark.skipif(shutil.which("ffmpeg") is None,
-                                  reason="a loop is converted by ffmpeg on PATH")
-README = f"# A demo\n\nBefore.\n\n{d.BEGIN}\nold block\n{d.END}\n\nAfter.\n"
+FIXTURE_AVI = SERVER.with_name("screen.avi")
+#: What the fixture's recording holds: 72 frames at 60 a second.
+FIXTURE_FRAMES, FIXTURE_MS = 72, 1200
+needs_loop_programs = pytest.mark.skipif(
+    any(shutil.which(name) is None for name in motion.PROGRAMS),
+    reason="a loop is made by ffmpeg and img2webp on PATH")
+README = (f"# A demo\n\n{d.MOTION_BEGIN}\nold motion\n{d.MOTION_END}\n\nBefore.\n\n"
+          f"{d.BEGIN}\nold block\n{d.END}\n\nAfter.\n")
 
 
 def _said(field: str) -> Any:
@@ -40,8 +43,11 @@ def _demo(tmp_path: Path, steps: list[d.Step] | None = None, **kw: Any) -> d.Dem
     if not readme.exists():
         readme.write_text(README, encoding="utf-8")
     default = [
-        d.Step("boot", "start", {"value": 7}, _said("value"), options=True),
-        d.Step("look", "read", {}, _said("value")),
+        d.Step("boot", "start", {"value": 7}, _said("value"), options=True,
+               ask="Start the machine with the value 7.", title="Start it",
+               reads="The reply says where the machine stands.", shown=("value",)),
+        d.Step("look", "read", {}, _said("value"), ask="Read the value back.",
+               title="Read it back", reads="`value` is what the start set."),
         d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
                lambda reply, run: "a picture"),
         d.Step("end", "close", {}, lambda reply, run: "closed"),
@@ -303,136 +309,72 @@ def test_update_readme_rewrites_the_block_and_the_capture(
     demo = _demo(tmp_path)
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
     text = _readme(demo).read_text()
-    assert d.block_of(text) == _norm(tmp_path).strip("\n")
-    assert text.startswith("# A demo\n\nBefore.\n\n") and text.endswith("\n\nAfter.\n")
+    examples = tmp_path / "out" / "transcript-examples.md"
+    assert d.block_of(text) == examples.read_text().strip("\n")
+    assert text.startswith("# A demo\n\n") and text.endswith("\n\nAfter.\n")
+    assert "old motion" in text, "a demo with no moment had its motion block rewritten"
     assert (_readme(demo).parent / "screen.png").read_bytes() == _shot(tmp_path).read_bytes()
-    normalised = tmp_path / "out" / "transcript-normalised.md"
-    assert d.readme_drift(_readme(demo), normalised) == ""
-    normalised.write_text(normalised.read_text().replace("value 7", "value 8", 1))
-    assert d.readme_drift(_readme(demo), normalised).startswith("line 1: the README has ")
+    assert d.readme_drift(_readme(demo), examples) == ""
+    examples.write_text(examples.read_text().replace("Start it", "Stop it", 1))
+    assert d.readme_drift(_readme(demo), examples).startswith("line 1: the README has ")
 
 
-def _loop_demo(tmp_path: Path) -> d.Demo:
-    return _demo(tmp_path, loop=d.Loop("shot"))
+def _film(name: str = "film") -> d.Step:
+    return d.recording(name, FIXTURE_FRAMES)
 
 
-def test_a_loop_is_recorded_right_after_the_step_it_follows(
+def _moment_demo(tmp_path: Path, **kw: Any) -> d.Demo:
+    """The default demo with a recording after its picture, shown as its one moment."""
+    steps = [
+        d.Step("boot", "start", {"value": 7}, _said("value"), options=True,
+               ask="Start the machine with the value 7.", title="Start it",
+               reads="The reply says where the machine stands.", shown=("value",)),
+        d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
+               lambda reply, run: "a picture", ask="Take a picture of the screen.",
+               title="Take a picture", reads="`path` is the file the picture went to."),
+        _film(),
+        d.Step("end", "close", {}, lambda reply, run: "closed"),
+    ]
+    fields: dict[str, Any] = {"moments": (d.Moment("shot", "film", "The pattern moves."),),
+                              "alt": "A test pattern moving"}
+    fields.update(kw)
+    return _demo(tmp_path, steps, **fields)
+
+
+def test_a_recording_a_moment_shows_is_a_call_of_the_demo_s_own(
         tmp_path: Path, log: Path) -> None:
-    assert _run(_loop_demo(tmp_path), tmp_path) == verdict.EXIT_PASS
-    assert [c["summary"] for c in _calls(log)][-3:] == ["picture", "record: 240 frames",
-                                                        "closed"]
-    assert (tmp_path / "out" / "loop.avi").is_file(), "the run wrote no loop"
+    assert _run(_moment_demo(tmp_path), tmp_path) == verdict.EXIT_PASS
+    assert [c["summary"] for c in _calls(log)][-3:] == [
+        "picture", f"record: {FIXTURE_FRAMES} frames", "closed"]
+    assert (tmp_path / "out" / "film.avi").is_file(), "the run wrote no recording"
     normalised = _norm(tmp_path)
-    assert "**4. `record`**" in normalised and "**5. `close`**" in normalised, normalised
-    assert "./out/loop.avi" in normalised, "the loop's path was not the run's"
+    assert "**3. `record`**" in normalised and "**4. `close`**" in normalised, normalised
+    assert "./out/film.avi" in normalised, "the recording's path was not the run's"
     assert '"frame_before": "<volatile>"' in normalised, \
         "where the recording began is the host's and must not be compared"
-    assert '"frames": 240' in normalised, "the frames asked are the demo's own"
+    assert f'"frames": {FIXTURE_FRAMES}' in normalised, "the frames asked are the demo's own"
+    block = (tmp_path / "out" / "transcript-motion.md").read_text()
+    assert block == ('<picture><source media="(prefers-reduced-motion: reduce)" '
+                     'srcset="screen.png"><img src="loop.webp" alt="A test pattern moving">'
+                     f"</picture>\n\n1. The pattern moves.\n\n<!-- moments-ms: {FIXTURE_MS} -->\n")
 
 
-def test_a_loop_a_bound_or_a_stop_cut_is_a_failed_step(tmp_path: Path, log: Path) -> None:
-    demo = _loop_demo(tmp_path)
-    assert _run(demo, tmp_path) == verdict.EXIT_PASS
-    served = d._loop_step(d.Loop("shot"))
-    (tmp_path / "out" / "loop.avi").write_bytes(b"the recording")
-    for cut in ("TIMEOUT", "OTHER_STOP"):
-        reply = d.Reply({"status": "ok", "verdict": cut, "path": str(tmp_path / "out" / "loop.avi"),
+def test_a_recording_a_bound_or_a_stop_cut_is_a_failed_step(tmp_path: Path) -> None:
+    check = d.recorded(FIXTURE_FRAMES)
+    film = tmp_path / "film.avi"
+    film.write_bytes(b"the recording")
+    for ended in ("TIMEOUT", "OTHER_STOP"):
+        reply = d.Reply({"status": "ok", "verdict": ended, "path": str(film),
                          "avi_frames": 1, "began": True, "ended": True})
-        with pytest.raises(d.StepFailed, match=f"ended '{cut}'"):
-            served.check(reply, d.Run(dir=tmp_path))
+        with pytest.raises(d.StepFailed, match=f"ended '{ended}'"):
+            check(reply, d.Run(dir=tmp_path))
 
 
-@needs_ffmpeg
-def test_update_readme_converts_the_loop_beside_the_capture(
-        tmp_path: Path, log: Path) -> None:
-    demo = _loop_demo(tmp_path)
-    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    loop = _readme(demo).with_name(d.LOOP_MP4)
-    assert loop.is_file(), "the loop was not converted"
-    assert 0 < loop.stat().st_size <= d.LOOP_BUDGET_BYTES, loop.stat().st_size
-    assert loop.read_bytes()[4:8] == b"ftyp", "not an MP4"
-
-
-@needs_ffmpeg
-def test_a_loop_past_its_budget_is_invalid_naming_its_file_and_bytes(
-        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str]) -> None:
-    demo = _loop_demo(tmp_path)
-    committed = _readme(demo).with_name(d.LOOP_MP4)
-    committed.write_bytes(b"the loop in the repository")
-    monkeypatch.setattr(d, "LOOP_BUDGET_BYTES", 10)
-    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
-    said = capsys.readouterr().out
-    assert f"INVALID: the loop {committed} is " in said and " bytes, past the 10-byte budget" \
-        in said, said
-    assert _readme(demo).read_text() == README, "the README was written over a refused loop"
-    assert committed.read_bytes() == b"the loop in the repository", \
-        "a refused conversion replaced the committed loop"
-
-
-def test_a_run_that_cannot_write_its_readmes_leaves_the_committed_loop_as_it_was(
-        tmp_path: Path, log: Path) -> None:
-    front = _front(tmp_path)
-
-    def vanish(reply: d.Reply, run: d.Run) -> str:
-        front.write_text("# no markers now\n")
-        return "markers gone"
-
-    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True,
-                    shown=START_SHOWN),
-             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"}, vanish)]
-    demo = _demo(tmp_path, steps, front=front, loop=d.Loop("shot"))
-    committed = _readme(demo).with_name(d.LOOP_MP4)
-    committed.write_bytes(b"the loop in the repository")
-    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
-    assert committed.read_bytes() == b"the loop in the repository"
-
-
-@needs_ffmpeg
-def test_a_loop_is_converted_from_a_tiny_avi_within_the_budget(tmp_path: Path) -> None:
-    run, demos = tmp_path / "run", tmp_path / "demos"
-    run.mkdir()
-    demos.mkdir()
-    avi = run / d.LOOP_AVI
-    avi.write_bytes((Path(__file__).resolve().parent / "fixtures" / "demo"
-                     / "screen.avi").read_bytes())
-    data = d._convert_loop(avi, demos / d.LOOP_MP4)
-    assert data[4:8] == b"ftyp" and 0 < len(data) <= d.LOOP_BUDGET_BYTES, len(data)
-    assert not (demos / d.LOOP_MP4).exists(), "the conversion wrote the committed path itself"
-    assert not (run / d.LOOP_MP4).exists(), "the staged conversion was left in the run"
-
-
-@pytest.mark.parametrize("found", ["/opt/homebrew/bin/ffmpeg", r"C:\tools\ffmpeg\bin\ffmpeg.EXE"])
-def test_the_loop_is_converted_to_a_muted_h264_mp4_trimmed_by_time(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, found: str) -> None:
-    """H.264 to a muted MP4 at most three seconds long, trimmed by time, startable early."""
-    monkeypatch.setattr(shutil, "which", lambda name: found if name == "ffmpeg" else None)
-    run = tmp_path / "run"
-    run.mkdir()
-    avi = run / d.LOOP_AVI
-    avi.write_bytes(b"an avi")
-    seen: list[list[str]] = []
-
-    def fake(argv: list[str], **_: Any) -> SimpleNamespace:
-        seen.append(argv)
-        Path(argv[-1]).write_bytes(b"an mp4")
-        return SimpleNamespace(returncode=0, stderr="")
-
-    monkeypatch.setattr(subprocess, "run", fake)
-    assert d._convert_loop(avi, tmp_path / d.LOOP_MP4) == b"an mp4"
-    (argv,) = seen
-    assert argv[0] == found and PureWindowsPath(found).stem.lower() == "ffmpeg"
-    assert argv[1:] == [
-        "-y", "-i", str(avi), "-t", str(d.LOOP_SECONDS), "-an", "-c:v", "libx264", "-pix_fmt",
-        "yuv420p", "-crf", "30", "-preset", "slow", "-movflags", "+faststart",
-        str(run / d.LOOP_MP4)]
-
-
-def test_the_loop_s_check_judges_the_reply_and_not_only_a_file_that_happens_to_be_there(
+def test_a_recording_s_check_judges_the_reply_and_not_only_a_file_that_happens_to_be_there(
         tmp_path: Path) -> None:
-    check = d._loop_step(d.Loop("shot")).check
+    check = d.recorded(FIXTURE_FRAMES, lambda reply, run: "the game plays on")
     run = d.Run(dir=tmp_path)
-    stale = tmp_path / "loop.avi"
+    stale = tmp_path / "film.avi"
     stale.write_bytes(b"an earlier run's recording")
     with pytest.raises(d.StepFailed, match="names no `path`"):
         check(d.Reply({"status": "ok"}), run)
@@ -442,108 +384,239 @@ def test_the_loop_s_check_judges_the_reply_and_not_only_a_file_that_happens_to_b
              "path": str(stale)}
     with pytest.raises(d.StepFailed, match="names no `avi_frames`"):
         check(d.Reply(ended), run)
+    assert check(d.Reply({**ended, "avi_frames": 240}), run) == "the game plays on"
     stale.unlink()
     with pytest.raises(d.StepFailed, match="was not written by this call"):
         check(d.Reply({**ended, "avi_frames": 240}), run)
 
 
-def test_an_earlier_run_s_loop_is_not_left_for_this_run(
-        tmp_path: Path, log: Path) -> None:
-    stale = tmp_path / "out" / "loop.avi"
+def test_an_earlier_run_s_recording_is_not_left_for_this_run(tmp_path: Path, log: Path) -> None:
+    """`record` writes only a file that is not there yet, so the step clears its own."""
+    stale = tmp_path / "out" / "film.avi"
     stale.parent.mkdir(parents=True)
     stale.write_bytes(b"an earlier run's recording")
-    demo = _demo(tmp_path, steps=[d.Step("no", "refuse", {}, lambda reply, run: "")],
-                 loop=d.Loop("no"))
-    assert _run(demo, tmp_path) == verdict.EXIT_FAIL
-    assert not stale.exists(), "an earlier run's loop was left for this run"
+    assert _run(_moment_demo(tmp_path), tmp_path) == verdict.EXIT_PASS
+    assert stale.read_bytes() == FIXTURE_AVI.read_bytes(), "an earlier run's recording was kept"
 
 
-def test_a_loop_whose_avi_this_run_did_not_write_is_invalid(tmp_path: Path) -> None:
-    with pytest.raises(verdict.Invalid, match="wrote no loop.avi"):
-        d._convert_loop(tmp_path / "loop.avi", tmp_path / "loop.mp4")
+@needs_loop_programs
+def test_update_readme_makes_the_loop_beside_the_capture_and_writes_the_motion_block(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    demo = _moment_demo(tmp_path)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    loop = _readme(demo).with_name(motion.LOOP_NAME)
+    data = loop.read_bytes()
+    assert data[:4] == b"RIFF" and data[8:12] == b"WEBP" and b"ANIM" in data[:64], data[:64]
+    assert 0 < len(data) <= motion.BUDGET_BYTES, len(data)
+    text = _readme(demo).read_text()
+    assert d.block_of(text, d.MOTION_BEGIN, d.MOTION_END) == (
+        tmp_path / "out" / "transcript-motion.md").read_text().strip("\n")
+    assert "old motion" not in text and "1. The pattern moves." in text
+    assert f"{loop} rewritten: {len(data)} bytes, lossless, 1.2 s in 1 moment" \
+        in capsys.readouterr().out
 
 
-def test_a_loop_with_no_ffmpeg_on_the_path_is_invalid(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    avi = tmp_path / "loop.avi"
-    avi.write_bytes(b"RIFF")
+@needs_loop_programs
+def test_a_loop_past_its_budget_is_invalid_naming_its_bytes(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    demo = _moment_demo(tmp_path)
+    committed = _readme(demo).with_name(motion.LOOP_NAME)
+    committed.write_bytes(b"the loop in the repository")
+    monkeypatch.setattr(motion, "BUDGET_BYTES", 10)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    said = capsys.readouterr().out
+    assert "INVALID: the loop is " in said and "bytes lossless and " in said \
+        and "bytes lossy, past the 10-byte budget" in said, said
+    assert _readme(demo).read_text() == README, "the README was written over a refused loop"
+    assert committed.read_bytes() == b"the loop in the repository", \
+        "a refused loop replaced the committed one"
+
+
+def test_a_run_that_cannot_write_its_readmes_leaves_the_committed_loop_as_it_was(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(motion, "programs", lambda: {"ffmpeg": "ffmpeg", "img2webp": "img2webp"})
+    front = _front(tmp_path)
+
+    def vanish(reply: d.Reply, run: d.Run) -> str:
+        front.write_text("# no markers now\n")
+        return "markers gone"
+
+    demo = _moment_demo(tmp_path, front=front)
+    demo = d.Demo(**{**demo.__dict__, "steps": [
+        *demo.steps[:-1], d.Step("end", "close", {}, vanish)]})
+    committed = _readme(demo).with_name(motion.LOOP_NAME)
+    committed.write_bytes(b"the loop in the repository")
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    assert committed.read_bytes() == b"the loop in the repository"
+    assert _readme(demo).read_text() == README
+
+
+def test_a_loop_with_a_program_missing_is_invalid_by_name_and_runs_nothing(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(shutil, "which", lambda name: "/bin/ffmpeg" if name == "ffmpeg" else None)
+    assert _run(_moment_demo(tmp_path), tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    assert "INVALID: img2webp is not on PATH, and a demo's loop.webp is made with ffmpeg and " \
+        "img2webp" in capsys.readouterr().out
+    assert _calls(log) == [], "the server ran for a loop that could not be made"
     monkeypatch.setattr(shutil, "which", lambda name: None)
-    with pytest.raises(verdict.Invalid, match="ffmpeg is not on PATH"):
-        d._convert_loop(avi, tmp_path / "loop.mp4")
+    with pytest.raises(verdict.Invalid, match="ffmpeg and img2webp are not on PATH"):
+        motion.programs()
 
 
-@needs_ffmpeg
-def test_a_loop_ffmpeg_cannot_read_is_invalid_with_its_own_words(
-        tmp_path: Path) -> None:
-    avi, mp4 = tmp_path / "loop.avi", tmp_path / "loop.mp4"
-    avi.write_bytes(b"not an AVI at all")
-    with pytest.raises(verdict.Invalid, match="ffmpeg refused to convert"):
-        d._convert_loop(avi, mp4)
-    assert not mp4.exists()
-
-
-@needs_ffmpeg
-def test_stale_ignores_a_loop_s_bytes_and_names_one_that_is_not_committed(
+def test_a_readme_without_its_motion_markers_is_invalid_and_runs_nothing(
         tmp_path: Path, log: Path) -> None:
-    demo = _loop_demo(tmp_path)
+    demo = _moment_demo(tmp_path)
+    bare = f"# A demo\n\n{d.BEGIN}\nold block\n{d.END}\n"
+    _readme(demo).write_text(bare)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    assert _readme(demo).read_text() == bare and _calls(log) == []
+
+
+@needs_loop_programs
+def test_stale_ignores_a_loop_s_bytes_and_names_what_departs_from_the_run(
+        tmp_path: Path, log: Path) -> None:
+    demo = _moment_demo(tmp_path)
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
     assert d.stale(demo, tmp_path / "out") == []
-    loop = _readme(demo).with_name(d.LOOP_MP4)
+    loop = _readme(demo).with_name(motion.LOOP_NAME)
     loop.write_bytes(loop.read_bytes() + b"another host's encoder")
     assert d.stale(demo, tmp_path / "out") == [], "a recording was compared byte for byte"
     readme = _readme(demo)
-    readme.write_text(readme.read_text().replace("value 7", "value 9", 1))
+    readme.write_text(readme.read_text().replace("The pattern moves.", "It moves.", 1))
     found = d.stale(demo, tmp_path / "out")
-    assert len(found) == 1 and found[0].startswith("x's README: line "), found
-    readme.write_text(readme.read_text().replace("value 9", "value 7", 1))
+    assert len(found) == 1 and found[0].startswith("x's motion block: line 3: "), found
+    readme.write_text(readme.read_text().replace("It moves.", "The pattern moves.", 1))
     loop.unlink()
-    assert d.stale(demo, tmp_path / "out") == [f"x's {d.LOOP_MP4} is not committed"]
+    assert d.stale(demo, tmp_path / "out") == [f"x's {motion.LOOP_NAME} is not committed"]
     (readme.parent / "screen.png").unlink()
     assert d.stale(demo, tmp_path / "out") == ["x's screen.png is not this run's capture",
-                                               f"x's {d.LOOP_MP4} is not committed"]
+                                               f"x's {motion.LOOP_NAME} is not committed"]
 
 
-def test_a_loop_that_follows_no_step_is_refused_before_a_call(
-        tmp_path: Path, log: Path) -> None:
-    with pytest.raises(ValueError, match="which is no step of it"):
-        d.main(_demo(tmp_path, loop=d.Loop("nope")), ["--transcript",
-                                                     str(tmp_path / "t.md")])
+@pytest.mark.parametrize(("moments", "kw", "why"), [
+    ((d.Moment("shot", "nope", "It moves."),), {}, r"names \['nope'\], which is no step"),
+    ((d.Moment("boot", "film", "It moves."),), {}, "is a recording, so it shows what followed"),
+    ((d.Moment("boot", "shot", "It moves."),), {}, "and the demo's `video`"),
+    ((d.Moment("shot", "boot", "It moves."),), {"video": lambda run: run.dir},
+     "needs 'boot' after 'shot'"),
+    ((d.Moment("shot", "film", "It moves. Twice."),), {}, "its caption is one sentence"),
+    ((d.Moment("shot", "film", ""),), {}, "its caption is one sentence"),
+    ((d.Moment("shot", "film", "It moves.", skip=-1),), {}, "neither is negative"),
+    ((d.Moment("shot", "film", "It moves."),), {"alt": " "}, "does not say what moves"),
+    ((d.Moment("shot", "film", "It moves."),) * 4, {}, "a loop shows at most 3"),
+])
+def test_a_moment_the_demo_s_steps_cannot_give_is_refused_before_a_call(
+        tmp_path: Path, log: Path, moments: tuple[d.Moment, ...], kw: dict[str, Any],
+        why: str) -> None:
+    with pytest.raises(ValueError, match=why):
+        d.main(_moment_demo(tmp_path, moments=moments, **kw),
+               ["--transcript", str(tmp_path / "t.md")])
     assert _calls(log) == []
 
 
-def _highlighted(tmp_path: Path) -> d.Demo:
-    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True,
-                    highlight="The boot call says where the machine stands."),
-             d.Step("look", "read", {}, _said("value")),
-             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
-                    lambda reply, run: "a picture", highlight="One call, one picture."),
-             d.Step("end", "close", {}, lambda reply, run: "closed")]
-    return _demo(tmp_path, steps)
+def _replies(**frames: Any) -> dict[str, d.Reply]:
+    return {name: d.Reply({"status": "ok", **body}) for name, body in frames.items()}
 
 
-def test_a_highlighted_demo_s_block_carries_its_highlights_and_links_the_whole_run(
-        tmp_path: Path, log: Path) -> None:
-    demo = _highlighted(tmp_path)
-    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    block = d.block_of(_readme(demo).read_text())
-    assert "The boot call says where the machine stands." in block
-    assert "One call, one picture." in block
-    assert "**1. `start`**" in block and "**3. `picture`**" in block
-    assert "**2. `read`**" not in block and "**4. `close`**" not in block
-    assert f"[{d.FULL_NAME}]({d.FULL_NAME})" in block and "4 calls" in block
-    assert (_readme(demo).parent / d.FULL_NAME).read_text() == _norm(tmp_path)
+def _session_video(tmp_path: Path) -> Path:
+    """A session's own video in two files, as a change of video mode leaves it."""
+    folder = tmp_path / "capture"
+    folder.mkdir()
+    for name in ("x_000.avi", "x_001.avi"):
+        (folder / name).write_bytes(FIXTURE_AVI.read_bytes())
+    return folder
 
 
-def test_a_demo_with_no_highlight_keeps_the_whole_run_in_its_block(
+def test_a_moment_between_two_steps_is_cut_from_the_session_s_video_by_the_replies_frames(
+        tmp_path: Path) -> None:
+    """The video's last frame is the last one a reply counted: 144 frames ending at frame 150,
+    so the stretch after frame 100 begins at the video's frame 94, the second file's 22."""
+    folder = _session_video(tmp_path)
+    demo = _moment_demo(tmp_path, video=lambda run: folder, moments=(
+        d.Moment("boot", "shot", "It moves."),
+        d.Moment("boot", "shot", "It moves on.", skip=6, frames=20)))
+    run = d.Run(dir=tmp_path, replies=_replies(
+        boot={"frame": 100}, shot={"ran": [{"reply": {"frame": 110}}, {"reply": {"frame": 130}}]},
+        film={"note": "counts none"}, end={"frame": 150}))
+    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 22, 30),
+                                 motion.Cut(folder / "x_001.avi", 28, 20)]
+
+
+@pytest.mark.parametrize(("frames", "why"), [
+    ({"boot": {"frame": 60}, "shot": {"frame": 100}, "end": {"frame": 150}},
+     "which no one file of"),
+    ({"boot": {}, "shot": {"frame": 100}, "end": {"frame": 150}},
+     "the reply of step 'boot' counts no `frame`"),
+    ({"boot": {"frame": True}, "shot": {"frame": 100}}, "the reply of step 'boot' counts no"),
+])
+def test_a_moment_the_session_s_video_does_not_hold_is_invalid(
+        tmp_path: Path, frames: dict[str, Any], why: str) -> None:
+    folder = _session_video(tmp_path)
+    demo = _moment_demo(tmp_path, video=lambda run: folder,
+                        moments=(d.Moment("boot", "shot", "It moves."),))
+    with pytest.raises(verdict.Invalid, match=why):
+        d.cuts(demo, d.Run(dir=tmp_path, replies=_replies(**frames)))
+    empty = tmp_path / "none"
+    empty.mkdir()
+    with pytest.raises(verdict.Invalid, match="the session wrote no video"):
+        d.cuts(d.Demo(**{**demo.__dict__, "video": lambda run: empty}),
+               d.Run(dir=tmp_path, replies=_replies(**frames)))
+
+
+def test_a_moment_between_two_steps_of_a_demo_with_no_video_is_invalid(tmp_path: Path) -> None:
+    demo = _moment_demo(tmp_path, moments=(d.Moment("boot", "shot", "It moves."),))
+    with pytest.raises(verdict.Invalid, match="the demo x names no `video` for its moments"):
+        d.cuts(demo, d.Run(dir=tmp_path, replies=_replies(boot={"frame": 1}, shot={"frame": 2})))
+
+
+def test_a_moment_that_skips_its_whole_stretch_is_invalid(tmp_path: Path) -> None:
+    demo = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.", skip=72),))
+    run = d.Run(dir=tmp_path, replies=_replies(film={"path": str(FIXTURE_AVI),
+                                                     "avi_frames": FIXTURE_FRAMES}))
+    with pytest.raises(verdict.Invalid, match="skips 72 frames of a stretch of 72"):
+        d.cuts(demo, run)
+
+
+def test_the_block_carries_the_steps_to_try_each_in_the_one_shape(
         tmp_path: Path, log: Path) -> None:
     demo = _demo(tmp_path)
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    assert not (_readme(demo).parent / d.FULL_NAME).exists()
+    block = d.block_of(_readme(demo).read_text())
+    first, second = block.split("**2. ")
+    assert first.startswith("**1. Start it**\n\nAsk:\n\n> Start the machine with the value 7.\n\n"
+                            "Call:\n\n```text\nstart(value=7)\n```\n\n"), first
+    fields = len(_calls(log)[0])
+    assert f'Reply, 1 of {fields} fields:\n\n```json\n{{\n  "value": 7\n}}\n```\n\n' \
+        "The reply says where the machine stands.\n\n" \
+        "<details><summary>The whole reply</summary>" in first, first
+    assert '"pid": "<volatile>"' in first, "the whole reply is the normalised one"
+    assert second.startswith("Read it back**\n\nAsk:\n\n> Read the value back.\n\n") \
+        and '"summary": "read"' in second, second
+    assert "picture(" not in block and "close(" not in block, "only the steps with an ask"
+    assert (_readme(demo).parent / d.FULL_NAME).read_text() == _norm(tmp_path)
+    assert _norm(tmp_path).startswith(
+        "Every call of the run with its reply, in order: 4 calls. `<volatile>` stands for a "
+        "value that changes from run to run, and `<host>` for one this host decides.\n\n"
+        "**1. `start`**: OK boot: value 7")
 
 
-def test_stale_reads_the_committed_whole_run_of_a_highlighted_demo(
-        tmp_path: Path, log: Path) -> None:
-    demo = _highlighted(tmp_path)
+@pytest.mark.parametrize(("asks", "said"), [(0, "0 steps"), (1, "1 step"), (5, "5 steps")])
+def test_a_readme_offers_two_to_four_steps_to_try_or_nothing_runs(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str], asks: int,
+        said: str) -> None:
+    steps = [d.Step(f"look {n}", "read", {}, _said("value"), ask="Read the value.",
+                    title="Read it", reads="It is the value.") if n < asks else
+             d.Step(f"look {n}", "read", {}, _said("value")) for n in range(5)]
+    assert _run(_demo(tmp_path, steps), tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    assert f"INVALID: the demo x marks {said} with an `ask`, and a README offers 2 to 4 to " \
+        "try" in capsys.readouterr().out
+    assert _calls(log) == []
+
+
+def test_stale_reads_the_committed_whole_run(tmp_path: Path, log: Path) -> None:
+    demo = _demo(tmp_path)
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
     assert d.stale(demo, tmp_path / "out") == []
     whole = _readme(demo).parent / d.FULL_NAME
@@ -554,30 +627,34 @@ def test_stale_reads_the_committed_whole_run_of_a_highlighted_demo(
     assert d.stale(demo, tmp_path / "out") == [f"x's {d.FULL_NAME} is not committed"]
 
 
-def test_stale_flags_a_whole_run_left_by_a_demo_that_lost_its_highlights(
-        tmp_path: Path, log: Path) -> None:
-    demo = _highlighted(tmp_path)
-    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    plain = d.Demo(**{**demo.__dict__, "steps": [
-        d.Step(s.name, s.tool, s.args, s.check, options=s.options) for s in demo.steps]})
-    found = d.stale(plain, tmp_path / "out")
-    assert any(f"x's {d.FULL_NAME} is committed" in line for line in found), found
-
-
 def test_stale_names_what_a_run_did_not_write_and_does_not_raise(
         tmp_path: Path, log: Path) -> None:
-    demo = _highlighted(tmp_path)
+    demo = _demo(tmp_path)
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    (tmp_path / "out" / "transcript-story.md").unlink()
+    (tmp_path / "out" / "transcript-examples.md").unlink()
     (tmp_path / "out" / "transcript-normalised.md").unlink()
     found = d.stale(demo, tmp_path / "out")
-    assert len(found) == 1 and "wrote no" in found[0] and "transcript-story.md" in found[0], found
+    assert len(found) == 1 and "wrote no" in found[0] \
+        and "transcript-examples.md" in found[0], found
 
 
-def test_a_step_highlight_that_is_no_text_is_refused(tmp_path: Path) -> None:
-    demo = _demo(tmp_path, [d.Step("boot", "start", {}, _said("value"), highlight=3)])  # type: ignore[arg-type]
-    with pytest.raises(ValueError, match=r"step boot: `highlight` is 3"):
+@pytest.mark.parametrize(("fields", "why"), [
+    ({"ask": "word " * 26, "reads": "It reads."}, "`ask` is 26 words, and an ask is 1 to 25"),
+    ({"ask": "", "reads": "It reads."}, "`ask` is 0 words"),
+    ({"ask": "Read it.", "reads": ""}, "`reads` is 0 words"),
+    ({"ask": "Read it.", "reads": "One. Two. Three."}, "`reads` is 3 words in 3 sentences"),
+    ({"ask": "Read it.", "reads": "word " * 41}, "`reads` is 41 words in 1 sentences"),
+    ({"title": "A title and nothing to ask"}, "`ask` is 0 words"),
+    ({"ask": "Read it.", "reads": "It reads."}, "an example carries a `title`"),
+])
+def test_an_example_past_its_limits_is_refused_before_a_call(
+        tmp_path: Path, log: Path, fields: dict[str, str], why: str) -> None:
+    demo = _demo(tmp_path, [d.Step("boot", "start", {}, _said("value"),
+                                   ask=fields.get("ask", ""), title=fields.get("title", ""),
+                                   reads=fields.get("reads", ""))])
+    with pytest.raises(ValueError, match=f"step boot: {why}"):
         d.main(demo, ["--transcript", str(tmp_path / "t.md")])
+    assert _calls(log) == []
 
 
 @pytest.mark.parametrize("readme", ["no markers\n", f"{d.BEGIN}\n{d.BEGIN}\n{d.END}\n",
@@ -593,7 +670,8 @@ def test_markers_not_there_once_are_invalid_and_write_nothing(
 
 
 def test_a_failed_run_leaves_the_readme_as_it_was(tmp_path: Path, log: Path) -> None:
-    demo = _demo(tmp_path, [d.Step("no", "refuse", {}, lambda reply, run: "")])
+    demo = _demo(tmp_path, [*_demo(tmp_path).steps[:2],
+                            d.Step("no", "refuse", {}, lambda reply, run: "")])
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_FAIL
     assert _readme(demo).read_text() == README
 
@@ -603,7 +681,7 @@ def test_a_capture_this_run_did_not_write_leaves_the_readme_as_it_was(
     """A picture an earlier run left at the capture's path is not this run's picture."""
     _shot(tmp_path).parent.mkdir(parents=True)
     _shot(tmp_path).write_bytes(b"an old picture")
-    demo = _demo(tmp_path, [d.Step("boot", "start", {}, _said("value"))])
+    demo = _demo(tmp_path, [*_demo(tmp_path).steps[:2]])
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
     assert _readme(demo).read_text() == README
     assert not (_readme(demo).parent / "screen.png").exists()
@@ -732,14 +810,7 @@ def _front(tmp_path: Path) -> Path:
 
 
 def _shown_demo(tmp_path: Path) -> d.Demo:
-    steps = [
-        d.Step("boot", "start", {"value": 7}, _said("value"), options=True),
-        d.Step("look", "read", {}, _said("value"), shown=("value",)),
-        d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
-               lambda reply, run: "a picture"),
-        d.Step("end", "close", {}, lambda reply, run: "closed"),
-    ]
-    return _demo(tmp_path, steps, front=_front(tmp_path))
+    return _demo(tmp_path, front=_front(tmp_path))
 
 
 def test_update_readme_writes_the_shown_steps_into_the_front_door_between_its_prose(
@@ -750,8 +821,10 @@ def test_update_readme_writes_the_shown_steps_into_the_front_door_between_its_pr
     text = demo.front.read_text()
     assert text.startswith("# The server\n\nWhy.\n\n") and text.endswith("\n\nMore why.\n"), text
     flow = text[text.index(d.flow_begin("x")):text.index(d.flow_end("x"))]
-    assert "read()\n-> {" in flow and '"value": 7' in flow, flow
-    assert "start(" not in flow and "picture(" not in flow, "only the shown steps"
+    assert "```text\nread()\n```" in flow and '"value": 7' in flow, flow
+    assert "**1. Start it**" in flow and "> Read the value back." in flow, flow
+    assert "picture(" not in flow and "close(" not in flow, "only the steps with an ask"
+    assert "The whole reply" not in flow, "the front door carries no whole reply"
     assert d.flow_drift(demo.front, "x", tmp_path / "out" / "transcript-flow.md") == ""
 
 
@@ -774,33 +847,35 @@ def test_a_front_door_without_its_flow_markers_is_invalid_and_runs_nothing(
     assert demo.front.read_text() == "# The server\n" and _calls(log) == []
 
 
-def test_a_long_value_in_a_flow_is_abridged_to_its_shape() -> None:
-    shown = d.abridged({"rows": list(range(20)), "text": "x" * 1000, "n": 3})
-    assert shown["rows"][-1] == f"... {20 - d.ABRIDGED_ITEMS} more"
-    assert shown["text"].endswith(" ... (1000 characters)") and shown["n"] == 3
-
-
 def _flow_of(tmp_path: Path, start: dict[str, Any]) -> str:
     """The flow a run writes when its `start` step, with `start` as its arguments, is shown."""
-    steps = [d.Step("boot", "start", start, _said("value"), options=True, shown=START_SHOWN),
-             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
-                    lambda reply, run: "a picture")]
-    demo = _demo(tmp_path, steps, front=_front(tmp_path))
+    demo = _demo(tmp_path, _asked(start, START_SHOWN), front=_front(tmp_path))
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
     return (tmp_path / "out" / "transcript-flow.md").read_text()
 
 
+def _asked(start: dict[str, Any], shown: tuple[str, ...]) -> list[d.Step]:
+    """Two steps to try: a `start` whose excerpt shows `shown`, and a picture."""
+    return [d.Step("boot", "start", start, _said("value"), options=True, shown=shown,
+                   ask="Start the machine.", title="Start it",
+                   reads="The reply says where it stands."),
+            d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
+                   lambda reply, run: "a picture", ask="Take a picture.", title="Take a picture",
+                   reads="`path` is the file the picture went to.")]
+
+
 def test_a_long_reply_is_shown_in_the_flow_abridged(tmp_path: Path, log: Path) -> None:
     flow = _flow_of(tmp_path, {"value": 7, "binary": "x" * 1000})
-    reply = flow.split("\n-> ", 1)[1]
-    assert " ... (1000 characters)" in reply and "x" * 1000 not in reply, flow
-    assert f'binary="{"x" * 1000}"' in flow, "the call is what a reader types: kept whole"
+    call, reply = flow.split("Reply, 4 of ", 1)
+    assert " ... (1000 characters)" in reply and "x" * 61 not in reply, flow
+    assert f'binary="{"x" * 16}{example.ELIDED}{"x" * 16}"' in call, "a call's long value is cut"
+    assert all(len(line) <= example.COLUMNS for line in flow.splitlines()), flow
 
 
 def test_a_front_door_with_no_step_shown_is_a_declaration_error_and_runs_nothing(
         tmp_path: Path, log: Path) -> None:
-    demo = _demo(tmp_path, front=_front(tmp_path))
-    with pytest.raises(ValueError, match="shows no step"):
+    demo = _demo(tmp_path, [d.Step("boot", "start", {}, _said("value"))], front=_front(tmp_path))
+    with pytest.raises(ValueError, match="no step carries an `ask` to show there"):
         _run(demo, tmp_path, "--update-readme")
     assert _calls(log) == [], "the server ran for a front door it could not fill"
 
@@ -814,35 +889,24 @@ def test_update_readme_on_a_demo_with_no_readme_is_invalid_and_runs_nothing(
 
 def test_a_step_that_names_its_fields_shows_only_those_in_that_order(
         tmp_path: Path, log: Path) -> None:
-    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True,
-                    shown=("value", "summary")),
-             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
-                    lambda reply, run: "a picture")]
-    demo = _demo(tmp_path, steps, front=_front(tmp_path))
+    demo = _demo(tmp_path, _asked({"value": 7}, ("value", "summary")), front=_front(tmp_path))
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
     flow = (tmp_path / "out" / "transcript-flow.md").read_text()
-    assert '-> {\n  "value": 7,\n  "summary": "started"\n}' in flow, flow
+    assert '```json\n{\n  "value": 7,\n  "summary": "started"\n}\n```' in flow, flow
+    assert '```json\n{\n  "summary": "picture"\n}\n```' in flow, "no field named shows the summary"
 
 
 def test_a_field_the_front_door_shows_and_the_reply_lacks_fails_the_step(
         tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True,
-                    shown=("value", "gone"))]
-    demo = _demo(tmp_path, steps, front=_front(tmp_path))
+    demo = _demo(tmp_path, _asked({"value": 7}, ("value", "gone")), front=_front(tmp_path))
     assert _run(demo, tmp_path) == verdict.EXIT_FAIL
-    assert "FAIL boot: the front door shows ['gone'], which the reply does not carry" \
+    assert "FAIL boot: the excerpt shows ['gone'], which the reply does not carry" \
         in capsys.readouterr().out
 
 
 def test_a_shown_step_s_flow_is_the_normalised_reply(tmp_path: Path, log: Path) -> None:
     flow = _flow_of(tmp_path, {"value": 7})
     assert '"pid": "<volatile>"' in flow and str(tmp_path) not in flow, flow
-
-
-def test_a_step_shown_with_no_front_door_is_a_declaration_error(tmp_path: Path) -> None:
-    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True, shown=START_SHOWN)]
-    with pytest.raises(ValueError, match="no front door"):
-        _run(_demo(tmp_path, steps), tmp_path)
 
 
 def test_a_front_door_whose_markers_go_mid_run_leaves_both_readmes_as_they_were(
@@ -853,9 +917,9 @@ def test_a_front_door_whose_markers_go_mid_run_leaves_both_readmes_as_they_were(
         front.write_text("# no markers now\n")
         return "markers gone"
 
-    steps = [d.Step("boot", "start", {"value": 7}, _said("value"), options=True, shown=START_SHOWN),
-             d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"}, vanish)]
-    demo = _demo(tmp_path, steps, front=front)
+    boot, shot = _asked({"value": 7}, START_SHOWN)
+    demo = _demo(tmp_path, [boot, d.Step(shot.name, shot.tool, shot.args, vanish, ask=shot.ask,
+                                         title=shot.title, reads=shot.reads)], front=front)
     before = _readme(demo).read_text()
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
     assert _readme(demo).read_text() == before
@@ -869,7 +933,8 @@ def test_a_run_that_writes_no_flow_leaves_no_earlier_flow_behind(
     failing = _demo(tmp_path, [d.Step("no", "refuse", {}, lambda reply, run: "")],
                     front=_front(tmp_path))
     failing = d.Demo(**{**failing.__dict__, "steps": [
-        d.Step("no", "refuse", {}, lambda reply, run: "", shown=("status",))]})
+        d.Step("no", "refuse", {}, lambda reply, run: "", shown=("status",),
+               ask="Ask for a refusal.", title="Be refused", reads="It refuses.")]})
     _run(failing, tmp_path)
     assert not (tmp_path / "out" / "transcript-flow.md").exists()
 
@@ -887,7 +952,7 @@ def test_stale_names_each_way_a_demo_s_committed_files_depart_from_a_run(
     assert len(found) == 2 and found[0].startswith("the front door's x flow: line "), found
     assert found[1] == "x's screen.png is not this run's capture", found
     readme = demo.readme
-    readme.write_text(readme.read_text().replace("value 7", "value 9", 1))
+    readme.write_text(readme.read_text().replace('"value": 7', '"value": 9', 1))
     assert d.stale(demo, run_dir)[0].startswith("x's README: line "), d.stale(demo, run_dir)
     bare = d.Demo(**{**demo.__dict__, "readme": None, "front": None,
                      "steps": [d.Step("boot", "start", {}, _said("value"))]})
@@ -980,31 +1045,6 @@ def test_two_paths_joined_by_a_colon_are_each_spelt_from_the_root() -> None:
     norm = d.Normaliser(root=Path(m, "proj"), home=Path(m), volatile={})
     assert norm.text(f"{m}{sep}a:{m}{sep}b") == "~/a:~/b"
     assert norm.text(f"x={m}{sep}proj{sep}c&{m}{sep}d|{m}{sep}e") == "x=./c&~/d|~/e"
-
-
-def test_a_small_flat_object_inside_a_reply_is_one_line_and_the_reply_itself_is_not() -> None:
-    """A control is a name, a rect and a point: one row, not eight; the top level stays a
-    column so the reply reads as fields."""
-    block = d.fenced({"matched": True, "controls": [
-        {"name": "pict", "rect": [103, 0, 33, 11], "centre": [119, 5]}]})
-    assert '{"name": "pict", "rect": [103, 0, 33, 11], "centre": [119, 5]}' in block, block
-    assert block.startswith('```json\n{\n  "matched": true,'), block
-    wide = {"controls": [{"name": "x" * 90, "rect": [1, 2, 3, 4]}]}
-    assert '"name": "' + "x" * 90 + '",\n' in d.fenced(wide), "a long one stays a column"
-    assert json.loads(d.fenced(wide).removeprefix("```json\n").removesuffix("\n```")) == wide
-
-
-def test_a_list_of_scalars_is_one_line_in_a_transcript_block() -> None:
-    """A rect or a pixel pair is one thought, not four lines: the README's size is its cost."""
-    block = d.fenced({"size": [640, 480], "controls": [{"name": "pict", "rect": [103, 0, 33, 11]}],
-                      "names": ["a", "b"], "none": [], "mixed": [1, [2, 3]]})
-    assert '"size": [640, 480],' in block, block
-    assert '"rect": [103, 0, 33, 11]' in block, block
-    assert '"names": ["a", "b"]' in block and '"none": []' in block, block
-    assert '"mixed": [\n' in block, block
-    assert json.loads(block.removeprefix("```json\n").removesuffix("\n```")) == {
-        "size": [640, 480], "controls": [{"name": "pict", "rect": [103, 0, 33, 11]}],
-        "names": ["a", "b"], "none": [], "mixed": [1, [2, 3]]}
 
 
 @pytest.mark.parametrize("option", ["--cwd", "--binary", "--rompath"])

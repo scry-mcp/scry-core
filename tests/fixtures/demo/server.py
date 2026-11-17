@@ -75,7 +75,8 @@ def record(frames: int, dest: str) -> CallToolResult:
     path.write_bytes(avi)
     return _answer({"status": "ok", "summary": f"record: {frames} frames",
                     "verdict": "ELAPSED", "path": str(path), "frames": frames, "bytes": len(avi),
-                    "avi_frames": 2, "began": True, "ended": True, "frame_before": 7})
+                    "avi_frames": 72, "began": True, "ended": True,
+                    "frame_before": 7})
 
 
 @server.tool()
