@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `narrowing.map_rest` says what a short `machine_map` reply asks for the rest (the sections it
+  left out, else `dest` for a cut list no file holds), and `narrowing.write_whole` writes every
+  row of the sections read to the caller's new file, for both servers.
+
 ## 0.116.0
 
 - `judges.regex(name, pattern)` judges a caller's regular expression for both servers: a

@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Collection, Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
+from scry_core import fresh
 from scry_core.reply_contract import Invalid
+
+#: How a short `machine_map` asks for the rest: the sections it left out, or every row of a cut
+#: list.
+MAP_HOW = ("sections=[...] names the sections to read; dest=<absolute path> writes every section "
+           "read whole")
+MAP_CUT_HOW = "dest=<absolute path> writes every row of every section read"
 
 
 def omission(omitted: Sequence[str], how: str) -> dict[str, Any]:
@@ -42,3 +51,17 @@ def sections(asked: Sequence[str] | None, known: Sequence[str],
 def in_order(known: Sequence[str], wanted: Collection[str]) -> list[str]:
     """`known` filtered to `wanted`, in `known`'s order."""
     return [s for s in known if s in wanted]
+
+
+def map_rest(left: Sequence[str], *, truncated: bool, written: bool) -> dict[str, Any]:
+    """What a `machine_map` reply says to get the rest: the sections `left` out, else, for a cut
+    list that no `dest` holds whole, the `dest` that writes every row."""
+    if left:
+        return omission(left, MAP_HOW)
+    return {"how": MAP_CUT_HOW} if truncated and not written else {}
+
+
+def write_whole(path: Path, whole: Mapping[str, Any]) -> str:
+    """`whole`, every row uncut, as JSON at the caller's new `path`; the path written."""
+    fresh.create(path, json.dumps(whole, indent=1).encode(), "the map", named_by_caller=True)
+    return str(path)

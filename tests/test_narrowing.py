@@ -4,6 +4,9 @@ read when it names nothing or names what is not there."""
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from scry_core import narrowing
@@ -77,3 +80,24 @@ def test_a_default_empty_or_outside_the_known_sections_is_a_bug_whatever_is_aske
     for asked in (None, ["mcbs"]):
         with pytest.raises(ValueError, match="empty or not all known"):
             narrowing.sections(asked, KNOWN, default)
+
+
+def test_a_short_map_names_the_sections_left_out_before_a_cut_list() -> None:
+    left = narrowing.map_rest(["vga"], truncated=True, written=False)
+    assert left == {"omitted": ["vga"], "how": narrowing.MAP_HOW}, left
+
+
+def test_a_cut_map_with_no_file_says_dest_writes_every_row() -> None:
+    assert narrowing.map_rest([], truncated=True, written=False) == {"how": narrowing.MAP_CUT_HOW}
+    assert narrowing.map_rest([], truncated=True, written=True) == {}, "the file holds the rows"
+    assert narrowing.map_rest([], truncated=False, written=False) == {}
+
+
+def test_a_whole_map_is_written_once_as_json_and_never_over_a_file(tmp_path: Path) -> None:
+    target = tmp_path / "map.json"
+    whole = {"counts": {"mcbs": 2}, "mcbs": [{"seg": "0x0100"}, {"seg": "0x0200"}]}
+    assert narrowing.write_whole(target, whole) == str(target)
+    assert json.loads(target.read_text()) == whole
+    with pytest.raises(Invalid) as refused:
+        narrowing.write_whole(target, {})
+    assert refused.value.code == "bad_argument" and "already there" in str(refused.value)
