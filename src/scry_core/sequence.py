@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -23,6 +23,15 @@ Ops = dict[str, Callable[..., dict[str, Any]]]
 Waited = Literal["stopped", "running", "gone"]
 
 NO_FAILURE_WHY = "no step failed"
+
+
+def _own_words(reply: Mapping[str, Any]) -> str:
+    """A missed step's own account of the miss, its summary and its `verify` note, as a clause
+    the list's note ends with; "" when the reply says nothing."""
+    verify = reply.get("verify")
+    said = [str(x) for x in (reply.get("summary"),
+                             verify.get("note") if isinstance(verify, Mapping) else None) if x]
+    return f"; its own reply: {'; '.join(said)}" if said else ""
 
 
 def none_failed() -> dict[str, Any]:
@@ -271,7 +280,8 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
             return r.ended(None, "", keep_last=True, failed_at=none_failed(),
                            verdict=contract.TIMEOUT,
                            note=f"{_named(i, op, len(steps), cycle)} waited for what it was to "
-                                f"see and it did not come; the steps after it were not sent")
+                                f"see and it did not come; the steps after it were not sent"
+                                + _own_words(reply))
         if not machine.answers_running(op, args):
             r.came_to_rest = False
             r.running = r.released_last = machine.leaves_running(op, reply)

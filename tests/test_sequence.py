@@ -183,10 +183,24 @@ def test_a_steps_own_missed_wait_ends_the_list_where_the_machine_says_so() -> No
     assert calls == ["log_wait"]
     assert ended.fields["verdict"] == contract.TIMEOUT
     assert "step 1 ('log_wait') waited for what it was to see" in ended.fields["note"]
+    assert "its own reply" not in ended.fields["note"], "a reply with no words adds none"
     # A machine that says nothing of a step's own wait goes on.
     plain = Double()
     _, calls = _run(plain, [{"op": "log_wait"}, {"op": "status"}])
     assert calls == ["log_wait", "status"]
+
+
+def test_a_missed_step_s_own_words_are_in_the_list_s_note() -> None:
+    """The cause of the miss (no button pressed, not where asked) is in the step's reply: the
+    note says it, on every server, rather than leave it to be found in `ran`."""
+    m = Double(missed_ops=frozenset({"send_keys"}))
+    ops = _ops(m, [])
+    ops["send_keys"] = lambda **kw: {"status": "ok", "summary": "send_keys: effect not seen",
+                                     "verify": {"note": "the guest wrote no line"}}
+    ended = sequence.run(m, [{"op": "send_keys"}, {"op": "status"}], ops, 5.0)
+    assert ended.fields["note"].endswith(
+        "were not sent; its own reply: send_keys: effect not seen; the guest wrote no line"), \
+        ended.fields["note"]
 
 
 def test_the_tail_waits_for_the_stop_and_hands_it_back_surveyed() -> None:
