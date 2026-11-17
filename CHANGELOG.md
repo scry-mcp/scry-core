@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.118.1
 
 - A sequence's steps report their progress on `time.perf_counter`'s clock: on Windows two steps'
   lines inside one tick of `time.monotonic` reported the same progress, and the second was
