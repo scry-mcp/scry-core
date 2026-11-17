@@ -106,8 +106,9 @@ def read_bmp(path: Path) -> Image:
 
 
 def capture(pid: int, dest: Path) -> Image:
-    """The window `pid` owns, captured into `dest` as a PNG (on macOS a BMP beside it); `Blocked`
-    when the host cannot or answers blank. Neither host brings the window forward."""
+    """The window `pid` owns (on Windows its client area), captured into `dest` as a PNG (on macOS
+    a BMP beside it); `Blocked` when the host cannot or answers blank. Neither host brings the
+    window forward."""
     # Every branch is a platform test, so mypy skips the other hosts' instead of calling them
     # unreachable.
     if sys.platform == "darwin":
@@ -209,7 +210,8 @@ class Difference:
     """Where two captures differ: pixel count, the inclusive box (`x0, y0, x1, y1`) and its span as
     a share of the capture, the deepest pixel from its nearest side (fraction of the box's shorter
     side), pixels nearest each side (top, bottom, left, right), and the mean change per channel.
-    The box is the reference, not the capture, which also holds a title bar nothing draws on."""
+    The box is the reference, not the capture, which on macOS also holds a title bar nothing draws
+    on."""
 
     changed: int
     box: tuple[int, int, int, int]
@@ -256,7 +258,8 @@ def difference(before: Image, after: Image) -> Difference:
 
 #: Farthest the edge may reach from a side, in edge widths, with room for scaling.
 EDGE_REACH = 2.5
-#: Least share of the window a drawn edge's box spans: the content, not the title bar.
+#: Least share of the capture a drawn edge's box spans: the content, not a title bar (macOS's
+#: capture holds one).
 CONTENT_SPAN = 0.75
 
 
