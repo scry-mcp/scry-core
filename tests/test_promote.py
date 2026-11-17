@@ -17,6 +17,7 @@ from scry_core import (
     project_store,
     promote,
     promote_diff,
+    recording,
     reply_schema,
     screen_map,
     scry_readme,
@@ -800,6 +801,26 @@ def test_a_perform_document_s_paths_are_written_against_the_root(tmp_path: Path)
     write(drafts, root, ["perform/dos"])
     written = json.loads((root / ".scry" / "perform" / "dos.json").read_text())
     assert written["start"]["rompath"] == "${root}/roms"
+
+
+def test_a_promoted_perform_document_replays_its_steps_at_this_host_s_paths(
+        tmp_path: Path) -> None:
+    """What promotion writes as `${root}` and `${state}` comes back as paths when the stored
+    document is replayed."""
+    root, state = repo(tmp_path), tmp_path / "scratch"
+    doc = perform_doc()
+    doc["start"]["rompath"] = f"{root}/roms"
+    doc["steps"] += [{"op": "symbols_load", "path": f"{root}/game.map"},
+                     {"op": "snapshot", "dest": f"{state}/shot.png"}]
+    drafts = drafted("perform", "dos", doc, path_keys=("rompath",))
+    write(drafts, root, ["perform/dos"], state=str(state))
+    stored = root / ".scry" / "perform" / "dos.json"
+    assert json.loads(stored.read_text())["steps"][1]["path"] == "${root}/game.map"
+    assert recording.steps_to_replay(None, str(stored), state=str(state))[1:] == [
+        {"op": "symbols_load", "path": f"{root}/game.map"},
+        {"op": "snapshot", "dest": f"{state}/shot.png"}]
+    with pytest.raises(Invalid, match="state"):
+        recording.steps_to_replay(None, str(stored))
 
 
 def test_a_profile_past_its_cap_is_refused(tmp_path: Path) -> None:

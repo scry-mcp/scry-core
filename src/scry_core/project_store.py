@@ -162,6 +162,16 @@ def applied(profile: str, *, starting: Iterable[str | Path], keys: Collection[st
     return Applied(profile, entry, sorted(fill), call)
 
 
+def placed(value: object, entry: Path, *, state: str = "",
+           environ: Mapping[str, str] | None = None) -> object:
+    """`value`, read from the store file `entry`, with every placeholder resolved as `read`
+    resolves a profile's: `${root}` the directory holding the store, `${state}` the session's
+    scratch (refused by name where there is none)."""
+    where = f"the store file {entry}"
+    return _texts(value, _base(entry, where), state, os.environ if environ is None else environ,
+                  where)
+
+
 def start_arguments(start: Callable[..., object]) -> tuple[tuple[str, ...], dict[str, Any]]:
     """What a profile may set, read off `start`'s signature so the two cannot drift apart
     (`profile` is not one of them, and `ctx` is the protocol's), and each argument's default: a

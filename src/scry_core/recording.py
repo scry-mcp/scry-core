@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast, get_args
 
-from scry_core import file_names, fresh, judges, prose
+from scry_core import file_names, fresh, judges, project_store, prose
 from scry_core.reply_contract import Invalid, unavailable
 
 #: Storage ceiling per kept call, so a session that reads a million times is bounded too.
@@ -513,9 +513,11 @@ def export(recorder: Recorder, dest: str, overwrite: bool = False) -> dict[str, 
             "replay": f"uv run python -m scry_core.replay {shlex.quote(str(target))}"}
 
 
-def read_document(path_arg: object) -> dict[str, Any]:
+def read_document(path_arg: object, *, state: str = "") -> dict[str, Any]:
     """The `perform` document a caller names by path, judged before a step runs: JSON, a version
-    this module writes, and a list of step objects. `path` is absolute or led by `~`."""
+    this module writes, and a list of step objects. `path` is absolute or led by `~`. A document
+    a store holds has its placeholders resolved (`state`, the session's scratch, for
+    `${state}`)."""
     path = judges.absolute("path", path_arg)
     text = judges.read_text("path", path_arg, "`perform` document")
     try:
@@ -535,6 +537,8 @@ def read_document(path_arg: object) -> dict[str, Any]:
     if not isinstance(steps, list) or not steps or not all(isinstance(s, dict) for s in steps):
         raise Invalid("bad_argument", f"path: {path} holds no steps, or one that is not an "
                       "object, so a replay would run nothing")
+    if "${" in text:
+        doc["steps"] = project_store.placed(steps, path, state=state)
     return doc
 
 
@@ -550,11 +554,13 @@ def check_perform_arguments(steps: list[dict[str, Any]] | None, path: object) ->
         raise Invalid("bad_argument", "give steps, or path to a `perform` document")
 
 
-def steps_to_replay(steps: list[dict[str, Any]] | None, path: object) -> list[dict[str, Any]]:
-    """`perform`'s list: the caller's own, or the steps of the document it names."""
+def steps_to_replay(steps: list[dict[str, Any]] | None, path: object, *,
+                    state: str = "") -> list[dict[str, Any]]:
+    """`perform`'s list: the caller's own, or the steps of the document it names, placed on this
+    host (`state`, the session's scratch)."""
     check_perform_arguments(steps, path)
     if path:
-        return cast(list[dict[str, Any]], read_document(path)["steps"])
+        return cast(list[dict[str, Any]], read_document(path, state=state)["steps"])
     return cast(list[dict[str, Any]], steps)
 
 
