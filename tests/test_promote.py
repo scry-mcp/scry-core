@@ -823,6 +823,25 @@ def test_a_promoted_perform_document_replays_its_steps_at_this_host_s_paths(
         recording.steps_to_replay(None, str(stored))
 
 
+@pytest.mark.parametrize("kind", ["perform", "start"])
+def test_text_the_store_s_reader_would_refuse_is_refused_before_it_is_written(
+        kind: str, tmp_path: Path) -> None:
+    """The store resolves every `${...}` of what it reads, so typed text spelling one that is no
+    placeholder would be written and then refused by `perform(path=)` or `start(profile=)`."""
+    root = repo(tmp_path)
+    if kind == "perform":
+        doc = perform_doc()
+        doc["steps"].insert(0, {"op": "send_keys", "keys": ["echo ${HOME}"]})
+        drafts = drafted("perform", "dos", doc)
+    else:
+        drafts = drafted("start", "dos", start_doc(system="x", view="${HOME}"),
+                         needs=("system",))
+    assert re.search(r"\$\{HOME\}.*no placeholder", refused(drafts, root))
+    with pytest.raises(Invalid, match="no placeholder"):
+        write(drafts, root, [f"{kind}/dos"])
+    assert not (root / ".scry").exists()
+
+
 def test_a_profile_past_its_cap_is_refused(tmp_path: Path) -> None:
     drafts = drafted("start", "x", start_doc(system="x", view="v" * (64 * 1024)),
                      needs=("system",))

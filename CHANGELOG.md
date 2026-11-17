@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `promote` refuses a `start` profile or a `perform` document holding a `${...}` the store's
+  reader would refuse, typed text included, naming it, instead of writing a store file that
+  `start(profile=)` or `perform(path=)` then refuses.
+
 ## 0.118.1
 
 - A sequence's steps report their progress on `time.perf_counter`'s clock: on Windows two steps'

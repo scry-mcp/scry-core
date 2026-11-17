@@ -482,6 +482,11 @@ def planned_entry(candidate: Candidate, store_dir: Path, state: str,
         document["application"] = named
         screen_map.parse(document, f"the candidate {entry or f'{candidate.kind}/{named}'}")
     target = store_dir / candidate.kind / project_store.file_name(candidate.kind, named)
+    if candidate.kind in ("start", "perform"):
+        # The store resolves every `${...}` it reads, typed text included: refused here, not
+        # by the `start(profile=)` or `perform(path=)` that reads it back.
+        project_store.placed(document if candidate.kind == "start" else document.get("steps"),
+                             target, state=state, environ=environ)
     if target.is_symlink():
         raise Invalid("bad_argument", f"{target} is a link: a store entry is a file the "
                       "repository holds, and a promotion never replaces a link")
