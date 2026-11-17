@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from scry_core.demo import Reply, Run, Step, expect
+from scry_core.demo import Moment, Reply, Run, Step, expect, recording
 from scry_core.game_demo import (
     WAIT_S,
     Binding,
@@ -44,6 +44,11 @@ PLAYER_ACTIVE = 1
 #: Where a one-player game puts the player.
 START_COLUMN, START_BLOCK = 3, 1
 MUSIC_MS = 2000
+#: What the loop shows: the game in play after the shot. It is recorded after the sound, because
+#: a recording anywhere earlier moves the instant the music is compared from.
+PLAYING_MS = 2500
+PLAYING = Moment("exact", "playing",
+                 "The player moved, raised the colour and fired: `record` films the game going on.")
 
 
 def player(want: dict[str, int], what: str) -> Step:
@@ -142,9 +147,10 @@ def steps(binding: Binding) -> list[Step]:
 
 
 def epilogue(binding: Binding) -> list[Step]:
-    """What follows the script on every platform: its sound held to the platform's recording, a
-    picture of the board, and the close."""
+    """What follows the script on every platform: its sound compared with the platform's
+    recording, the game filmed in play, a picture of the board, and the close."""
     return [*sound(binding, MUSIC_MS, "music.wav"),
+            recording("playing", binding.frames(PLAYING_MS)),
             Step("screen", "screen_view",
                  lambda run: {"dest": run.dir / "screen.png", "attach": False},
                  lambda reply, run: f"the board, {reply['width']}x{reply['height']}"),

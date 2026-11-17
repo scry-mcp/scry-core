@@ -11,6 +11,12 @@ What a server author notices. A client's view of each server is in that server's
   the video of a session that records itself (`Demo.video`), cut by the `frame` its replies
   carry. A loop holds at most 3 moments of 1 to 3 s, 6 s in all, in 400 KB; past any of them
   the update is refused. `Demo.loop`, `Loop` and `loop.mp4` are gone.
+- A moment cut from a session's video is found by counting back from the last frame a reply
+  counted. A video longer than that frame is refused, naming both: a step after it moved the
+  machine uncounted, and every moment would be read that many frames late. Two steps of one
+  name are refused before any call.
+- The shared LineUp script records the game in play after its sound is compared
+  (`games.lineup.PLAYING`), for each server's demo to show.
 - A demo's README block holds its examples: the steps that carry `ask`, `title` and `reads`,
   each written as the ask, the call, an excerpt of the reply (the fields `shown` names,
   `summary` when it names none) and how to read it (`example`). `--update-readme` asks for 2 to

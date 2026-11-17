@@ -119,3 +119,16 @@ def test_a_list_of_numbers_in_a_call_is_kept_whole_and_one_of_objects_is_not() -
     wide = {"rect": [1, 2, 3, 4], "note": "n" * 400}
     cut = example.call_text("screen_view", wide)
     assert cut.startswith("screen_view(rect=[1, 2, 3, 4], note=") and "…" in cut, cut
+
+
+def test_an_excerpt_s_list_too_long_for_one_line_is_a_column() -> None:
+    lines = [f"{n:04X}: LD A,(HL) ; an instruction of the trail" for n in range(12)]
+    reply = {"summary": "history: 12", "lines": lines, "regs": [1, 2, 3]}
+    rows = example.excerpt(reply, ("regs", "lines")).splitlines()
+    assert rows[1:4] == ['  "regs": [1, 2, 3],', '  "lines": [',
+                         '    "0000: LD A,(HL) ; an instruction of the trail",'], rows
+    assert rows[9] == '    "... 6 more"' and len(rows) == example.REPLY_LINES, rows
+    assert all(len(row) <= example.COLUMNS for row in rows)
+    assert '"lines": ["0000' in example.fenced({"lines": lines}), "a whole reply keeps one line"
+    with pytest.raises(ValueError, match="is 13 lines"):
+        example.excerpt(reply, ("summary", "regs", "lines"))

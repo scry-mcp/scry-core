@@ -572,6 +572,10 @@ def _declared(demo: Demo) -> None:
         if shown_dropped := sorted(set(step.optional) & set(step.shown)):
             raise ValueError(f"step {step.name}: `optional` drops {shown_dropped}, and `shown` "
                              "shows it: a key a page shows comes every run")
+    names = [step.name for step in demo.steps]
+    if twice := sorted({name for name in names if names.count(name) > 1}):
+        raise ValueError(f"the demo {demo.name} names {twice} more than once: a step's reply is "
+                         "kept under its name, and a moment is found by it")
     _moments_declared(demo)
     if demo.front is not None and not any(step.ask for step in demo.steps):
         raise ValueError(f"the demo {demo.name} names a front door and no step carries an "
@@ -668,20 +672,35 @@ def _last(value: Any, key: str) -> int | None:
 def _span(demo: Demo, run: Run, moment: Moment) -> tuple[Path, int, int]:
     """Where the stretch from `moment.after` to `moment.until` sits in the session's own video:
     the file, its first frame and how many. The video's last frame is the last one any reply
-    counted, so a frame number is a place counted back from the end."""
+    counted, so a frame number is a place counted back from the end. A step whose reply counts
+    no frame did not move the machine: it stands at the last frame counted before it. A video
+    longer than the last frame counted says a later step moved the machine uncounted, and is
+    refused: every place would be read that many frames late."""
     if demo.video is None:
         raise Invalid(f"the demo {demo.name} names no `video` for its moments")
     folder = demo.video(run)
     files = sorted(folder.glob("*.avi"))
     if not files:
         raise Invalid(f"the session wrote no video in {folder}, so there is no moment to cut")
-    counted = {name: frame for name, reply in run.replies.items()
-               if (frame := _last(reply.data, FRAME_KEY)) is not None}
+    counted: dict[str, int] = {}
+    latest = None
+    for name, reply in run.replies.items():
+        frame = _last(reply.data, FRAME_KEY)
+        latest = frame if frame is not None else latest
+        if latest is not None:
+            counted[name] = latest
     if lacking := [name for name in (moment.after, moment.until) if name not in counted]:
-        raise Invalid(f"the reply of step {lacking[0]!r} counts no `{FRAME_KEY}`, so the moment "
+        raise Invalid(f"no reply up to step {lacking[0]!r} counts a `{FRAME_KEY}`, so the moment "
                       "it bounds cannot be found in the video")
+    if latest is None:
+        raise Invalid(f"no reply of the run counts a `{FRAME_KEY}`")
     held = [motion.facts(file)[0] for file in files]
-    first = sum(held) - (list(counted.values())[-1] - counted[moment.after])
+    if sum(held) > latest:
+        raise Invalid(f"the session's video holds {sum(held)} frames and the last reply to count "
+                      f"one counts frame {latest}: a step after it moved the machine without "
+                      "counting, so end the run's last advance with a step whose reply counts "
+                      f"its `{FRAME_KEY}`")
+    first = sum(held) - (latest - counted[moment.after])
     frames = counted[moment.until] - counted[moment.after]
     before = 0
     for file, n in zip(files, held, strict=True):

@@ -30,6 +30,8 @@ ELIDED = "…"
 #: Characters of a long string a call keeps at each end.
 CALL_STRING_ENDS = 16
 ONE_LINE_MAX = 100
+#: The room a list's own key and indent take on its line, when a list is fitted to columns.
+ONE_LINE_KEY = 24
 
 
 def words(text: str) -> int:
@@ -62,23 +64,26 @@ def _flat(value: dict[str, Any]) -> bool:
                for v in value.values())
 
 
-def compact(value: Any, depth: int = 0) -> str:
+def compact(value: Any, depth: int = 0, columns: int = 0) -> str:
     """`value` as indented JSON with a list of scalars on one line: a rect or a point is one
-    thought, and a column of numbers is most of a big reply's bytes."""
+    thought, and a column of numbers is most of a big reply's bytes. With `columns`, a list
+    whose line would pass them is a column instead."""
     pad = "  " * (depth + 1)
     if depth and isinstance(value, dict) and value and _flat(value):
         line = json.dumps(value, ensure_ascii=False)
         if len(line) <= ONE_LINE_MAX:
             return line
     if isinstance(value, dict) and value:
-        rows = [f"{pad}{json.dumps(k, ensure_ascii=False)}: {compact(v, depth + 1)}"
+        rows = [f"{pad}{json.dumps(k, ensure_ascii=False)}: {compact(v, depth + 1, columns)}"
                 for k, v in value.items()]
         return "{\n" + ",\n".join(rows) + "\n" + "  " * depth + "}"
-    if isinstance(value, list) and value and not all(
-            isinstance(v, (str, int, float, bool)) or v is None for v in value):
-        rows = [pad + compact(v, depth + 1) for v in value]
+    line = json.dumps(value, ensure_ascii=False)
+    if isinstance(value, list) and value and (
+            not all(isinstance(v, (str, int, float, bool)) or v is None for v in value)
+            or 0 < columns < len(line) + ONE_LINE_KEY):
+        rows = [pad + compact(v, depth + 1, columns) for v in value]
         return "[\n" + ",\n".join(rows) + "\n" + "  " * depth + "]"
-    return json.dumps(value, ensure_ascii=False)
+    return line
 
 
 def fenced(value: Any) -> str:
@@ -144,7 +149,7 @@ def excerpt(reply: Mapping[str, Any], fields: Sequence[str]) -> str:
     picked = {k: reply[k] for k in fields}
     text = ""
     for chars in STRING_CUTS:
-        text = compact(abridged(picked, chars))
+        text = compact(abridged(picked, chars), columns=COLUMNS)
         if all(len(line) <= COLUMNS for line in text.splitlines()):
             break
     else:

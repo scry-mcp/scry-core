@@ -516,6 +516,13 @@ def test_a_moment_the_demo_s_steps_cannot_give_is_refused_before_a_call(
     assert _calls(log) == []
 
 
+def test_two_steps_of_one_name_are_refused_before_a_call(tmp_path: Path, log: Path) -> None:
+    steps = [d.Step("look", "read", {}, _said("value")), d.Step("look", "read", {}, _said("value"))]
+    with pytest.raises(ValueError, match=r"names \['look'\] more than once"):
+        d.main(_demo(tmp_path, steps), ["--transcript", str(tmp_path / "t.md")])
+    assert _calls(log) == []
+
+
 def _replies(**frames: Any) -> dict[str, d.Reply]:
     return {name: d.Reply({"status": "ok", **body}) for name, body in frames.items()}
 
@@ -542,14 +549,21 @@ def test_a_moment_between_two_steps_is_cut_from_the_session_s_video_by_the_repli
         film={"note": "counts none"}, end={"frame": 150}))
     assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 22, 30),
                                  motion.Cut(folder / "x_001.avi", 28, 20)]
+    still = d.Demo(**{**demo.__dict__, "moments": (d.Moment("shot", "end", "It moves."),)})
+    assert d.cuts(still, d.Run(dir=tmp_path, replies=_replies(
+        boot={"frame": 100}, shot={"read": "a step that moved nothing"}, film={"frame": 150},
+        end={"note": "nor this one"}))) == [motion.Cut(folder / "x_001.avi", 22, 50)], \
+        "a step that counts no frame stands at the last one counted before it"
 
 
 @pytest.mark.parametrize(("frames", "why"), [
     ({"boot": {"frame": 60}, "shot": {"frame": 100}, "end": {"frame": 150}},
      "which no one file of"),
     ({"boot": {}, "shot": {"frame": 100}, "end": {"frame": 150}},
-     "the reply of step 'boot' counts no `frame`"),
-    ({"boot": {"frame": True}, "shot": {"frame": 100}}, "the reply of step 'boot' counts no"),
+     "no reply up to step 'boot' counts a `frame`"),
+    ({"boot": {"frame": 100}, "shot": {"frame": 130}, "end": {"note": "moved, uncounted"}},
+     "the session's video holds 144 frames and the last reply to count one counts frame 130"),
+    ({"boot": {"frame": True}, "shot": {"frame": 100}}, "no reply up to step 'boot' counts a"),
 ])
 def test_a_moment_the_session_s_video_does_not_hold_is_invalid(
         tmp_path: Path, frames: dict[str, Any], why: str) -> None:
