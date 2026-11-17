@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- `scry_core.promote.Drafts.loaded_entry` keeps the entry name as the session read it: a stem
+  outside the file-name rule is no longer respelled, so `keep` never matches it to the entry it
+  came from. Every store a server writes holds rule names only.
+
 ## 0.115.0
 
 - `scry_core.stop_wait` builds the refusals of a row a wait under `on_*` cannot judge at

@@ -123,15 +123,6 @@ class Candidate:
         return self.project, self.kind, self.name
 
 
-def _spelled(name: str) -> str:
-    """`name` as `keep` spells it, so a stem written before the rule is still the entry read;
-    one the rule cannot spell is kept as given, and `keep` refuses it."""
-    try:
-        return project_store.entry_name(name)
-    except Invalid:
-        return name
-
-
 @dataclass
 class Drafts:
     """What the session kept, for the server's life: one candidate per (project, kind, name);
@@ -174,7 +165,7 @@ class Drafts:
         """`kind` was read from the entry `name`, in the file `source`: what the session learns
         of it is that entry."""
         if kind in KINDS and name:
-            self.loaded[kind] = _spelled(name)
+            self.loaded[kind] = name
             self.sources[kind] = source
 
     def loaded_name(self, kind: str) -> str:

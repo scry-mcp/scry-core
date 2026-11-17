@@ -167,20 +167,6 @@ def test_an_update_of_a_script_read_from_a_store_belongs_to_that_store(tmp_path:
         ("dos", str(tmp_path / "other")), ("run", str(tmp_path / "game"))]
 
 
-def test_an_update_of_an_entry_whose_stem_breaks_the_rule_belongs_to_its_store(
-        tmp_path: Path) -> None:
-    """A stem written before the rule (`Intro_Run`) is kept under the rule's spelling, and it is
-    still the entry the session read."""
-    (tmp_path / "game").mkdir()
-    replayed = tmp_path / "other" / ".scry" / "perform" / "Intro_Run.json"
-    replayed.parent.mkdir(parents=True)
-    drafts = started(Drafts(), anchor=tmp_path / "game")
-    drafts.loaded_entry("perform", "Intro_Run", source=str(replayed))
-    drafts.keep("perform", "Intro_Run", perform_doc())
-    assert [(held.name, held.project) for held in drafts.kept.values()] == [
-        ("intro-run", str(tmp_path / "other"))]
-
-
 def test_a_script_replayed_from_outside_a_store_belongs_to_the_start(tmp_path: Path) -> None:
     (tmp_path / "game").mkdir()
     drafts = started(Drafts(), anchor=tmp_path / "game")
