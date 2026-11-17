@@ -1,5 +1,6 @@
-"""`scry_core.reply_differences`: the page of the advance tools' reply differences is read off the
-servers' generated pages and never typed, and the committed page is the run's."""
+"""`scry_core.reply_differences`: the page of the reply differences of every tool both servers
+register is read off the servers' generated pages and never typed, and the committed page is the
+run's."""
 
 from __future__ import annotations
 
@@ -26,16 +27,20 @@ text after the table
 |---|---|
 | `pc` | string |
 """
-ONLY_ONE = ("<!-- scry-reference:begin screen_wait -->\n| reply field | type |\n|---|---|\n"
+ONLY_ONE = ("<!-- scry-reference:begin wait -->\n| reply field | type |\n|---|---|\n"
             "| `pc` | s |\n")
+SCREEN_WAIT = ("<!-- scry-reference:begin screen_wait -->\n| reply field | type |\n|---|---|\n"
+               "| `verdict` | s |\n")
 
 
 def _servers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
+    """Two servers whose shared `screen_wait` sits on another family page in each."""
     mame, dosbox = tmp_path / "mame", tmp_path / "dosbox"
     for directory, extra in ((mame, "cpu"), (dosbox, "cause")):
-        (directory / "docs/reference").mkdir(parents=True)
-        (directory / rd.SERVER_PAGE).write_text(PAGE.format(extra=extra) + (
-            ONLY_ONE if directory == dosbox else ""), encoding="utf-8")
+        (directory / rd.SERVER_PAGES).mkdir(parents=True)
+        (directory / rd.SERVER_PAGES / "advance.md").write_text(PAGE.format(extra=extra) + (
+            ONLY_ONE + SCREEN_WAIT if directory == dosbox else ""), encoding="utf-8")
+    (mame / rd.SERVER_PAGES / "screen.md").write_text(SCREEN_WAIT, encoding="utf-8")
     (tmp_path / "docs").mkdir()
     monkeypatch.chdir(tmp_path)
     return mame, dosbox
@@ -50,8 +55,8 @@ def test_the_page_splits_each_tool_into_shared_and_one_sided_fields() -> None:
                      {"run_to": ["pc", "cause"], "stop": ["pc"], "screen_wait": ["pc"]})
     assert "| `run_to` | `pc` | `cpu` | `cause` |" in page
     assert "| `stop` | `pc` | - | - |" in page
-    assert "On this page only for DOSBox-X: `screen_wait`." in page
-    assert "On this page only for MAME: -." in page
+    assert "Only DOSBox-X has: `screen_wait`." in page
+    assert "Only MAME has: -." in page
 
 
 def test_write_then_check_agree_and_a_changed_page_is_drift(
@@ -62,6 +67,9 @@ def test_write_then_check_agree_and_a_changed_page_is_drift(
     assert rd.main(args) == 1 and "differs" in capsys.readouterr().err
     assert rd.main([*args, "--write"]) == 0
     assert rd.main(args) == 0
+    written = rd.OUT_PAGE.read_text(encoding="utf-8")
+    assert "| `screen_wait` | `verdict` | - | - |" in written
+    assert "Only DOSBox-X has: `wait`." in written
     rd.OUT_PAGE.write_text("edited by hand", encoding="utf-8")
     assert rd.main(args) == 1
 
@@ -71,12 +79,16 @@ def test_a_page_that_cannot_be_compared_is_invalid_not_agreement(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
         damage: str) -> None:
     mame, dosbox = _servers(tmp_path, monkeypatch)
+    pages = sorted((mame / rd.SERVER_PAGES).glob("*.md"))
     if damage == "missing":
-        (mame / rd.SERVER_PAGE).unlink()
+        for page in pages:
+            page.unlink()
     elif damage == "no tool":
-        (mame / rd.SERVER_PAGE).write_text("no blocks here", encoding="utf-8")
+        for page in pages:
+            page.write_text("no blocks here", encoding="utf-8")
     else:
-        (mame / rd.SERVER_PAGE).write_text(
+        for page in pages:
+            page.write_text(
             "| reply field | type |\n|---|---|\n| `pc` | s |\n", encoding="utf-8")
     assert rd.main(["--mame", str(mame), "--dosbox-x", str(dosbox)]) == 3
     assert "INVALID" in capsys.readouterr().err
@@ -96,9 +108,9 @@ def test_the_committed_page_is_the_servers_run(monkeypatch: pytest.MonkeyPatch) 
     for env, name in (("SCRY_MAME_DIR", "scry-mame"), ("SCRY_DOSBOX_X_DIR", "scry-dosbox-x")):
         if not os.environ.get(env):        # the run's home is its own, and holds no clone
             monkeypatch.setenv(env, str(beside / name))
-    if not all((rd._clone(env, name) / rd.SERVER_PAGE).is_file()
+    if not all((rd._clone(env, name) / rd.SERVER_PAGES / "advance.md").is_file()
                for env, name in (("SCRY_MAME_DIR", "scry-mame"),
                                  ("SCRY_DOSBOX_X_DIR", "scry-dosbox-x"))):
         pytest.skip("the servers' clones are not here: set SCRY_MAME_DIR and SCRY_DOSBOX_X_DIR")
     monkeypatch.chdir(Path(__file__).resolve().parents[1])
-    assert rd.main([]) == 0, "docs/advance-differences.md differs: rerun reply_differences --write"
+    assert rd.main([]) == 0, "docs/reply-differences.md differs: rerun reply_differences --write"

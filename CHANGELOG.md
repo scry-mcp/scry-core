@@ -4,6 +4,9 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- `scry_core.reply_differences` compares every tool both servers register, read off all their
+  `docs/reference/*.md` pages, into `docs/reply-differences.md` (which replaces
+  `docs/advance-differences.md`); the tools only one server has are listed under it.
 - `scry_core.promote.Drafts.loaded_entry` keeps the entry name as the session read it: a stem
   outside the file-name rule is no longer respelled, so `keep` never matches it to the entry it
   came from. Every store a server writes holds rule names only.
