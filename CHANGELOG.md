@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.118.0
 
 - `window_capture.capture` captures on Windows too: the window's own picture through
   Windows.Graphics.Capture, its client area only, a window behind others included and none
