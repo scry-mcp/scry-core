@@ -7,6 +7,8 @@ What a server author notices. A client's view of each server is in that server's
 - `promote` refuses a `start` profile or a `perform` document holding a `${...}` the store's
   reader would refuse, typed text included, naming it, instead of writing a store file that
   `start(profile=)` or `perform(path=)` then refuses.
+- `stop_wait.CUT_WAY_OUT` ends `run_to`'s `cut_by_other_stop` refusal in both servers: what
+  stopped the run is in `cause`, and a watch is passed with `disarm_watches=true`.
 
 ## 0.118.1
 

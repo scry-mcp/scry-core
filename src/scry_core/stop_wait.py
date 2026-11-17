@@ -35,6 +35,9 @@ ON_FIELDS = ("under `on_*`, `waited_on`, `firings`, `frames_examined` (the frame
 #: What `run_to` and `run_for` take to run a pass no change watch can cut, in both servers' words.
 DISARM_WATCHES = ("`disarm_watches=true` disarms the watches for this pass, so none of them cuts "
                   "it")
+#: How `run_to`'s `cut_by_other_stop` refusal ends, in both servers' words.
+CUT_WAY_OUT = ("`cause` says what stopped it: clear it and run again, or, for a watch, run again "
+               "with `disarm_watches=true`, which disarms the watches for this pass")
 DOC_VALUES = {"CONDITION_GRAMMAR": GRAMMAR, "ON_FIELDS": ON_FIELDS,
               "DISARM_WATCHES": DISARM_WATCHES}
 
