@@ -35,7 +35,7 @@ from scry_core import (
     scry_readme,
 )
 from scry_core.promote_diff import difference
-from scry_core.promote_paths import LISTS, Places
+from scry_core.promote_paths import Places
 from scry_core.reply_contract import Invalid, When
 
 KINDS = project_store.KINDS
@@ -595,7 +595,7 @@ def _rewrite(document: dict[str, Any], candidate: Candidate, places: Places) -> 
         if key in document:
             where = f"the candidate {candidate.kind}/{candidate.name}'s `{key}`"
             document[key] = promote_paths.placeholders(document[key], places, where,
-                                                       LISTS.get(key, ""))
+                                                       project_store.LISTS.get(key, ""))
 
 
 def _keep_spelling(candidate: Candidate, document: dict[str, Any], old: dict[str, Any],
@@ -610,11 +610,11 @@ def _keep_spelling(candidate: Candidate, document: dict[str, Any], old: dict[str
     if candidate.kind == "maps" or not isinstance(new, dict) or not isinstance(held, dict):
         return
     for key in set(candidate.path_keys) & new.keys() & held.keys():
-        if not _relative(held[key], LISTS.get(key, "")):
+        if not _relative(held[key], project_store.LISTS.get(key, "")):
             continue
         try:
             resolved = promote_paths.placeholders(held[key], places, f"the stored `{key}`",
-                                                  LISTS.get(key, ""))
+                                                  project_store.LISTS.get(key, ""))
         except Invalid:
             continue
         if resolved == new[key]:

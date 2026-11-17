@@ -38,6 +38,8 @@ PROFILE_BYTES_MAX = 64 * 1024
 #: Entries one kind directory may hold, and the whole store's bytes: `promote` reads both.
 ENTRIES_MAX = 200
 STORE_BYTES_MAX = 4 * 1024 * 1024
+#: A path key whose one string holds several paths, and the separator between them.
+LISTS = {"rompath": ";", "inipath": ";"}
 
 _PLACEHOLDER = re.compile(r"\$\{([^}]*)\}")
 _DRIVE = re.compile(r"[A-Za-z]:[\\/]")
@@ -124,7 +126,7 @@ def read(entry: Path, keys: Collection[str], path_keys: Collection[str] = (), *,
                       "not take: its keys are the arguments the reading server hands in")
     env = os.environ if environ is None else environ
     resolved = {key: _texts(value, base, state, env, where) for key, value in values.items()}
-    return {key: _paths(value, base) if key in path_keys else value
+    return {key: _paths(value, base, LISTS.get(key, "")) if key in path_keys else value
             for key, value in resolved.items()}
 
 
@@ -317,15 +319,18 @@ def _text(text: str, base: Path, state: str, environ: Mapping[str, str], where: 
     return _PLACEHOLDER.sub(one, text)
 
 
-def _paths(value: object, base: Path) -> object:
-    """`value`'s paths: a relative one resolves against the base, a list of them each, anything
-    else as it came."""
+def _paths(value: object, base: Path, separator: str = "") -> object:
+    """`value`'s paths: a relative one resolves against the base, a list of them each, a string
+    `separator` divides each part, anything else as it came."""
     if isinstance(value, str):
+        if separator:
+            return separator.join(str(_paths(part, base)) if part else part
+                                  for part in value.split(separator))
         return value if absolute(value) else os.path.join(str(base), value)
     if isinstance(value, list):
-        return [_paths(item, base) for item in value]
+        return [_paths(item, base, separator) for item in value]
     if isinstance(value, dict):
-        return {key: _paths(item, base) for key, item in value.items()}
+        return {key: _paths(item, base, separator) for key, item in value.items()}
     return value
 
 

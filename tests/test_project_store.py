@@ -241,6 +241,17 @@ def test_each_path_of_a_list_resolves(tmp_path: Path) -> None:
                                                        "C:\\two.bin"]
 
 
+def test_each_folder_of_a_separated_list_resolves(tmp_path: Path) -> None:
+    keys = {"rompath", "inipath"}
+    path = stored(tmp_path, {"rompath": "roms;shared;/opt/roms;${root}/more",
+                             "inipath": "ini"})
+    got = ps.read(path, keys, keys)
+    assert got["rompath"] == ";".join([os.path.join(str(tmp_path), "roms"),
+                                       os.path.join(str(tmp_path), "shared"),
+                                       "/opt/roms", f"{tmp_path}/more"])
+    assert got["inipath"] == os.path.join(str(tmp_path), "ini")
+
+
 def test_a_path_key_holding_a_table_resolves_every_entry(tmp_path: Path) -> None:
     path = stored(tmp_path, {"symbols": {"0x100": "maps/main.map"}})
     symbols = cast(dict[str, str], ps.read(path, KEYS, PATH_KEYS)["symbols"])

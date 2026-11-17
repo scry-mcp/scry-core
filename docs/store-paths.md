@@ -2,7 +2,8 @@
 
 A store is tracked by its repository, so a file in it must read the same on every machine. Every
 path in a recipe resolves against one base, the directory holding `.scry/`: a relative path is
-relative to the repository. Whatever would otherwise be a path of this machine is written as a
+relative to the repository, and in a `;`-separated list of folders (`rompath`, `inipath`) each
+folder resolves on its own. Whatever would otherwise be a path of this machine is written as a
 placeholder:
 
 | Placeholder | Stands for |

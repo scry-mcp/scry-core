@@ -13,8 +13,6 @@ from typing import Any
 from scry_core import project_store
 from scry_core.reply_contract import Invalid
 
-#: A path key whose one string holds several paths, and the separator between them.
-LISTS = {"rompath": ";", "inipath": ";"}
 #: The arguments of a `perform` step that name a file; any other string may be text to type.
 STEP_PATHS = frozenset({"path", "dest"})
 

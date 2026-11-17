@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- A start profile's `rompath` and `inipath`, `;`-separated lists of folders
+  (`project_store.LISTS`, which moves there from `promote_paths`), resolve each folder against
+  the store's base; only the first was resolved, and the rest reached the emulator relative to
+  its working directory.
+
 ## 0.118.2
 
 - `promote` refuses a `start` profile or a `perform` document holding a `${...}` the store's
