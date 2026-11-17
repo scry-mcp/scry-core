@@ -13,6 +13,8 @@ What a server author notices. A client's view of each server is in that server's
 - `stop_wait.DISARM_WATCHES` is the sentence both servers' `run_to` and `run_for` say of
   `disarm_watches`, and `tool_replies.DisarmFields` the two fields it adds (`disarmed_watches`,
   `not_rearmed`), so a reply that runs without the flag does not list them.
+- `stop_wait.not_a_stop` refuses a wait on a control, which counts its hits and never stops the
+  machine, in one wording for both servers.
 
 ## 0.116.0
 

@@ -125,6 +125,13 @@ def test_a_watch_that_never_stops_the_machine_is_refused_by_its_mode() -> None:
                       "only a `change` watch fires")
 
 
+def test_a_control_that_never_stops_the_machine_is_refused_by_its_role() -> None:
+    e = stop_wait.not_a_stop("tick", "control")
+    assert e.code == "bad_argument"
+    assert str(e) == ("the breakpoint 'tick' is a `control`, which counts its hits and never "
+                      "stops the machine")
+
+
 def test_a_watch_that_follows_a_pointer_is_refused() -> None:
     e = stop_wait.follows_pointer("[0x10]+2")
     assert e.code == "bad_argument"

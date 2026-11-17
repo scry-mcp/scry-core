@@ -162,6 +162,13 @@ def not_a_change_watch(ref: str, mode: str) -> Invalid:
                    "the machine: only a `change` watch fires")
 
 
+def not_a_stop(ref: str, role: str) -> Invalid:
+    """A control counts the runs that pass it and never stops the machine, so a wait on it could
+    never judge."""
+    return Invalid("bad_argument", f"the breakpoint {ref!r} is a `{role}`, which counts its hits "
+                   "and never stops the machine")
+
+
 def follows_pointer(ref: str) -> Invalid:
     """A watch through a pointer watches bytes that move, so its firing is not told apart."""
     return Invalid("bad_argument", f"the watch {ref!r} follows a pointer, and its bytes move "
