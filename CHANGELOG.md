@@ -49,6 +49,10 @@ What a server author notices. A client's view of each server is in that server's
   paths, and refused. A document outside a store keeps any `${` as its steps' own text.
 - A promoted `start` recipe writes each part of a `;`-separated `inipath` under the store's
   placeholders, as it did for `rompath`; the parts after the first were left as this host's paths.
+- `promote.after_start` builds `start`'s reply with the recipe kept and the profile block read,
+  `project_store.start_arguments` reads a `start`'s profile keys and defaults off its signature,
+  `Drafts.loaded_file` names an entry read from a file by its stem, and `window.DOC_VALUES`
+  carries the `window` tool's reply and refusal sentences: what both servers wrote twice.
 - `roster.SHARED_FAMILIES` declares `window` under Session and `screen_wait` under Advance, the
   two tools both servers register that it left out, so `misfiled` refuses a server filing them
   elsewhere.
