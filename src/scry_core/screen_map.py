@@ -70,7 +70,7 @@ import dataclasses
 import json
 import re
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
@@ -581,6 +581,15 @@ def check_frame_run(screen: str, control: object) -> None:
     if control:
         raise Invalid("bad_argument", f"screen {screen!r} names no anchor, so it is run to a "
                       "frame at a time and a `control` has nothing to count: leave it out")
+
+
+def check_frame_flags(screen: str, applied: Sequence[str]) -> None:
+    """A run's own flags (`disarm_watches`, a `condition`) on a run to a screen with no `anchor`,
+    which runs a frame at a time and arms nothing, have nothing to apply to: refused."""
+    if applied:
+        raise Invalid("bad_argument", f"screen {screen!r} names no anchor, so it is run to a "
+                      f"frame at a time, and {', '.join(applied)} has nothing to apply to: "
+                      "leave it out")
 
 
 def no_control(declare: str = "") -> Invalid:

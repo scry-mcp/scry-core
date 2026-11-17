@@ -15,6 +15,9 @@ What a server author notices. A client's view of each server is in that server's
   `not_rearmed`), so a reply that runs without the flag does not list them.
 - `stop_wait.not_a_stop` refuses a wait on a control, which counts its hits and never stops the
   machine, in one wording for both servers.
+- `screen_map.check_frame_flags` refuses a run's own flags (`disarm_watches`, a `condition`) on a
+  run to a screen with no anchor, which runs a frame at a time and has nothing to apply them to,
+  in one wording for both servers.
 
 ## 0.116.0
 

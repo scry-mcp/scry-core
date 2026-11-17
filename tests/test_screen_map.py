@@ -288,6 +288,14 @@ def test_a_control_on_a_frame_by_frame_run_is_refused_naming_the_screen() -> Non
     assert e.value.code == "bad_argument" and "`control`" in str(e.value)
 
 
+def test_a_flag_of_a_run_is_refused_on_a_screen_run_a_frame_at_a_time() -> None:
+    screen_map.check_frame_flags("play", [])
+    with pytest.raises(Invalid) as refused:
+        screen_map.check_frame_flags("play", ["disarm_watches"])
+    assert str(refused.value) == ("screen 'play' names no anchor, so it is run to a frame at a "
+                                  "time, and disarm_watches has nothing to apply to: leave it out")
+
+
 def test_a_run_to_with_no_control_is_refused_once_for_both_servers() -> None:
     plain = screen_map.no_control()
     assert plain.code == "bad_argument" and "no control is named" in str(plain)
