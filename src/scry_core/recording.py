@@ -517,7 +517,7 @@ def read_document(path_arg: object, *, state: str = "") -> dict[str, Any]:
     """The `perform` document a caller names by path, judged before a step runs: JSON, a version
     this module writes, and a list of step objects. `path` is absolute or led by `~`. A document
     a store holds has its placeholders resolved (`state`, the session's scratch, for
-    `${state}`)."""
+    `${state}`); anywhere else `${` is a step's own text."""
     path = judges.absolute("path", path_arg)
     text = judges.read_text("path", path_arg, "`perform` document")
     try:
@@ -537,7 +537,10 @@ def read_document(path_arg: object, *, state: str = "") -> dict[str, Any]:
     if not isinstance(steps, list) or not steps or not all(isinstance(s, dict) for s in steps):
         raise Invalid("bad_argument", f"path: {path} holds no steps, or one that is not an "
                       "object, so a replay would run nothing")
-    if "${" in text:
+    if project_store.STORE in path.parts and "${" in text:
+        if not state and "${state}" in text:
+            raise Invalid("no_session", f"path: {path} writes paths under `${{state}}`, the "
+                          "session's scratch, so it replays in a live session: `start` one first")
         doc["steps"] = project_store.placed(steps, path, state=state)
     return doc
 

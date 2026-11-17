@@ -14,8 +14,9 @@ What a server author notices. A client's view of each server is in that server's
 - `log_wait.SILENT` is the clause `timeout_note` says of a writer that wrote no line, for a
   server that adds its own account to say it once.
 - `recording.steps_to_replay` and `read_document` resolve the placeholders of a `perform`
-  document a store holds, `state` naming the session's scratch: a promoted document's steps
-  were replayed with `${root}` in their paths, and refused.
+  document a store holds, `state` naming the session's scratch (`no_session` when the document
+  needs it and there is none): a promoted document's steps were replayed with `${root}` in their
+  paths, and refused. A document outside a store keeps any `${` as its steps' own text.
 - A promoted `start` recipe writes each part of a `;`-separated `inipath` under the store's
   placeholders, as it did for `rompath`; the parts after the first were left as this host's paths.
 - `roster.SHARED_FAMILIES` declares `window` under Session and `screen_wait` under Advance, the

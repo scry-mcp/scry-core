@@ -28,6 +28,22 @@ def test_a_document_read_from_a_path_gives_its_steps(tmp_path: Path) -> None:
     assert doc["steps"] == [{"op": "status"}]
 
 
+def test_a_document_outside_a_store_keeps_its_text_as_written(tmp_path: Path) -> None:
+    """Only a store's document is written in placeholders: elsewhere `${` is text a step types."""
+    steps = [{"op": "send_keys", "text": "echo ${HOME} and ${"}]
+    assert recording.read_document(str(_doc(tmp_path, steps=steps)))["steps"] == steps
+
+
+def test_a_stored_document_needing_the_scratch_wants_a_session(tmp_path: Path) -> None:
+    store = tmp_path / ".scry" / "perform"
+    store.mkdir(parents=True)
+    path = _doc(store, steps=[{"op": "snapshot", "dest": "${state}/a.png"}])
+    with pytest.raises(Invalid) as refused:
+        recording.read_document(str(path))
+    assert refused.value.code == "no_session" and "${state}" in str(refused.value), refused.value
+    assert recording.read_document(str(path), state="/s")["steps"][0]["dest"] == "/s/a.png"
+
+
 def test_a_version_this_reader_does_not_know_is_refused_by_name(tmp_path: Path) -> None:
     path = _doc(tmp_path, version=recording.DOCUMENT_VERSION + 1)
     with pytest.raises(Invalid, match=f"version {recording.DOCUMENT_VERSION + 1}"):
