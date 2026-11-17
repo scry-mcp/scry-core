@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.116.0
 
 - `judges.regex(name, pattern)` judges a caller's regular expression for both servers: a
   non-string, an empty one and one that does not compile are refused naming the argument.
