@@ -521,6 +521,7 @@ def test_two_steps_of_one_name_are_refused_before_a_call(tmp_path: Path, log: Pa
     with pytest.raises(ValueError, match=r"names \['look'\] more than once"):
         d.main(_demo(tmp_path, steps), ["--transcript", str(tmp_path / "t.md")])
     assert _calls(log) == []
+    d.declared(_demo(tmp_path))
 
 
 def _replies(**frames: Any) -> dict[str, d.Reply]:
@@ -583,6 +584,39 @@ def test_a_moment_between_two_steps_of_a_demo_with_no_video_is_invalid(tmp_path:
     demo = _moment_demo(tmp_path, moments=(d.Moment("boot", "shot", "It moves."),))
     with pytest.raises(verdict.Invalid, match="the demo x names no `video` for its moments"):
         d.cuts(demo, d.Run(dir=tmp_path, replies=_replies(boot={"frame": 1}, shot={"frame": 2})))
+
+
+def test_a_moment_longer_than_its_stretch_is_invalid_and_one_with_a_skip_ends_with_it(
+        tmp_path: Path) -> None:
+    folder = _session_video(tmp_path)
+    replies = _replies(boot={"frame": 100}, shot={"frame": 130}, end={"frame": 150})
+    long = _moment_demo(tmp_path, video=lambda run: folder,
+                        moments=(d.Moment("boot", "shot", "It moves.", skip=6, frames=40),))
+    with pytest.raises(verdict.Invalid, match="shows frames 6 to 45 of a stretch of 30"):
+        d.cuts(long, d.Run(dir=tmp_path, replies=replies))
+    whole = d.Demo(**{**long.__dict__, "moments": (d.Moment("boot", "shot", "It moves.", skip=6),)})
+    assert d.cuts(whole, d.Run(dir=tmp_path, replies=replies)) == [
+        motion.Cut(folder / "x_001.avi", 28, 24)]
+    film = {"film": {"path": str(FIXTURE_AVI), "avi_frames": FIXTURE_FRAMES}}
+    skipped = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.", skip=10),))
+    assert d.cuts(skipped, d.Run(dir=tmp_path, replies=_replies(**film))) == [
+        motion.Cut(FIXTURE_AVI, 10, FIXTURE_FRAMES - 10)]
+    past = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.", skip=10,
+                                                    frames=FIXTURE_FRAMES),))
+    with pytest.raises(verdict.Invalid, match="shows frames 10 to 81 of a stretch of 72"):
+        d.cuts(past, d.Run(dir=tmp_path, replies=_replies(**film)))
+
+
+def test_the_motion_block_s_alt_is_written_as_an_attribute(tmp_path: Path) -> None:
+    demo = _moment_demo(tmp_path, alt='A "ball" & a <paddle>')
+    assert 'alt="A &quot;ball&quot; &amp; a &lt;paddle&gt;"></picture>' in d.motion_block(
+        demo, [1000])
+
+
+def test_a_recording_is_given_the_seconds_a_slow_host_needs() -> None:
+    args = _film().args
+    assert callable(args)
+    assert args(d.Run(dir=Path("out")))["seconds"] == d.RECORD_SECONDS == 300
 
 
 def test_a_moment_that_skips_its_whole_stretch_is_invalid(tmp_path: Path) -> None:

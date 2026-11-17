@@ -159,18 +159,24 @@ def block(package: str) -> str:
 def drift(readme: Path, package: str) -> str:
     """How the README's block departs from the table, or empty; `Invalid` when the README or its
     markers cannot be read."""
-    try:
-        text = readme.read_text(encoding="utf-8")
-    except OSError as e:
-        raise Invalid(f"{readme} cannot be read ({type(e).__name__})") from e
-    return demo.first_difference(demo.block_of(text, BEGIN, END), block(package),
+    return demo.first_difference(demo.block_of(_read(readme), BEGIN, END), block(package),
                                  ("the README", "the table of clients"))
 
 
+def _read(readme: Path) -> str:
+    try:
+        return readme.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        raise Invalid(f"{readme} cannot be read ({type(e).__name__})") from e
+
+
 def write(readme: Path, package: str) -> None:
-    """Rewrite the README's block from the table."""
-    text = readme.read_text(encoding="utf-8")
-    readme.write_text(demo.with_block(text, block(package), BEGIN, END), encoding="utf-8")
+    """Rewrite the README's block from the table; `Invalid` when it cannot be written."""
+    text = demo.with_block(_read(readme), block(package), BEGIN, END)
+    try:
+        readme.write_text(text, encoding="utf-8")
+    except OSError as e:
+        raise Invalid(f"{readme} cannot be written ({type(e).__name__})") from e
 
 
 def main(argv: Sequence[str] | None = None) -> int:

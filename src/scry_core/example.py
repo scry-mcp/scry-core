@@ -42,15 +42,14 @@ def sentences(text: str) -> int:
     return len([part for part in re.split(r"(?<=[.?!])\s+", text.strip()) if part])
 
 
-def abridged(value: Any, chars: int = ABRIDGED_CHARS) -> Any:
-    """`value` cut to its shape: a long list's first items then `... N more`, a long string's
+def abridged(value: Any, chars: int = ABRIDGED_CHARS, items: int = ABRIDGED_ITEMS) -> Any:
+    """`value` cut to its shape: a long list's first `items` then `... N more`, a long string's
     head."""
     if isinstance(value, dict):
-        return {k: abridged(v, chars) for k, v in value.items()}
+        return {k: abridged(v, chars, items) for k, v in value.items()}
     if isinstance(value, list | tuple):
-        kept = [abridged(v, chars) for v in value[:ABRIDGED_ITEMS]]
-        return kept + ([f"... {len(value) - ABRIDGED_ITEMS} more"]
-                       if len(value) > ABRIDGED_ITEMS else [])
+        kept = [abridged(v, chars, items) for v in value[:items]]
+        return kept + ([f"... {len(value) - items} more"] if len(value) > items else [])
     if isinstance(value, str) and len(value) > chars:
         return f"{value[:chars]} ... ({len(value)} characters)"
     return value
@@ -120,7 +119,8 @@ def _wrapped(tool: str, parts: Sequence[str]) -> list[str]:
 
 def call_text(tool: str, args: Mapping[str, Any]) -> str:
     """`tool(argument=value)` within `CALL_LINES` lines of `COLUMNS` columns: whole when it
-    fits, else its long values cut, else its last arguments counted and left out."""
+    fits, else its long values cut, else its last arguments counted and left out, else the
+    tool alone."""
     def parts(values: Mapping[str, Any]) -> list[str]:
         return [f"{k}={json.dumps(v, ensure_ascii=False)}" for k, v in values.items()]
 
@@ -142,23 +142,25 @@ def call_text(tool: str, args: Mapping[str, Any]) -> str:
 
 
 def excerpt(reply: Mapping[str, Any], fields: Sequence[str]) -> str:
-    """The `fields` of `reply` as JSON, a long string cut so its line stays within `COLUMNS`.
-    `ValueError` when a field is missing or the excerpt passes `REPLY_LINES`."""
+    """The `fields` of `reply` as JSON: a long string cut so its line stays within `COLUMNS`, a
+    list kept as far as `REPLY_LINES` hold it. `ValueError` when a field is missing or the
+    excerpt passes those lines with every list cut to `ABRIDGED_ITEMS`."""
     if lacking := [k for k in fields if k not in reply]:
         raise ValueError(f"the excerpt shows {lacking}, which the reply does not carry")
     picked = {k: reply[k] for k in fields}
     text = ""
-    for chars in STRING_CUTS:
-        text = compact(abridged(picked, chars), columns=COLUMNS)
-        if all(len(line) <= COLUMNS for line in text.splitlines()):
-            break
-    else:
-        raise ValueError(f"the excerpt of {list(fields)} has a line past {COLUMNS} columns that "
-                         "no cut of its strings shortens: name other fields")
-    if len(text.splitlines()) > REPLY_LINES:
-        raise ValueError(f"the excerpt of {list(fields)} is {len(text.splitlines())} lines, "
-                         f"and a reply shows at most {REPLY_LINES}: name fewer fields")
-    return text
+    for items in range(REPLY_LINES, ABRIDGED_ITEMS - 1, -1):
+        for chars in STRING_CUTS:
+            text = compact(abridged(picked, chars, items), columns=COLUMNS)
+            if all(len(line) <= COLUMNS for line in text.splitlines()):
+                break
+        else:
+            raise ValueError(f"the excerpt of {list(fields)} has a line past {COLUMNS} columns "
+                             "that no cut of its strings shortens: name other fields")
+        if len(text.splitlines()) <= REPLY_LINES:
+            return text
+    raise ValueError(f"the excerpt of {list(fields)} is {len(text.splitlines())} lines, "
+                     f"and a reply shows at most {REPLY_LINES}: name fewer fields")
 
 
 @dataclass(frozen=True)

@@ -132,3 +132,11 @@ def test_an_excerpt_s_list_too_long_for_one_line_is_a_column() -> None:
     assert '"lines": ["0000' in example.fenced({"lines": lines}), "a whole reply keeps one line"
     with pytest.raises(ValueError, match="is 13 lines"):
         example.excerpt(reply, ("summary", "regs", "lines"))
+
+
+def test_an_excerpt_keeps_as_much_of_a_list_as_its_lines_hold() -> None:
+    lines = [f"{n:04X}: an instruction" for n in range(8)]
+    assert example.excerpt({"lines": lines}, ("lines",)).splitlines()[-3:] == [
+        '    "0007: an instruction"', "  ]", "}"], "eight items fit in twelve lines"
+    more = example.excerpt({"lines": lines + lines}, ("lines",)).splitlines()
+    assert more[-3] == '    "... 9 more"' and len(more) == example.REPLY_LINES, more

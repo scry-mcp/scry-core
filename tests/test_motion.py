@@ -232,3 +232,31 @@ def test_an_assembly_that_fails_is_invalid_with_its_own_words(
     with pytest.raises(Invalid, match=r"img2webp refused to assemble the loop \(exit 2\): Error! "
                                       "Frame dimensions mismatched"):
         motion._assembled("img2webp", [_picture(2, 2)], tmp_path, True)
+
+
+def test_a_cut_longer_than_a_moment_is_invalid_with_half_a_frame_of_slack(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fixture's 72 frames last 1.2 s: over a 1 s ceiling, inside a 1.19 s one by the slack."""
+    monkeypatch.setattr(motion, "CUT_SECONDS", (0.5, 1.0))
+    with pytest.raises(Invalid, match=r"moment 1 lasts 1.20 s .*, and a moment lasts 0.5 to 1 s"):
+        motion.planned([motion.Cut(FIXTURE, 0, 72)])
+    monkeypatch.setattr(motion, "CUT_SECONDS", (0.5, 1.19))
+    assert len(motion.planned([motion.Cut(FIXTURE, 0, 72)])) == 1
+    monkeypatch.setattr(motion, "SLACK_SECONDS", 0.0)
+    with pytest.raises(Invalid, match="moment 1 lasts 1.20 s"):
+        motion.planned([motion.Cut(FIXTURE, 0, 72)])
+    monkeypatch.setattr(motion, "CUT_SECONDS", (0.5, 3.0))
+    monkeypatch.setattr(motion, "LOOP_SECONDS", 2.39)
+    with pytest.raises(Invalid, match="the moments last 2.40 s together"):
+        motion.planned([motion.Cut(FIXTURE, 0, 72)] * 2)
+    monkeypatch.setattr(motion, "SLACK_SECONDS", 0.02)
+    assert len(motion.planned([motion.Cut(FIXTURE, 0, 72)] * 2)) == 2
+
+
+@needs_programs
+def test_a_cut_decodes_the_frames_it_names_and_no_others(tmp_path: Path) -> None:
+    ffmpeg = motion.programs()["ffmpeg"]
+    every = motion._frames(ffmpeg, motion.Cut(FIXTURE, 0, 72), Fraction(60), 1, tmp_path / "all")
+    assert len({picture.rgb for picture in every}) > 60, "the fixture's frames do not differ"
+    kept = motion._frames(ffmpeg, motion.Cut(FIXTURE, 7, 20), Fraction(60), 2, tmp_path / "cut")
+    assert [picture.rgb for picture in kept] == [every[n].rgb for n in range(7, 27, 2)]

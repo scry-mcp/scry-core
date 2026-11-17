@@ -128,3 +128,20 @@ def test_the_command_line_refuses_what_it_does_not_know() -> None:
     with pytest.raises(SystemExit) as stop:
         install.main(["scry_mame", "--wrte"])
     assert stop.value.code == 2
+
+
+def test_a_readme_that_is_no_text_or_cannot_be_written_is_invalid_not_out_of_date(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    readme = tmp_path / "README.md"
+    readme.write_bytes(b"\xff\xfe not text")
+    assert install.main(["scry_mame", "--readme", str(readme)]) == EXIT_INVALID
+    assert "cannot be read (UnicodeDecodeError)" in capsys.readouterr().out
+    readme.write_text(README)
+
+    def refuse(self: Path, *args: object, **kwargs: object) -> int:
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(Path, "write_text", refuse)
+    assert install.main(["scry_mame", "--readme", str(readme), "--write"]) == EXIT_INVALID
+    assert "cannot be written (PermissionError)" in capsys.readouterr().out

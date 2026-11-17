@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import html
 import importlib.util
 import json
 import os
@@ -82,6 +83,9 @@ EXCERPT = ("summary",)
 #: The tool whose reply names the AVI it wrote, and the reply key every stop counts frames in.
 RECORD_TOOL = "record"
 FRAME_KEY = "frame"
+#: The wall-clock seconds a recording may take: an emulator under its debugger can run well
+#: below real speed, and a recording cut at its bound fails the step.
+RECORD_SECONDS = 300
 
 #: The tool every Scry server ends a session with.
 CLEANUP_TOOL = "close"
@@ -550,8 +554,9 @@ async def _cleanup(client: Client, out: Outcome) -> None:
 KNOWN_OPTIONS = OFFERABLE | {"binary"}
 
 
-def _declared(demo: Demo) -> None:
-    """Refuse unknown option names and malformed declarations."""
+def declared(demo: Demo) -> None:
+    """Refuse, as `ValueError`, what a demo declares wrongly, before any call: unknown option
+    names, a step that is no step, an example or a moment past its limits."""
     for step in demo.steps:
         for declared in ("volatile", "optional"):
             if not isinstance(getattr(step, declared), Mapping):
@@ -649,7 +654,7 @@ def recording(name: str, frames: int, said: Callable[[Reply, Run], str] | None =
         dest = run.dir / file_names.name(file_names.word(name, "the step's name"),
                                          extension="avi")
         dest.unlink(missing_ok=True)  # `record` writes only a file that is not there yet
-        return {"frames": frames, "dest": dest}
+        return {"frames": frames, "dest": dest, "seconds": RECORD_SECONDS}
 
     return Step(name, RECORD_TOOL, args, recorded(frames, said), volatile=RECORDING_TIMING)
 
@@ -723,8 +728,12 @@ def cuts(demo: Demo, run: Run) -> list[motion.Cut]:
         if moment.skip >= held:
             raise Invalid(f"the moment until {moment.until!r} skips {moment.skip} frames of a "
                           f"stretch of {held}")
-        found.append(motion.Cut(source, first + moment.skip,
-                                moment.frames or held - moment.skip))
+        frames = moment.frames or held - moment.skip
+        if moment.skip + frames > held:
+            raise Invalid(f"the moment until {moment.until!r} shows frames {moment.skip} to "
+                          f"{moment.skip + frames - 1} of a stretch of {held}: it would run on "
+                          "into what the next step did")
+        found.append(motion.Cut(source, first + moment.skip, frames))
     return found
 
 
@@ -732,7 +741,8 @@ def motion_block(demo: Demo, cut_ms: Sequence[int]) -> str:
     """The README's motion block: the loop, the still for a reader who asks for no motion, each
     moment's sentence, and how long each lasts for a page that lights them in time."""
     picture = ('<picture><source media="(prefers-reduced-motion: reduce)" '
-               f'srcset="screen.png"><img src="{motion.LOOP_NAME}" alt="{demo.alt}"></picture>')
+               f'srcset="screen.png"><img src="{motion.LOOP_NAME}" '
+               f'alt="{html.escape(demo.alt, quote=True)}"></picture>')
     captions = [f"{n}. {moment.caption}" for n, moment in enumerate(demo.moments, start=1)]
     return "\n".join([picture, "", *captions, "",
                       f"<!-- moments-ms: {','.join(str(ms) for ms in cut_ms)} -->"])
@@ -773,7 +783,7 @@ def _parser(demo: Demo) -> argparse.ArgumentParser:
 
 def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
     """Run `demo` as its command line asks; answer the exit code."""
-    _declared(demo)
+    declared(demo)
     ns = _parser(demo).parse_args(argv)
     transcript: Path = (ns.transcript or demo.root / "tmp" / "demos" / demo.name
                         / "transcript.md").resolve()
