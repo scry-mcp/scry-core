@@ -238,6 +238,13 @@ def test_a_loaded_entry_names_the_candidate_the_session_learned_from() -> None:
     assert drafts.loaded_name("maps") == ""
 
 
+def test_a_loaded_file_names_its_stem_and_keeps_the_path_read(tmp_path: Path) -> None:
+    drafts = Drafts()
+    drafts.loaded_file("perform", "~/game/intro-run.json")
+    assert drafts.loaded_name("perform") == "intro-run"
+    assert drafts.sources["perform"] == str(Path.home() / "game" / "intro-run.json")
+
+
 def test_a_name_a_kind_cannot_take_is_refused() -> None:
     drafts = Drafts()
     with pytest.raises(Invalid, match="not an entry name"):
@@ -1689,6 +1696,19 @@ def test_a_start_keeps_what_the_call_decided_named_by_its_guest() -> None:
     assert candidate.entry == "start/lineup"
     assert candidate.document == {"format": project_store.FORMAT, "system": "lineup",
                                   "rompath": "/roms"}
+
+
+def test_after_start_adds_kept_and_the_profile_block_only_when_there_is_one() -> None:
+    drafts = Drafts()
+    params = {"system": "lineup", "rompath": "/roms", "state_dir": "/s", "display": 0}
+    block = {"name": "game"}
+    kept = promote.after_start(drafts, {"status": "ok"}, params, block=block, guest="lineup",
+                               defaults=DEFAULTS, run_own=RUN_OWN, needs=("system",),
+                               path_keys=("rompath",))
+    assert kept["kept"].startswith("kept 1") and kept["profile"] == block, kept
+    bare = promote.after_start(Drafts(), {"status": "ok"}, {"system": ""}, block=None, guest="",
+                               defaults=DEFAULTS, run_own=RUN_OWN, needs=(), path_keys=())
+    assert bare == {"status": "ok"}, bare
 
 
 def test_a_start_with_no_guest_and_no_profile_keeps_nothing() -> None:

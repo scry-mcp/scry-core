@@ -14,12 +14,14 @@ a server makes."""
 
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import re
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from scry_core import file_names
 from scry_core.reply_contract import Invalid
@@ -158,6 +160,15 @@ def applied(profile: str, *, starting: Iterable[str | Path], keys: Collection[st
     fill = {name: value for name, value in values.items() if name not in set(given)}
     call, _ = precedence(arguments, fill)
     return Applied(profile, entry, sorted(fill), call)
+
+
+def start_arguments(start: Callable[..., object]) -> tuple[tuple[str, ...], dict[str, Any]]:
+    """What a profile may set, read off `start`'s signature so the two cannot drift apart
+    (`profile` is not one of them, and `ctx` is the protocol's), and each argument's default: a
+    recipe keeps what the call decided, not what the tool would have answered on its own."""
+    parameters = inspect.signature(start).parameters
+    return (tuple(name for name in parameters if name not in ("ctx", "profile")),
+            {name: parameter.default for name, parameter in parameters.items()})
 
 
 def demanded(arguments: Mapping[str, object], names: Iterable[str], *, tool: str) -> None:

@@ -4,6 +4,10 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- `promote.after_start` builds `start`'s reply with the recipe kept and the profile block read,
+  `project_store.start_arguments` reads a `start`'s profile keys and defaults off its signature,
+  `Drafts.loaded_file` names an entry read from a file by its stem, and `window.DOC_VALUES`
+  carries the `window` tool's reply and refusal sentences: what both servers wrote twice.
 - `roster.SHARED_FAMILIES` declares `window` under Session and `screen_wait` under Advance, the
   two tools both servers register that it left out, so `misfiled` refuses a server filing them
   elsewhere.

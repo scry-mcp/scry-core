@@ -168,6 +168,11 @@ class Drafts:
             self.loaded[kind] = name
             self.sources[kind] = source
 
+    def loaded_file(self, kind: str, path: str) -> None:
+        """`kind` was read from the file at `path` (`~`-led or absolute): its entry is the stem."""
+        where = Path(path).expanduser()
+        self.loaded_entry(kind, where.stem, source=str(where))
+
     def loaded_name(self, kind: str) -> str:
         """The entry `kind` was last read from, or "" when it was read from none."""
         return self.loaded.get(kind, "")
@@ -269,6 +274,20 @@ def keep_start(drafts: Drafts, params: Mapping[str, Any], *, guest: str,
                      if key in defaults and key not in run_own and value != defaults[key]})
     return drafts.keep("start", name, document, needs=needs, path_keys=path_keys,
                        own=sorted(run_own))
+
+
+def after_start(drafts: Drafts, reply: dict[str, Any], params: Mapping[str, Any], *,
+                block: Mapping[str, Any] | None, guest: str, defaults: Mapping[str, Any],
+                run_own: frozenset[str], needs: Collection[str],
+                path_keys: Collection[str]) -> dict[str, Any]:
+    """`start`'s reply: `kept` when `keep_start` kept the recipe, and the `profile` block the
+    start read (None when it read none)."""
+    if keep_start(drafts, params, guest=guest, defaults=defaults, run_own=run_own, needs=needs,
+                  path_keys=path_keys):
+        reply["kept"] = kept_line(drafts)
+    if block is not None:
+        reply["profile"] = block
+    return reply
 
 
 def after_map(drafts: Drafts, maps: screen_map.Maps, method: str, reply: dict[str, Any], *,

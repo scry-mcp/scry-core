@@ -24,6 +24,20 @@ Rect = tuple[int, int, int, int]       # x, y, width, height, in the host's own 
 NO_DISPLAY = -1
 #: Seconds between two readings of the host's window list.
 POLL_S = 0.25
+#: The `window` tool's reply and refusals, the same on every server: each docstring names them.
+DOC_VALUES = {
+    "WINDOW_REPLY": (
+        "`window` (`display`, the OS's index; `bounds`; `onscreen`; `front`, on screen with no "
+        "other application's window covering its centre; `fullscreen`); `size` when the session "
+        "was started with a stated `size`: `asked`, `seen`, which rectangle was `compared` "
+        "(`client` or `outer`), `tolerance_px`, `height_free` and `matches`"),
+    "WINDOW_REFUSED": (
+        "no session (`no_session`), one that died (`session_broken`), a session started without "
+        "`shared` (`no_channel`), a window that never appears or, with `front`, is still covered "
+        "after the activation (`window_not_visible`, naming what was seen; on a "
+        "`background=true` session it names that as what may keep it behind). Without `front` "
+        "the window is answered wherever the owner put it"),
+}
 #: Seconds a watched start, and the `window` tool, wait on the host's window list.
 WAIT_S = 10.0
 

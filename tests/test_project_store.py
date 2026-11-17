@@ -438,3 +438,12 @@ def test_a_required_argument_the_call_and_the_profile_both_lack_is_refused_by_na
 def test_a_required_argument_the_call_gives_is_taken() -> None:
     ps.demanded({"conf": "/boot.conf", "cwd": "/guest", "session_seconds": 30},
                 ("conf", "cwd", "session_seconds"), tool="start")
+
+
+def test_start_arguments_are_read_off_the_signature_without_ctx_or_profile() -> None:
+    def start(ctx: object, binary: str = "", profile: str = "", shared: bool = False) -> None:
+        del ctx, binary, profile, shared
+
+    keys, defaults = ps.start_arguments(start)
+    assert keys == ("binary", "shared")
+    assert defaults["binary"] == "" and defaults["shared"] is False and "profile" in defaults
