@@ -782,13 +782,14 @@ def test_a_review_of_nothing_writable_names_each_entry_and_its_line_says_so(
     assert promote.promote_line({}, reply).endswith("1 entry cannot be written")
 
 
-def test_a_list_of_paths_is_each_written(tmp_path: Path) -> None:
+@pytest.mark.parametrize("key", ["rompath", "inipath"])
+def test_a_list_of_paths_is_each_written(tmp_path: Path, key: str) -> None:
+    """MAME reads both as `;`-separated lists: each part is placed, none left as a host path."""
     root = repo(tmp_path)
-    drafts = drafted("start", "x", start_doc(system="x",
-                                             rompath=f"{root}/a;{root}/b"),
-                     needs=("system",), path_keys=("rompath",))
+    drafts = drafted("start", "x", start_doc(system="x", **{key: f"{root}/a;{root}/b"}),
+                     needs=("system",), path_keys=(key,))
     write(drafts, root, ["start/x"])
-    assert json.loads((root / ".scry" / "start" / "x.json").read_text())["rompath"] == \
+    assert json.loads((root / ".scry" / "start" / "x.json").read_text())[key] == \
         "${root}/a;${root}/b"
 
 
