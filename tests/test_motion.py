@@ -72,6 +72,30 @@ def test_a_capture_the_emulator_doubled_is_told_and_halved_back() -> None:
     assert not motion.doubled(_picture(3, 2)), "an odd width is nobody's double"
 
 
+@pytest.mark.parametrize(("size", "times"), [
+    ((320, 200), 3), ((256, 240), 2), ((256, 224), 2), ((320, 240), 2), ((640, 480), 1),
+    ((800, 600), 1), ((1024, 768), 1), ((160, 100), 6), ((960, 600), 1), ((961, 100), 1),
+])
+def test_a_frame_is_scaled_up_by_the_most_whole_times_that_fit(size: tuple[int, int],
+                                                               times: int) -> None:
+    assert motion.factor(*size) == times
+    assert size[0] * times <= max(size[0], motion.FIT[0])
+    assert size[1] * times <= max(size[1], motion.FIT[1])
+
+
+def test_a_frame_scaled_up_keeps_each_pixel_as_one_sharp_block() -> None:
+    red, blue, grey = (200, 0, 0), (0, 0, 200), (9, 9, 9)
+    small = motion.Picture(3, 2, bytes(red + blue + grey + grey + red + blue), 70)
+    big = motion.scaled(small, 2)
+    assert (big.width, big.height, big.ms) == (6, 4, 70)
+    assert big.rgb == _blocks([[red, blue, grey], [grey, red, blue]]).rgb
+    assert motion.halved(big).rgb == small.rgb, "scaled up and halved back is the same frame"
+    assert motion.scaled(small, 1) is small
+    three = motion.scaled(small, 3)
+    row = bytes(red * 3 + blue * 3 + grey * 3)
+    assert three.rgb[:len(row) * 3] == row * 3, "three lines of three pixels each"
+
+
 def test_equal_frames_in_a_row_become_one_that_lasts_as_long() -> None:
     a, b = _picture(2, 2, (1, 1, 1), 30), _picture(2, 2, (2, 2, 2), 40)
     merged = motion.merged([a, a, b, a, a, a])
@@ -133,7 +157,8 @@ def test_a_loop_is_built_from_cuts_of_a_real_recording(tmp_path: Path) -> None:
     if webpmux is not None:
         info = subprocess.run([webpmux, "-info", str(out)], capture_output=True, text=True,
                               check=True).stdout
-        assert "Canvas size: 8 x 8" in info and "Loop Count : 0" in info, info
+        assert "Canvas size: 600 x 600" in info and "Loop Count : 0" in info, \
+            f"the fixture's 8 x 8 frames are not scaled up 75 times: {info}"
         lasting = [int(line.split()[6]) for line in info.splitlines() if line.strip()[:1].isdigit()
                    and ":" in line.split()[0]]
         assert sum(lasting) == 2200, info
@@ -166,15 +191,16 @@ def test_a_frame_doubled_down_and_not_across_is_not_a_double() -> None:
 
 def _faked(monkeypatch: pytest.MonkeyPatch, frames: dict[int, list[motion.Picture]],
            sizes: list[int]) -> list[list[motion.Picture]]:
-    """`build` with the two programs replaced: each cut's frames given, each file's size too."""
+    """`build` with the two programs replaced: each cut's frames given, each file's size too.
+    What it answers is the frames each assembly wrote, at the size it wrote them."""
     assembled: list[list[motion.Picture]] = []
 
     def given(ffmpeg: str, cut: motion.Cut, *_: object) -> list[motion.Picture]:
         return frames[cut.first]
 
     def weigh(img2webp: str, pictures: list[motion.Picture], work: Path,
-              lossless: bool) -> bytes:
-        assembled.append(list(pictures))
+              lossless: bool, times: int) -> bytes:
+        assembled.append([motion.scaled(picture, times) for picture in pictures])
         return b"w" * sizes[len(assembled) - 1]
 
     monkeypatch.setattr(motion, "programs", lambda: {"ffmpeg": "f", "img2webp": "i"})
@@ -190,12 +216,15 @@ def test_a_capture_nearly_all_doubled_is_halved_torn_frames_included(
     assembled = _faked(monkeypatch, {0: [whole] * 9 + [torn]}, [1])
     built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
     assert built.lossless and built.cut_ms == (400,)
-    assert {(p.width, p.height) for p in assembled[0]} == {(2, 1)}, "the capture was not halved"
+    times = motion.factor(2, 1)
+    assert {(p.width, p.height) for p in assembled[0]} == {(2 * times, times)}, \
+        "the capture was not halved, then scaled up to fit"
     assert [p.ms for p in assembled[0]] == [360, 40], "equal frames were not merged"
     assembled = _faked(monkeypatch, {0: [whole] * 8 + [torn] * 2}, [1])
     motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
-    assert {(p.width, p.height) for p in assembled[0]} == {(4, 2)}, \
-        "a capture a fifth of whose frames are not doubled is the machine's own size"
+    times = motion.factor(4, 2)
+    assert {(p.width, p.height) for p in assembled[0]} == {(4 * times, 2 * times)}, \
+        "a capture a fifth of whose frames are not doubled is the machine's own size, scaled"
 
 
 def test_moments_of_two_sizes_are_invalid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -231,7 +260,7 @@ def test_an_assembly_that_fails_is_invalid_with_its_own_words(
         a, 2, "", "Error! Frame dimensions mismatched"))
     with pytest.raises(Invalid, match=r"img2webp refused to assemble the loop \(exit 2\): Error! "
                                       "Frame dimensions mismatched"):
-        motion._assembled("img2webp", [_picture(2, 2)], tmp_path, True)
+        motion._assembled("img2webp", [_picture(2, 2)], tmp_path, True, 1)
 
 
 def test_a_cut_longer_than_a_moment_is_invalid_with_half_a_frame_of_slack(

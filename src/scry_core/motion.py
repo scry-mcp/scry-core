@@ -8,7 +8,9 @@ ffmpeg build may carry no WebP encoder; without either program `programs` refuse
 Nothing is staged: a cut is frames of the recording as they were written. Frames are dropped to
 stay within `RATE_MAX` a second and each kept one lasts as long as those it stands for, so the
 picture runs at the machine's speed; a capture the emulator doubled is halved back to the
-machine's own pixels; equal frames in a row become one that lasts as long as all of them.
+machine's own pixels; equal frames in a row become one that lasts as long as all of them. The
+frames are then written scaled up a whole number of times, each pixel a sharp block, as far as
+`FIT` holds them: a README cannot ask its reader's browser for sharp pixels, so the file has them.
 
 Refused, as `Invalid`: more than `CUTS_MAX` cuts, one outside `CUT_SECONDS`, more than
 `LOOP_SECONDS` in all, a cut past the end of its recording, a recording that does not read as an
@@ -39,6 +41,8 @@ LOOP_SECONDS = 6.0
 SLACK_SECONDS = 0.02
 RATE_MAX = 30
 BUDGET_BYTES = 400_000
+#: The width and height a loop's frames are scaled up towards and never past.
+FIT = (960, 600)
 LOSSY_QUALITY = 80
 PROGRAMS = ("ffmpeg", "img2webp")
 #: The share of a capture's frames that are whole 2x2 blocks when the emulator doubled it: a
@@ -178,6 +182,29 @@ def halved(picture: Picture) -> Picture:
     return Picture(w // 2, h // 2, b"".join(lines), picture.ms)
 
 
+def factor(width: int, height: int) -> int:
+    """The whole number of times a frame of this size is scaled up: the most that stays within
+    `FIT`, and 1 for a frame already past half of it."""
+    return max(1, min(FIT[0] // width, FIT[1] // height))
+
+
+def scaled(picture: Picture, times: int) -> Picture:
+    """The frame with each pixel a `times` x `times` block of its colour."""
+    if times == 1:
+        return picture
+    w, rgb = picture.width, picture.rgb
+    row = w * 3
+    lines = []
+    for y in range(picture.height):
+        line = rgb[y * row:(y + 1) * row]
+        out = bytearray(row * times)
+        for n in range(times):
+            for c in range(3):
+                out[n * 3 + c::3 * times] = line[c::3]
+        lines.append(bytes(out) * times)
+    return Picture(w * times, picture.height * times, b"".join(lines), picture.ms)
+
+
 def merged(pictures: Sequence[Picture]) -> list[Picture]:
     """Equal frames in a row as one that lasts as long as all of them."""
     out: list[Picture] = []
@@ -234,14 +261,16 @@ def _frames(ffmpeg: str, cut: Cut, per_second: Fraction, step: int, work: Path) 
             zip(files, lasting, strict=True)]
 
 
-def _assembled(img2webp: str, pictures: Sequence[Picture], work: Path, lossless: bool) -> bytes:
-    """`pictures` as one animated WebP, written in `work` and read back."""
+def _assembled(img2webp: str, pictures: Sequence[Picture], work: Path, lossless: bool,
+               times: int) -> bytes:
+    """`pictures`, each scaled up `times`, as one animated WebP written in `work` and read
+    back."""
     work.mkdir(parents=True, exist_ok=True)
     out = work / LOOP_NAME
     argv = [img2webp, "-loop", "0", "-min_size"]
     for n, picture in enumerate(pictures):
         file = work / f"frame-{n:05d}.ppm"
-        file.write_bytes(ppm(picture))
+        file.write_bytes(ppm(scaled(picture, times)))
         argv += ["-lossless"] if lossless else ["-lossy", "-q", str(LOSSY_QUALITY)]
         argv += ["-d", str(picture.ms), str(file)]
     done = subprocess.run([*argv, "-o", str(out)], capture_output=True, text=True, check=False)
@@ -267,9 +296,10 @@ def build(cuts: Sequence[Cut], work: Path) -> Built:
         raise Invalid(f"the moments are not one size: {pictures[0].width}x{pictures[0].height} "
                       f"and {sorted(sizes)}; a loop shows one video mode")
     pictures = merged(pictures)
+    times = factor(pictures[0].width, pictures[0].height)
     weighed = []
     for lossless in (True, False):
-        data = _assembled(found["img2webp"], pictures, work / "webp", lossless)
+        data = _assembled(found["img2webp"], pictures, work / "webp", lossless, times)
         if len(data) <= BUDGET_BYTES:
             return Built(data, cut_ms, lossless)
         weighed.append(f"{len(data)} bytes {'lossless' if lossless else 'lossy'}")
