@@ -2,6 +2,25 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- A clip's frames are written scaled up a whole number of times, as far as 960 x 600 holds
+  them (`motion.FIT`), each pixel a sharp block. A README cannot ask its reader's browser for
+  sharp pixels, so the file has them.
+- `demo.Lead(front, step, ask, caption, answer)` makes a demo open its server's README. The run
+  writes the clip, linked to the demo's page and centred, the caption, and the step as an
+  exchange between `<!-- demo-lead:begin NAME -->` and its `end`.
+- A lead is refused before any call when the demo has no moment, the step is not one of its
+  own, or the answer names a field the transcript hides. A reply that cannot give the answer on
+  one line fails its step.
+- A demo's picture is centred in its motion block. Each example is headed by a heading, `###`
+  on the demo's page and `####` in a README, so a page's outline lists them
+  (`example.render(level=)`).
+- `game_demo.Binding.filmed` fires an action and records what it sets off. `Binding.held` names
+  the actions a platform fires as a key left down and let go after the recording.
+- The shared LineUp script fires three more shots after its sound is compared and films each
+  (`games.lineup.shots`, `games.lineup.filmed`). `games.lineup.PLAYING` is gone.
+
 ## 0.119.0
 
 - A demo is shown moving: `--update-readme` cuts the demo's clip, `loop.webp`, from the run's

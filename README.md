@@ -1,12 +1,20 @@
-<p align="center"><img src="docs/scry-logo.png" alt="SCRY" width="480"></p>
+<h1 align="center">
+  <img src="docs/scry-logo.png" alt="SCRY" width="240"><br>
+  scry-core
+</h1>
 
-# scry-core
+<p align="center"><b>SCRY turns your AI client into a debugger for old machines: ask what a program in MAME or DOSBox-X is doing, and it finds out.</b></p>
 
-**SCRY lets an MCP client hold an emulator open at its debugger and ask the running program
-questions.**
+<p align="center">
+  <a href="https://github.com/scry-mcp/scry-dosbox-x"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/scry-dosbox-x.png"><img src="docs/scry-dosbox-x.webp" alt="Monkey Island's lookout answering as written, then with a line written into memory" width="400"></picture></a>
+  <a href="https://github.com/scry-mcp/scry-mame"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/scry-mame.png"><img src="docs/scry-mame.webp" alt="LineUp played on the arcade board: three shots, each from another column or colour" width="400"></picture></a>
+</p>
+<p align="center"><em>scry-dosbox-x rewrites a line of Monkey Island while the game runs; scry-mame plays LineUp on its arcade board, one call a shot.</em></p>
 
-There are two servers, one per emulator. This repository is the Python package both are built
-on: it comes with the server you install, never on its own.
+SCRY is two [MCP](https://modelcontextprotocol.io) servers, one per emulator. Each keeps its
+emulator open at the debugger, so your client can stop the program, read its memory by name
+and press its inputs, and each reply carries its evidence. This repository is the Python
+package both are built on: it comes with the server you install, never on its own.
 
 ## Install a server
 
@@ -86,6 +94,9 @@ reply_shapes_anchors = ["scry_core.reply_contract", "scry_core.boundary"]
 Each server keeps its demos in `demos/<name>/`, run by `scry_core.demo`. A `demo.py` makes the
 calls its README asks an MCP client to make and checks every answer. With `--update-readme` it
 writes the README's examples, `TRANSCRIPT.md`, `screen.png` and `loop.webp` from that run.
+
+A demo with a `Lead` also writes what its server's README opens with: its clip, a caption and
+one step of the run as an exchange.
 
 A game that exists for both emulators has one script, with the same symbols, screen map and
 checks on both. Each server runs it with a short `Binding` (`scry_core.game_demo`), the object
