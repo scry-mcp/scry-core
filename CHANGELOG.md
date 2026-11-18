@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.120.0
 
 - A clip's frames are written scaled up a whole number of times, as far as 960 x 600 holds
   them (`motion.FIT`), each pixel a sharp block. A README cannot ask its reader's browser for
