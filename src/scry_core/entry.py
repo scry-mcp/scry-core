@@ -29,6 +29,7 @@ from typing import (
 from mcp.server.mcpserver.tools import Tool
 
 from scry_core import example as shape
+from scry_core import vocabulary
 from scry_core.asks import HIDDEN_MARKS, Ask, Modes
 from scry_core.reply_schema import own_fields
 
@@ -75,8 +76,22 @@ def reply_type(hint: Any) -> str:
     return _PLAIN.get(hint, getattr(hint, "__name__", str(hint)))
 
 
+def _folded_words(pattern: str) -> tuple[str, ...] | None:
+    """The words a pattern takes in any case, when it is one `vocabulary.folded` writes: a
+    reader is shown the words, never the character classes that spell them."""
+    if not (pattern.startswith("^(") and pattern.endswith(")$")):
+        return None
+    words = tuple(re.sub(r"\[(.).\]|\\(.)", lambda m: m[1] or m[2], part)
+                  for part in pattern[2:-2].split("|"))
+    written = vocabulary.folded(words).json_schema_extra
+    return words if isinstance(written, dict) and written["pattern"] == pattern else None
+
+
 def argument_type(spec: Mapping[str, Any]) -> str:
     """An argument's JSON schema as a phrase: its type, its words, its bounds."""
+    words = _folded_words(spec["pattern"]) if "pattern" in spec else None
+    if words:
+        return f"{_one_of(words)} (in any case)"
     if "anyOf" in spec:
         text = _either(argument_type(s) for s in spec["anyOf"])
     elif "enum" in spec:

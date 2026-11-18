@@ -16,6 +16,7 @@ from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
 from scry_core import asks, demo, entry, example, reference, reply_schema, roster, transcript
+from scry_core import vocabulary as vocab
 from scry_core.demo import Normaliser
 from scry_core.reference import begin_marker, end_marker
 from scry_core.strict_arguments import registered, strict_arguments
@@ -232,6 +233,10 @@ def test_an_argument_s_bounds_its_alternatives_its_items_and_a_constant_are_name
              seconds: Annotated[float, Field(gt=0)] = 1.0,
              names: list[str] | None = None,
              tag: Annotated[str, Field(pattern=r"^[a-z]+$")] = "a",
+             base: Annotated[str, vocab.folded(("program", "cs", "f1"))] = "CS",
+             keys: Annotated[list[Annotated[str, vocab.folded(("shift", "alt"))]] | None,
+                             Field()] = None,
+             near: Annotated[str, Field(pattern=r"^([cC][sS]|[0-9A-Fa-f]{4})$")] = "cs",
              unit: Literal["s"] = "s") -> dict[str, Any]:
         """Take. Reply: `written`."""
         return {"status": "ok"}
@@ -248,6 +253,12 @@ def test_an_argument_s_bounds_its_alternatives_its_items_and_a_constant_are_name
     assert "- `seconds` (number (> 0), default `1.0`): The seconds." in block, block
     assert "- `names` (array of string, optional): The names." in block, block
     assert "- `tag` (string (matching `^[a-z]+$`), default `\"a\"`): The tag." in block, block
+    assert ('- `base` (one of `"program"`, `"cs"`, `"f1"` (in any case), default `"CS"`): '
+            "The base.") in block, block
+    assert ('- `keys` (array of one of `"shift"`, `"alt"` (in any case), optional): '
+            "The keys.") in block, block
+    assert ("- `near` (string (matching `^([cC][sS]|[0-9A-Fa-f]{4})$`), default `\"cs\"`): "
+            "The near.") in block, block
     assert '- `unit` (`"s"`, default `"s"`): The unit.' in block, block
     assert "No reply to show yet" in block, block
     bare = _block_of(tools["tick"], FixtureEnvelope)
