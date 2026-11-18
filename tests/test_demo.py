@@ -581,6 +581,42 @@ def test_an_example_that_shows_a_field_its_run_hides_is_refused_before_a_call(
     assert _calls(log) == []
 
 
+@pytest.mark.parametrize("shown", [("width", "sha256"), ("bytes",)])
+def test_an_example_that_shows_a_written_pictures_digest_fails_its_step(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str],
+        shown: tuple[str, ...]) -> None:
+    """A written picture's size and digest are hidden by the reply's shape, which no declaration
+    names: the page would print `<volatile>` where it promised a value."""
+    steps = [d.Step("boot", "start", {}, _said("value")),
+             d.Step("shot", "snap", lambda run: {"dest": run.dir / "s.png"},
+                    lambda reply, run: "a picture", ask="Take a picture.", title="Shoot",
+                    reads="It writes the picture.", shown=shown),
+             d.Step("end", "close", {}, lambda reply, run: "closed")]
+    assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_FAIL
+    said = capsys.readouterr().out
+    assert f"FAIL shot: the example shows {sorted(set(shown) - {'width'})}, which the " \
+           "transcript hides in a written picture" in said, said
+
+
+def test_a_lead_that_answers_with_a_written_pictures_digest_fails_its_step(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    front = tmp_path / "README.md"
+    front.write_text(LEAD_FRONT.format(begin=d.lead_begin("x"), end=d.lead_end("x")),
+                     encoding="utf-8")
+    steps = [d.Step("boot", "start", {}, _said("value")),
+             d.Step("shot", "snap", lambda run: {"dest": run.dir / "s.png"},
+                    lambda reply, run: "a picture"),
+             _film(), d.Step("end", "close", {}, lambda reply, run: "closed")]
+    lead = d.Lead(front=front, step="shot", ask="Take one.", caption="A picture taken.",
+                  answer=("sha256",))
+    demo = _demo(tmp_path, steps, lead=lead, alt="A test pattern moving",
+                 moments=(d.Moment("shot", "film", "The pattern moves."),))
+    assert _run(demo, tmp_path) == verdict.EXIT_FAIL
+    said = capsys.readouterr().out
+    assert "FAIL shot: the example shows ['sha256'], which the transcript hides in a written " \
+           "picture" in said, said
+
+
 def test_two_steps_of_one_name_are_refused_before_a_call(tmp_path: Path, log: Path) -> None:
     steps = [d.Step("look", "read", {}, _said("value")), d.Step("look", "read", {}, _said("value"))]
     with pytest.raises(ValueError, match=r"names \['look'\] more than once"):

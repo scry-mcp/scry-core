@@ -58,7 +58,7 @@ import os
 import re
 import shutil
 import sys
-from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -411,6 +411,24 @@ def _picture(value: Mapping[str, Any]) -> bool:
     return isinstance(path, str) and path.lower().endswith(".png") and "sha256" in value
 
 
+def _shows_no_picture_bytes(reply: Mapping[str, Any], fields: Iterable[str]) -> None:
+    """`ValueError` when `fields` of `reply` show a key `PICTURE_VOLATILE` hides in a written
+    picture, the reply's own or one inside a shown field."""
+    fields = list(fields)
+    shown = sorted(set(fields) & set(PICTURE_VOLATILE)) if _picture(reply) else []
+    inside: list[Any] = [reply.get(k) for k in fields]
+    while inside:
+        value = inside.pop()
+        if isinstance(value, Mapping):
+            shown += sorted(set(value) & set(PICTURE_VOLATILE)) if _picture(value) else []
+            inside.extend(value.values())
+        elif isinstance(value, list | tuple):
+            inside.extend(value)
+    if shown:
+        raise ValueError(f"the example shows {sorted(set(shown))}, which the transcript hides in "
+                         "a written picture: show fields that read the same on every run")
+
+
 def placeholder(root: Path) -> str:
     """The repository as a reader copies it: absolute, as tool paths are."""
     return f"/path/to/{root.name}"
@@ -447,6 +465,7 @@ class Transcripts:
         judged by; `ValueError` when the reply cannot give it on one line."""
         if self.lead is None:
             raise ValueError(f"step {step.name} is no lead's")
+        _shows_no_picture_bytes(reply.data, self.lead.answer)
         spell = self.flow_norm or self.norm
         return example.answer(spell.reply(reply.data, step.volatile, step.optional),
                               self.lead.answer)
@@ -599,6 +618,7 @@ async def _step(client: Client, step: Step, run: Run,
         try:
             if step.ask:
                 example.excerpt(reply.data, step.shown or EXCERPT)
+                _shows_no_picture_bytes(reply.data, step.shown or EXCERPT)
             if answered is not None:
                 answered(step, reply)
         except ValueError as e:

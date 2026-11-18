@@ -67,6 +67,14 @@ def picture(dest: str) -> CallToolResult:
 
 
 @server.tool()
+def snap(dest: str) -> CallToolResult:
+    """A picture as both servers name one written: its path with its size and digest."""
+    Path(dest).write_bytes(PIXEL)
+    return _answer({"status": "ok", "summary": "snap", "path": dest, "bytes": len(PIXEL),
+                    "sha256": "0" * 64, "width": 1})
+
+
+@server.tool()
 def record(frames: int, dest: str) -> CallToolResult:
     """A recording as both servers answer it: the AVI at `dest`, and the file's own numbers."""
     path = Path(dest)
