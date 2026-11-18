@@ -15,6 +15,7 @@ Exit codes: 0 every step OK; 1 a step failed (later ones are not run); 2 a usage
 INVALID, nothing was demonstrated (zero steps, options nothing takes, a `precheck` reason, a
 server that did not start, a check raising `Invalid`, README markers not exactly once, a capture
 the run did not write, a moment its recordings do not hold, a loop that could not be made).
+A demo declared wrongly is no run: `declared` raises `ValueError` before the first call.
 `execute` is the run without its command line. The run ends with the cleanup call unless its
 last step made it, so no emulator outlives it.
 
