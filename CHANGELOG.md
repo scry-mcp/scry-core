@@ -38,6 +38,8 @@ What a server author notices. A client's view of each server is in that server's
   counts as that tool's call (`transcript`).
 - A tool's example is the call its entry names (`call`), and may show a second call the same run
   made later (`then`). An excerpt that would show a value the run hides is refused.
+- `reference --examples` keeps the example of a tool the given transcripts do not call, while it
+  is still the call its entry names, and says how many it kept.
 - The index in `REFERENCE.md` says in one line what each family holds.
 - An entry closes with the tool's description as the client receives it, in a text block.
 - The families both servers share have names that say what they hold: Run (it was Advance),

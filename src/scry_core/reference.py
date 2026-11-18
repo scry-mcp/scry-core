@@ -14,8 +14,9 @@ hand: a demo's committed transcript gives it, or a live run's records.
 
 Run from the server's repository. `--examples` rewrites `examples.json` from the transcripts
 first, a demo's normalised `.md` or a live run's `.jsonl`, taking for each tool the call its
-ask is written for (`--mark` spells a host directory as the text it names, `--skip` leaves out
-the cells a pattern matches); `--write` rewrites the pages, else they are compared. Exit codes:
+ask is written for; a tool they do not call keeps the example it has while that is still its
+ask's call (`--mark` spells a host directory as the text it names, `--skip` leaves out the cells
+a pattern matches); `--write` rewrites the pages, else they are compared. Exit codes:
 0 the pages agree with the registry (or were rewritten); 1 they differ or `asks.json` falls
 short, one finding a line, and nothing was written; 2 a usage error (a spec naming no registry
 included); 3 INVALID, nothing was compared (a registry with no tool or a roster naming one it
@@ -494,6 +495,15 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
     return dict(sorted({**refusal, **ok}.items()))
 
 
+def _still_asked(held: Mapping[str, Any], names: set[str], said: Mapping[str, Ask]
+                 ) -> dict[str, Any]:
+    """The examples of `held` for the tools `names` that no transcript given called: each is
+    kept while it is still the call its ask is written for."""
+    return {name: example for name, example in held.items()
+            if name in names and (name not in said or not _example_faults(
+                name, said[name], example))}
+
+
 def _records(paths: Sequence[Path], root: Path) -> list[dict[str, Any]]:
     """Every record of `paths`: a live run's JSON Lines, or a demo's normalised transcript
     (`.md`), named by its path under `root`."""
@@ -591,14 +601,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                      for spelled in (path, os.path.realpath(path))}
             norm = demo.Normaliser(root, Path.home().resolve(), {},
                                    marks={**marks, str(root): demo.placeholder(root)})
-            picked = examples_from(_records(ns.examples, root), tools, norm, ns.skip,
-                                   asked.load(reg.root).tools)
+            said = asked.load(reg.root).tools
+            picked = examples_from(_records(ns.examples, root), tools, norm, ns.skip, said)
             if not picked:
                 raise Invalid("the transcripts hold no OK call of a tool of this server")
+            kept = _still_asked(_examples(reg), set(tools) - set(picked), said)
             (reg.root / PAGES_DIR).mkdir(parents=True, exist_ok=True)
-            (reg.root / EXAMPLES_PATH).write_text(
-                json.dumps(picked, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-            print(f"examples: {len(picked)} of {len(tools)} tools, in {EXAMPLES_PATH}")
+            (reg.root / EXAMPLES_PATH).write_text(json.dumps(
+                dict(sorted({**kept, **picked}.items())), indent=1, ensure_ascii=False) + "\n",
+                encoding="utf-8")
+            print(f"examples: {len(picked) + len(kept)} of {len(tools)} tools, {len(kept)} kept "
+                  f"as it was, in {EXAMPLES_PATH}")
         if ns.write:
             for rel in write(reg):
                 print(f"written: {rel}")

@@ -718,6 +718,28 @@ def test_the_command_builds_the_examples_from_a_transcript(
     assert set(held) == {"peek", "poke"}
 
 
+def test_a_tool_the_transcripts_do_not_call_keeps_the_example_it_has(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    _examples(tmp_path)
+    _asks(tmp_path)
+    jsonl = tmp_path / "transcript.jsonl"
+    jsonl.write_text(json.dumps(_record("peek", "OK", {"status": "ok", "value": 9})) + "\n",
+                     encoding="utf-8")
+    _main(tmp_path, monkeypatch, "--examples", str(jsonl))
+    held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
+    assert held["peek"]["reply"] == {"status": "ok", "value": 9}, "the run's call replaces it"
+    assert held["poke"] == {"from": "[A] fixture: a cell", "call": _CALLS["poke"],
+                            "reply": {"status": "ok"}}, held
+    assert "examples: 2 of 2 tools, 1 kept as it was" in capsys.readouterr().out
+    said = _held()
+    said["tools"]["poke"]["call"] = {"addr": "0x20", "value": 1}
+    _asks(tmp_path, said)
+    _main(tmp_path, monkeypatch, "--examples", str(jsonl))
+    assert set(json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))) == {"peek"}, \
+        "an example its ask is no longer written for is not kept"
+
+
 def test_the_command_takes_a_demo_s_transcript_named_by_its_path_in_the_repository(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     page = tmp_path / "demos/x/TRANSCRIPT.md"
