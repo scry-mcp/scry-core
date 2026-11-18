@@ -223,7 +223,8 @@ def scaled(picture: Picture, times: int) -> Picture:
 
 def kept(pictures: Sequence[Picture]) -> Box:
     """The part of the frames left once every edge row, then every edge column of what is left,
-    that is one colour, the same in every frame, is cut; frames all one colour are kept whole."""
+    that is one colour, the same in every frame, is cut; frames that would leave nothing are kept
+    whole."""
     width, height = pictures[0].width, pictures[0].height
 
     def solid(pixels: Sequence[bytes]) -> bytes | None:
@@ -239,8 +240,6 @@ def kept(pictures: Sequence[Picture]) -> Box:
         top += 1
     while bottom > top and row(bottom - 1):
         bottom -= 1
-    if top == bottom:
-        return Box(0, 0, width, height, (width, height))
 
     def column(x: int) -> bool:
         return solid([b"".join(p.rgb[(y * width + x) * 3:(y * width + x + 1) * 3]
@@ -251,6 +250,8 @@ def kept(pictures: Sequence[Picture]) -> Box:
         left += 1
     while right > left and column(right - 1):
         right -= 1
+    if left == right:
+        return Box(0, 0, width, height, (width, height))
     return Box(left, top, right - left, bottom - top, (width, height))
 
 

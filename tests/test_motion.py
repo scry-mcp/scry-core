@@ -113,12 +113,22 @@ def test_edges_of_one_colour_the_same_in_every_frame_are_cut_and_nothing_else() 
     second = _rows([[SKY, SUN, SKY, BLACK], [SEA, SEA, SEA, BLACK], [SUN, SEA, SEA, BLACK],
                     [BLACK, BLACK, BLACK, BLACK], [BLACK, BLACK, BLACK, BLACK]])
     assert motion.kept([first, second]) == motion.Box(0, 0, 3, 3, (4, 5))
-    flashing = _rows([[SUN] * 4, [SEA, SUN, SEA, SEA], [SUN] * 4])
-    calm = _rows([[SKY] * 4, [SEA, SEA, SUN, SEA], [SEA] * 4])
-    assert motion.kept([flashing, calm]) == motion.Box(0, 0, 4, 3, (4, 3)), \
+    flashing = _rows([[SUN] * 4, [SEA, SUN, SKY, SEA], [SUN, SEA, SEA, SKY], [SUN] * 4])
+    calm = _rows([[SKY] * 4, [SKY, SEA, SUN, SEA], [SEA, SKY, SEA, SUN], [SEA] * 4])
+    assert motion.kept([flashing, calm]) == motion.Box(0, 0, 4, 4, (4, 4)), \
         "each edge row is one colour in each frame, and not the same one in both"
     assert motion.kept([_picture(3, 2)]) == motion.Box(0, 0, 3, 2, (3, 2)), \
         "a frame all of one colour has nothing to cut down to: it is kept whole"
+    framed = [_rows([[SKY] * 5, [BLACK, SUN, SEA, SKY, SEA], [BLACK, SEA, SUN, SEA, SEA],
+                     [BLACK, SKY, SEA, SUN, SEA], [BLACK] * 5]),
+              _rows([[SKY] * 5, [BLACK, SEA, SKY, SUN, SEA], [BLACK, SUN, SEA, SEA, SEA],
+                     [BLACK, SEA, SUN, SKY, SEA], [BLACK] * 5])]
+    assert motion.kept(framed) == motion.Box(1, 1, 3, 3, (5, 5)), \
+        "a band above, a column at the left, and one at the right that is one colour only in " \
+        "the rows left once the bands are cut"
+    stripes = _rows([[SKY, SEA], [SKY, SEA]])
+    assert motion.kept([stripes, stripes]) == motion.Box(0, 0, 2, 2, (2, 2)), \
+        "columns each of one colour leave nothing to cut down to: the frame is kept whole"
     cut = motion.cropped(first, motion.kept([first, second]))
     assert (cut.width, cut.height, cut.ms) == (3, 3, 40)
     assert cut.rgb == b"".join(bytes(p) for p in (SKY, SKY, SUN, SEA, SEA, SEA, SEA, SUN, SEA))
@@ -136,6 +146,8 @@ def test_a_still_is_cut_as_its_loop_is_at_the_still_s_own_scale() -> None:
     cut = png.decode(motion.still(data, box))
     assert (cut.width, cut.height) == (6, 6)
     assert cut == png.cropped(png.decode(data), 2, 0, 6, 6)
+    lower = png.decode(motion.still(data, motion.Box(1, 1, 2, 2, (4, 5))))
+    assert lower == png.cropped(png.decode(data), 2, 2, 4, 4)
     assert motion.still(data, motion.Box(0, 0, 4, 5, (4, 5))) is data, \
         "a still whose loop cuts nothing is the capture, byte for byte"
     with pytest.raises(Invalid, match=r"the still is 8x10, not a whole number of times the "
@@ -340,15 +352,15 @@ def test_a_cut_decodes_the_frames_it_names_and_no_others(tmp_path: Path) -> None
 
 def test_a_loop_shows_only_what_moves_its_band_cut_before_it_is_scaled_up(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """A 160 x 100 scene whose last 28 rows are black in every frame: scaled whole it would be 6
-    times; cut to 160 x 72 it fills the width at 6 too, and the loop says what it kept."""
+    """A 160 x 200 scene whose last 100 rows are black in every frame: whole it scales 3 times;
+    cut to 160 x 100 it scales 6 times and fills the width, and the loop says what it kept."""
     def scene(seed: int) -> motion.Picture:
-        moving = bytes((n * 7 + seed) % 256 for n in range(3 * 160 * 72))
-        return motion.Picture(160, 100, moving + bytes(3 * 160 * 28), 40)
+        moving = bytes((n * 7 + seed) % 256 for n in range(3 * 160 * 100))
+        return motion.Picture(160, 200, moving + bytes(3 * 160 * 100), 40)
 
     assembled = _faked(monkeypatch, {0: [scene(0), scene(1)]}, [1])
     built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
-    assert built.kept == motion.Box(0, 0, 160, 72, (160, 100))
-    times = motion.factor(160, 72)
-    assert {(p.width, p.height) for p in assembled[0]} == {(160 * times, 72 * times)}, \
+    assert built.kept == motion.Box(0, 0, 160, 100, (160, 200))
+    assert (motion.factor(160, 200), motion.factor(160, 100)) == (3, 6), "the case needs both"
+    assert {(p.width, p.height) for p in assembled[0]} == {(960, 600)}, \
         "the band was scaled up with the scene"
