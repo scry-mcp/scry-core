@@ -1166,7 +1166,8 @@ def test_the_exchange_s_call_is_one_line_with_its_long_values_cut(
     assert _run(demo, tmp_path) == verdict.EXIT_PASS
     ends = d.LEAD_STRING_ENDS
     cut = f'start(value=7, binary="{"b" * ends}…{"b" * ends}", shared=true, display=1)'
-    assert f"<td><code>{cut}</code></td>" in (tmp_path / "out" / "transcript-lead.md").read_text()
+    lead = (tmp_path / "out" / "transcript-lead.md").read_text(encoding="utf-8")
+    assert f"<td><code>{cut}</code></td>" in lead
     assert ends < example.CALL_STRING_ENDS, "a phone wraps a call only between its arguments"
     fits = {"value": 7, "binary": "b" * 30}
     assert "…" not in example.call_text("start", fits, lines=1), "whole, it fits a line"
@@ -1174,7 +1175,8 @@ def test_the_exchange_s_call_is_one_line_with_its_long_values_cut(
                     title="Start it", reads="The reply says where it stands."), *demo.steps[1:]]
     assert _run(d.Demo(**{**demo.__dict__, "steps": steps}), tmp_path) == verdict.EXIT_PASS
     assert f'<code>start(value=7, binary="{"b" * ends}…{"b" * ends}")</code>' in \
-        (tmp_path / "out" / "transcript-lead.md").read_text(), "a phone cannot hold it whole"
+        (tmp_path / "out" / "transcript-lead.md").read_text(encoding="utf-8"), \
+        "a phone cannot hold it whole"
 
 
 def test_a_lead_outside_the_folder_its_readme_opens_is_refused_before_a_call(
@@ -1224,7 +1226,7 @@ def _flow_of(tmp_path: Path, start: dict[str, Any]) -> str:
     """The flow a run writes when its `start` step, with `start` as its arguments, is shown."""
     demo = _demo(tmp_path, _asked(start, START_SHOWN), front=_front(tmp_path))
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
-    return (tmp_path / "out" / "transcript-flow.md").read_text()
+    return (tmp_path / "out" / "transcript-flow.md").read_text(encoding="utf-8")
 
 
 def _asked(start: dict[str, Any], shown: tuple[str, ...]) -> list[d.Step]:
