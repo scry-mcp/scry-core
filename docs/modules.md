@@ -120,7 +120,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | Module | What it holds |
 |---|---|
 | `scry_core.reference` | A server's reference pages written from its tool registry and its `asks.json`, and the check that they are current. |
-| `scry_core.asks` | The hand-written half of a reference, `docs/reference/asks.json`: each tool's sentences, held to the registry and to a page's word limits. |
+| `scry_core.asks` | The hand-written half of a reference, `docs/reference/asks.json`: each tool's sentences, checked against the registry and a page's word limits. |
 | `scry_core.entry` | One tool's entry on its page, in the one order every entry has. |
 | `scry_core.transcript` | A demo's committed transcript read back as calls and replies, for the reference's examples. |
 | `scry_core.roster` | A server's tools by group: the list its `instructions` carry and the tools that answer while the program runs. |
