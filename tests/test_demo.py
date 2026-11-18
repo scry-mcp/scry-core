@@ -522,6 +522,29 @@ def test_a_loop_that_cuts_its_frames_cuts_the_still_beside_it_and_stale_holds_it
     assert d.stale(demo, tmp_path / "out") == ["x's screen.png is not this run's capture"]
 
 
+@needs_loop_programs
+def test_a_still_that_cannot_be_cut_as_its_loop_leaves_every_file_as_it_was(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    big = png.encode(png.Raster(4, 2, bytes(range(24))))
+
+    def drawn(run: d.Run) -> dict[str, Any]:
+        (run.dir / "big.png").write_bytes(big)
+        return {}
+
+    demo = _moment_demo(tmp_path, capture=lambda run: run.dir / "big.png")
+    demo = d.Demo(**{**demo.__dict__, "steps": [
+        *demo.steps[:-1], d.Step("end", "close", drawn, lambda reply, run: "closed")]})
+    built = motion.build
+    monkeypatch.setattr(motion, "build", lambda cuts, work: dataclasses.replace(
+        built(cuts, work), kept=motion.Box(0, 0, 2, 1, (3, 1))))
+    before = _readme(demo).read_text()
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    assert _readme(demo).read_text() == before
+    assert not (_readme(demo).parent / "screen.png").exists()
+    assert not (_readme(demo).parent / d.FULL_NAME).exists()
+    assert not (_readme(demo).parent / motion.LOOP_NAME).exists()
+
+
 @pytest.mark.parametrize(("moments", "kw", "why"), [
     ((d.Moment("shot", "nope", "It moves."),), {}, r"names \['nope'\], which is no step"),
     ((d.Moment("boot", "film", "It moves."),), {}, "is a recording, so it shows what followed"),
@@ -1101,6 +1124,13 @@ def test_the_exchange_s_call_is_one_line_with_its_long_values_cut(
     cut = f'start(value=7, binary="{"b" * ends}…{"b" * ends}", shared=true, display=1)'
     assert f"<td><code>{cut}</code></td>" in (tmp_path / "out" / "transcript-lead.md").read_text()
     assert ends < example.CALL_STRING_ENDS, "a phone wraps a call only between its arguments"
+    fits = {"value": 7, "binary": "b" * 30}
+    assert "…" not in example.call_text("start", fits, lines=1), "whole, it fits a line"
+    steps = [d.Step("boot", "start", fits, _said("value"), ask="Start the machine.",
+                    title="Start it", reads="The reply says where it stands."), *demo.steps[1:]]
+    assert _run(d.Demo(**{**demo.__dict__, "steps": steps}), tmp_path) == verdict.EXIT_PASS
+    assert f'<code>start(value=7, binary="{"b" * ends}…{"b" * ends}")</code>' in \
+        (tmp_path / "out" / "transcript-lead.md").read_text(), "a phone cannot hold it whole"
 
 
 def test_a_lead_outside_the_folder_its_readme_opens_is_refused_before_a_call(

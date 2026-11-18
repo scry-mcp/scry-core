@@ -14,8 +14,8 @@ What a server author notices. A client's view of each server is in that server's
   before it is scaled up, so what moves fills the width: a game's verb area left empty in a
   cutscene is gone. The demo's `screen.png` is cut the same way (`motion.kept`, `motion.still`),
   and `stale` takes a still cut from the run's capture as that capture.
-- A lead's call keeps 4 characters at each end of a long value (`demo.LEAD_STRING_ENDS`), so a
-  phone holds it. `Lead(learns=True)` adds a fourth row, "Your client learns", with what the
+- A lead's call cuts every long value to 4 characters at each end, however short the call
+  (`demo.LEAD_STRING_ENDS`, `demo.narrow`), so a phone holds it. `Lead(learns=True)` adds a fourth row, "Your client learns", with what the
   step's check read in the reply.
 - A lead is refused before any call when the demo has no moment, the step is not one of its
   own, or the answer names a field the transcript hides. A reply that cannot give the answer on

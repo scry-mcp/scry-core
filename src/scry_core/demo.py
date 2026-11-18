@@ -242,6 +242,18 @@ class Lead:
 LEAD_STRING_ENDS = 4
 
 
+def narrow(value: Any) -> Any:
+    """`value` with every string longer than a phone's cell holds cut to `LEAD_STRING_ENDS`
+    characters at each end, however short the whole call is."""
+    if isinstance(value, str) and len(value) > 2 * LEAD_STRING_ENDS + len(example.ELIDED):
+        return value[:LEAD_STRING_ENDS] + example.ELIDED + value[-LEAD_STRING_ENDS:]
+    if isinstance(value, dict):
+        return {k: narrow(v) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        return [narrow(v) for v in value]
+    return value
+
+
 @dataclass(frozen=True)
 class Demo:
     """A demo as declared. `offers` names the `OFFERABLE` options it accepts,
@@ -448,8 +460,8 @@ class Transcripts:
         spell = self.flow_norm or self.norm
         if ok and reply is not None and self.lead is not None and step.name == self.lead.step:
             learned = spell.text(line).removeprefix(f"OK {step.name}: ")
-            self.exchange = (example.call_text(tool, spell.arguments(dict(args)), lines=1,
-                                               ends=LEAD_STRING_ENDS),
+            self.exchange = (example.call_text(tool, narrow(spell.arguments(dict(args))),
+                                               lines=1),
                              self.answered(step, reply), learned if self.lead.learns else "")
         self.whole.append(_entry(n, tool, args, reply, line))
         normal = None if reply is None else Reply(

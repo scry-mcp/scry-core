@@ -74,8 +74,6 @@ def test_a_call_asked_on_one_line_has_its_long_values_cut_to_fit_it() -> None:
     assert example.call_text("find", args, lines=1) == (
         'find(data_hex="4e6f7468696e672c…6c2073686f65732e", ref="0000:0000", length=655360)')
     assert example.call_text("close", {}, lines=1) == "close()"
-    assert example.call_text("find", args, lines=1, ends=4) == (
-        'find(data_hex="4e6f…732e", ref="0000:0000", length=655360)')
     many = example.call_text("start", {f"argument_{n}": "v" * 30 for n in range(12)}, lines=1)
     assert "\n" not in many and len(many) <= example.COLUMNS and many.endswith(" more)"), many
 

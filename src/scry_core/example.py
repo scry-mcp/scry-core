@@ -90,19 +90,18 @@ def fenced(value: Any) -> str:
     return "```json\n" + compact(value) + "\n```"
 
 
-def _short(value: Any, ends: int = CALL_STRING_ENDS) -> Any:
-    """`value` as a call's line has room for it: a long string's `ends` characters at each end,
-    a list's first item and how many follow, an object's keys with their values cut the same
-    way."""
-    if isinstance(value, str) and len(value) > 2 * ends + len(ELIDED):
-        return value[:ends] + ELIDED + value[-ends:]
+def _short(value: Any) -> Any:
+    """`value` as a call's line has room for it: a long string's two ends, a list's first item
+    and how many follow, an object's keys with their values cut the same way."""
+    if isinstance(value, str) and len(value) > 2 * CALL_STRING_ENDS + len(ELIDED):
+        return value[:CALL_STRING_ENDS] + ELIDED + value[-CALL_STRING_ENDS:]
     if isinstance(value, dict):
-        return {k: _short(v, ends) for k, v in value.items()}
+        return {k: _short(v) for k, v in value.items()}
     if isinstance(value, list | tuple) and len(value) > 1 and not all(
             isinstance(v, (int, float, bool)) for v in value):
-        return [_short(value[0], ends), f"{ELIDED} {len(value) - 1} more"]
+        return [_short(value[0]), f"{ELIDED} {len(value) - 1} more"]
     if isinstance(value, list | tuple):
-        return [_short(v, ends) for v in value]
+        return [_short(v) for v in value]
     return value
 
 
@@ -127,11 +126,10 @@ def _wrapped(tool: str, parts: Sequence[str]) -> list[str]:
     return [*lines, line] if parts else [f"{tool}()"]
 
 
-def call_text(tool: str, args: Mapping[str, Any], lines: int = CALL_LINES,
-              ends: int = CALL_STRING_ENDS) -> str:
+def call_text(tool: str, args: Mapping[str, Any], lines: int = CALL_LINES) -> str:
     """`tool(argument=value)` within `lines` lines of `COLUMNS` columns: whole when it fits,
-    else its long values cut to `ends` characters at each end, else its last arguments counted
-    and left out, else its argument names with what each holds counted, else the tool alone."""
+    else its long values cut, else its last arguments counted and left out, else its argument
+    names with what each holds counted, else the tool alone."""
     def parts(values: Mapping[str, Any]) -> list[str]:
         return [f"{k}={json.dumps(v, ensure_ascii=False)}" for k, v in values.items()]
 
@@ -141,7 +139,7 @@ def call_text(tool: str, args: Mapping[str, Any], lines: int = CALL_LINES,
     whole = _wrapped(tool, parts(args))
     if fits(whole):
         return "\n".join(whole)
-    cut = {k: _short(v, ends) for k, v in args.items()}
+    cut = {k: _short(v) for k, v in args.items()}
     for kept in range(len(cut), 0, -1):
         shown = parts(dict(list(cut.items())[:kept]))
         if kept < len(cut):
