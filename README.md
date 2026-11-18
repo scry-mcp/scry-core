@@ -6,8 +6,8 @@
 <p align="center"><b>SCRY turns your AI client into a debugger for old machines: ask what a program in MAME or DOSBox-X is doing, and it finds out.</b></p>
 
 <p align="center">
-  <a href="https://github.com/scry-mcp/scry-dosbox-x"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/scry-dosbox-x.png"><img src="docs/scry-dosbox-x.webp" alt="Monkey Island's lookout answering as written, then with a line written into memory" width="511"></picture></a>
-  <a href="https://github.com/scry-mcp/scry-mame"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/scry-mame.png"><img src="docs/scry-mame.webp" alt="LineUp played on the arcade board: three shots, each from another column or colour" width="368"></picture></a>
+  <a href="https://github.com/scry-mcp/scry-dosbox-x"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/scry-dosbox-x.png"><img src="docs/scry-dosbox-x.webp" alt="Monkey Island's lookout answering as written, then with a line written into memory" width="444"></picture></a>
+  <a href="https://github.com/scry-mcp/scry-mame"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/scry-mame.png"><img src="docs/scry-mame.webp" alt="LineUp played on the arcade board: three shots, each from another column or colour" width="320"></picture></a>
 </p>
 <p align="center"><em>scry-dosbox-x rewrites a line of Monkey Island while the game runs; scry-mame plays LineUp on its arcade board, one call a shot.</em></p>
 
