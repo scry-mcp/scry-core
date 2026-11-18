@@ -354,9 +354,10 @@ def test_a_recording_a_moment_shows_is_a_call_of_the_demo_s_own(
         "where the recording began is the host's and must not be compared"
     assert f'"frames": {FIXTURE_FRAMES}' in normalised, "the frames asked are the demo's own"
     block = (tmp_path / "out" / "transcript-motion.md").read_text()
-    assert block == ('<picture><source media="(prefers-reduced-motion: reduce)" '
-                     'srcset="screen.png"><img src="loop.webp" alt="A test pattern moving">'
-                     f"</picture>\n\n1. The pattern moves.\n\n<!-- moments-ms: {FIXTURE_MS} -->\n")
+    assert block == ('<p align="center"><picture><source media="(prefers-reduced-motion: '
+                     'reduce)" srcset="screen.png"><img src="loop.webp" alt="A test pattern '
+                     'moving"></picture></p>\n\n1. The pattern moves.\n\n'
+                     f"<!-- moments-ms: {FIXTURE_MS} -->\n")
 
 
 def test_a_recording_a_bound_or_a_stop_cut_is_a_failed_step(tmp_path: Path) -> None:
@@ -624,8 +625,13 @@ def test_a_moment_longer_than_its_stretch_is_invalid_and_one_with_a_skip_ends_wi
 
 def test_the_motion_block_s_alt_is_written_as_an_attribute(tmp_path: Path) -> None:
     demo = _moment_demo(tmp_path, alt='A "ball" & a <paddle>')
-    assert 'alt="A &quot;ball&quot; &amp; a &lt;paddle&gt;"></picture>' in d.motion_block(
-        demo, [1000])
+    block = d.motion_block(demo, [1000])
+    assert 'alt="A &quot;ball&quot; &amp; a &lt;paddle&gt;"></picture>' in block
+    picture, _, rest = block.partition("\n")
+    assert picture.startswith('<p align="center"><picture><source media="(prefers-reduced-motion:'
+                              ' reduce)" srcset="screen.png"><img src="loop.webp" ') \
+        and picture.endswith("</picture></p>"), "the picture is not centred on its own line"
+    assert rest.startswith("\n1. The pattern moves.\n"), "the moments are not under the picture"
 
 
 def test_a_recording_is_given_the_seconds_a_slow_host_needs() -> None:
@@ -647,15 +653,15 @@ def test_the_block_carries_the_steps_to_try_each_in_the_one_shape(
     demo = _demo(tmp_path)
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
     block = d.block_of(_readme(demo).read_text())
-    first, second = block.split("**2. ")
-    assert first.startswith("**1. Start it**\n\nAsk:\n\n> Start the machine with the value 7.\n\n"
+    first, second = block.split("### 2. ")
+    assert first.startswith("### 1. Start it\n\nAsk:\n\n> Start the machine with the value 7.\n\n"
                             "Call:\n\n```text\nstart(value=7)\n```\n\n"), first
     fields = len(_calls(log)[0])
     assert f'Reply, 1 of {fields} fields:\n\n```json\n{{\n  "value": 7\n}}\n```\n\n' \
         "The reply says where the machine stands.\n\n" \
         "<details><summary>The whole reply</summary>" in first, first
     assert '"pid": "<volatile>"' in first, "the whole reply is the normalised one"
-    assert second.startswith("Read it back**\n\nAsk:\n\n> Read the value back.\n\n") \
+    assert second.startswith("Read it back\n\nAsk:\n\n> Read the value back.\n\n") \
         and '"summary": "read"' in second, second
     assert "picture(" not in block and "close(" not in block, "only the steps with an ask"
     assert (_readme(demo).parent / d.FULL_NAME).read_text() == _norm(tmp_path)
@@ -887,7 +893,7 @@ def test_update_readme_writes_the_shown_steps_into_the_front_door_between_its_pr
     assert text.startswith("# The server\n\nWhy.\n\n") and text.endswith("\n\nMore why.\n"), text
     flow = text[text.index(d.flow_begin("x")):text.index(d.flow_end("x"))]
     assert "```text\nread()\n```" in flow and '"value": 7' in flow, flow
-    assert "**1. Start it**" in flow and "> Read the value back." in flow, flow
+    assert "#### 1. Start it\n" in flow and "> Read the value back." in flow, flow
     assert "picture(" not in flow and "close(" not in flow, "only the steps with an ask"
     assert "The whole reply" not in flow, "the front door carries no whole reply"
     assert d.flow_drift(demo.front, "x", tmp_path / "out" / "transcript-flow.md") == ""
@@ -910,6 +916,200 @@ def test_a_front_door_without_its_flow_markers_is_invalid_and_runs_nothing(
     demo.front.write_text("# The server\n")
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
     assert demo.front.read_text() == "# The server\n" and _calls(log) == []
+
+
+LEAD_FRONT = "# The server\n\n**What it does.**\n\n{begin}\nold lead\n{end}\n\n## Install\n"
+
+
+def _lead_demo(tmp_path: Path, **kw: Any) -> d.Demo:
+    """The demo with a moment, opening its repository's README with its loop and its `shot`."""
+    front = tmp_path / "README.md"
+    front.write_text(LEAD_FRONT.format(begin=d.lead_begin("x"), end=d.lead_end("x")),
+                     encoding="utf-8")
+    fields: dict[str, Any] = {"front": front, "step": "boot",
+                              "ask": "Start the machine with `value` 7 & tell me <where>.",
+                              "caption": "A pattern, moved by `record`.",
+                              "answer": ("value", "summary")}
+    fields.update(kw)
+    return _moment_demo(tmp_path, lead=d.Lead(**fields))
+
+
+@needs_loop_programs
+def test_update_readme_opens_the_front_door_with_the_loop_and_one_exchange_of_the_run(
+        tmp_path: Path, log: Path) -> None:
+    demo = _lead_demo(tmp_path)
+    assert demo.lead is not None
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    text = demo.lead.front.read_text()
+    assert text.startswith("# The server\n\n**What it does.**\n\n") \
+        and text.endswith("\n\n## Install\n"), text
+    block = d.block_of(text, d.lead_begin("x"), d.lead_end("x"))
+    assert block == (tmp_path / "out" / "transcript-lead.md").read_text().strip("\n")
+    assert block.splitlines() == [
+        '<p align="center"><a href="demos/x/"><picture><source media="(prefers-reduced-motion: '
+        'reduce)" srcset="demos/x/screen.png"><img src="demos/x/loop.webp" alt="A test pattern '
+        'moving"></picture></a></p>',
+        '<p align="center"><em>A pattern, moved by <code>record</code>.</em></p>',
+        "",
+        '<table align="center">',
+        '<tr><th align="left">You ask</th><td>Start the machine with <code>value</code> 7 &amp; '
+        "tell me &lt;where&gt;.</td></tr>",
+        '<tr><th align="left">Your client calls</th><td><code>start(value=7)</code></td></tr>',
+        '<tr><th align="left">SCRY answers</th><td><code>{"value": 7, "summary": "started"}'
+        "</code></td></tr>",
+        "</table>"], block
+    assert d.stale(demo, tmp_path / "out") == []
+    demo.lead.front.write_text(text.replace('"value": 7,', '"value": 8,'))
+    found = d.stale(demo, tmp_path / "out")
+    assert len(found) == 1 and found[0].startswith("the README's x lead: line 7: "), found
+
+
+#: A lead's declaration that cannot be given, with what its refusal says.
+LEAD_REFUSED: list[tuple[dict[str, Any], str]] = [
+    ({"step": "nope"}, "its lead names the step 'nope', which is no step of it"),
+    ({"answer": ("pid",)}, r"its lead answers with \['pid'\], which the transcript hides"),
+    ({"answer": ()}, "its lead's `answer` is \\(\\), not a tuple of the reply's field names"),
+    ({"caption": "It moves. Twice."}, "its lead's caption is one sentence of at most 25 words"),
+    ({"caption": " "}, "its lead's caption is one sentence"),
+    ({"ask": "word " * 26}, "its lead's `ask` is 26 words, and an ask is 1 to 25"),
+    ({"ask": " "}, "its lead's `ask` is 0 words, and an ask is 1 to 25"),
+    ({"answer": "summary"}, "its lead's `answer` is 'summary', not a tuple of the reply's"),
+    ({"moments": ()}, "opens a README with its loop, and it declares no moment"),
+    ({"readme": None}, "opens a README with its loop, and it declares no moment or no page"),
+]
+
+
+@pytest.mark.parametrize(("kw", "why"), LEAD_REFUSED)
+def test_a_lead_the_demo_cannot_give_is_refused_before_a_call(
+        tmp_path: Path, log: Path, kw: dict[str, Any], why: str) -> None:
+    of_the_demo: dict[str, Any] = {key: kw.pop(key) for key in ("moments", "readme")
+                                   if key in kw}
+    demo = _lead_demo(tmp_path, **kw)
+    fields: dict[str, Any] = {**demo.__dict__, **of_the_demo}
+    demo = d.Demo(**fields)
+    with pytest.raises(ValueError, match=why):
+        d.main(demo, ["--transcript", str(tmp_path / "t.md")])
+    assert _calls(log) == []
+
+
+@pytest.mark.parametrize("where", ["step.volatile", "step.optional", "demo.volatile"])
+def test_a_lead_answer_hidden_or_dropped_anywhere_is_refused_before_a_call(
+        tmp_path: Path, log: Path, where: str) -> None:
+    demo = _lead_demo(tmp_path, answer=("value",))
+    reason = {"value": "it differs between runs"}
+    boot = d.Step(**{**demo.steps[0].__dict__, "shown": ("summary",)})
+    if where == "demo.volatile":
+        demo = d.Demo(**{**demo.__dict__, "steps": [boot, *demo.steps[1:]], "volatile": reason})
+    else:
+        boot = d.Step(**{**boot.__dict__, where.split(".")[1]: reason})
+        demo = d.Demo(**{**demo.__dict__, "steps": [boot, *demo.steps[1:]]})
+    with pytest.raises(ValueError, match=r"its lead answers with \['value'\], which the "
+                                         "transcript hides as the host's or drops"):
+        d.main(demo, ["--transcript", str(tmp_path / "t.md")])
+    assert _calls(log) == []
+
+
+def test_a_lead_that_opens_the_demo_s_own_page_is_refused_before_a_call(
+        tmp_path: Path, log: Path) -> None:
+    page = tmp_path / "demos" / "x" / "README.md"
+    with pytest.raises(ValueError, match="its lead opens the demo's own page"):
+        d.main(_lead_demo(tmp_path, front=page), ["--transcript", str(tmp_path / "t.md")])
+    assert _calls(log) == []
+
+
+@needs_loop_programs
+def test_a_flow_and_a_lead_in_one_readme_are_both_written(tmp_path: Path, log: Path) -> None:
+    front = tmp_path / "README.md"
+    demo = _lead_demo(tmp_path)
+    front.write_text(f"# The server\n\n{d.lead_begin('x')}\nold lead\n{d.lead_end('x')}\n\n"
+                     f"Between.\n\n{d.flow_begin('x')}\nold flow\n{d.flow_end('x')}\n\nAfter.\n")
+    demo = d.Demo(**{**demo.__dict__, "front": front})
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    text = front.read_text()
+    assert "old lead" not in text and "old flow" not in text, text
+    assert '<table align="center">' in d.block_of(text, d.lead_begin("x"), d.lead_end("x"))
+    assert "#### 1. Start it" in d.block_of(text, d.flow_begin("x"), d.flow_end("x"))
+    assert "\n\nBetween.\n\n" in text and text.endswith("\n\nAfter.\n"), text
+    assert d.stale(demo, tmp_path / "out") == []
+    (tmp_path / "out" / "transcript-lead.md").unlink()
+    assert d.stale(demo, tmp_path / "out") == [
+        f"x: the run in {tmp_path / 'out'} wrote no transcript-lead.md"]
+
+
+def test_a_lead_answer_is_judged_as_the_readme_spells_it(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """A path under the repository reads `/path/to/<name>/...` in a README: an answer too long
+    as this host spells it and short enough as the page does is an answer."""
+    root = str(tmp_path.resolve())
+    name = "b" * (example.COLUMNS - len(f"/path/to/{tmp_path.name}/"))
+    binary = f"{root}/{name}"
+    spelt = f"/path/to/{tmp_path.name}/{name}"
+    assert len(binary) > example.COLUMNS == len(spelt), "the case needs a root this long"
+    demo = _lead_demo(tmp_path, answer=("binary",))
+    steps = [d.Step("boot", "start", {"value": 7, "binary": binary}, _said("value"),
+                    ask="Start the machine.", title="Start it",
+                    reads="The reply says where it stands."), *demo.steps[1:]]
+    demo = d.Demo(**{**demo.__dict__, "steps": steps})
+    assert _run(demo, tmp_path) == verdict.EXIT_PASS, capsys.readouterr().out
+    assert f"<code>{spelt}</code>" in (tmp_path / "out" / "transcript-lead.md").read_text()
+
+
+def test_the_exchange_s_call_is_one_line_with_its_long_values_cut(
+        tmp_path: Path, log: Path) -> None:
+    """Whole, this call takes two lines, which a page's example may; a README's exchange gives
+    it one."""
+    start = {"value": 7, "binary": "b" * 70, "shared": True, "display": 1}
+    assert len(example.call_text("start", start).splitlines()) == 2
+    demo = _lead_demo(tmp_path, answer=("value",))
+    steps = [d.Step("boot", "start", start, _said("value"), ask="Start the machine.",
+                    title="Start it", reads="The reply says where it stands."), *demo.steps[1:]]
+    demo = d.Demo(**{**demo.__dict__, "steps": steps})
+    assert _run(demo, tmp_path) == verdict.EXIT_PASS
+    cut = f'start(value=7, binary="{"b" * 16}…{"b" * 16}", shared=true, display=1)'
+    assert f"<td><code>{cut}</code></td>" in (tmp_path / "out" / "transcript-lead.md").read_text()
+
+
+def test_a_lead_outside_the_folder_its_readme_opens_is_refused_before_a_call(
+        tmp_path: Path, log: Path) -> None:
+    elsewhere = tmp_path / "other" / "README.md"
+    elsewhere.parent.mkdir()
+    elsewhere.write_text("# Another repository\n")
+    with pytest.raises(ValueError, match="its lead opens .*README.md, and the demo's own page "
+                                         "is not under that folder"):
+        d.main(_lead_demo(tmp_path, front=elsewhere), ["--transcript", str(tmp_path / "t.md")])
+    assert _calls(log) == []
+
+
+def test_a_front_door_without_its_lead_markers_is_invalid_and_runs_nothing(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(motion, "programs", lambda: {"ffmpeg": "ffmpeg", "img2webp": "img2webp"})
+    demo = _lead_demo(tmp_path)
+    assert demo.lead is not None
+    demo.lead.front.write_text("# The server\n")
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_INVALID
+    assert demo.lead.front.read_text() == "# The server\n" and _calls(log) == []
+
+
+@pytest.mark.parametrize(("answer", "why"), [
+    (("gone",), r"FAIL boot: the exchange answers with \['gone'\], which the reply does not"),
+    (("where", "binary"), "FAIL boot: the exchange's answer is .* characters on its one line"),
+])
+def test_a_lead_answer_the_reply_cannot_give_on_one_line_fails_the_step(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str], answer: tuple[str, ...],
+        why: str) -> None:
+    import re
+    demo = _lead_demo(tmp_path, answer=answer)
+    steps = [d.Step("boot", "start", {"value": 7, "binary": "b" * 120}, _said("value"),
+                    ask="Start the machine.", title="Start it",
+                    reads="The reply says where it stands."), *demo.steps[1:]]
+    demo = d.Demo(**{**demo.__dict__, "steps": steps})
+    assert _run(demo, tmp_path) == verdict.EXIT_FAIL
+    said = capsys.readouterr().out
+    assert re.search(why, said)
+    assert "DEMO x: 4 steps, 0 OK" in said and "ended in an error" not in said, \
+        f"the failed step did not end the run as a failed step does: {said}"
+    assert "**1. `start`**: FAIL boot: " in (tmp_path / "out" / "transcript.md").read_text()
+    assert not (tmp_path / "out" / "transcript-lead.md").exists(), "a failed step is no exchange"
 
 
 def _flow_of(tmp_path: Path, start: dict[str, Any]) -> str:

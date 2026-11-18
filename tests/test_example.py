@@ -67,6 +67,41 @@ def test_a_call_too_long_for_its_lines_has_its_long_values_cut_and_says_what_it_
     assert f"… {12 - shown} more)" in many and 0 < shown < 12, many
 
 
+def test_a_call_asked_on_one_line_has_its_long_values_cut_to_fit_it() -> None:
+    args = {"data_hex": "4e6f7468696e672c20696620796f752077616e7420746f2073656c6c2073686f65732e",
+            "ref": "0000:0000", "length": 655360}
+    assert len(example.call_text("find", args).splitlines()) == 2, "whole, it takes two lines"
+    assert example.call_text("find", args, lines=1) == (
+        'find(data_hex="4e6f7468696e672c…6c2073686f65732e", ref="0000:0000", length=655360)')
+    assert example.call_text("close", {}, lines=1) == "close()"
+    many = example.call_text("start", {f"argument_{n}": "v" * 30 for n in range(12)}, lines=1)
+    assert "\n" not in many and len(many) <= example.COLUMNS and many.endswith(" more)"), many
+
+
+def test_an_answer_is_the_named_fields_on_one_line_or_a_refusal() -> None:
+    reply = {"summary": "find: 1 hit", "hits": ["82DD:0000000F"], "hits_total": 1, "long": "x" * 99}
+    assert example.answer(reply, ("hits", "hits_total")) == \
+        '{"hits": ["82DD:0000000F"], "hits_total": 1}'
+    assert example.answer(reply, ("summary",)) == "find: 1 hit", "one string is said bare"
+    with pytest.raises(ValueError, match="answer is 3 characters on its one line"):
+        example.answer({"said": "a\nb"}, ("said",))
+    with pytest.raises(ValueError, match=r"answers with \['gone'\], which the reply does not"):
+        example.answer(reply, ("gone", "hits"))
+    with pytest.raises(ValueError, match=r"answer is 128 characters on its one line, and a line "
+                                         r"holds 100: name other fields"):
+        example.answer(reply, ("long", "hits_total"))
+
+
+@pytest.mark.parametrize(("level", "head"), [(0, "**2. Read it**"), (3, "### 2. Read it"),
+                                             (4, "#### 2. Read it")])
+def test_an_example_is_headed_in_bold_or_by_a_heading_of_the_level_its_page_gives(
+        level: int, head: str) -> None:
+    shown = example.render(example.Example("Read it.", "read", {}, {"summary": "read"},
+                                           ("summary",), "It says what it read.", "Read it"),
+                           2, whole=False, level=level)
+    assert shown.splitlines()[:3] == [head, "", "Ask:"], shown
+
+
 def test_an_excerpt_shows_the_named_fields_in_their_order_and_cuts_a_long_string() -> None:
     reply = {"summary": "s" * 300, "status": "ok", "hits": ["82DD:0000000F"], "hits_total": 1}
     text = example.excerpt(reply, ("hits_total", "summary"))

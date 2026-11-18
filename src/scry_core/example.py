@@ -126,15 +126,15 @@ def _wrapped(tool: str, parts: Sequence[str]) -> list[str]:
     return [*lines, line] if parts else [f"{tool}()"]
 
 
-def call_text(tool: str, args: Mapping[str, Any]) -> str:
-    """`tool(argument=value)` within `CALL_LINES` lines of `COLUMNS` columns: whole when it
-    fits, else its long values cut, else its last arguments counted and left out, else its
-    argument names with what each holds counted, else the tool alone."""
+def call_text(tool: str, args: Mapping[str, Any], lines: int = CALL_LINES) -> str:
+    """`tool(argument=value)` within `lines` lines of `COLUMNS` columns: whole when it fits,
+    else its long values cut, else its last arguments counted and left out, else its argument
+    names with what each holds counted, else the tool alone."""
     def parts(values: Mapping[str, Any]) -> list[str]:
         return [f"{k}={json.dumps(v, ensure_ascii=False)}" for k, v in values.items()]
 
-    def fits(lines: Sequence[str]) -> bool:
-        return len(lines) <= CALL_LINES and all(len(line) <= COLUMNS for line in lines)
+    def fits(written: Sequence[str]) -> bool:
+        return len(written) <= lines and all(len(line) <= COLUMNS for line in written)
 
     whole = _wrapped(tool, parts(args))
     if fits(whole):
@@ -144,9 +144,9 @@ def call_text(tool: str, args: Mapping[str, Any]) -> str:
         shown = parts(dict(list(cut.items())[:kept]))
         if kept < len(cut):
             shown.append(f"{ELIDED} {len(cut) - kept} more")
-        lines = _wrapped(tool, shown)
-        if fits(lines):
-            return "\n".join(lines)
+        written = _wrapped(tool, shown)
+        if fits(written):
+            return "\n".join(written)
     named = _wrapped(tool, [f"{k}={_counted(v)}" for k, v in args.items()])
     return "\n".join(named) if fits(named) else f"{tool}({ELIDED})"
 
@@ -197,9 +197,26 @@ def checked(where: str, ask: str, reads: str) -> None:
                          f"and {READS_WORDS} words")
 
 
-def render(example: Example, number: int = 0, whole: bool = True) -> str:
-    """The example in its one shape; `whole` adds the reply entire, folded."""
-    head = (f"**{number}. {example.title}**" if number else f"**{example.title}**")
+def answer(reply: Mapping[str, Any], fields: Sequence[str]) -> str:
+    """The `fields` of `reply` on one line, for an exchange a README opens with: one string
+    said bare, anything else as JSON. `ValueError` when a field is missing or the line passes
+    `COLUMNS`."""
+    if lacking := [k for k in fields if k not in reply]:
+        raise ValueError(f"the exchange answers with {lacking}, which the reply does not carry")
+    only = reply[fields[0]] if len(fields) == 1 else None
+    line = only if isinstance(only, str) else json.dumps({k: reply[k] for k in fields},
+                                                         ensure_ascii=False)
+    if len(line) > COLUMNS or "\n" in line:
+        raise ValueError(f"the exchange's answer is {len(line)} characters on its one line, and "
+                         f"a line holds {COLUMNS}: name other fields")
+    return line
+
+
+def render(example: Example, number: int = 0, whole: bool = True, level: int = 0) -> str:
+    """The example in its one shape; `whole` adds the reply entire, folded. Its title is a
+    heading of `level`, so a page's outline lists its examples, or bold when `level` is 0."""
+    titled = f"{number}. {example.title}" if number else example.title
+    head = f"{'#' * level} {titled}" if level else f"**{titled}**"
     parts = [head, ""] if example.title else []
     parts += ["Ask:", "", "> " + example.ask, "",
               "Call:", "", "```text", call_text(example.tool, example.args), "```", "",

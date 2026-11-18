@@ -26,6 +26,10 @@ they are the README block, and the `Demo.front` flow without their whole replies
 normalised run is committed beside the README as `FULL_NAME`. `--update-readme` asks for
 `TRY_STEPS` of them.
 
+A demo with a `Lead` opens its repository's README: its loop, large and centred and linked to
+its page, a caption, and one step of the run as an exchange (what was asked, the call, the
+answer), between the README's `lead_begin` and `lead_end` markers.
+
 A demo's `Moment`s are what its `loop.webp` shows, cut from the run's own recordings by
 `motion`: the file a `record` step wrote, or the video of a session that records itself
 (`Demo.video`), cut by the `frame` the replies carry. The README's motion block holds the
@@ -72,6 +76,8 @@ VOLATILE_MARK = "<volatile>"
 
 MOTION_BEGIN = "<!-- demo-motion:begin -->"
 MOTION_END = "<!-- demo-motion:end -->"
+#: The heading level of a step to try on a demo's own page, and in a README's example calls.
+TRY_LEVEL, FLOW_LEVEL = 3, 4
 HOST_MARK = "<host>"
 
 #: The steps a demo's README offers to try, fewest and most.
@@ -217,6 +223,19 @@ class Moment:
 
 
 @dataclass(frozen=True)
+class Lead:
+    """How a demo opens the README `front`: its loop linked to its own page, `caption` under
+    it, then step `step` as an exchange: `ask`, the call, and the `answer` fields of its reply
+    on one line."""
+
+    front: Path
+    step: str
+    ask: str
+    caption: str
+    answer: tuple[str, ...] = ("summary",)
+
+
+@dataclass(frozen=True)
 class Demo:
     """A demo as declared. `offers` names the `OFFERABLE` options it accepts,
     `reads` those it reads from `run.options` itself. `capture` is the image one step writes in
@@ -241,6 +260,7 @@ class Demo:
     moments: Sequence[Moment] = ()
     alt: str = ""
     video: Callable[[Run], Path] | None = None
+    lead: Lead | None = None
 
 
 def flow_begin(name: str) -> str:
@@ -249,6 +269,14 @@ def flow_begin(name: str) -> str:
 
 def flow_end(name: str) -> str:
     return f"<!-- demo-flow:end {name} -->"
+
+
+def lead_begin(name: str) -> str:
+    return f"<!-- demo-lead:begin {name} -->"
+
+
+def lead_end(name: str) -> str:
+    return f"<!-- demo-lead:end {name} -->"
 
 
 def block_span(text: str, begin: str = BEGIN, end: str = END) -> tuple[int, int]:
@@ -387,15 +415,33 @@ class Transcripts:
 
     norm: Normaliser
     flow_norm: Normaliser | None = None
+    lead: Lead | None = None
     whole: list[str] = field(default_factory=list)
     normalised: list[str] = field(default_factory=list)
     flow: list[str] = field(default_factory=list)
     examples: list[str] = field(default_factory=list)
+    #: The lead step's call and its answer, as a README spells them.
+    exchange: tuple[str, str] | None = None
+
+    def answered(self, step: Step, reply: Reply) -> str:
+        """The lead's answer off `reply` as a README spells it, which is the text the step is
+        judged by; `ValueError` when the reply cannot give it on one line."""
+        if self.lead is None:
+            raise ValueError(f"step {step.name} is no lead's")
+        spell = self.flow_norm or self.norm
+        return example.answer(spell.reply(reply.data, step.volatile, step.optional),
+                              self.lead.answer)
 
     def add(self, n: int, step: Step, args: Mapping[str, Any], reply: Reply | None,
-            line: str, tried: bool) -> None:
-        """One step's entry in every transcript; `tried` adds it as an example."""
+            line: str, ok: bool) -> None:
+        """One step's entry in every transcript; a step that passed with an `ask` is an example
+        too, and the lead's step is the README's exchange."""
         tool, optional = step.tool, step.optional
+        tried = ok and bool(step.ask)
+        spell = self.flow_norm or self.norm
+        if ok and reply is not None and self.lead is not None and step.name == self.lead.step:
+            self.exchange = (example.call_text(tool, spell.arguments(dict(args)), lines=1),
+                             self.answered(step, reply))
         self.whole.append(_entry(n, tool, args, reply, line))
         normal = None if reply is None else Reply(
             self.norm.reply(reply.data, step.volatile, optional), reply.attachments)
@@ -406,12 +452,12 @@ class Transcripts:
         number = len(self.examples) + 1
         fields = step.shown or EXCERPT
         self.examples.append(example.render(example.Example(
-            step.ask, tool, normal_args, normal.data, fields, step.reads, step.title), number))
-        spell = self.flow_norm or self.norm
+            step.ask, tool, normal_args, normal.data, fields, step.reads, step.title), number,
+            level=TRY_LEVEL))
         self.flow.append(example.render(example.Example(
             step.ask, tool, spell.arguments(dict(args)),
             spell.reply(reply.data, step.volatile, optional), fields, step.reads, step.title),
-            number, whole=False))
+            number, whole=False, level=FLOW_LEVEL))
 
 
 def _reply(result: CallToolResult) -> Reply:
@@ -471,7 +517,8 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
     root = norm.root
     out = Outcome([], Transcripts(norm, Normaliser(
         root, norm.home, norm.volatile, norm.host,
-        marks={**norm.marks, str(root): placeholder(root)})))
+        marks={**norm.marks, str(root): placeholder(root)}), demo.lead))
+    led = demo.lead.step if demo.lead is not None else None
     params = StdioServerParameters(command=demo.server[0], args=list(demo.server[1:]),
                                    cwd=str(demo.root), env=dict(os.environ))
     passed, started = 0, False
@@ -482,9 +529,10 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                 started = True
                 closed = False
                 for n, step in enumerate(demo.steps, start=1):
-                    ok, line, args, reply = await _step(client, step, run)
+                    ok, line, args, reply = await _step(
+                        client, step, run, out.transcripts.answered if step.name == led else None)
                     out.lines.append(norm.text(line))
-                    out.transcripts.add(n, step, args, reply, line, ok and bool(step.ask))
+                    out.transcripts.add(n, step, args, reply, line, ok)
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
@@ -506,9 +554,11 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
     return out
 
 
-async def _step(client: Client, step: Step, run: Run
+async def _step(client: Client, step: Step, run: Run,
+                answered: Callable[[Step, Reply], str] | None = None
                 ) -> tuple[bool, str, Mapping[str, Any], Reply | None]:
-    """Run one step: ok, its line, the arguments sent and the reply."""
+    """Run one step: ok, its line, the arguments sent and the reply. `answered` gives what a
+    README's exchange shows of it, and refuses a reply that cannot say it on one line."""
     args: Mapping[str, Any] = {}
     reply: Reply | None = None
     try:
@@ -525,11 +575,13 @@ async def _step(client: Client, step: Step, run: Run
         summary = step.check(reply, run)
         if not isinstance(summary, str):
             raise StepFailed(f"the check returned {summary!r}, not a summary")
-        if step.ask:
-            try:
+        try:
+            if step.ask:
                 example.excerpt(reply.data, step.shown or EXCERPT)
-            except ValueError as e:
-                raise StepFailed(str(e)) from e
+            if answered is not None:
+                answered(step, reply)
+        except ValueError as e:
+            raise StepFailed(str(e)) from e
         return True, f"OK {step.name}: {_one_line(summary)}", args, reply
     except Invalid as e:
         return False, f"INVALID {step.name}: {_one_line(str(e))}", args, reply
@@ -587,6 +639,7 @@ def declared(demo: Demo) -> None:
         raise ValueError(f"the demo {demo.name} names {twice} more than once: a step's reply is "
                          "kept under its name, and a moment is found by it")
     _moments_declared(demo)
+    _lead_declared(demo)
     if demo.front is not None and not any(step.ask for step in demo.steps):
         raise ValueError(f"the demo {demo.name} names a front door and no step carries an "
                          "`ask` to show there")
@@ -628,6 +681,43 @@ def _moments_declared(demo: Demo) -> None:
                 or example.sentences(moment.caption) != 1:
             raise ValueError(f"the moment until {moment.until!r}: its caption is one sentence "
                              f"of at most {CAPTION_WORDS} words")
+
+
+def _lead_declared(demo: Demo) -> None:
+    """Refuse a lead the demo's own declarations cannot give, before a call is made."""
+    lead = demo.lead
+    if lead is None:
+        return
+    if demo.readme is None or not demo.moments:
+        raise ValueError(f"the demo {demo.name} opens a README with its loop, and it declares "
+                         "no moment or no page of its own")
+    if lead.front.resolve() == demo.readme.resolve():
+        raise ValueError(f"the demo {demo.name}: its lead opens the demo's own page, which the "
+                         "run rewrites from its own blocks")
+    if lead.front.parent.resolve() not in demo.readme.resolve().parents:
+        raise ValueError(f"the demo {demo.name}: its lead opens {lead.front}, and the demo's "
+                         "own page is not under that folder, so no link reaches it")
+    steps = {step.name: step for step in demo.steps}
+    if lead.step not in steps:
+        raise ValueError(f"the demo {demo.name}: its lead names the step {lead.step!r}, which "
+                         "is no step of it")
+    if not (isinstance(lead.answer, tuple) and lead.answer
+            and all(isinstance(k, str) for k in lead.answer)):
+        raise ValueError(f"the demo {demo.name}: its lead's `answer` is {lead.answer!r}, not a "
+                         "tuple of the reply's field names")
+    step = steps[lead.step]
+    hidden = {*VOLATILE, *demo.volatile, *step.volatile, *step.optional}
+    if answer_hidden := sorted(set(lead.answer) & hidden):
+        raise ValueError(f"the demo {demo.name}: its lead answers with {answer_hidden}, which "
+                         "the transcript hides as the host's or drops: answer with fields that "
+                         "read the same on every run")
+    if not lead.ask.strip() or example.words(lead.ask) > example.ASK_WORDS:
+        raise ValueError(f"the demo {demo.name}: its lead's `ask` is {example.words(lead.ask)} "
+                         f"words, and an ask is 1 to {example.ASK_WORDS}")
+    if not lead.caption.strip() or example.words(lead.caption) > CAPTION_WORDS \
+            or example.sentences(lead.caption) != 1:
+        raise ValueError(f"the demo {demo.name}: its lead's caption is one sentence of at most "
+                         f"{CAPTION_WORDS} words")
 
 
 def recorded(frames: int, said: Callable[[Reply, Run], str] | None = None
@@ -742,15 +832,40 @@ def cuts(demo: Demo, run: Run) -> list[motion.Cut]:
     return found
 
 
+def _moving(alt: str, folder: str = "") -> str:
+    """The loop in `folder`, with the still for a reader who asks for no motion."""
+    return ('<picture><source media="(prefers-reduced-motion: reduce)" '
+            f'srcset="{folder}screen.png"><img src="{folder}{motion.LOOP_NAME}" '
+            f'alt="{html.escape(alt, quote=True)}"></picture>')
+
+
+def _inline(text: str) -> str:
+    """A hand-written sentence as HTML: its marks escaped, its `code` in code type."""
+    return re.sub(r"`([^`]+)`", r"<code>\1</code>", html.escape(text, quote=False))
+
+
 def motion_block(demo: Demo, cut_ms: Sequence[int]) -> str:
-    """The README's motion block: the loop, the still for a reader who asks for no motion, each
-    moment's sentence, and how long each lasts for a page that lights them in time."""
-    picture = ('<picture><source media="(prefers-reduced-motion: reduce)" '
-               f'srcset="screen.png"><img src="{motion.LOOP_NAME}" '
-               f'alt="{html.escape(demo.alt, quote=True)}"></picture>')
+    """The README's motion block: the loop, centred, with the still for a reader who asks for no
+    motion, each moment's sentence under it, and how long each lasts for a page that lights them
+    in time."""
     captions = [f"{n}. {moment.caption}" for n, moment in enumerate(demo.moments, start=1)]
-    return "\n".join([picture, "", *captions, "",
+    return "\n".join([f'<p align="center">{_moving(demo.alt)}</p>', "", *captions, "",
                       f"<!-- moments-ms: {','.join(str(ms) for ms in cut_ms)} -->"])
+
+
+def lead_block(demo: Demo, lead: Lead, readme: Path, call: str, answer: str) -> str:
+    """What opens the README `lead.front`: the demo's loop, centred and linked to its page,
+    its caption, and the exchange as a table of three rows."""
+    folder = readme.resolve().parent.relative_to(lead.front.resolve().parent).as_posix() + "/"
+    rows = (("You ask", _inline(lead.ask)),
+            ("Your client calls", f"<code>{html.escape(call, quote=False)}</code>"),
+            ("SCRY answers", f"<code>{html.escape(answer, quote=False)}</code>"))
+    return "\n".join([
+        f'<p align="center"><a href="{folder}">{_moving(demo.alt, folder)}</a></p>',
+        f'<p align="center"><em>{_inline(lead.caption)}</em></p>', "",
+        '<table align="center">',
+        *(f'<tr><th align="left">{head}</th><td>{cell}</td></tr>' for head, cell in rows),
+        "</table>"])
 
 
 def _taken(demo: Demo) -> set[str]:
@@ -835,6 +950,9 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
         if demo.front is not None:
             block_span(demo.front.read_text(encoding="utf-8"), flow_begin(demo.name),
                        flow_end(demo.name))
+        if demo.lead is not None:
+            block_span(demo.lead.front.read_text(encoding="utf-8"), lead_begin(demo.name),
+                       lead_end(demo.name))
     why = demo.precheck(run) if demo.precheck else ""
     if why:
         raise Invalid(why)
@@ -845,7 +963,7 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
     norm = Normaliser(demo.root.resolve(), Path.home().resolve(),
                       {**VOLATILE, **demo.volatile}, demo.host_args)
     files = _beside(transcript)
-    for stale_file in (files.flow, files.examples, files.motion):
+    for stale_file in (files.flow, files.examples, files.motion, files.lead):
         stale_file.unlink(missing_ok=True)  # only this run's may reach a README
     out = asyncio.run(_drive(demo, run, run.dir / "server.stderr", norm))
     if out.transcripts.whole:
@@ -856,6 +974,9 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
     if out.transcripts.examples:
         files.examples.write_text("\n\n".join(out.transcripts.examples) + "\n",
                                   encoding="utf-8")
+    if out.transcripts.exchange and demo.lead is not None and demo.readme is not None:
+        files.lead.write_text(lead_block(demo, demo.lead, demo.readme,
+                                         *out.transcripts.exchange) + "\n", encoding="utf-8")
     for line in out.lines:
         print(line)
     if out.transcripts.whole:
@@ -886,19 +1007,21 @@ def load(demo_file: Path) -> Demo:
 @dataclass(frozen=True)
 class Beside:
     """What a run writes beside its transcript: the normalised run, the front door's flow, the
-    README's examples and its motion block."""
+    README's examples, its motion block and the front door's lead."""
 
     normalised: Path
     flow: Path
     examples: Path
     motion: Path
+    lead: Path
 
 
 def _beside(transcript: Path) -> Beside:
     stem = file_names.word(transcript.stem, "transcript")
     def beside(part: str) -> Path:
         return transcript.with_name(file_names.name(stem, part, extension="md"))
-    return Beside(beside("normalised"), beside("flow"), beside("examples"), beside("motion"))
+    return Beside(beside("normalised"), beside("flow"), beside("examples"), beside("motion"),
+                  beside("lead"))
 
 
 def _whole(entries: list[str]) -> str:
@@ -915,7 +1038,8 @@ def stale(demo: Demo, run_dir: Path) -> list[str]:
     files = _beside(run_dir / "transcript.md")
     needed = ([files.examples, files.normalised] if demo.readme is not None else []) + (
         [files.flow] if demo.front is not None else []) + (
-        [files.motion] if demo.readme is not None and demo.moments else [])
+        [files.motion] if demo.readme is not None and demo.moments else []) + (
+        [files.lead] if demo.lead is not None else [])
     if missing := [path.name for path in needed if not path.is_file()]:
         return [f"{demo.name}: the run in {run_dir} wrote no {', '.join(missing)}"]
     found = []
@@ -931,6 +1055,11 @@ def stale(demo: Demo, run_dir: Path) -> list[str]:
             found.append(f"{demo.name}'s {FULL_NAME}: {drift}")
     if demo.front is not None and (drift := flow_drift(demo.front, demo.name, files.flow)):
         found.append(f"the front door's {demo.name} flow: {drift}")
+    if demo.lead is not None and (drift := first_difference(
+            block_of(demo.lead.front.read_text(encoding="utf-8"), lead_begin(demo.name),
+                     lead_end(demo.name)),
+            files.lead.read_text(encoding="utf-8").strip("\n"))):
+        found.append(f"the README's {demo.name} lead: {drift}")
     if demo.readme is not None and demo.capture is not None:
         shot, committed = demo.capture(Run(dir=run_dir)), demo.readme.with_name("screen.png")
         if not same_picture(shot, committed):
@@ -975,17 +1104,29 @@ def _update_readmes(demo: Demo, run: Run, readme: Path, capture: Path, files: Be
     if shown:
         text = with_block(text, files.motion.read_text(encoding="utf-8"), MOTION_BEGIN,
                           MOTION_END)
-    front = None if demo.front is None else with_block(
-        demo.front.read_text(encoding="utf-8"), files.flow.read_text(encoding="utf-8"),
-        flow_begin(demo.name), flow_end(demo.name))
+    fronts: dict[Path, tuple[str, list[str]]] = {}
+
+    def opened(front: Path, what: str, block: Path, begin: str, end: str) -> None:
+        """One more generated block of `front`, which a flow and a lead may share."""
+        before, parts = fronts.get(front.resolve(), (front.read_text(encoding="utf-8"), []))
+        fronts[front.resolve()] = (with_block(before, block.read_text(encoding="utf-8"), begin,
+                                              end), [*parts, what])
+
+    if demo.front is not None:
+        opened(demo.front, "flow", files.flow, flow_begin(demo.name), flow_end(demo.name))
+    if demo.lead is not None:
+        if not files.lead.is_file():
+            raise Invalid(f"the run wrote no exchange for the lead of {demo.name}, so the "
+                          "READMEs were left as they were")
+        opened(demo.lead.front, "lead", files.lead, lead_begin(demo.name), lead_end(demo.name))
     built = motion.build(shown, run.dir / "loop") if shown else None
     shutil.copyfile(capture, readme.with_name("screen.png"))
     shutil.copyfile(files.normalised, readme.with_name(FULL_NAME))
     readme.write_text(text, encoding="utf-8")
     print(f"README: {readme} blocks, {FULL_NAME} and screen.png rewritten")
-    if demo.front is not None and front is not None:
-        demo.front.write_text(front, encoding="utf-8")
-        print(f"README: {demo.front} flow {demo.name} rewritten")
+    for front, (written, parts) in fronts.items():
+        front.write_text(written, encoding="utf-8")
+        print(f"README: {front} {' and '.join(parts)} {demo.name} rewritten")
     if built is not None:
         loop = readme.with_name(motion.LOOP_NAME)
         fresh.replace(loop, built.data, "the demo's loop")
