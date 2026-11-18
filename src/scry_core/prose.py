@@ -13,13 +13,12 @@ def counted(n: int, noun: str, plural: str | None = None) -> str:
 
 
 def left(n: int) -> str:
-    """How many candidates a scan still holds after a filter, as every summary says it."""
+    """A scan's count after a filter, as every summary says it."""
     return f"{n} left"
 
 
 def reaction(verify: Mapping[str, Any]) -> str:
-    """What the check of an input found, as every summary says it: `verify` is the reply's
-    block of that name."""
+    """What an input's check (`verify`) found, as every summary says it."""
     if verify.get("available") is False:
         return "reaction could not be checked"
     if verify.get("seen"):

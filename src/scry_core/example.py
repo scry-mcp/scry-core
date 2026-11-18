@@ -213,13 +213,13 @@ def answer(reply: Mapping[str, Any], fields: Sequence[str]) -> str:
 
 
 def asked(ask: str) -> list[str]:
-    """What a person types, as every example opens."""
+    """What a person types."""
     return ["Ask:", "", "> " + ask]
 
 
 def answered(tool: str, args: Mapping[str, Any], reply: Mapping[str, Any],
              fields: Sequence[str]) -> list[str]:
-    """A call and the excerpt of its reply, as every example shows the pair."""
+    """A call and the excerpt of its reply."""
     return ["Call:", "", "```text", call_text(tool, args), "```", "",
             f"Reply, {len(fields)} of {len(reply)} fields:", "",
             "```json", excerpt(reply, fields), "```"]

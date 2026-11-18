@@ -1,10 +1,6 @@
-"""A demo's normalised transcript read back as records, so a reference example is the call and
-the reply a committed run already shows.
-
-It reads what `demo._entry` writes. A call a demo makes as a step of a `perform` is a record of
-its own: the step's arguments and the reply the `perform` carries for it. A `perform` asked for
-summaries carries each step's reply cut down, so its steps are no records.
-"""
+"""A demo's normalised transcript, as `demo._entry` writes it, read back as records for a
+reference example. A step of a `perform` is a record of its own, unless the `perform` asked
+for summaries, which cut each step's reply."""
 
 from __future__ import annotations
 
