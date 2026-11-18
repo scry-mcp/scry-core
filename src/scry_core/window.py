@@ -25,13 +25,17 @@ Rect = tuple[int, int, int, int]       # x, y, width, height, in the host's own 
 NO_DISPLAY = -1
 #: Seconds between two readings of the host's window list.
 POLL_S = 0.25
-#: The `window` tool's reply and refusals, the same on every server: each docstring names them.
+#: The `window` tool's reply and refusals and what `front` means, the same on every server:
+#: each docstring names them.
 DOC_VALUES = {
     "WINDOW_REPLY": (
         "`window` (`display`, the OS's index; `bounds`; `onscreen`; `front`, on screen with no "
         "other application's window covering its centre; `fullscreen`); `size` when the session "
         "was started with a stated `size`: `asked`, `seen`, which rectangle was `compared` "
         "(`client` or `outer`), `tolerance_px`, `height_free` and `matches`"),
+    "WINDOW_FRONT": (
+        "`front` says no other application's window covers its centre, not that it has the "
+        "keyboard focus"),
     "WINDOW_REFUSED": (
         "no session (`no_session`), one that died (`session_broken`), a session started without "
         "`shared` (`no_channel`), a window that never appears or, with `front`, is still covered "
