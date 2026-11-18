@@ -12,6 +12,23 @@ def counted(n: int, noun: str, plural: str | None = None) -> str:
     return f"{n} {noun if n == 1 else plural or noun + 's'}"
 
 
+def left(n: int) -> str:
+    """How many candidates a scan still holds after a filter, as every summary says it."""
+    return f"{n} left"
+
+
+def reaction(verify: Mapping[str, Any]) -> str:
+    """What the check of an input found, as every summary says it: `verify` is the reply's
+    block of that name."""
+    if verify.get("available") is False:
+        return "reaction could not be checked"
+    if verify.get("seen"):
+        return "reaction seen"
+    if "verdict" in verify:
+        return f"no reaction seen ({verify['verdict']})"
+    return "no reaction seen" if verify.get("checked") else "sent, reaction not checked"
+
+
 def ambiguous_name(name: str, addresses: Sequence[str], where: str) -> str:
     """The refusal of a name the table gives more than once, naming each address in file order."""
     return (f"{name!r} names {counted(len(addresses), 'symbol')} in {where} "

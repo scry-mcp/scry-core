@@ -1,5 +1,7 @@
-"""The one plural rule every server's lines say a count by."""
+"""The one plural rule every server's lines say a count by, and the wordings both say alike."""
 from __future__ import annotations
+
+import pytest
 
 from scry_core import prose
 
@@ -46,3 +48,19 @@ def test_a_pictures_line_says_its_size_its_scale_and_whether_it_is_attached() ->
     assert prose.picture(reply) == "640x400 PNG x2, inline"
     reply["image"]["inline"] = False
     assert prose.picture(reply).endswith(", not inlined")
+
+
+@pytest.mark.parametrize(("verify", "said"), [
+    ({"checked": True, "seen": True, "verdict": "TARGET"}, "reaction seen"),
+    ({"checked": True, "seen": False, "verdict": "TIMEOUT"}, "no reaction seen (TIMEOUT)"),
+    ({"checked": True, "seen": False}, "no reaction seen"),
+    ({"available": False, "why": "the input never finished"}, "reaction could not be checked"),
+    ({"checked": False}, "sent, reaction not checked"),
+    ({}, "sent, reaction not checked"),
+])
+def test_an_input_s_check_is_said_in_one_wording(verify: dict[str, object], said: str) -> None:
+    assert prose.reaction(verify) == said
+
+
+def test_what_a_scan_still_holds_is_how_many_are_left() -> None:
+    assert [prose.left(n) for n in (0, 1, 22)] == ["0 left", "1 left", "22 left"]

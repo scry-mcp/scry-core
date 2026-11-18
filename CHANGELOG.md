@@ -45,6 +45,8 @@ What a server author notices. A client's view of each server is in that server's
   holds them, and no old name is accepted.
 - A reply that saves a candidate for `promote` says `N saved for promote` in `kept`. It said
   `kept N (promote to review)`.
+- `prose.reaction` and `prose.left` word what the check of an input found and how many
+  candidates a scan still holds, so both servers' summaries say them alike.
 - The page `scry_readme` renders is headed "Start profiles" and "Saved step lists", and a line
   it derives for a file reads "a start profile" or "a saved step list".
 
