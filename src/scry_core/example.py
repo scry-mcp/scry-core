@@ -114,7 +114,7 @@ def _counted(value: Any) -> str:
     return ELIDED
 
 
-def _wrapped(tool: str, parts: Sequence[str]) -> list[str]:
+def wrapped(tool: str, parts: Sequence[str]) -> list[str]:
     """`tool(parts)` broken between arguments where a line fills."""
     lines, line = [], f"{tool}("
     for i, part in enumerate(parts):
@@ -136,7 +136,7 @@ def call_text(tool: str, args: Mapping[str, Any], lines: int = CALL_LINES) -> st
     def fits(written: Sequence[str]) -> bool:
         return len(written) <= lines and all(len(line) <= COLUMNS for line in written)
 
-    whole = _wrapped(tool, parts(args))
+    whole = wrapped(tool, parts(args))
     if fits(whole):
         return "\n".join(whole)
     cut = {k: _short(v) for k, v in args.items()}
@@ -144,10 +144,10 @@ def call_text(tool: str, args: Mapping[str, Any], lines: int = CALL_LINES) -> st
         shown = parts(dict(list(cut.items())[:kept]))
         if kept < len(cut):
             shown.append(f"{ELIDED} {len(cut) - kept} more")
-        written = _wrapped(tool, shown)
+        written = wrapped(tool, shown)
         if fits(written):
             return "\n".join(written)
-    named = _wrapped(tool, [f"{k}={_counted(v)}" for k, v in args.items()])
+    named = wrapped(tool, [f"{k}={_counted(v)}" for k, v in args.items()])
     return "\n".join(named) if fits(named) else f"{tool}({ELIDED})"
 
 

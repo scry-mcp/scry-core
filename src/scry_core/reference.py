@@ -45,7 +45,7 @@ from scry_core import example as shape
 from scry_core.asks import Ask, Asks
 from scry_core.reply_schema import model_gap, own_fields
 from scry_core.roster import Roster
-from scry_core.strict_arguments import refused, registered
+from scry_core.strict_arguments import registered
 from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 REFERENCE_PAGE = "REFERENCE.md"
@@ -346,7 +346,7 @@ def drift(reg: Registry) -> list[str]:
                 found.append(f"{EXAMPLES_PATH}: `{name}`'s second call is to `{tool}`, which "
                              "is no tool")
                 continue
-            if why := refused(tools[tool], shown["call"]):
+            if why := asked.call_refused(tools[tool], shown["call"]):
                 found.append(f"{EXAMPLES_PATH}: `{name}`'s example call is one the tool refuses "
                              f"({why})")
             known = set(get_type_hints(reg.models[tool], include_extras=True))

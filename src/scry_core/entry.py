@@ -28,9 +28,8 @@ from typing import (
 
 from mcp.server.mcpserver.tools import Tool
 
-from scry_core import demo
 from scry_core import example as shape
-from scry_core.asks import Ask, Modes
+from scry_core.asks import HIDDEN_MARKS, Ask, Modes
 from scry_core.reply_schema import own_fields
 
 TRY, ARGUMENTS, RETURNS = "### Try it", "### Arguments", "### What comes back"
@@ -40,8 +39,6 @@ FIELDS_FOLD = re.compile(r"<details><summary>All \d+ reply fields</summary>")
 FIELD_LINE = re.compile(r"- `([^`]+)` \(")
 NO_OWN_FIELDS = "The reply carries only the fields every reply has."
 CONTRACT = "The contract your client receives"
-#: What a transcript writes for a value that differs between two honest runs.
-HIDDEN_MARKS = (demo.VOLATILE_MARK, demo.HOST_MARK)
 _COUNTS = ("no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
            "eleven", "twelve")
 
@@ -108,10 +105,12 @@ def in_cell(text: str) -> str:
 
 
 def signature(tool: Tool) -> str:
+    """The tool as it is called, each argument with its default, broken between arguments
+    where a line of the page fills."""
     props = tool.parameters.get("properties", {})
-    return f"{tool.name}(" + ", ".join(
+    return "\n".join(shape.wrapped(tool.name, [
         name if "default" not in spec else f"{name}={json.dumps(spec['default'])}"
-        for name, spec in props.items()) + ")"
+        for name, spec in props.items()]))
 
 
 def _pair(tool: str, call: Mapping[str, Any], reply: Mapping[str, Any], fields: Iterable[str]

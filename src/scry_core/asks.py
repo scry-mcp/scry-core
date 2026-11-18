@@ -18,11 +18,13 @@ from typing import Any, get_type_hints
 
 from mcp.server.mcpserver.tools import Tool
 
-from scry_core import example
+from scry_core import demo, example
 from scry_core.strict_arguments import refused
 from scry_core.verdict import Invalid
 
 ASKS_PATH = "docs/reference/asks.json"
+#: What a transcript writes for a value that differs between two honest runs.
+HIDDEN_MARKS = (demo.VOLATILE_MARK, demo.HOST_MARK)
 
 SENTENCE_WORDS = 30
 WHAT_WORDS = 25
@@ -188,6 +190,18 @@ def _within(where: str, text: str, limit: int, most: int = 1) -> list[str]:
     return found
 
 
+def call_refused(tool: Tool, call: Mapping[str, Any]) -> str | None:
+    """Why the tool's schema refuses `call`, or None. An argument whose value the run hides
+    stands for one the host gave, so it is left out of the judgement."""
+    hidden = {name for name, value in call.items() if value in HIDDEN_MARKS}
+    why = refused(tool, {name: value for name, value in call.items() if name not in hidden})
+    if why is None or not hidden:
+        return why
+    left = [part for part in why.split("; ")
+            if part not in {f"{name}: Field required" for name in hidden}]
+    return "; ".join(left) or None
+
+
 def _example_faults(name: str, ask: Ask, tools: Mapping[str, Tool]) -> list[str]:
     found = []
     try:
@@ -195,7 +209,7 @@ def _example_faults(name: str, ask: Ask, tools: Mapping[str, Tool]) -> list[str]
     except ValueError as e:
         found.append(str(e))
     found += _within(f"`{name}`: `on`", ask.on, ON_WORDS, ON_SENTENCES)
-    if why := refused(tools[name], dict(ask.call)):
+    if why := call_refused(tools[name], ask.call):
         found.append(f"`{name}`: `call` is one the tool refuses ({why})")
     if not ask.shows:
         found.append(f"`{name}`: `shows` names no field of the reply to show")
@@ -203,7 +217,7 @@ def _example_faults(name: str, ask: Ask, tools: Mapping[str, Tool]) -> list[str]
         found += _within(f"`{name}`: `then.lead`", then.lead, LEAD_WORDS)
         if then.tool not in tools:
             found.append(f"`{name}`: `then.tool` is `{then.tool}`, which is no tool")
-        elif why := refused(tools[then.tool], dict(then.call)):
+        elif why := call_refused(tools[then.tool], then.call):
             found.append(f"`{name}`: `then.call` is one `{then.tool}` refuses ({why})")
         if not then.shows:
             found.append(f"`{name}`: `then.shows` names no field of the reply to show")

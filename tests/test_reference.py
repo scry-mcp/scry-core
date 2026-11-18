@@ -254,6 +254,47 @@ def test_an_argument_s_bounds_its_alternatives_its_items_and_a_constant_are_name
     assert "Takes no argument." in bare and entry.NO_OWN_FIELDS in bare, bare
 
 
+def test_a_long_signature_breaks_between_arguments_within_a_page_s_columns() -> None:
+    server = MCPServer("wide")
+
+    @server.tool()
+    def launch(system: str = "", rompath: str = "", reference_rom: str = "", inipath: str = "",
+               boot_seconds: float = 8.0, shared: bool = False, display: int | None = None,
+               background: bool | None = None, state_dir: str = "") -> dict[str, Any]:
+        """Launch. Reply: `written`."""
+        return {"status": "ok"}
+
+    strict_arguments(server)
+    block = _block_of(registered(server)[0], PokeReply)
+    shown = block.split("```text\n", 1)[1].split("\n```", 1)[0].splitlines()
+    assert len(shown) > 1 and all(len(line) <= example.COLUMNS for line in shown), shown
+    assert shown[0].startswith('launch(system="", rompath=""') and shown[0].endswith(","), shown
+    assert shown[-1].startswith("    ") and shown[-1].endswith('state_dir="")'), shown
+    assert " ".join(line.strip() for line in shown) == (
+        'launch(system="", rompath="", reference_rom="", inipath="", boot_seconds=8.0, '
+        'shared=false, display=null, background=null, state_dir="")')
+
+
+@pytest.mark.parametrize("mark", [demo.VOLATILE_MARK, demo.HOST_MARK])
+def test_a_value_the_run_hides_in_a_call_is_not_the_schema_s_to_judge(
+        tmp_path: Path, mark: str) -> None:
+    """A transcript writes `<host>` where the host chose a display: the call is still the
+    run's, and a real value of the wrong type is still refused."""
+    reg = _registry(tmp_path)
+    said = _held()
+    said["tools"]["peek"]["call"] = {"addr": "0x10", "length": mark}
+    _asks(tmp_path, said)
+    path = tmp_path / EXAMPLES
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"peek": {"from": "x", "call": {"addr": "0x10", "length": mark},
+                                         "reply": {"status": "ok"}}}), encoding="utf-8")
+    assert not [f for f in reference.drift(reg) if "refuses" in f], reference.drift(reg)
+    said["tools"]["peek"]["call"] = {"addr": "0x10", "length": "four"}
+    _asks(tmp_path, said)
+    assert any("`peek`: `call` is one the tool refuses (length" in f
+               for f in reference.drift(reg)), reference.drift(reg)
+
+
 def test_the_example_is_the_run_s_call_and_an_excerpt_of_its_reply(tmp_path: Path) -> None:
     _written(_registry(tmp_path))
     text = _read(tmp_path)
