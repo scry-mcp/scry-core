@@ -16,9 +16,9 @@ Run from the server's repository. `--examples` rewrites `examples.json` from the
 first, a demo's normalised `.md` or a live run's `.jsonl`, taking for each tool the call its
 ask is written for; a tool they do not call keeps the example it has while that is still its
 ask's call (`--mark` spells a host directory as the text it names, `--skip` leaves out the cells
-a pattern matches); `--write` rewrites the pages, else they are compared. Exit codes:
-0 the pages agree with the registry (or were rewritten); 1 they differ or `asks.json` falls
-short, one finding a line, and nothing was written; 2 a usage error (a spec naming no registry
+a pattern matches); `--write` rewrites the pages, and they are compared either way. Exit codes:
+0 the pages agree with the registry; 1 they differ, one finding a line, or `asks.json` falls
+short and no page was written; 2 a usage error (a spec naming no registry
 included); 3 INVALID, nothing was compared (a registry with no tool or a roster naming one it
 lacks, a transcript, an `examples.json` or an `asks.json` that cannot be read, a transcript with
 no OK call of a tool of the server).
@@ -450,14 +450,19 @@ def _candidate(rec: Mapping[str, Any], tools: set[str], skip: re.Pattern[str] | 
 def _later_call(records: Sequence[Mapping[str, Any]], at: int, then: asked.Then,
                 norm: demo.Normaliser, skip: re.Pattern[str] | None
                 ) -> dict[str, Any] | None:
-    """The call `then` names, as the run of record `at` made it later on, or None."""
+    """The call `then` names, as the run of record `at` made it later on, or None: the first
+    that was answered `ok`, else the first refused."""
     run = records[at].get("section")
+    refused = None
     for rec in records[at + 1:]:
         if rec.get("section") == run and _candidate(rec, {then.tool}, skip):
             call, reply = _spelled(rec, norm)
-            if call == dict(then.call):
+            if call != dict(then.call):
+                continue
+            if reply["status"] == "ok":
                 return {"tool": then.tool, "call": call, "reply": reply}
-    return None
+            refused = refused or {"tool": then.tool, "call": call, "reply": reply}
+    return refused
 
 
 def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
@@ -465,9 +470,9 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
                   wanted: Mapping[str, Ask] | None = None) -> dict[str, Any]:
     """One example per tool of `tools` from a run's records. Only an OK cell whose reply carries
     a `status` is a candidate, and not one whose call, reply or name `skip` matches. A tool
-    `wanted` names takes the first such cell whose call is the one its ask is written for, with
-    the second call its ask names as the same run made it later; any other tool takes its first
-    `ok` reply, else its first refusal. Paths are spelled host-independently, `LEFT_OUT` dropped,
+    `wanted` names takes only a cell whose call is the one its ask is written for, with the
+    second call its ask names as the same run made it later. Every tool takes its first `ok`
+    reply, else its first refusal. Paths are spelled host-independently, `LEFT_OUT` dropped,
     the run's own values (`RUN_KEYS`, clock readings) hidden, long values abridged."""
     records = list(records)
     wanted = wanted or {}
@@ -481,17 +486,15 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
         found = {"from": f"{rec.get('section', '')}: {rec.get('label', '')}", "call": call,
                  "reply": reply}
         ask = wanted.get(name)
-        if ask is None:
-            (ok if reply["status"] == "ok" else refusal).setdefault(name, found)
-            continue
-        if call != dict(ask.call):
-            continue
-        if ask.then is not None:
-            second = _later_call(records, at, ask.then, norm, skip)
-            if second is None:
+        if ask is not None:
+            if call != dict(ask.call):
                 continue
-            found["then"] = second
-        ok[name] = found
+            if ask.then is not None:
+                second = _later_call(records, at, ask.then, norm, skip)
+                if second is None:
+                    continue
+                found["then"] = second
+        (ok if reply["status"] == "ok" else refusal).setdefault(name, found)
     return dict(sorted({**refusal, **ok}.items()))
 
 
@@ -615,10 +618,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if ns.write:
             for rel in write(reg):
                 print(f"written: {rel}")
-            return EXIT_PASS
         found = drift(reg)
     except Unready as e:
-        found = [*e.findings, "nothing was written: the entries above cannot be built"]
+        found = [*e.findings, "no page was written: the entries above cannot be built"]
     except Invalid as e:
         print(f"INVALID: {e}")
         return EXIT_INVALID

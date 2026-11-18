@@ -2,7 +2,8 @@
 the reply a committed run already shows.
 
 It reads what `demo._entry` writes. A call a demo makes as a step of a `perform` is a record of
-its own: the step's arguments and the reply the `perform` carries for it.
+its own: the step's arguments and the reply the `perform` carries for it. A `perform` asked for
+summaries carries each step's reply cut down, so its steps are no records.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import re
 from collections.abc import Iterator
 from typing import Any
 
+from scry_core import recording
 from scry_core.verdict import Invalid
 
 #: The tool whose reply carries each step's own (`ran`), its steps under `steps`.
@@ -23,12 +25,12 @@ _BLOCK = re.compile(r"^```json\n(.*?)\n```$", re.MULTILINE | re.DOTALL)
 def _steps(n: int, call: dict[str, Any], reply: dict[str, Any], source: str
            ) -> Iterator[dict[str, Any]]:
     steps, ran = call.get("steps"), reply.get("ran")
-    if not isinstance(steps, list) or not isinstance(ran, list):
+    if not isinstance(steps, list) or not isinstance(ran, list) or call.get("summaries"):
         return
     for k, (step, done) in enumerate(zip(steps, ran, strict=False), 1):
         if isinstance(step, dict) and isinstance(done, dict) \
                 and isinstance(done.get("reply"), dict) and step.get("op") == done.get("op"):
-            yield {"tool": done["op"], "args": {a: v for a, v in step.items() if a != "op"},
+            yield {"tool": done["op"], "args": recording.step_arguments(step),
                    "reply": done["reply"], "verdict": "OK", "section": source,
                    "label": f"call {n}, step {k} of its `{SEQUENCE_TOOL}`", "normalised": True}
 

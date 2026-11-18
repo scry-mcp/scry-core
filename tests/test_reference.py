@@ -532,6 +532,18 @@ def test_a_tool_with_an_ask_takes_the_call_its_ask_is_written_for(tmp_path: Path
         "a call its ask is not written for is no example of it"
 
 
+def test_a_tool_with_an_ask_takes_a_reply_that_is_ok_before_a_refusal(tmp_path: Path) -> None:
+    """A run that tests a refusal makes the ask's call too, and its cell passes: the example
+    is the call that was answered, and a refusal only when the run has no other."""
+    norm = Normaliser(tmp_path, Path.home(), {})
+    refused = _record("peek", "OK", {"status": "INVALID", "code": "not_stopped"}, "refused")
+    answered = _record("peek", "OK", {"status": "ok", "value": 2}, "answered")
+    picked = reference.examples_from([refused, answered], {"peek"}, norm, wanted=_wanted())
+    assert picked["peek"]["from"] == "[A] fixture: answered", picked
+    alone = reference.examples_from([refused], {"peek"}, norm, wanted=_wanted())
+    assert alone["peek"]["from"] == "[A] fixture: refused", alone
+
+
 def test_a_second_call_is_one_the_same_run_made_later(tmp_path: Path) -> None:
     norm = Normaliser(tmp_path, Path.home(), {})
     wanted = _wanted()
@@ -545,6 +557,10 @@ def test_a_second_call_is_one_the_same_run_made_later(tmp_path: Path) -> None:
                                       "reply": {"status": "ok", "written": True}}, picked
     assert reference.examples_from([poke, peek, other], {"peek"}, norm, wanted=wanted) == {}, \
         "no later call of the run is the one the ask names"
+    refused = {**poke, "reply": {"status": "INVALID", "code": "not_stopped"}}
+    picked = reference.examples_from([peek, refused, poke], {"peek"}, norm, wanted=wanted)
+    assert picked["peek"]["then"]["reply"] == {"status": "ok", "written": True}, \
+        "the second call is one that was answered, when the run made one"
     elsewhere = {**poke, "section": "[B] another run"}
     assert reference.examples_from([peek, elsewhere], {"peek"}, norm, wanted=wanted) == {}, \
         "another run's call is not this one's second"
@@ -573,6 +589,25 @@ def test_a_demo_s_transcript_reads_back_as_its_calls_and_the_steps_of_a_perform(
     assert read[3]["args"] == {"addr": "0x10", "value": 1}, "a step's call is its own arguments"
     assert read[3]["reply"] == {"status": "ok", "written": True}
     assert all(r["section"] == "demos/x/TRANSCRIPT.md" and r["normalised"] for r in read)
+
+
+def test_a_step_s_recorded_reply_is_no_argument_and_a_summary_row_is_no_reply() -> None:
+    """A replayed step carries the reply it once got under `recorded`, which its tool never
+    takes. A `perform` asked for summaries answers each step cut to its summary, and the last
+    whole at another index: neither is the reply an example shows."""
+    replayed = [{"op": "peek", "addr": "0x10", "recorded": {"status": "ok", "value": 8}}]
+    text = _transcript(
+        ("perform", {"steps": replayed}, {"status": "ok", "ran": [
+            {"op": "peek", "reply": {"status": "ok", "value": 8}}]}, "OK replayed"),
+        ("perform", {"steps": [{"op": "peek", "addr": "0x10"}] * 2, "summaries": True},
+         {"status": "ok", "ran": [
+             {"step": 0, "op": "peek", "reply": {"summary": "peek", "status": "ok"}},
+             {"step": 1, "op": "peek", "reply": {"status": "ok", "value": 9}}]}, "OK brief"))
+    read = transcript.records(text, "t.md")
+    assert [(r["tool"], r["label"]) for r in read] == [
+        ("perform", "call 1"), ("peek", "call 1, step 1 of its `perform`"),
+        ("perform", "call 2")], read
+    assert read[1]["args"] == {"addr": "0x10"}, read[1]
 
 
 def test_a_transcript_whose_call_is_not_json_is_invalid() -> None:
@@ -747,6 +782,33 @@ def test_the_command_writes_then_finds_no_drift_then_names_one(
     assert "`peek` in docs/reference/read.md" in capsys.readouterr().out
 
 
+def test_a_rewrite_that_leaves_the_pages_out_of_date_says_so(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The pages are written, and an example of no tool is still there: the command names
+    it and does not answer that all agrees."""
+    _asks(tmp_path)
+    _examples(tmp_path, ("peek", "poke", "gone"))
+    assert _main(tmp_path, monkeypatch, "--write") == 1
+    said = capsys.readouterr().out
+    assert "written: docs/reference/read.md" in said and "`gone`" in said, said
+
+
+def test_entries_that_cannot_be_built_say_no_page_was_written_after_the_examples_were(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    jsonl = tmp_path / "transcript.jsonl"
+    jsonl.write_text(json.dumps({**_record("peek", "OK", {"status": "ok"}),
+                                 "args": _CALLS["peek"]}) + "\n", encoding="utf-8")
+    held = _held()
+    del held["tools"]["poke"]
+    _asks(tmp_path, held)
+    assert _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--write") == 1
+    said = capsys.readouterr().out
+    assert "no page was written: the entries above cannot be built" in said, said
+    assert "nothing was written" not in said and (tmp_path / EXAMPLES).is_file(), said
+
+
 def test_the_command_builds_the_examples_from_a_transcript(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     jsonl = tmp_path / "transcript.jsonl"
@@ -798,8 +860,9 @@ def test_the_command_takes_a_demo_s_transcript_named_by_its_path_in_the_reposito
 def test_the_command_skips_the_cells_a_pattern_names_and_needs_the_transcript_to_do_so(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     jsonl = tmp_path / "transcript.jsonl"
-    jsonl.write_text("\n".join(json.dumps(_record("peek", "OK", {"status": "ok", "b": b}, b))
-                               for b in ("private", "free")) + "\n", encoding="utf-8")
+    cells = [_record("peek", "OK", {"status": "ok", "kind": b}, b) for b in ("private", "free")]
+    cells.append({**_record("poke", "OK", {"status": "ok"}), "args": _CALLS["poke"]})
+    jsonl.write_text("\n".join(map(json.dumps, cells)) + "\n", encoding="utf-8")
     with pytest.raises(SystemExit) as usage:
         _main(tmp_path, monkeypatch, "--skip", "private")
     assert usage.value.code == 2
@@ -807,7 +870,7 @@ def test_the_command_skips_the_cells_a_pattern_names_and_needs_the_transcript_to
     assert _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--skip", "private",
                  "--write") == 0
     held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
-    assert held["peek"]["reply"]["b"] == "free"
+    assert held["peek"]["reply"]["kind"] == "free"
 
 
 def test_a_transcript_naming_no_tool_of_the_server_is_invalid(
@@ -881,6 +944,9 @@ def test_the_command_run_as_a_module_takes_the_registry_a_server_built(tmp_path:
     server imports: the command must judge the spec with the copy the server used."""
     (tmp_path / "cli_registry.py").write_text(_COMMAND_FIXTURE, encoding="utf-8")
     _asks(tmp_path, _COMMAND_ASKS)
+    (tmp_path / EXAMPLES).write_text(json.dumps({"ping": {
+        "from": "[A] fixture: a cell", "call": {}, "reply": {"status": "ok"}}}),
+        encoding="utf-8")
     done = subprocess.run([sys.executable, "-m", "scry_core.reference", "cli_registry:REGISTRY",
                            "--write"], cwd=tmp_path, capture_output=True, text=True,
                           check=False, timeout=60)

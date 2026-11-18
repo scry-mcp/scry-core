@@ -33,6 +33,8 @@ What a server author notices. A client's view of each server is in that server's
 - Every sentence of an entry comes from the server's `docs/reference/asks.json` (`asks`). A tool
   with no entry there, or a sentence past its limit, is a finding of `reference`. `--write`
   writes no page until there is none, and answers 1.
+- `reference --write` compares the pages after writing them, so its 0 means they agree. A part
+  of an entry that is not the JSON type it takes is a finding too.
 - `reference --examples` takes a demo's normalised transcript (`.md`) as well as the records
   of a run of the tests against a real emulator. A call a demo makes as a step of a `perform`
   counts as that tool's call (`transcript`).

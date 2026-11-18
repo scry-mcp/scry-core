@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, get_type_hints
@@ -19,6 +19,7 @@ from typing import Any, get_type_hints
 from mcp.server.mcpserver.tools import Tool
 
 from scry_core import demo, example
+from scry_core.prose import counted
 from scry_core.strict_arguments import refused
 from scry_core.verdict import Invalid
 
@@ -39,8 +40,17 @@ WHY_WORDS, WHY_SENTENCES = 80, 4
 MODE_COLUMNS, MODE_ROWS = 3, 12
 RELATED_MAX = 6
 
-_TOOL_KEYS = frozenset({"what", "ask", "on", "call", "shows", "reads", "then", "modes",
-                        "arguments", "returns", "refuses", "why", "why_more", "related"})
+_TEXT, _TEXTS, _OBJECT = "a string", "a list of strings", "an object"
+_SAID, _ROWS = "an object of strings", "a list of lists of strings"
+#: What each part of an entry is in the file. Read as anything else it would be coerced into
+#: text or dropped without a word, so it is a finding.
+_KINDS = {"what": _TEXT, "ask": _TEXT, "on": _TEXT, "reads": _TEXT, "shows": _TEXTS,
+          "refuses": _TEXTS, "why": _TEXTS, "why_more": _TEXTS, "related": _TEXTS,
+          "call": _OBJECT, "arguments": _SAID, "returns": _SAID, "then": _OBJECT,
+          "modes": _OBJECT}
+_INNER_KINDS = {"then": {"lead": _TEXT, "tool": _TEXT, "call": _OBJECT, "shows": _TEXTS},
+                "modes": {"argument": _TEXT, "head": _TEXTS, "rows": _ROWS}}
+_TOOL_KEYS = frozenset(_KINDS)
 _CODE = re.compile(r"`[^`]*`")
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 
@@ -113,6 +123,28 @@ class Asks:
     odd: tuple[str, ...] = ()
 
 
+def _texts(value: Any) -> bool:
+    return isinstance(value, list) and all(isinstance(v, str) for v in value)
+
+
+_IS: Mapping[str, Callable[[Any], bool]] = {
+    _TEXT: lambda v: isinstance(v, str), _TEXTS: _texts, _OBJECT: lambda v: isinstance(v, dict),
+    _SAID: lambda v: isinstance(v, dict) and all(isinstance(x, str) for x in v.values()),
+    _ROWS: lambda v: isinstance(v, list) and all(_texts(row) for row in v)}
+
+
+def _mistyped(name: str, entry: Mapping[str, Any]) -> list[str]:
+    """Each part of the entry `name`, or of its `then` or `modes`, that is not what it takes."""
+    found = [f"{ASKS_PATH}: `{name}`: `{key}` is not {kind}"
+             for key, kind in _KINDS.items() if key in entry and not _IS[kind](entry[key])]
+    for part, kinds in _INNER_KINDS.items():
+        if isinstance(inner := entry.get(part), dict):
+            found += [f"{ASKS_PATH}: `{name}`: `{part}.{key}` is not {kind}"
+                      for key, kind in kinds.items()
+                      if key in inner and not _IS[kind](inner[key])]
+    return found
+
+
 def _strings(value: Any) -> tuple[str, ...]:
     return tuple(v for v in value if isinstance(v, str)) if isinstance(value, list) else ()
 
@@ -171,6 +203,7 @@ def load(root: Path) -> Asks:
             continue
         odd += [f"{ASKS_PATH}: `{name}` has `{k}`, which no entry takes"
                 for k in sorted(set(entry) - _TOOL_KEYS)]
+        odd += _mistyped(name, entry)
         tools[name] = _ask(entry)
     families = {k: str(v) for k, v in held.get("families", {}).items()}
     return Asks(families, tools, tuple(odd))
@@ -191,9 +224,10 @@ def _within(where: str, text: str, limit: int, most: int = 1) -> list[str]:
 
 
 def call_refused(tool: Tool, call: Mapping[str, Any]) -> str | None:
-    """Why the tool's schema refuses `call`, or None. An argument whose value the run hides
-    stands for one the host gave, so it is left out of the judgement."""
-    hidden = {name for name, value in call.items() if value in HIDDEN_MARKS}
+    """Why the tool's schema refuses `call`, or None. An argument of the tool whose value the
+    run hides stands for one the host gave, so it is left out of the judgement."""
+    takes = tool.parameters.get("properties", {})
+    hidden = {name for name, value in call.items() if value in HIDDEN_MARKS and name in takes}
     why = refused(tool, {name: value for name, value in call.items() if name not in hidden})
     if why is None or not hidden:
         return why
@@ -261,6 +295,9 @@ def _why_faults(name: str, ask: Ask) -> list[str]:
     if len(ask.why) > WHY_SHOWN:
         found.append(f"`{name}`: `why` has {len(ask.why)} paragraphs, and an entry shows at "
                      f"most {WHY_SHOWN}: the rest goes in `why_more`")
+    if ask.why_more and not ask.why:
+        found.append(f"`{name}`: `why_more` has {counted(len(ask.why_more), 'block')} and "
+                     "`why` none: the fold opens under the paragraphs an entry shows")
     for i, text in enumerate((*ask.why, *ask.why_more), 1):
         block = text.strip()
         if not block.startswith(("- ", "|", "```")):
