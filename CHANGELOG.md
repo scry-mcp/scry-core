@@ -10,6 +10,10 @@ What a server author notices. A client's view of each server is in that server's
 - `demo.Lead(front, step, ask, caption, answer)` makes a demo open its server's README. The run
   writes the clip, linked to the demo's page and centred, the caption, and the step as an
   exchange between `<!-- demo-lead:begin NAME -->` and its `end`.
+- A clip cuts the rows and columns at its edges that are one colour, the same in every frame,
+  before it is scaled up, so what moves fills the width: a game's verb area left empty in a
+  cutscene is gone. The demo's `screen.png` is cut the same way (`motion.kept`, `motion.still`),
+  and `stale` takes a still cut from the run's capture as that capture.
 - A lead is refused before any call when the demo has no moment, the step is not one of its
   own, or the answer names a field the transcript hides. A reply that cannot give the answer on
   one line fails its step.

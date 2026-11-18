@@ -76,6 +76,37 @@ def enlarged(raster: Raster, factor: int) -> Raster:
     return Raster(raster.width * factor, raster.height * factor, b"".join(rows), raster.palette)
 
 
+def cropped(raster: Raster, x: int, y: int, width: int, height: int) -> Raster:
+    """The `width` x `height` rectangle of `raster` from (`x`, `y`), its palette kept."""
+    if x < 0 or y < 0 or x + width > raster.width or y + height > raster.height:
+        raise ValueError(f"a {width}x{height} rectangle from ({x}, {y}) is not within "
+                         f"{raster.width}x{raster.height}")
+    if (width, height) == (raster.width, raster.height):
+        return raster
+    depth, stride = raster.depth, raster.width * raster.depth
+    rows = [raster.pixels[row * stride + x * depth:row * stride + (x + width) * depth]
+            for row in range(y, y + height)]
+    return Raster(width, height, b"".join(rows), raster.palette)
+
+
+def cut_from(whole: Raster, part: Raster) -> bool:
+    """Whether `part` is a rectangle of `whole`, pixel for pixel under the same palette."""
+    if part.palette != whole.palette or part.width > whole.width or part.height > whole.height:
+        return False
+    depth = whole.depth
+    stride, span = whole.width * depth, part.width * depth
+    rows = [whole.pixels[n * stride:(n + 1) * stride] for n in range(whole.height)]
+    wanted = [part.pixels[n * span:(n + 1) * span] for n in range(part.height)]
+    for top in range(whole.height - part.height + 1):
+        at = rows[top].find(wanted[0])
+        while at >= 0:
+            if at % depth == 0 and all(rows[top + n][at:at + span] == wanted[n]
+                                       for n in range(1, part.height)):
+                return True
+            at = rows[top].find(wanted[0], at + 1)
+    return False
+
+
 def encode(raster: Raster, clear: int | None = None) -> bytes:
     """The PNG file of `raster`. `clear` names one index of an indexed raster drawn fully
     transparent (a `tRNS` chunk); an index past the palette is refused."""

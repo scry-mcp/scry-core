@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from scry_core import motion
+from scry_core import motion, png
 from scry_core.verdict import Invalid
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "demo" / "screen.avi"
@@ -94,6 +94,53 @@ def test_a_frame_scaled_up_keeps_each_pixel_as_one_sharp_block() -> None:
     three = motion.scaled(small, 3)
     row = bytes(red * 3 + blue * 3 + grey * 3)
     assert three.rgb[:len(row) * 3] == row * 3, "three lines of three pixels each"
+
+
+def _rows(rows: list[list[tuple[int, int, int]]], ms: int = 40) -> motion.Picture:
+    return motion.Picture(len(rows[0]), len(rows), b"".join(bytes(p) for row in rows
+                                                             for p in row), ms)
+
+
+BLACK, SKY, SEA, SUN = (0, 0, 0), (20, 20, 90), (10, 60, 200), (250, 240, 60)
+
+
+def test_edges_of_one_colour_the_same_in_every_frame_are_cut_and_nothing_else() -> None:
+    """A scene over a black band, as a cutscene leaves a game's verb area: the band goes, and so
+    does a border column; an inner row of one colour stays, and so does an edge row whose colour
+    changes from frame to frame."""
+    first = _rows([[SKY, SKY, SUN, BLACK], [SEA, SEA, SEA, BLACK], [SEA, SUN, SEA, BLACK],
+                   [BLACK, BLACK, BLACK, BLACK], [BLACK, BLACK, BLACK, BLACK]])
+    second = _rows([[SKY, SUN, SKY, BLACK], [SEA, SEA, SEA, BLACK], [SUN, SEA, SEA, BLACK],
+                    [BLACK, BLACK, BLACK, BLACK], [BLACK, BLACK, BLACK, BLACK]])
+    assert motion.kept([first, second]) == motion.Box(0, 0, 3, 3, (4, 5))
+    flashing = _rows([[SUN] * 4, [SEA, SUN, SEA, SEA], [SUN] * 4])
+    calm = _rows([[SKY] * 4, [SEA, SEA, SUN, SEA], [SEA] * 4])
+    assert motion.kept([flashing, calm]) == motion.Box(0, 0, 4, 3, (4, 3)), \
+        "each edge row is one colour in each frame, and not the same one in both"
+    assert motion.kept([_picture(3, 2)]) == motion.Box(0, 0, 3, 2, (3, 2)), \
+        "a frame all of one colour has nothing to cut down to: it is kept whole"
+    cut = motion.cropped(first, motion.kept([first, second]))
+    assert (cut.width, cut.height, cut.ms) == (3, 3, 40)
+    assert cut.rgb == b"".join(bytes(p) for p in (SKY, SKY, SUN, SEA, SEA, SEA, SEA, SUN, SEA))
+
+
+def _still(width: int, height: int, k: int) -> bytes:
+    """A capture `k` times the size of `width` x `height` frames, each pixel its own colour."""
+    small = png.Raster(width, height, bytes((n * 7) % 256 for n in range(width * height * 3)))
+    return png.encode(png.enlarged(small, k))
+
+
+def test_a_still_is_cut_as_its_loop_is_at_the_still_s_own_scale() -> None:
+    data = _still(4, 5, 2)
+    box = motion.Box(1, 0, 3, 3, (4, 5))
+    cut = png.decode(motion.still(data, box))
+    assert (cut.width, cut.height) == (6, 6)
+    assert cut == png.cropped(png.decode(data), 2, 0, 6, 6)
+    assert motion.still(data, motion.Box(0, 0, 4, 5, (4, 5))) is data, \
+        "a still whose loop cuts nothing is the capture, byte for byte"
+    with pytest.raises(Invalid, match=r"the still is 8x10, not a whole number of times the "
+                                      r"loop's 3x5 frames, so it cannot be cut as the loop is"):
+        motion.still(data, motion.Box(0, 0, 3, 4, (3, 5)))
 
 
 def test_equal_frames_in_a_row_become_one_that_lasts_as_long() -> None:
@@ -211,19 +258,19 @@ def _faked(monkeypatch: pytest.MonkeyPatch, frames: dict[int, list[motion.Pictur
 
 def test_a_capture_nearly_all_doubled_is_halved_torn_frames_included(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    whole = _blocks([[(1, 2, 3), (4, 5, 6)]])
+    whole = _blocks([[(1, 2, 3), (4, 5, 6)], [(4, 5, 6), (1, 2, 3)]])
     torn = motion.Picture(whole.width, whole.height, b"\x09" + whole.rgb[1:], 40)
     assembled = _faked(monkeypatch, {0: [whole] * 9 + [torn]}, [1])
     built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
     assert built.lossless and built.cut_ms == (400,)
-    times = motion.factor(2, 1)
-    assert {(p.width, p.height) for p in assembled[0]} == {(2 * times, times)}, \
+    times = motion.factor(2, 2)
+    assert {(p.width, p.height) for p in assembled[0]} == {(2 * times, 2 * times)}, \
         "the capture was not halved, then scaled up to fit"
     assert [p.ms for p in assembled[0]] == [360, 40], "equal frames were not merged"
     assembled = _faked(monkeypatch, {0: [whole] * 8 + [torn] * 2}, [1])
     motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
-    times = motion.factor(4, 2)
-    assert {(p.width, p.height) for p in assembled[0]} == {(4 * times, 2 * times)}, \
+    times = motion.factor(4, 4)
+    assert {(p.width, p.height) for p in assembled[0]} == {(4 * times, 4 * times)}, \
         "a capture a fifth of whose frames are not doubled is the machine's own size, scaled"
 
 
@@ -289,3 +336,19 @@ def test_a_cut_decodes_the_frames_it_names_and_no_others(tmp_path: Path) -> None
     assert len({picture.rgb for picture in every}) > 60, "the fixture's frames do not differ"
     kept = motion._frames(ffmpeg, motion.Cut(FIXTURE, 7, 20), Fraction(60), 2, tmp_path / "cut")
     assert [picture.rgb for picture in kept] == [every[n].rgb for n in range(7, 27, 2)]
+
+
+def test_a_loop_shows_only_what_moves_its_band_cut_before_it_is_scaled_up(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A 160 x 100 scene whose last 28 rows are black in every frame: scaled whole it would be 6
+    times; cut to 160 x 72 it fills the width at 6 too, and the loop says what it kept."""
+    def scene(seed: int) -> motion.Picture:
+        moving = bytes((n * 7 + seed) % 256 for n in range(3 * 160 * 72))
+        return motion.Picture(160, 100, moving + bytes(3 * 160 * 28), 40)
+
+    assembled = _faked(monkeypatch, {0: [scene(0), scene(1)]}, [1])
+    built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
+    assert built.kept == motion.Box(0, 0, 160, 72, (160, 100))
+    times = motion.factor(160, 72)
+    assert {(p.width, p.height) for p in assembled[0]} == {(160 * times, 72 * times)}, \
+        "the band was scaled up with the scene"

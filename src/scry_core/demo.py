@@ -1062,7 +1062,7 @@ def stale(demo: Demo, run_dir: Path) -> list[str]:
         found.append(f"the README's {demo.name} lead: {drift}")
     if demo.readme is not None and demo.capture is not None:
         shot, committed = demo.capture(Run(dir=run_dir)), demo.readme.with_name("screen.png")
-        if not same_picture(shot, committed):
+        if not (same_picture(shot, committed) or cut_from(shot, committed)):
             found.append(f"{demo.name}'s screen.png is not this run's capture")
     if demo.readme is not None and demo.moments:
         if drift := first_difference(
@@ -1084,6 +1084,17 @@ def same_picture(a: Path, b: Path) -> bool:
         return True
     try:
         return png.decode(x) == png.decode(y)
+    except png.NotAPicture:
+        return False
+
+
+def cut_from(capture: Path, still: Path) -> bool:
+    """Whether `still` is a rectangle of the picture in `capture`, as a loop that cuts its
+    frames cuts the still beside it."""
+    if not (capture.is_file() and still.is_file()):
+        return False
+    try:
+        return png.cut_from(png.decode(capture.read_bytes()), png.decode(still.read_bytes()))
     except png.NotAPicture:
         return False
 
@@ -1120,7 +1131,10 @@ def _update_readmes(demo: Demo, run: Run, readme: Path, capture: Path, files: Be
                           "READMEs were left as they were")
         opened(demo.lead.front, "lead", files.lead, lead_begin(demo.name), lead_end(demo.name))
     built = motion.build(shown, run.dir / "loop") if shown else None
-    shutil.copyfile(capture, readme.with_name("screen.png"))
+    picture = capture.read_bytes()
+    if built is not None:
+        picture = motion.still(picture, built.kept)
+    readme.with_name("screen.png").write_bytes(picture)
     shutil.copyfile(files.normalised, readme.with_name(FULL_NAME))
     readme.write_text(text, encoding="utf-8")
     print(f"README: {readme} blocks, {FULL_NAME} and screen.png rewritten")

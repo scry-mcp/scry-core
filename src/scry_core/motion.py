@@ -8,9 +8,12 @@ ffmpeg build may carry no WebP encoder; without either program `programs` refuse
 Nothing is staged: a cut is frames of the recording as they were written. Frames are dropped to
 stay within `RATE_MAX` a second and each kept one lasts as long as those it stands for, so the
 picture runs at the machine's speed; a capture the emulator doubled is halved back to the
-machine's own pixels; equal frames in a row become one that lasts as long as all of them. The
-frames are then written scaled up a whole number of times, each pixel a sharp block, as far as
-`FIT` holds them: a README cannot ask its reader's browser for sharp pixels, so the file has them.
+machine's own pixels; equal frames in a row become one that lasts as long as all of them. Rows
+and columns at the edges that are one colour, the same in every frame, are cut (a game's verb
+area left empty in a cutscene), so what moves fills the width; `still` cuts the demo's picture
+the same way. The frames are then written scaled up a whole number of times, each pixel a sharp
+block, as far as `FIT` holds them: a README cannot ask its reader's browser for sharp pixels, so
+the file has them.
 
 Refused, as `Invalid`: more than `CUTS_MAX` cuts, one outside `CUT_SECONDS`, more than
 `LOOP_SECONDS` in all, a cut past the end of its recording, a recording that does not read as an
@@ -29,7 +32,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
 
-from scry_core import avi
+from scry_core import avi, png
 from scry_core.verdict import Invalid
 
 LOOP_NAME = "loop.webp"
@@ -64,12 +67,25 @@ class Cut:
 
 
 @dataclass(frozen=True)
+class Box:
+    """The `width` x `height` pixels from (`x`, `y`) a loop keeps of its `whole` frames."""
+
+    x: int
+    y: int
+    width: int
+    height: int
+    whole: tuple[int, int]
+
+
+@dataclass(frozen=True)
 class Built:
-    """The loop's bytes, the milliseconds each cut lasts, and whether it is lossless."""
+    """The loop's bytes, the milliseconds each cut lasts, whether it is lossless, and the part
+    of its frames it shows."""
 
     data: bytes
     cut_ms: tuple[int, ...]
     lossless: bool
+    kept: Box
 
 
 @dataclass(frozen=True)
@@ -205,6 +221,69 @@ def scaled(picture: Picture, times: int) -> Picture:
     return Picture(w * times, picture.height * times, b"".join(lines), picture.ms)
 
 
+def kept(pictures: Sequence[Picture]) -> Box:
+    """The part of the frames left once every edge row, then every edge column of what is left,
+    that is one colour, the same in every frame, is cut; frames all one colour are kept whole."""
+    width, height = pictures[0].width, pictures[0].height
+
+    def solid(pixels: Sequence[bytes]) -> bytes | None:
+        """The one colour of `pixels` in every frame, or None."""
+        first = pixels[0][:3]
+        return first if all(row == first * (len(row) // 3) for row in pixels) else None
+
+    def row(y: int) -> bool:
+        return solid([p.rgb[y * width * 3:(y + 1) * width * 3] for p in pictures]) is not None
+
+    top, bottom = 0, height
+    while top < bottom and row(top):
+        top += 1
+    while bottom > top and row(bottom - 1):
+        bottom -= 1
+    if top == bottom:
+        return Box(0, 0, width, height, (width, height))
+
+    def column(x: int) -> bool:
+        return solid([b"".join(p.rgb[(y * width + x) * 3:(y * width + x + 1) * 3]
+                               for y in range(top, bottom)) for p in pictures]) is not None
+
+    left, right = 0, width
+    while left < right and column(left):
+        left += 1
+    while right > left and column(right - 1):
+        right -= 1
+    return Box(left, top, right - left, bottom - top, (width, height))
+
+
+def cropped(picture: Picture, box: Box) -> Picture:
+    """The part of `picture` that `box` keeps."""
+    if (box.width, box.height) == box.whole:
+        return picture
+    row = picture.width * 3
+    rgb = b"".join(picture.rgb[y * row + box.x * 3:y * row + (box.x + box.width) * 3]
+                   for y in range(box.y, box.y + box.height))
+    return Picture(box.width, box.height, rgb, picture.ms)
+
+
+def still(data: bytes, box: Box) -> bytes:
+    """The PNG `data`, the demo's picture, cut as its loop is at the picture's own scale: the
+    same bytes when the loop cuts nothing, `Invalid` when the picture is not a whole number of
+    times the loop's frames."""
+    if (box.width, box.height) == box.whole:
+        return data
+    try:
+        raster = png.decode(data)
+    except png.NotAPicture as e:
+        raise Invalid(f"the still does not read as a picture ({e})") from e
+    times = raster.width // box.whole[0]
+    if times < 1 or (raster.width, raster.height) != (box.whole[0] * times,
+                                                       box.whole[1] * times):
+        raise Invalid(f"the still is {raster.width}x{raster.height}, not a whole number of times "
+                      f"the loop's {box.whole[0]}x{box.whole[1]} frames, so it cannot be cut as "
+                      "the loop is")
+    return png.encode(png.cropped(raster, box.x * times, box.y * times, box.width * times,
+                                  box.height * times))
+
+
 def merged(pictures: Sequence[Picture]) -> list[Picture]:
     """Equal frames in a row as one that lasts as long as all of them."""
     out: list[Picture] = []
@@ -296,12 +375,14 @@ def build(cuts: Sequence[Cut], work: Path) -> Built:
         raise Invalid(f"the moments are not one size: {pictures[0].width}x{pictures[0].height} "
                       f"and {sorted(sizes)}; a loop shows one video mode")
     pictures = merged(pictures)
-    times = factor(pictures[0].width, pictures[0].height)
+    box = kept(pictures)
+    pictures = merged([cropped(picture, box) for picture in pictures])
+    times = factor(box.width, box.height)
     weighed = []
     for lossless in (True, False):
         data = _assembled(found["img2webp"], pictures, work / "webp", lossless, times)
         if len(data) <= BUDGET_BYTES:
-            return Built(data, cut_ms, lossless)
+            return Built(data, cut_ms, lossless, box)
         weighed.append(f"{len(data)} bytes {'lossless' if lossless else 'lossy'}")
     raise Invalid(f"the loop is {' and '.join(weighed)}, past the {BUDGET_BYTES}-byte budget: "
                   "show less")

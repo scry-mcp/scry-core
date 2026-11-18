@@ -76,7 +76,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 
 | Module | What it holds |
 |---|---|
-| `scry_core.png` | A PNG encoder and decoder in the standard library: indexed or RGB, APNG, whole-pixel enlargement. |
+| `scry_core.png` | A PNG encoder and decoder in the standard library: indexed or RGB, APNG, whole-pixel enlargement, a rectangle cut out. |
 | `scry_core.picture` | The picture a tool attaches: its size limit, its whole-number scale, and the file written once. |
 | `scry_core.raster` | What two pictures are compared by: a crop, a fingerprint, the difference, the measures of a region. |
 | `scry_core.series` | A series of frames on disk (`scry-series/1`), and series compared with series. |

@@ -4,6 +4,7 @@ the README block and the normalisation."""
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import shutil
@@ -494,6 +495,31 @@ def test_stale_ignores_a_loop_s_bytes_and_names_what_departs_from_the_run(
     (readme.parent / "screen.png").unlink()
     assert d.stale(demo, tmp_path / "out") == ["x's screen.png is not this run's capture",
                                                f"x's {motion.LOOP_NAME} is not committed"]
+
+
+@needs_loop_programs
+def test_a_loop_that_cuts_its_frames_cuts_the_still_beside_it_and_stale_holds_it(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A capture twice the size of 2 x 1 frames whose loop keeps the right pixel: the still is
+    that pixel's 2 x 2 block, and it stays this run's capture for `stale`."""
+    big = png.encode(png.enlarged(png.Raster(2, 1, bytes((1, 2, 3, 4, 5, 6))), 2))
+
+    def drawn(run: d.Run) -> dict[str, Any]:
+        (run.dir / "big.png").write_bytes(big)
+        return {}
+
+    demo = _moment_demo(tmp_path, capture=lambda run: run.dir / "big.png")
+    demo = d.Demo(**{**demo.__dict__, "steps": [
+        *demo.steps[:-1], d.Step("end", "close", drawn, lambda reply, run: "closed")]})
+    built = motion.build
+    monkeypatch.setattr(motion, "build", lambda cuts, work: dataclasses.replace(
+        built(cuts, work), kept=motion.Box(1, 0, 1, 1, (2, 1))))
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    still = _readme(demo).with_name("screen.png")
+    assert png.decode(still.read_bytes()) == png.Raster(2, 2, bytes((4, 5, 6)) * 4)
+    assert d.stale(demo, tmp_path / "out") == []
+    still.write_bytes(png.encode(png.Raster(2, 2, bytes((7, 7, 7)) * 4)))
+    assert d.stale(demo, tmp_path / "out") == ["x's screen.png is not this run's capture"]
 
 
 @pytest.mark.parametrize(("moments", "kw", "why"), [

@@ -218,3 +218,27 @@ def test_chunks_out_of_order_and_a_negative_clear_are_refused() -> None:
         png.decode(moved)
     with pytest.raises(ValueError, match="clear=-1"):
         png.encode(INDEXED, clear=-1)
+
+
+def test_a_crop_keeps_the_rectangle_it_names_and_its_palette() -> None:
+    part = png.cropped(RGB, 1, 1, 2, 2)
+    assert (part.width, part.height) == (2, 2)
+    assert part.pixels == bytes(c for row in RGB_ROWS[1:3] for px in row[1:3] for c in px)
+    small = png.cropped(INDEXED, 2, 0, 2, 3)
+    assert small.palette == PALETTE and small.pixels == bytes([2, 3, 1, 0, 2, 2])
+    assert png.cropped(RGB, 0, 0, 4, 3) is RGB
+    with pytest.raises(ValueError, match=r"a 3x1 rectangle from \(2, 0\) is not within 4x3"):
+        png.cropped(RGB, 2, 0, 3, 1)
+
+
+def test_a_picture_is_told_cut_from_another_only_where_it_sits_in_it() -> None:
+    assert png.cut_from(RGB, png.cropped(RGB, 1, 1, 3, 2))
+    assert png.cut_from(RGB, RGB) and png.cut_from(INDEXED, png.cropped(INDEXED, 0, 1, 2, 2))
+    moved = bytearray(png.cropped(RGB, 1, 1, 3, 2).pixels)
+    moved[-1] ^= 1
+    assert not png.cut_from(RGB, png.Raster(3, 2, bytes(moved))), "its last pixel differs"
+    assert not png.cut_from(png.cropped(RGB, 1, 1, 3, 2), RGB), "a part holds no bigger whole"
+    assert not png.cut_from(INDEXED, png.Raster(4, 3, INDEXED.pixels, PALETTE[::-1])), \
+        "the same indices under another palette are another picture"
+    straddle = png.Raster(2, 1, bytes((20, 30, 200, 100, 50, 0)))
+    assert not png.cut_from(RGB, straddle), "bytes that meet across two pixels are no pixels"
