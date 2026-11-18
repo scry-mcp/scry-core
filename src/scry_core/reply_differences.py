@@ -19,10 +19,11 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from scry_core import entry
+
 SERVER_PAGES = Path("docs/reference")
 OUT_PAGE = Path("docs/reply-differences.md")
 _BEGIN = re.compile(r"<!-- scry-reference:begin (\w+) -->")
-_ROW = re.compile(r"\| `([^`]+)` \|")
 
 
 class Invalid(Exception):
@@ -30,18 +31,18 @@ class Invalid(Exception):
 
 
 def reply_fields(page: str) -> dict[str, list[str]]:
-    """Each tool's reply field names, from the `reply field` table under its block."""
+    """Each tool's reply field names, from the folded list of them under its block."""
     tools: dict[str, list[str]] = {}
     tool, reading = "", False
     for line in page.splitlines():
         if m := _BEGIN.match(line):
             tool, reading = m[1], False
             tools[tool] = []
-        elif line.startswith("| reply field"):
+        elif entry.FIELDS_FOLD.match(line):
             reading = True
-        elif reading and tool and (row := _ROW.match(line)):
-            tools[tool].append(row[1])
-        elif reading and not line.startswith("|"):
+        elif reading and tool and (field := entry.FIELD_LINE.match(line)):
+            tools[tool].append(field[1])
+        elif reading and line.startswith("</details>"):
             reading = False
     return tools
 

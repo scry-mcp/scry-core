@@ -116,9 +116,7 @@ def _index(reg: Registry, families: Mapping[str, str]) -> str:
 
 def _envelope(reg: Registry) -> str:
     hints = get_type_hints(reg.envelope, include_extras=True)
-    return "\n".join(["| field | type |", "|---|---|",
-                      *(f"| `{n}` | {entry.in_cell(entry.reply_type(h))} |"
-                        for n, h in hints.items())])
+    return "\n".join(entry.field_line(n, h) for n, h in hints.items())
 
 
 def _call_and_reply(value: Any) -> bool:

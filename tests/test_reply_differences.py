@@ -12,25 +12,33 @@ import pytest
 from scry_core import reply_differences as rd
 
 PAGE = """<!-- scry-reference:begin run_to -->
-| argument | type | default |
-|---|---|---|
-| `ref` | string | |
+### Arguments
 
-| reply field | type |
-|---|---|
-| `pc` | string |
-| `{extra}` | string |
+- `ref` (string, required): Where to stop.
 
-text after the table
+### What comes back
+
+- `pc`: Where it stopped.
+
+<details><summary>All 2 reply fields</summary>
+
+- `pc` (string)
+- `{extra}` (string)
+
+</details>
+
+- `later` (a list after the fold is no field)
 <!-- scry-reference:begin stop -->
-| reply field | type |
-|---|---|
-| `pc` | string |
+<details><summary>All 1 reply fields</summary>
+
+- `pc` (string)
+
+</details>
 """
-ONLY_ONE = ("<!-- scry-reference:begin wait -->\n| reply field | type |\n|---|---|\n"
-            "| `pc` | s |\n")
-SCREEN_WAIT = ("<!-- scry-reference:begin screen_wait -->\n| reply field | type |\n|---|---|\n"
-               "| `verdict` | s |\n")
+ONLY_ONE = ("<!-- scry-reference:begin wait -->\n<details><summary>All 1 reply fields</summary>"
+            "\n\n- `pc` (s)\n\n</details>\n")
+SCREEN_WAIT = ("<!-- scry-reference:begin screen_wait -->\n<details><summary>All 1 reply fields"
+               "</summary>\n\n- `verdict` (s)\n\n</details>\n")
 
 
 def _servers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
@@ -46,7 +54,7 @@ def _servers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Pat
     return mame, dosbox
 
 
-def test_reply_fields_reads_only_the_reply_table_of_each_tool() -> None:
+def test_reply_fields_reads_only_the_folded_list_of_each_tool() -> None:
     assert rd.reply_fields(PAGE.format(extra="cpu")) == {"run_to": ["pc", "cpu"], "stop": ["pc"]}
 
 
@@ -74,7 +82,7 @@ def test_write_then_check_agree_and_a_changed_page_is_drift(
     assert rd.main(args) == 1
 
 
-@pytest.mark.parametrize("damage", ["missing", "no tool", "table without a block"])
+@pytest.mark.parametrize("damage", ["missing", "no tool", "fields without a block"])
 def test_a_page_that_cannot_be_compared_is_invalid_not_agreement(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
         damage: str) -> None:
@@ -88,8 +96,7 @@ def test_a_page_that_cannot_be_compared_is_invalid_not_agreement(
             page.write_text("no blocks here", encoding="utf-8")
     else:
         for page in pages:
-            page.write_text(
-            "| reply field | type |\n|---|---|\n| `pc` | s |\n", encoding="utf-8")
+            page.write_text(ONLY_ONE.split("\n", 1)[1], encoding="utf-8")
     assert rd.main(["--mame", str(mame), "--dosbox-x", str(dosbox)]) == 3
     assert "INVALID" in capsys.readouterr().err
 
@@ -108,7 +115,7 @@ def test_the_committed_page_is_the_servers_run(monkeypatch: pytest.MonkeyPatch) 
     for env, name in (("SCRY_MAME_DIR", "scry-mame"), ("SCRY_DOSBOX_X_DIR", "scry-dosbox-x")):
         if not os.environ.get(env):        # the run's home is its own, and holds no clone
             monkeypatch.setenv(env, str(beside / name))
-    if not all((rd._clone(env, name) / rd.SERVER_PAGES / "advance.md").is_file()
+    if not all(any((rd._clone(env, name) / rd.SERVER_PAGES).glob("*.md"))
                for env, name in (("SCRY_MAME_DIR", "scry-mame"),
                                  ("SCRY_DOSBOX_X_DIR", "scry-dosbox-x"))):
         pytest.skip("the servers' clones are not here: set SCRY_MAME_DIR and SCRY_DOSBOX_X_DIR")

@@ -35,8 +35,9 @@ from scry_core.reply_schema import own_fields
 
 TRY, ARGUMENTS, RETURNS = "### Try it", "### Arguments", "### What comes back"
 REFUSES, WHY, RELATED = "### What it refuses", "### Why it works this way", "### Related tools"
-#: The head of the folded table `reply_differences` reads each tool's fields from.
-FIELDS_HEAD = "| reply field | type |"
+#: The fold `reply_differences` reads each tool's fields from, and one field's line in it.
+FIELDS_FOLD = re.compile(r"<details><summary>All \d+ reply fields</summary>")
+FIELD_LINE = re.compile(r"- `([^`]+)` \(")
 NO_OWN_FIELDS = "The reply carries only the fields every reply has."
 CONTRACT = "The contract your client receives"
 #: What a transcript writes for a value that differs between two honest runs.
@@ -95,6 +96,11 @@ def argument_type(spec: Mapping[str, Any]) -> str:
     if "pattern" in spec:
         bounds.append(f"matching `{spec['pattern']}`")
     return f"{text} ({', '.join(bounds)})" if bounds else text
+
+
+def field_line(name: str, hint: Any) -> str:
+    """A reply field and its type, as a list names it."""
+    return f"- `{name}` ({reply_type(hint)})"
 
 
 def in_cell(text: str) -> str:
@@ -170,9 +176,8 @@ def _returns(model: type, envelope: type, ask: Ask) -> list[str]:
     if not own:
         return [*lines, *([""] if lines else []), NO_OWN_FIELDS]
     hints = get_type_hints(model, include_extras=True)
-    return [*lines, "", f"<details><summary>All {len(own)} reply fields</summary>", "",
-            FIELDS_HEAD, "|---|---|",
-            *(f"| `{n}` | {in_cell(reply_type(hints[n]))} |" for n in own), "", "</details>"]
+    return [*lines, "", *shape.folded(
+        f"All {len(own)} reply fields", "\n".join(field_line(n, hints[n]) for n in own))]
 
 
 def _contract(tool: Tool) -> list[str]:

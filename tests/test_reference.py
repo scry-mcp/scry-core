@@ -178,7 +178,7 @@ def test_an_entry_has_its_parts_in_the_one_order_each_under_its_heading(tmp_path
              "<details><summary>The whole reply</summary>", "### The two modes",
              "| mode | what it reads |", "| `word` | Two. |", "### Arguments",
              "### What comes back", "- `value`: What the first cell holds.",
-             "<details><summary>All 3 reply fields</summary>", "| reply field | type |",
+             "<details><summary>All 3 reply fields</summary>", "- `value` (integer)",
              "### What it refuses", "- An address outside memory.",
              "### Why it works this way", "A read never changes the machine.",
              "<details><summary>More on why</summary>", "It is the fastest.",
@@ -196,10 +196,10 @@ def test_the_reply_fields_are_the_model_s_own_beyond_the_server_s_envelope(
         tmp_path: Path) -> None:
     _written(_registry(tmp_path))
     text = _read(tmp_path)
-    assert "| `value` | integer |" in text and "| `bytes_read` | array of integer |" in text, text
-    assert '| `kind` | one of `"byte"`, `"word"` |' in text, text
+    assert "- `value` (integer)" in text and "- `bytes_read` (array of integer)" in text, text
+    assert '- `kind` (one of `"byte"`, `"word"`)' in text, text
     assert "`last_stop`" not in text.split("## `peek`")[1], "the envelope is REFERENCE.md's"
-    assert "| `written` | boolean or object |" in _read(tmp_path, "write-memory")
+    assert "- `written` (boolean or object)" in _read(tmp_path, "write-memory")
 
 
 def test_the_index_and_the_envelope_go_to_reference_md_in_the_roster_s_order(
@@ -210,7 +210,7 @@ def test_the_index_and_the_envelope_go_to_reference_md_in_the_roster_s_order(
         "[Write memory](docs/reference/write-memory.md)")
     assert read < write and "[`peek`](docs/reference/read.md#peek)" in text, text
     assert "- [Read](docs/reference/read.md): The tools that read memory. [`peek`]" in text, text
-    assert "| `status` |" in text and "| `last_stop` | object |" in text, text
+    assert "- `status` (" in text and "- `last_stop` (object)" in text, text
 
 
 def test_the_contract_is_the_description_as_the_client_receives_it_folded(
