@@ -228,7 +228,6 @@ def kept(pictures: Sequence[Picture]) -> Box:
     width, height = pictures[0].width, pictures[0].height
 
     def solid(pixels: Sequence[bytes]) -> bytes | None:
-        """The one colour of `pixels` in every frame, or None."""
         first = pixels[0][:3]
         return first if all(row == first * (len(row) // 3) for row in pixels) else None
 
@@ -256,7 +255,6 @@ def kept(pictures: Sequence[Picture]) -> Box:
 
 
 def cropped(picture: Picture, box: Box) -> Picture:
-    """The part of `picture` that `box` keeps."""
     if (box.width, box.height) == box.whole:
         return picture
     row = picture.width * 3
@@ -266,9 +264,8 @@ def cropped(picture: Picture, box: Box) -> Picture:
 
 
 def still(data: bytes, box: Box) -> bytes:
-    """The PNG `data`, the demo's picture, cut as its loop is at the picture's own scale: the
-    same bytes when the loop cuts nothing, `Invalid` when the picture is not a whole number of
-    times the loop's frames."""
+    """The demo's PNG `data` cut as its loop is, at its own scale; `Invalid` when it is not a
+    whole number of times the loop's frames."""
     if (box.width, box.height) == box.whole:
         return data
     try:
