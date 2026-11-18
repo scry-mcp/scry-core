@@ -60,8 +60,8 @@ The servers' profiles state the rules; this package holds the programs that keep
 
 | program | writes | rule it keeps |
 |---|---|---|
-| `scry_core.reference` | each server's `REFERENCE.md`, `docs/reference/*.md`, `docs/reference/examples.json` | a tool's entry in its one order (name, one sentence, signature, the example, arguments, what comes back, what it refuses, the contract folded), read from the registry and the server's hand-written `docs/reference/asks.json`; an entry without its `what` and `ask`, or over their word limits, is drift |
-| `scry_core.demo` | each demo's README block, `TRANSCRIPT.md`, `screen.png`, `loop.webp` and the front door's flow | the example's shape on the steps a demo marks (`Step.ask`), and the demo's motion: up to 3 `Moment`s recorded in the run, 6 seconds in all, at most 400 KB, refused past either |
+| `scry_core.reference` | each server's `REFERENCE.md`, `docs/reference/*.md`, `docs/reference/examples.json` | a tool's entry in its one order (name, one sentence, signature, the example, modes, arguments, what comes back, what it refuses, why, related tools, the contract folded), read from the registry and the server's hand-written `docs/reference/asks.json`; an entry without its sentences, or with one over its word limit, is drift |
+| `scry_core.demo` | each demo's README blocks (motion, transcript), `TRANSCRIPT.md`, `screen.png`, `loop.webp` and the front door's flow | the example's shape on the steps a demo marks (`Step.ask`), and the demo's motion: up to 3 moments, each `Moment(after, until, caption, skip, frames)` cut from the run between two steps, 6 seconds in all, at most 400 KB, refused past either |
 | `scry_core.install` | the `<!-- scry-install -->` block of each server's front door | one table of clients (the name, the form its documentation gives a local server, the vendor's page), rendered once per server, so the front doors and the site carry the same blocks |
 | `scry_core.scry_readme` | each repository's `.scry/README.md` | its headings in plain words: "Start profiles" for the saved arguments of `start`, "Saved step lists" for what `perform` replays |
 
@@ -181,12 +181,22 @@ a run against the real emulator:". A finding about such a sentence is fixed in t
 | bound | time limit |
 | live run | a run against the real emulator |
 | declare (a repository) | keeps in `.scry/` |
+| Advance (a family) | Run |
+| Declarations (a family) | Breakpoints |
+| Lists (a family) | Sequences |
+| Store (a family) | Project |
+| Film (a family) | Timeline |
+| N survivors (a scan's summary) | N left |
+| posted, unverified | sent, reaction not checked |
+| effect seen, effect not seen | reaction seen, no reaction seen |
+| N retraces (a summary) | N frames |
+| kept N (promote to review) | N saved for `promote` |
 
 Kept and explained where they first appear, never renamed by a document:
 
-- The families: Declarations (breakpoints, watches and comments, declared by name and saved by the server), Lists (the tools that run several calls as one (`perform`, `drive`), not tools that list things), Store (the tool that writes into the repository's `.scry/` (`promote`)), Advance (the tools that let the program run and stop it again), Film (MAME's tools that record the frames in which a write happened).
+- The families, by the names the servers send: Run (the tools that let the program run and stop it again), Breakpoints (breakpoints and watches, saved by name and set again by the server), Sequences (the tools that run several calls as one: `perform`, `drive`), Project (the tool that saves into the repository's `.scry/` folder: `promote`), Timeline (MAME's tools that show the frames in which a write happened). "Screen map" names the `screen_map_*` tools and the file they read: a program's screens and the named areas of each, explained where it first appears.
 - The names: `promote`, `kept`, `draft`, `not_settled`, `settle_seconds`, `verdict`, `OTHER_STOP`, `ELAPSED`, `TARGET`, `TIMEOUT`, `altered`, `control`, `control_silent`, `anchor`, `mark`, `since_mark`, `ref`, `held`, `recorded`, `diverged`, `route`, `armed`, `pending`, `unresolved`, `unarmable`, `stale`, `foreign`, `inherited`, `orphan`, `declaration`, `regpoint`, `shared`, `presence`, `tally`, `show`, `change`, `count`, `capture`, `freeze`, `consolidated`, `verified`, `perform`, `drive`, `e9`, `no_channel`, `enrichment`, `unaccounted`, `surveyed`, `superseded`, `cut`, `posted`, `arrived`, `pen`, `profile`, `keep_noise`, `heavy_debug`, and every other tool, argument, field and value the reference lists.
-- What a reply prints: "survivors"; "posted, unverified / effect seen"; "retraces"; "kept N (promote to review)"; "<volatile>, <host>, <run>, <time>".
+- What a transcript prints for a value that changes from run to run: "<volatile>, <host>, <run>, <time>", said once at the head of each transcript.
 
 ## Limits
 
