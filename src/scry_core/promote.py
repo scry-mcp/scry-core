@@ -52,7 +52,7 @@ DOC_VALUES = {
         "approved. `start` keeps the recipe it ran, a map's `add` keeps the map, a\n"
         "`perform_export` keeps the script; each is complete only with what its reader accepts\n"
         "(the arguments a recipe cannot boot without, a map the map reader parses, a script\n"
-        "with a check), and a reply that keeps one says `kept N (promote to review)`, naming\n"
+        "with a check), and a reply that keeps one says `N saved for promote` in `kept`, naming\n"
         "each repository of the draft with no store and the `root` it takes. An entry belongs\n"
         "to the repository it was learned in: the one whose store a call loaded it from, else\n"
         "the current `start`'s, its profile's or where its program runs, where the server can\n"
@@ -312,7 +312,7 @@ def kept_line(drafts: Drafts) -> str:
     for candidate in drafts.kept.values():
         if not _has_store(candidate.project):
             homeless.setdefault(candidate.project, []).append(candidate.entry)
-    said = [f"kept {len(drafts)} (promote to review)"]
+    said = [f"{len(drafts)} saved for `promote`"]
     said += [f"{', '.join(sorted(entries))}: {_storeless(project)}: promote(dry_run=true, "
              f"root={project or '<the repository>'}) lists what an approval would create"
              for project, entries in sorted(homeless.items())]

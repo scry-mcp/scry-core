@@ -33,12 +33,20 @@ What a server author notices. A client's view of each server is in that server's
 - Every sentence of an entry comes from the server's `docs/reference/asks.json` (`asks`). A tool
   with no entry there, or a sentence past its limit, is a finding of `reference`. `--write`
   writes no page until there is none, and answers 1.
-- `reference --examples` takes a demo's normalised transcript (`.md`) as well as a live run's
-  records. A call a demo makes as a step of a `perform` counts as that tool's call
-  (`transcript`).
+- `reference --examples` takes a demo's normalised transcript (`.md`) as well as the records
+  of a run of the tests against a real emulator. A call a demo makes as a step of a `perform`
+  counts as that tool's call (`transcript`).
 - A tool's example is the call its entry names (`call`), and may show a second call the same run
   made later (`then`). An excerpt that would show a value the run hides is refused.
 - The index in `REFERENCE.md` says in one line what each family holds.
+- An entry closes with the tool's description as the client receives it, in a text block.
+- The families both servers share have names that say what they hold: Run (it was Advance),
+  Breakpoints (Declarations), Sequences (Lists) and Project (Store). `roster.SHARED_FAMILIES`
+  holds them, and no old name is accepted.
+- A reply that saves a candidate for `promote` says `N saved for promote` in `kept`. It said
+  `kept N (promote to review)`.
+- The page `scry_readme` renders is headed "Start profiles" and "Saved step lists", and a line
+  it derives for a file reads "a start profile" or "a saved step list".
 
 ## 0.119.0
 

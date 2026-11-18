@@ -612,13 +612,13 @@ def test_with_root_an_entry_whose_project_has_no_store_is_written_there(tmp_path
 def test_the_kept_line_names_each_project_with_no_store(tmp_path: Path) -> None:
     game, bare, drafts = two_projects(tmp_path)
     assert promote.kept_line(drafts) == (
-        f"kept 2 (promote to review); start/beta: no .scry/ in {bare}, the repository it was "
+        f"2 saved for `promote`; start/beta: no .scry/ in {bare}, the repository it was "
         f"kept in: promote(dry_run=true, root={bare}) lists what an approval would create")
     (bare / ".scry").mkdir()
-    assert promote.kept_line(drafts) == "kept 2 (promote to review)"
+    assert promote.kept_line(drafts) == "2 saved for `promote`"
     nameless = drafted("start", "x", start_doc(system="x"), needs=("system",))
     assert promote.kept_line(nameless) == (
-        "kept 1 (promote to review); start/x: nothing this session read names its repository: "
+        "1 saved for `promote`; start/x: nothing this session read names its repository: "
         "promote(dry_run=true, root=<the repository>) lists what an approval would create")
     assert str(game) not in promote.kept_line(drafts)
 
@@ -675,7 +675,7 @@ def test_a_project_whose_store_is_a_link_is_set_apart_and_its_line_claims_nothin
     game, bare, drafts = two_projects(tmp_path)
     (tmp_path / "elsewhere").mkdir()
     (bare / ".scry").symlink_to(tmp_path / "elsewhere", target_is_directory=True)
-    assert promote.kept_line(drafts) == "kept 2 (promote to review)"
+    assert promote.kept_line(drafts) == "2 saved for `promote`"
     review = promote.promote(drafts, dry_run=True)
     assert review["store"] == str(game / ".scry")
     assert [(u["entry"], "is a link" in u["reason"]) for u in review["unwritable"]] == [
@@ -1385,7 +1385,7 @@ def test_kept_line_and_the_close_and_summary_helpers_say_what_they_mean(tmp_path
     (tmp_path / ".scry").mkdir()
     drafts = started(Drafts(), anchor=tmp_path)
     drafts.keep("start", "x", start_doc(system="x"), needs=("system",))
-    assert promote.kept_line(drafts) == "kept 1 (promote to review)"
+    assert promote.kept_line(drafts) == "1 saved for `promote`"
     reply = promote.after_close(drafts, {"closed": True})
     assert reply["draft"] == ["start/x"]
     empty = promote.after_close(Drafts(), {"closed": False})
@@ -1402,7 +1402,7 @@ def test_an_export_is_kept_from_the_file_it_wrote(tmp_path: Path) -> None:
     (tmp_path / "game" / ".scry").mkdir(parents=True)
     drafts = started(Drafts(), anchor=tmp_path / "game")
     reply = promote.after_export(drafts, {"path": str(path)}, ("rompath",))
-    assert reply["kept"] == "kept 1 (promote to review)"
+    assert reply["kept"] == "1 saved for `promote`"
     assert drafts.entries() == ["perform/session"]
     bare = promote.after_export(Drafts(), {"path": str(path)}, ("rompath",))
     assert "perform/session: nothing this session read names its repository" in bare["kept"]
@@ -1746,7 +1746,7 @@ def test_after_start_adds_kept_and_the_profile_block_only_when_there_is_one() ->
     kept = promote.after_start(drafts, {"status": "ok"}, params, block=block, guest="lineup",
                                defaults=DEFAULTS, run_own=RUN_OWN, needs=("system",),
                                path_keys=("rompath",))
-    assert kept["kept"].startswith("kept 1") and kept["profile"] == block, kept
+    assert kept["kept"].startswith("1 saved for `promote`") and kept["profile"] == block, kept
     bare = promote.after_start(Drafts(), {"status": "ok"}, {"system": ""}, block=None, guest="",
                                defaults=DEFAULTS, run_own=RUN_OWN, needs=(), path_keys=())
     assert bare == {"status": "ok"}, bare

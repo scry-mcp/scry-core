@@ -64,4 +64,4 @@ class ForgetsTheStart(NullPromoter):
 
 class SilentKeptLine(NullPromoter):
     def kept(self) -> str:
-        return f"kept {len(self.drafts)} (promote to review)"
+        return f"{len(self.drafts)} saved for `promote`"
