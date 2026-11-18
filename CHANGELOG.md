@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.120.1
+
+- A demo step whose example, or whose lead's answer, shows a written picture's `bytes` or
+  `sha256` fails, naming them. Those keys are hidden by the reply's shape, so the page printed
+  `<volatile>` where it promised a value.
+- `demo`'s module says that a demo declared wrongly raises `ValueError` before the first call.
+
 ## 0.120.0
 
 - A clip's frames are written scaled up a whole number of times, as far as 960 x 600 holds
