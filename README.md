@@ -56,8 +56,7 @@ A server pins a release tag, never a branch:
 dependencies = ["scry-core @ git+https://github.com/scry-mcp/scry-core@<tag>"]
 ```
 
-These programs run from a server's repository. Each takes what it acts on as an argument, so
-none reads a folder it was not pointed at:
+These programs run from a server's repository:
 
 ```sh
 uv run python -m scry_core.reference <module>:<attribute> [--write]

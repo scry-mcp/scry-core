@@ -109,5 +109,6 @@ not there, is refused by name.
 
 ## When `.scry/` gains a kind of file
 
-Two things change, both in scry-core: the template (`src/scry_core/scry_readme_template.md`)
-and the kinds listed in `scry_readme.py`. Then each repository renders its page again.
+Two things change, both in scry-core: the kinds in `project_store.py` (`KINDS`, and `SUFFIXES`
+for a file not named `<name>.json`) and each kind's heading and sentence in `scry_readme.py`.
+Then each repository renders its page again.

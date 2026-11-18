@@ -32,8 +32,9 @@ program's screen map where the program has one.
 
 `lineup` is one game with an arcade board and a PC port, so both servers run it.
 
-- The arcade board's script is in `scry_core/games/`.
-- The PC port's script is in the port's own `.scry/perform/`.
+- The steps both servers run are in `scry_core/games/lineup.py`.
+- The PC port also keeps a list of steps in its own `.scry/perform/`, which the DOSBox-X demo
+  replays in one call.
 - Each server's `demos/lineup/demo.py` maps the game's actions to that emulator's inputs.
 - The screen map is in each port's own `.scry/maps/`.
 
