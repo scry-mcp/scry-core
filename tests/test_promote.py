@@ -754,6 +754,22 @@ def test_a_path_under_the_state_or_a_variable_is_written_against_it(
     assert document["reference_rom"] == "${env:SCRY_PROMOTE_BENCH}/r.bin"
 
 
+@pytest.mark.parametrize("kind", ["start", "perform"])
+def test_a_path_argument_nobody_gave_is_no_reason_to_refuse_the_entry(
+        tmp_path: Path, kind: str) -> None:
+    """A recorded `start` carries every argument, the ones left at `null` too: an argument
+    that names no path has none to rewrite."""
+    root = repo(tmp_path)
+    start = {"system": "x", "rompath": f"{root}/roms", "guest_files": None}
+    document = start_doc(**start) if kind == "start" else {**perform_doc(), "start": start}
+    drafts = Drafts()
+    drafts.keep(kind, "left", document, needs=("system",) if kind == "start" else (),
+                path_keys=("rompath", "guest_files"))
+    reply = review(drafts, root, environ={})
+    assert "unwritable" not in reply, reply.get("unwritable")
+    assert [item["entry"] for item in reply["candidates"]] == [f"{kind}/left"]
+
+
 def test_a_path_of_this_machine_is_listed_apart_and_refused_when_approved(tmp_path: Path) -> None:
     root = repo(tmp_path)
     drafts = Drafts()

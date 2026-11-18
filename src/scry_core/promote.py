@@ -592,7 +592,8 @@ def _places(base: Path, state: str, environ: Mapping[str, str] | None) -> Places
 
 def _rewrite(document: dict[str, Any], candidate: Candidate, places: Places) -> None:
     for key in candidate.path_keys:
-        if key in document:
+        # a recorded call carries every argument, the ones nobody gave too: `null` names no path
+        if document.get(key) is not None:
             where = f"the candidate {candidate.kind}/{candidate.name}'s `{key}`"
             document[key] = promote_paths.placeholders(document[key], places, where,
                                                        project_store.LISTS.get(key, ""))
