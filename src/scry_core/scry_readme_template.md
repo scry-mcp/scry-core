@@ -3,8 +3,8 @@
 $purpose
 
 SCRY is a set of MCP servers that let an assistant run a program in an emulator and inspect it
-live. This folder is what this repository declares for it: how the program starts and, where it
-has them, what its screens look like and a session that drives it.
+live. This folder is what this repository keeps for it: how the program starts and, where it
+has them, what its screens look like and a list of steps that drives it.
 
 $build
 

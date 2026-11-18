@@ -38,10 +38,10 @@ FIELDS = ("purpose", "build", "start", "files", "notes")
 _STORE_PATHS = "https://github.com/scry-mcp/scry-core/blob/main/docs/store-paths.md"
 _KEYS = {"format", "purpose", "server", "build", "notes", "files"}
 _KINDS = (
-    ("start", "Recipes", "A recipe is the arguments of `start`, so a session boots a program "
-     "without composing them by hand."),
+    ("start", "Start profiles", "A start profile is a saved set of `start` arguments, so a "
+     "session boots a program without composing them by hand."),
     ("maps", "Screen maps", "Each names a program's screens and where their controls are."),
-    ("perform", "Sessions", "Each is a list of steps the `perform` tool replays."),
+    ("perform", "Saved step lists", "Each is a list of steps the `perform` tool replays."),
 )
 
 
@@ -103,7 +103,8 @@ def _build(value: object) -> str:
         raise Refused(f"build: unknown key {', '.join(extra)}")
     command = _text(value.get("command"), "build.command")
     note = f" {_text(value['note'], 'build.note')}" if "note" in value else ""
-    return f"## Build first\n\nThe recipes below need this built first.{note}\n\n    {command}"
+    return (f"## Build first\n\nThe start profiles below need this built first.{note}\n\n"
+            f"    {command}")
 
 
 def _files(entries: list[str], lines: Mapping[str, object], server: str) -> tuple[str, str]:
@@ -116,10 +117,11 @@ def _files(entries: list[str], lines: Mapping[str, object], server: str) -> tupl
     said = {name: _text(lines[name], f"files[{name!r}]") for name in entries}
     start = ""
     if any(name.startswith("start/") for name in entries):
-        start = (f"## How to start\n\nCall the `{server}` server's `start` tool with a recipe's "
-                 'name: `start(profile="<name>")`. An argument in the same call wins over the '
-                 "recipe's. A recipe's paths resolve against the directory holding `.scry/`, "
-                 f"and what would be this machine's path is a [placeholder]({_STORE_PATHS}).")
+        start = (f"## How to start\n\nCall the `{server}` server's `start` tool with a start "
+                 'profile\'s name: `start(profile="<name>")`. An argument in the same call wins '
+                 "over the profile's. A profile's paths resolve against the directory holding "
+                 "`.scry/`, and what would be this machine's path is a "
+                 f"[placeholder]({_STORE_PATHS}).")
     sections = []
     for kind, title, what in _KINDS:
         rows = []
@@ -163,12 +165,12 @@ def derived_line(kind: str, name: str, document: object) -> str:
         for key in ("program", "system"):
             if value := _flat(doc.get(key)):
                 return f"boots `{value}`."
-        return "a run recipe."
+        return "a start profile."
     if kind == "maps":
         return f"the screens of {_flat(doc.get('application')) or name}."
     steps = doc.get("steps")
     if not isinstance(steps, list):
-        return "a session."
+        return "a saved step list."
     return f"replays {len(steps)} step{'' if len(steps) == 1 else 's'}."
 
 
@@ -199,7 +201,7 @@ def scaffold(root: Path, server: str, entries: Mapping[str, object]) -> Setup:
         lines = dict(held) if isinstance(held, dict) else held
     else:
         data = {"format": FORMAT,
-                "purpose": f"What this repository declares for SCRY's `{server}` server.",
+                "purpose": f"What this repository keeps for SCRY's `{server}` server.",
                 "server": server}
         lines = {}
     names = sorted(set(_entries(store)) | set(entries))

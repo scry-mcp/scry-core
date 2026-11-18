@@ -51,6 +51,17 @@ def test_the_sections_come_in_the_order_a_cold_reader_needs(tmp_path: Path) -> N
     assert text.endswith("\n") and "\n\n\n" not in text
 
 
+def test_the_page_says_what_it_holds_in_words_a_stranger_knows(tmp_path: Path) -> None:
+    text = scry_readme.render(_store(tmp_path, ABOUT))
+    for heading in ("## Start profiles", "## Screen maps", "## Saved step lists"):
+        assert f"\n{heading}\n" in text, text
+    assert "The start profiles below need this built first." in text, text
+    assert "with a start profile's name" in text and "wins over the profile's" in text, text
+    assert "what this repository keeps for it" in text, text
+    for private in ("recipe", "Recipe", "## Sessions", "declares"):
+        assert private not in text, f"{private!r} is a word of ours: {text}"
+
+
 def test_the_render_names_the_server_the_manifest_declares(tmp_path: Path) -> None:
     text = scry_readme.render(_store(tmp_path, _about(server="mame")))
     assert "`mame` server's `start` tool" in text and "dosbox-x` server's" not in text
@@ -221,16 +232,16 @@ def test_the_page_lists_exactly_the_kinds_the_store_holds() -> None:
     ("start", "dos", {"program": "GAME.EXE", "system": "x"}, "boots `GAME.EXE`."),
     ("start", "v30", {"system": "lineup"}, "boots `lineup`."),
     ("start", "v30", {"program": "a\nb  c"}, "boots `a b c`."),
-    ("start", "v30", {"program": ["a"], "system": ""}, "a run recipe."),
-    ("start", "v30", {}, "a run recipe."),
-    ("start", "v30", "not a document", "a run recipe."),
+    ("start", "v30", {"program": ["a"], "system": ""}, "a start profile."),
+    ("start", "v30", {}, "a start profile."),
+    ("start", "v30", "not a document", "a start profile."),
     ("maps", "lineup", {"application": "lineup"}, "the screens of lineup."),
     ("maps", "lineup", {}, "the screens of lineup."),
     ("maps", "lineup", {"application": "a\nb"}, "the screens of a b."),
     ("maps", "lineup", {"application": " "}, "the screens of lineup."),
     ("perform", "tour", {"steps": [{}]}, "replays 1 step."),
     ("perform", "tour", {"steps": [{}, {}, {}]}, "replays 3 steps."),
-    ("perform", "tour", {"steps": "none"}, "a session."),
+    ("perform", "tour", {"steps": "none"}, "a saved step list."),
 ])
 def test_a_line_is_derived_from_the_entry_alone(
         kind: str, name: str, document: object, line: str) -> None:

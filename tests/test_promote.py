@@ -338,7 +338,7 @@ def test_an_approved_promotion_into_a_bare_repository_sets_up_the_whole_store(
     assert reply["created"] == [".scry/", ".scry/about.json", ".scry/README.md"]
     assert _about(root) == {
         "format": "scry-about/1", "server": "dosbox-x",
-        "purpose": "What this repository declares for SCRY's `dosbox-x` server.",
+        "purpose": "What this repository keeps for SCRY's `dosbox-x` server.",
         "files": {"start/lineup.json": "boots `lineup`."}}
     page = (root / ".scry" / "README.md").read_bytes()
     assert page == scry_readme.render(root).encode()
@@ -416,7 +416,7 @@ def test_a_store_with_no_manifest_gets_a_line_for_every_file_it_holds(tmp_path: 
     reply = write(_lineup(), root, ["start/lineup"], server="mame")
     assert reply["created"] == [".scry/about.json", ".scry/README.md"]
     assert _about(root)["files"] == {
-        "start/bad.json": "a run recipe.", "start/lineup.json": "boots `lineup`.",
+        "start/bad.json": "a start profile.", "start/lineup.json": "boots `lineup`.",
         "start/old.json": "boots `OLD.EXE`."}
 
 
