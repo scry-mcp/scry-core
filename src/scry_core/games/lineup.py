@@ -3,7 +3,8 @@
 One source, so the script names the game's own routines and variables and each server resolves
 them through its build's map: the high scores by symbol, a coin and the credits counted, a game
 started, its level, then a move, a colour and a shot read back off `Player1`, the stage's music
-held to the platform's recording, and a picture of the board.
+held to the platform's recording, three more shots filmed for the loop, and a picture of the
+board.
 
 Every arrival is the game's own code, never a time, because the ports differ in pace: a routine
 by symbol, or a screen judged at the frame after the game's tick. The one map signs palette
@@ -44,11 +45,9 @@ PLAYER_ACTIVE = 1
 #: Where a one-player game puts the player.
 START_COLUMN, START_BLOCK = 3, 1
 MUSIC_MS = 2000
-#: What the loop shows: the game in play after the shot. It is recorded after the sound, because
-#: a recording anywhere earlier moves the instant the music is compared from.
-PLAYING_MS = 2500
-PLAYING = Moment("exact", "playing",
-                 "The player moved, raised the colour and fired: `record` films the game going on.")
+#: What the loop shows of each further shot. They come after the sound, because a recording
+#: anywhere earlier moves the instant the music is compared from.
+SHOT_MS = 1000
 
 
 def player(want: dict[str, int], what: str) -> Step:
@@ -146,11 +145,42 @@ def steps(binding: Binding) -> list[Step]:
     ]
 
 
+def shots(binding: Binding) -> list[Step]:
+    """Three more shots, each filmed from the press that fires it: where the player stands, one
+    column to the right, and with the next colour."""
+    def press(name: str, action: str) -> Step:
+        return binding.press(name, action, said(f"{action} pressed"))
+
+    def film(name: str) -> Step:
+        return recording(name, binding.frames(SHOT_MS))
+
+    def shot(name: str, filmed_as: str) -> list[Step]:
+        return binding.filmed(name, "UP", said("UP pressed"), film(filmed_as))
+
+    return [*shot("fire again", "second shot"),
+            press("right again", "RIGHT"), taken("moved again", "the move taken"),
+            *shot("fire from there", "third shot"),
+            press("colour again", "FIRE1"), taken("raised again", "the colour taken"),
+            *shot("fire that colour", "fourth shot")]
+
+
+def filmed(binding: Binding) -> tuple[Moment, ...]:
+    """The loop's moments: each of `shots`' recordings, its sentence naming the platform's own
+    input tool."""
+    tool = binding.inputs["UP"].tool
+    return (Moment("fire again", "second shot",
+                   f"`{tool}` presses fire, and `record` films the shot."),
+            Moment("fire from there", "third shot",
+                   f"`{tool}` moves the player one column right and fires again."),
+            Moment("fire that colour", "fourth shot",
+                   f"`{tool}` raises the next colour and fires a third time."))
+
+
 def epilogue(binding: Binding) -> list[Step]:
     """What follows the script on every platform: its sound compared with the platform's
-    recording, the game filmed in play, a picture of the board, and the close."""
+    recording, three more shots filmed, a picture of the board, and the close."""
     return [*sound(binding, MUSIC_MS, "music.wav"),
-            recording("playing", binding.frames(PLAYING_MS)),
+            *shots(binding),
             Step("screen", "screen_view",
                  lambda run: {"dest": run.dir / "screen.png", "attach": False},
                  lambda reply, run: f"the board, {reply['width']}x{reply['height']}"),

@@ -37,6 +37,20 @@ def test_every_action_the_script_fires_is_one_it_declares() -> None:
     assert fired == set(lineup.ACTIONS)
 
 
+def test_the_script_films_three_more_shots_each_right_after_the_press_that_fires_it() -> None:
+    steps = lineup.steps(_binding())
+    names = [s.name for s in steps]
+    moments = lineup.filmed(_binding())
+    assert [m.until for m in moments] == ["second shot", "third shot", "fourth shot"]
+    for moment in moments:
+        fired, film = steps[names.index(moment.after)], steps[names.index(moment.until)]
+        assert names.index(moment.until) - names.index(moment.after) == 1
+        assert film.tool == "record" and fired.args == {"field": "UP"}, (fired, film)
+        assert "`input`" in moment.caption, "a moment's sentence names the platform's own tool"
+    assert names.index("second shot") > names.index("exact"), \
+        "a recording before the sound moves the instant it is compared from"
+
+
 def test_a_binding_missing_an_action_is_refused_before_anything_runs() -> None:
     with pytest.raises(KeyError, match="binds no 'UP'"):
         lineup.steps(_binding(tuple(a for a in lineup.ACTIONS if a != "UP")))

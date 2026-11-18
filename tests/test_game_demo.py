@@ -48,6 +48,23 @@ def test_a_press_is_the_bound_call_and_an_unbound_action_is_refused_when_built()
         _binding().press("press start", "START", lambda r, run: "")
 
 
+def test_a_filmed_press_is_the_press_then_the_film_and_a_held_key_is_let_go_after() -> None:
+    film = Step("film", "record", {}, lambda r, run: "")
+    tapped = _binding().filmed("fire", "COIN", lambda r, run: "in", film)
+    assert [(s.name, s.tool) for s in tapped] == [("fire", "input"), ("film", "record")]
+    down = Press("send_keys", {"keys": ["tab"], "action": "down"})
+    up = Press("send_keys", {"keys": ["tab"], "action": "up"})
+    held = _binding(held={"COIN": (down, up)}, volatile={"since_mark": "timing"}).filmed(
+        "fire", "COIN", lambda r, run: "in", film)
+    assert [(s.name, s.tool, s.args) for s in held] == [
+        ("fire", "send_keys", down.args), ("film", "record", {}),
+        ("fire: let go", "send_keys", up.args)]
+    assert held[0].volatile == held[2].volatile == {"since_mark": "timing"}
+    assert held[2].check(Reply({}), Run(dir=Path("/unused"))) == "the key let go"
+    with pytest.raises(KeyError, match="board binds no 'START'"):
+        _binding().filmed("fire", "START", lambda r, run: "", film)
+
+
 def _run(tmp_path: Path) -> Run:
     return Run(dir=tmp_path)
 

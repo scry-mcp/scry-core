@@ -33,7 +33,9 @@ class Binding:
     """What one platform answers for a script: `boot` leaves the machine stopped with the game's
     symbols loaded, `inputs` fires each of the game's actions, `rate_hz` is the screen's refresh,
     `sound` the recording the script's sound is held to, `map` the game's screen map in the
-    checkout the run reads, `volatile` what its input replies vary in between two honest runs."""
+    checkout the run reads, `volatile` what its input replies vary in between two honest runs,
+    `held` the actions fired as a key left down and its release where a tap outlasts what it
+    sets off."""
 
     platform: str
     boot: Sequence[Step]
@@ -42,6 +44,7 @@ class Binding:
     sound: Path
     map: Callable[[Run], Path]
     volatile: Mapping[str, str] = field(default_factory=dict)
+    held: Mapping[str, tuple[Press, Press]] = field(default_factory=dict)
 
     def frames(self, milliseconds: int) -> int:
         """`milliseconds` of emulated time as whole frames of this screen, rounded up."""
@@ -53,6 +56,17 @@ class Binding:
             raise KeyError(f"{self.platform} binds no {action!r}; it binds {sorted(self.inputs)}")
         bound = self.inputs[action]
         return Step(name, bound.tool, dict(bound.args), check, volatile=self.volatile)
+
+    def filmed(self, name: str, action: str, check: Callable[[Reply, Run], str],
+               film: Step) -> list[Step]:
+        """`action` fired and `film` recorded right after it; a held key is let go after."""
+        tap = self.press(name, action, check)
+        if action not in self.held:
+            return [tap, film]
+        down, up = self.held[action]
+        return [Step(name, down.tool, dict(down.args), check, volatile=self.volatile), film,
+                Step(f"{name}: let go", up.tool, dict(up.args),
+                     lambda reply, run: "the key let go", volatile=self.volatile)]
 
 
 def words(reply: Reply) -> list[int]:
