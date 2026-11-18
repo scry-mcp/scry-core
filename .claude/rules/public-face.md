@@ -45,6 +45,7 @@ reader goes to for it. Words are counted in prose, outside code blocks and gener
 
 1. The logo and the title.
 2. The bold sentence: what SCRY is, for a person.
+   Under it the two servers' lead clips side by side, with their caption (*Captures*).
 3. `## Install a server`: one line per server (what it is for, what it needs) and a link to that
    server's own `## Install`. The package itself is never installed by hand, and this README
    carries no client block of its own: the servers' front doors hold them, generated from the
@@ -77,8 +78,12 @@ a run against the real emulator:". A finding about such a sentence is fixed in t
 
 ## Captures
 
-- None: the package has no surface of its own to show, and the auditor does not report a missing
-  capture.
+- The front door shows the two servers' lead clips, `docs/scry-dosbox-x.webp` and
+  `docs/scry-mame.webp`, copies of scry-dosbox-x's `demos/monkey/loop.webp` and scry-mame's
+  `demos/lineup/loop.webp`, each with its still (`.png`, a copy of that demo's `screen.png`) for
+  a reader who asks for no motion. Their `width` attributes are chosen so both stand at one
+  height.
+- They are copied by hand (`cp`) when those clips change; nothing checks them.
 
 ## Vocabulary: words a programmer who never saw SCRY knows
 
