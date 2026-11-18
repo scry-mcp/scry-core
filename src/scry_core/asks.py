@@ -239,6 +239,37 @@ def _enum(spec: Mapping[str, Any]) -> list[str]:
     return [v for alternative in spec.get("anyOf", ()) for v in _enum(alternative)]
 
 
+def _why_faults(name: str, ask: Ask) -> list[str]:
+    """What the why breaks: the paragraphs an entry shows, then the folded blocks, which may
+    also be a list, a table or code."""
+    where = f"`{name}`: why"
+    found = []
+    if len(ask.why) > WHY_SHOWN:
+        found.append(f"`{name}`: `why` has {len(ask.why)} paragraphs, and an entry shows at "
+                     f"most {WHY_SHOWN}: the rest goes in `why_more`")
+    for i, text in enumerate((*ask.why, *ask.why_more), 1):
+        block = text.strip()
+        if not block.startswith(("- ", "|", "```")):
+            found += _within(f"{where}, paragraph {i}", text, WHY_WORDS, WHY_SENTENCES)
+        elif i <= len(ask.why):
+            found.append(f"{where}, block {i} is a list, a table or code, which an entry shows "
+                         "only folded: it goes in `why_more`")
+        elif block.startswith("```"):
+            if block.count("```") != 2 or not block.endswith("```"):
+                found.append(f"{where}, block {i} opens a code block it never closes")
+        elif block.startswith("|"):
+            columns = max(row.replace("\\|", "").strip().strip("|").count("|") + 1
+                          for row in block.splitlines())
+            if columns > MODE_COLUMNS:
+                found.append(f"{where}, block {i} is a table of {columns} columns, and a table "
+                             f"takes at most {MODE_COLUMNS}")
+        else:
+            for k, item in enumerate(re.split(r"\n(?=- )", block), 1):
+                found += _within(f"{where}, item {k} of block {i}", item[2:], LINE_WORDS,
+                                 LINE_SENTENCES)
+    return found
+
+
 def _tool_faults(name: str, ask: Ask, tools: Mapping[str, Tool], model: type,
                  own: Sequence[str]) -> list[str]:
     found = _within(f"`{name}`: `what`", ask.what, WHAT_WORDS)
@@ -260,11 +291,7 @@ def _tool_faults(name: str, ask: Ask, tools: Mapping[str, Tool], model: type,
         found += _within(f"`{name}`: the field `{field}`", text, LINE_WORDS, LINE_SENTENCES)
     for i, text in enumerate(ask.refuses, 1):
         found += _within(f"`{name}`: refusal {i}", text, LINE_WORDS, LINE_SENTENCES)
-    if len(ask.why) > WHY_SHOWN:
-        found.append(f"`{name}`: `why` has {len(ask.why)} paragraphs, and an entry shows at "
-                     f"most {WHY_SHOWN}: the rest goes in `why_more`")
-    for i, text in enumerate((*ask.why, *ask.why_more), 1):
-        found += _within(f"`{name}`: why, paragraph {i}", text, WHY_WORDS, WHY_SENTENCES)
+    found += _why_faults(name, ask)
     if ask.modes is not None:
         found += _modes_faults(name, ask.modes, properties)
     related = list(ask.related)

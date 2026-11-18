@@ -115,6 +115,37 @@ def test_each_way_the_asks_fall_short_is_a_finding_and_no_page_is_written(
     assert not (tmp_path / "REFERENCE.md").exists(), "a page was written with a finding open"
 
 
+@pytest.mark.parametrize(("more", "finding"), [
+    (["- One thing.\n- Another, at `0x10. 2`."], ""),
+    (["| value | means |\n|---|---|\n| `byte` | one |"], ""),
+    (["```yaml\nformats:\n  - name: tiles\n```"], ""),
+    (["- One. Two. Three."],
+     "`peek`: why, item 1 of block 2 is 3 words in 3 sentences, and it takes at most 30 in 2"),
+    (["| a | b | c | d |\n|---|---|---|---|\n| 1 | 2 | 3 | 4 |"],
+     "`peek`: why, block 2 is a table of 4 columns, and a table takes at most 3"),
+    (["```yaml\nformats:"], "`peek`: why, block 2 opens a code block it never closes"),
+])
+def test_the_folded_why_takes_a_list_a_table_or_code_each_within_its_limit(
+        tmp_path: Path, more: list[str], finding: str) -> None:
+    reg = _registry(tmp_path)
+    held = _held()
+    held["tools"]["peek"]["why_more"] = more
+    _asks(tmp_path, held)
+    said = [f for f in reference.drift(reg) if "why" in f]
+    assert said == ([finding] if finding else []), said
+
+
+@pytest.mark.parametrize("block", ["- One thing.", "| a | b |\n|---|---|\n| 1 | 2 |",
+                                   "```\ncode\n```"])
+def test_the_why_an_entry_shows_is_paragraphs_only(tmp_path: Path, block: str) -> None:
+    reg = _registry(tmp_path)
+    held = _held()
+    held["tools"]["peek"]["why"] = [block]
+    _asks(tmp_path, held)
+    assert ("`peek`: why, block 1 is a list, a table or code, which an entry shows only "
+            "folded: it goes in `why_more`") in reference.drift(reg), reference.drift(reg)
+
+
 def test_the_fixture_s_own_asks_have_no_finding(tmp_path: Path) -> None:
     reg = _registry(tmp_path)
     _asks(tmp_path)
