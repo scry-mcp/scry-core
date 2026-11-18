@@ -83,7 +83,8 @@ a run against the real emulator:". A finding about such a sentence is fixed in t
   `demos/lineup/loop.webp`, each with its still (`.png`, a copy of that demo's `screen.png`) for
   a reader who asks for no motion. Their `width` attributes are chosen so both stand at one
   height.
-- They are copied by hand (`cp`) when those clips change; nothing checks them.
+- They are refreshed at each release of scry-core from the servers' lead demos, copied by
+  hand (`cp`); nothing checks them.
 
 ## Vocabulary: words a programmer who never saw SCRY knows
 
