@@ -628,6 +628,13 @@ def test_a_transcript_whose_call_is_not_json_is_invalid() -> None:
         transcript.records(broken, "t.md")
 
 
+def test_a_transcript_whose_call_is_no_object_is_invalid() -> None:
+    listed = _transcript(("peek", {"addr": "0x10"}, {"status": "ok"}, "OK")).replace(
+        '{\n  "addr": "0x10"\n}', '["0x10"]', 1)
+    with pytest.raises(Invalid, match="call 1 carries no call object"):
+        transcript.records(listed, "t.md")
+
+
 def test_a_transcript_s_values_are_kept_as_it_spells_them(tmp_path: Path) -> None:
     norm = Normaliser(tmp_path, Path.home(), {})
     text = _transcript(("peek", {"addr": "0x10"}, {

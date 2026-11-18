@@ -67,6 +67,8 @@ LONG = " ".join(["word"] * 31) + "."
      "`peek`: `call` is one the tool refuses (width: Extra inputs are not permitted)"),
     (_peek("call", {"addr": "0x10", "width": "<host>"}),
      "`peek`: `call` is one the tool refuses (width: Extra inputs are not permitted)"),
+    (_peek("call", {"addr": "<host>", "width": 4}),
+     "`peek`: `call` is one the tool refuses (width: Extra inputs are not permitted)"),
     (_peek("shows", []), "`peek`: `shows` names no field of the reply to show"),
     (_peek("then", {"lead": "Then:", "tool": "gone", "call": {}, "shows": ["status"]}),
      "`peek`: `then.tool` is `gone`, which is no tool"),
