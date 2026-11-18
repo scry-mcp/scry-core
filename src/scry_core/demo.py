@@ -28,7 +28,8 @@ normalised run is committed beside the README as `FULL_NAME`. `--update-readme` 
 
 A demo with a `Lead` opens its repository's README: its loop, large and centred and linked to
 its page, a caption, and one step of the run as an exchange (what was asked, the call, the
-answer), between the README's `lead_begin` and `lead_end` markers.
+answer, and with `Lead.learns` what the step's check read in it), between the README's
+`lead_begin` and `lead_end` markers.
 
 A demo's `Moment`s are what its `loop.webp` shows, cut from the run's own recordings by
 `motion`: the file a `record` step wrote, or the video of a session that records itself
@@ -226,13 +227,19 @@ class Moment:
 class Lead:
     """How a demo opens the README `front`: its loop linked to its own page, `caption` under
     it, then step `step` as an exchange: `ask`, the call, and the `answer` fields of its reply
-    on one line."""
+    on one line; with `learns`, the step's check reads the reply in plain words under it."""
 
     front: Path
     step: str
     ask: str
     caption: str
     answer: tuple[str, ...] = ("summary",)
+    learns: bool = False
+
+
+#: Characters of a long string a lead's call keeps at each end: a phone wraps the call only
+#: between its arguments, so a value is as wide as the table's cell can hold.
+LEAD_STRING_ENDS = 4
 
 
 @dataclass(frozen=True)
@@ -420,8 +427,8 @@ class Transcripts:
     normalised: list[str] = field(default_factory=list)
     flow: list[str] = field(default_factory=list)
     examples: list[str] = field(default_factory=list)
-    #: The lead step's call and its answer, as a README spells them.
-    exchange: tuple[str, str] | None = None
+    #: The lead step's call, its answer and what its check read in it, as a README spells them.
+    exchange: tuple[str, str, str] | None = None
 
     def answered(self, step: Step, reply: Reply) -> str:
         """The lead's answer off `reply` as a README spells it, which is the text the step is
@@ -440,8 +447,10 @@ class Transcripts:
         tried = ok and bool(step.ask)
         spell = self.flow_norm or self.norm
         if ok and reply is not None and self.lead is not None and step.name == self.lead.step:
-            self.exchange = (example.call_text(tool, spell.arguments(dict(args)), lines=1),
-                             self.answered(step, reply))
+            learned = spell.text(line).removeprefix(f"OK {step.name}: ")
+            self.exchange = (example.call_text(tool, spell.arguments(dict(args)), lines=1,
+                                               ends=LEAD_STRING_ENDS),
+                             self.answered(step, reply), learned if self.lead.learns else "")
         self.whole.append(_entry(n, tool, args, reply, line))
         normal = None if reply is None else Reply(
             self.norm.reply(reply.data, step.volatile, optional), reply.attachments)
@@ -853,13 +862,15 @@ def motion_block(demo: Demo, cut_ms: Sequence[int]) -> str:
                       f"<!-- moments-ms: {','.join(str(ms) for ms in cut_ms)} -->"])
 
 
-def lead_block(demo: Demo, lead: Lead, readme: Path, call: str, answer: str) -> str:
+def lead_block(demo: Demo, lead: Lead, readme: Path, call: str, answer: str,
+               learned: str) -> str:
     """What opens the README `lead.front`: the demo's loop, centred and linked to its page,
-    its caption, and the exchange as a table of three rows."""
+    its caption, and the exchange as a table of three rows, a fourth with what was `learned`."""
     folder = readme.resolve().parent.relative_to(lead.front.resolve().parent).as_posix() + "/"
     rows = (("You ask", _inline(lead.ask)),
             ("Your client calls", f"<code>{html.escape(call, quote=False)}</code>"),
-            ("SCRY answers", f"<code>{html.escape(answer, quote=False)}</code>"))
+            ("SCRY answers", f"<code>{html.escape(answer, quote=False)}</code>"),
+            *([("Your client learns", _inline(learned))] if learned else []))
     return "\n".join([
         f'<p align="center"><a href="{folder}">{_moving(demo.alt, folder)}</a></p>',
         f'<p align="center"><em>{_inline(lead.caption)}</em></p>', "",

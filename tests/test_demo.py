@@ -985,6 +985,12 @@ def test_update_readme_opens_the_front_door_with_the_loop_and_one_exchange_of_th
         "</code></td></tr>",
         "</table>"], block
     assert d.stale(demo, tmp_path / "out") == []
+    learning = _lead_demo(tmp_path, learns=True)
+    assert _run(learning, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    rows = d.block_of(demo.lead.front.read_text(), d.lead_begin("x"), d.lead_end("x"))
+    assert rows.splitlines()[-2:] == [
+        '<tr><th align="left">Your client learns</th><td>value 7</td></tr>', "</table>"], \
+        "the check's own reading of the reply is not the last row"
     demo.lead.front.write_text(text.replace('"value": 7,', '"value": 8,'))
     found = d.stale(demo, tmp_path / "out")
     assert len(found) == 1 and found[0].startswith("the README's x lead: line 7: "), found
@@ -1091,8 +1097,10 @@ def test_the_exchange_s_call_is_one_line_with_its_long_values_cut(
                     title="Start it", reads="The reply says where it stands."), *demo.steps[1:]]
     demo = d.Demo(**{**demo.__dict__, "steps": steps})
     assert _run(demo, tmp_path) == verdict.EXIT_PASS
-    cut = f'start(value=7, binary="{"b" * 16}…{"b" * 16}", shared=true, display=1)'
+    ends = d.LEAD_STRING_ENDS
+    cut = f'start(value=7, binary="{"b" * ends}…{"b" * ends}", shared=true, display=1)'
     assert f"<td><code>{cut}</code></td>" in (tmp_path / "out" / "transcript-lead.md").read_text()
+    assert ends < example.CALL_STRING_ENDS, "a phone wraps a call only between its arguments"
 
 
 def test_a_lead_outside_the_folder_its_readme_opens_is_refused_before_a_call(
