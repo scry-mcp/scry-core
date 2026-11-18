@@ -212,18 +212,36 @@ def answer(reply: Mapping[str, Any], fields: Sequence[str]) -> str:
     return line
 
 
+def asked(ask: str) -> list[str]:
+    """What a person types, as every example opens."""
+    return ["Ask:", "", "> " + ask]
+
+
+def answered(tool: str, args: Mapping[str, Any], reply: Mapping[str, Any],
+             fields: Sequence[str]) -> list[str]:
+    """A call and the excerpt of its reply, as every example shows the pair."""
+    return ["Call:", "", "```text", call_text(tool, args), "```", "",
+            f"Reply, {len(fields)} of {len(reply)} fields:", "",
+            "```json", excerpt(reply, fields), "```"]
+
+
+def folded(summary: str, *parts: str) -> list[str]:
+    """`parts` behind a closed fold a reader opens by its `summary`."""
+    lines = [f"<details><summary>{summary}</summary>"]
+    for part in parts:
+        lines += ["", part]
+    return [*lines, "", "</details>"]
+
+
 def render(example: Example, number: int = 0, whole: bool = True, level: int = 0) -> str:
     """The example in its one shape; `whole` adds the reply entire, folded. Its title is a
     heading of `level`, so a page's outline lists its examples, or bold when `level` is 0."""
     titled = f"{number}. {example.title}" if number else example.title
     head = f"{'#' * level} {titled}" if level else f"**{titled}**"
     parts = [head, ""] if example.title else []
-    parts += ["Ask:", "", "> " + example.ask, "",
-              "Call:", "", "```text", call_text(example.tool, example.args), "```", "",
-              f"Reply, {len(example.fields)} of {len(example.reply)} fields:", "",
-              "```json", excerpt(example.reply, example.fields), "```", "",
+    parts += [*asked(example.ask), "",
+              *answered(example.tool, example.args, example.reply, example.fields), "",
               example.reads]
     if whole:
-        parts += ["", "<details><summary>The whole reply</summary>", "",
-                  fenced(dict(example.reply)), "", "</details>"]
+        parts += ["", *folded("The whole reply", fenced(dict(example.reply)))]
     return "\n".join(parts)

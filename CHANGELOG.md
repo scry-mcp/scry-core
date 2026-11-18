@@ -27,6 +27,18 @@ What a server author notices. A client's view of each server is in that server's
   the actions a platform fires as a key left down and let go after the recording.
 - The shared LineUp script fires three more shots after its sound is compared and films each
   (`games.lineup.shots`, `games.lineup.filmed`). `games.lineup.PLAYING` is gone.
+- A tool's reference entry has a new order: what it does, its signature, an example to try, its
+  modes, its arguments, what comes back, what it refuses, why, and the tools beside it. Each
+  part has its own heading, and the tool's own description closes the entry, folded.
+- Every sentence of an entry comes from the server's `docs/reference/asks.json` (`asks`). A tool
+  with no entry there, or a sentence past its limit, is a finding of `reference`. `--write`
+  writes no page until there is none, and answers 1.
+- `reference --examples` takes a demo's normalised transcript (`.md`) as well as a live run's
+  records. A call a demo makes as a step of a `perform` counts as that tool's call
+  (`transcript`).
+- A tool's example is the call its entry names (`call`), and may show a second call the same run
+  made later (`then`). An excerpt that would show a value the run hides is refused.
+- The index in `REFERENCE.md` says in one line what each family holds.
 
 ## 0.119.0
 

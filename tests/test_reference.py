@@ -1,5 +1,5 @@
-"""`scry_core.reference`: a server's reference generated from its registry, held to it by `drift`,
-and its examples picked from a live run's transcript."""
+"""`scry_core.reference`: a server's reference generated from its registry and its `asks.json`,
+held to both by `drift`, and its examples picked from a run's transcript."""
 
 from __future__ import annotations
 
@@ -15,13 +15,14 @@ import pytest
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
-from scry_core import demo, example, reference, reply_schema, roster
+from scry_core import asks, demo, entry, example, reference, reply_schema, roster, transcript
 from scry_core.demo import Normaliser
 from scry_core.reference import begin_marker, end_marker
 from scry_core.strict_arguments import registered, strict_arguments
 from scry_core.verdict import Invalid
 
 EXAMPLES = reference.EXAMPLES_PATH
+ASKS = asks.ASKS_PATH
 
 
 class FixtureEnvelope(reply_schema.ReplyEnvelope, total=False):
@@ -77,10 +78,68 @@ def _examples(root: Path, tools: tuple[str, ...] = ("peek", "poke"),
                                     "call": call or calls.get(t, {"addr": "0x10"}),
                                     "reply": {"status": "ok"}} for t in tools}),
                     encoding="utf-8")
+    assert calls == _CALLS
+
+
+_CALLS: dict[str, dict[str, Any]] = {"peek": {"addr": "0x10"},
+                                     "poke": {"addr": "0x10", "value": 1}}
+
+
+def _held() -> dict[str, Any]:
+    """An `asks.json` the fixture registry takes whole."""
+    return {
+        "families": {"Read": "The tools that read memory.",
+                     "Write memory": "The tool that writes it."},
+        "tools": {
+            "peek": {
+                "what": "Read a few bytes of memory, as bytes or as words.",
+                "ask": "What is at 0x10?", "on": "On the fixture machine, stopped.",
+                "call": _CALLS["peek"], "shows": ["status"],
+                "reads": "`status` says the read was taken.",
+                "modes": {"argument": "mode", "head": ["mode", "what it reads"],
+                          "rows": [["`byte`", "One byte a cell."], ["`word`", "Two."]]},
+                "arguments": {"addr": "Where to read.", "length": "How many cells.",
+                              "mode": "The width of a cell."},
+                "returns": {"value": "What the first cell holds."},
+                "refuses": ["An address outside memory."],
+                "why": ["A read never changes the machine."], "why_more": ["It is the fastest."],
+                "related": ["poke"]},
+            "poke": {
+                "what": "Write one value into memory.",
+                "ask": "Put 1 at 0x10.", "on": "On the fixture machine, stopped.",
+                "call": _CALLS["poke"], "shows": ["status"],
+                "reads": "`status` says the write was taken.",
+                "arguments": {"addr": "Where to write.", "value": "What to write."},
+                "returns": {"written": "Whether the byte read back."},
+                "refuses": [], "why": [], "why_more": [], "related": ["peek"]}}}
+
+
+def _asks(root: Path, held: dict[str, Any] | None = None) -> None:
+    path = root / ASKS
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(held or _held()), encoding="utf-8")
+
+
+def _ask(tool: Any, **given: Any) -> asks.Ask:
+    """The least an entry needs for `tool`: a sentence per argument, nothing else of its own."""
+    props = tool.parameters.get("properties", {})
+    return asks.Ask(what="Does it.", ask="Do it.", on="Anywhere.", call={}, shows=("status",),
+                    reads="It was done.", arguments={n: f"The {n}." for n in props},
+                    returns=given.get("returns", {}), refuses=(), why=(), why_more=(), related=())
+
+
+def _block_of(tool: Any, model: type, example_: dict[str, Any] | None = None,
+              **given: Any) -> str:
+    return entry.tool_block(tool, model, FixtureEnvelope, _ask(tool, **given), example_,
+                            lambda name: f"#{name}")
 
 
 def _written(reg: reference.Registry) -> reference.Registry:
     _examples(reg.root)
+    held = _held()
+    held["families"] = {family: held["families"].get(family, "What it holds.")
+                        for family, _ in reg.roster.families}
+    _asks(reg.root, held)
     reference.write(reg)
     return reg
 
@@ -101,12 +160,36 @@ def test_a_tool_block_names_every_argument_its_type_its_default_and_whether_it_i
         tmp_path: Path) -> None:
     reg = _written(_registry(tmp_path))
     text = _read(tmp_path)
-    assert "## `peek`" in text and "*Peek at memory*" in text, text
+    assert "## `peek`\n\nRead a few bytes of memory, as bytes or as words.\n" in text, text
     assert 'peek(addr, length=1, mode="byte")' in text, text
-    assert "| `addr` | string | required |" in text, text
-    assert "| `length` | integer | `1` |" in text, text
-    assert '| `mode` | one of `"byte"`, `"word"` | `"byte"` |' in text, text
+    assert "- `addr` (string, required): Where to read." in text, text
+    assert "- `length` (integer, default `1`): How many cells." in text, text
+    assert '- `mode` (one of `"byte"`, `"word"`, default `"byte"`): The width of a cell.' \
+        in text, text
     assert reference.drift(reg) == []
+
+
+def test_an_entry_has_its_parts_in_the_one_order_each_under_its_heading(tmp_path: Path) -> None:
+    _written(_registry(tmp_path))
+    text = _block(_read(tmp_path), "peek")
+    order = ["## `peek`", "```text\npeek(", "### Try it", "On the fixture machine, stopped.",
+             "Ask:\n\n> What is at 0x10?", 'Call:\n\n```text\npeek(addr="0x10")',
+             "Reply, 1 of 1 fields:", "`status` says the read was taken.",
+             "<details><summary>The whole reply</summary>", "### The two modes",
+             "| mode | what it reads |", "| `word` | Two. |", "### Arguments",
+             "### What comes back", "- `value`: What the first cell holds.",
+             "<details><summary>All 3 reply fields</summary>", "| reply field | type |",
+             "### What it refuses", "- An address outside memory.",
+             "### Why it works this way", "A read never changes the machine.",
+             "<details><summary>More on why</summary>", "It is the fastest.",
+             "### Related tools", "- [`poke`](write-memory.md#poke)",
+             "<details><summary>The contract your client receives</summary>",
+             "Read `length` bytes at `addr`"]
+    at = [text.index(part) for part in order]
+    assert at == sorted(at), [part for part, a, b in zip(order, at, at[1:], strict=False) if a > b]
+    poke = _block(_read(tmp_path, "write-memory"), "poke")
+    assert "### What it refuses" not in poke and "### Why" not in poke, "nothing to say there"
+    assert "- [`peek`](read.md#peek)" in poke, poke
 
 
 def test_the_reply_fields_are_the_model_s_own_beyond_the_server_s_envelope(
@@ -126,6 +209,7 @@ def test_the_index_and_the_envelope_go_to_reference_md_in_the_roster_s_order(
     read, write = text.index("[Read](docs/reference/read.md)"), text.index(
         "[Write memory](docs/reference/write-memory.md)")
     assert read < write and "[`peek`](docs/reference/read.md#peek)" in text, text
+    assert "- [Read](docs/reference/read.md): The tools that read memory. [`peek`]" in text, text
     assert "| `status` |" in text and "| `last_stop` | object |" in text, text
 
 
@@ -156,22 +240,59 @@ def test_an_argument_s_bounds_its_alternatives_its_items_and_a_constant_are_name
 
     strict_arguments(server)
     tools = {t.name: t for t in registered(server)}
-    block = reference.tool_block(tools["take"], PokeReply, FixtureEnvelope, None)
-    assert "| `count` | integer (>= 1, <= 128) | `1` |" in block, block
-    assert "| `seconds` | number (> 0) | `1.0` |" in block, block
-    assert "| `names` | array of string or null | `null` |" in block, block
-    assert "| `tag` | string (matching `^[a-z]+$`) | `\"a\"` |" in block, block
-    assert '| `unit` | `"s"` | `"s"` |' in block, block
-    assert "No example yet" in block, block
-    bare = reference.tool_block(tools["tick"], FixtureEnvelope, FixtureEnvelope, None)
-    assert "Takes no argument." in bare and "the envelope's fields only" in bare, bare
+    block = _block_of(tools["take"], PokeReply)
+    assert "- `count` (integer (>= 1, <= 128), default `1`): The count." in block, block
+    assert "- `seconds` (number (> 0), default `1.0`): The seconds." in block, block
+    assert "- `names` (array of string, optional): The names." in block, block
+    assert "- `tag` (string (matching `^[a-z]+$`), default `\"a\"`): The tag." in block, block
+    assert '- `unit` (`"s"`, default `"s"`): The unit.' in block, block
+    assert "No reply to show yet" in block, block
+    bare = _block_of(tools["tick"], FixtureEnvelope)
+    assert "Takes no argument." in bare and entry.NO_OWN_FIELDS in bare, bare
 
 
-def test_the_example_is_the_transcript_s_call_and_reply_with_its_source(tmp_path: Path) -> None:
+def test_the_example_is_the_run_s_call_and_an_excerpt_of_its_reply(tmp_path: Path) -> None:
     _written(_registry(tmp_path))
     text = _read(tmp_path)
-    assert "Example, from a live run:" in text, text
-    assert '"addr": "0x10"' in text and '"status": "ok"' in text, text
+    assert 'Call:\n\n```text\npeek(addr="0x10")\n```' in text, text
+    assert 'Reply, 1 of 1 fields:\n\n```json\n{\n  "status": "ok"\n}\n```' in text, text
+
+
+def test_a_second_call_is_shown_after_the_first_and_both_replies_are_folded() -> None:
+    tools = {t.name: t for t in registered(_server())}
+    ask = asks.Ask(
+        what="Does it.", ask="Do it.", on="Anywhere.", call=_CALLS["peek"], shows=("value",),
+        reads="It was done.", arguments={"addr": "a", "length": "b", "mode": "c"}, returns={},
+        refuses=(), why=(), why_more=(), related=(),
+        then=asks.Then("Then write it back:", "poke", _CALLS["poke"], ("written",)))
+    block = entry.tool_block(tools["peek"], PeekReply, FixtureEnvelope, ask, {
+        "call": _CALLS["peek"], "reply": {"status": "ok", "value": 7},
+        "then": {"tool": "poke", "call": _CALLS["poke"],
+                 "reply": {"status": "ok", "written": True}}}, lambda name: f"#{name}")
+    first, lead, second, reads = (block.index(part) for part in (
+        'peek(addr="0x10")', "Then write it back:", 'poke(addr="0x10", value=1)', "It was done."))
+    assert first < lead < second < reads, block
+    assert '"written": true' in block[second:reads], block
+    folded = block[reads:]
+    assert folded.index("<details><summary>The two replies, whole</summary>") \
+        < folded.index("The first call's:") < folded.index('"value": 7') \
+        < folded.index("The second call's:") < folded.index('"written": true'), block
+
+
+@pytest.mark.parametrize("mark", [demo.VOLATILE_MARK, demo.HOST_MARK])
+def test_an_excerpt_never_shows_a_value_its_run_hides(tmp_path: Path, mark: str) -> None:
+    reg = _registry(tmp_path)
+    _asks(tmp_path)
+    path = tmp_path / EXAMPLES
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"peek": {"from": "x", "call": _CALLS["peek"],
+                                         "reply": {"status": mark}}}), encoding="utf-8")
+    found = reference.drift(reg)
+    assert any(f.startswith("`peek`'s entry: the excerpt of ['status'] shows " + mark)
+               for f in found), found
+    with pytest.raises(reference.Unready):
+        reference.write(reg)
+    assert not (tmp_path / "docs/reference/read.md").exists(), "a page was written all the same"
 
 
 # ===================================================================== the comparison
@@ -182,7 +303,8 @@ def test_one_parameter_line_edited_by_hand_is_drift_naming_the_tool_and_its_file
     reg = _written(_registry(tmp_path))
     page = tmp_path / "docs/reference/read.md"
     page.write_text(page.read_text(encoding="utf-8").replace(
-        "| `length` | integer | `1` |", "| `length` | integer | `2` |"), encoding="utf-8")
+        "- `length` (integer, default `1`)", "- `length` (integer, default `2`)"),
+        encoding="utf-8")
     found = reference.drift(reg)
     assert len(found) == 1 and found[0].startswith("`peek` in docs/reference/read.md: line "), found
 
@@ -350,6 +472,82 @@ def _record(tool: str, verdict: str, reply: dict[str, Any], label: str = "c") ->
             "args": {"addr": "0x10"}, "reply": reply}
 
 
+def _wanted() -> dict[str, asks.Ask]:
+    return {name: asks._ask(held) for name, held in _held()["tools"].items()}
+
+
+def test_a_tool_with_an_ask_takes_the_call_its_ask_is_written_for(tmp_path: Path) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    other = {**_record("peek", "OK", {"status": "ok", "value": 1}, "first"),
+             "args": {"addr": "0x20"}}
+    asked_for = _record("peek", "OK", {"status": "ok", "value": 2}, "second")
+    picked = reference.examples_from([other, asked_for], {"peek", "poke"}, norm,
+                                     wanted=_wanted())
+    assert picked["peek"]["from"] == "[A] fixture: second" and "poke" not in picked, picked
+    assert reference.examples_from([other], {"peek"}, norm, wanted=_wanted()) == {}, \
+        "a call its ask is not written for is no example of it"
+
+
+def test_a_second_call_is_one_the_same_run_made_later(tmp_path: Path) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    wanted = _wanted()
+    wanted["peek"] = asks.Ask(**{**wanted["peek"].__dict__, "then": asks.Then(
+        "Then:", "poke", _CALLS["poke"], ("written",))})
+    peek = _record("peek", "OK", {"status": "ok", "value": 2})
+    other = {**_record("poke", "OK", {"status": "ok"}), "args": {"addr": "0x99", "value": 3}}
+    poke = {**_record("poke", "OK", {"status": "ok", "written": True}), "args": _CALLS["poke"]}
+    picked = reference.examples_from([poke, peek, other, poke], {"peek"}, norm, wanted=wanted)
+    assert picked["peek"]["then"] == {"tool": "poke", "call": _CALLS["poke"],
+                                      "reply": {"status": "ok", "written": True}}, picked
+    assert reference.examples_from([poke, peek, other], {"peek"}, norm, wanted=wanted) == {}, \
+        "no later call of the run is the one the ask names"
+    elsewhere = {**poke, "section": "[B] another run"}
+    assert reference.examples_from([peek, elsewhere], {"peek"}, norm, wanted=wanted) == {}, \
+        "another run's call is not this one's second"
+
+
+def _transcript(*entries: tuple[str, dict[str, Any], dict[str, Any], str]) -> str:
+    """A normalised transcript as the demo runner writes one."""
+    return "A run.\n\n" + "\n\n".join(
+        demo._entry(n, tool, args, demo.Reply(reply), line)
+        for n, (tool, args, reply, line) in enumerate(entries, 1)) + "\n"
+
+
+def test_a_demo_s_transcript_reads_back_as_its_calls_and_the_steps_of_a_perform() -> None:
+    steps = [{"op": "peek", "addr": "0x10"}, {"op": "poke", "addr": "0x10", "value": 1}]
+    text = _transcript(
+        ("peek", {"addr": "0x10"}, {"status": "ok", "value": 7}, "OK read"),
+        ("perform", {"steps": steps}, {"status": "ok", "ran": [
+            {"op": "peek", "reply": {"status": "ok", "value": 8}},
+            {"op": "poke", "reply": {"status": "ok", "written": True}}]}, "OK both"),
+        ("poke", {"addr": "0x10", "value": 2}, {"status": "INVALID"}, "FAIL refused"))
+    read = transcript.records(text, "demos/x/TRANSCRIPT.md")
+    assert [(r["tool"], r["label"], r["verdict"]) for r in read] == [
+        ("peek", "call 1", "OK"), ("perform", "call 2", "OK"),
+        ("peek", "call 2, step 1 of its `perform`", "OK"),
+        ("poke", "call 2, step 2 of its `perform`", "OK"), ("poke", "call 3", "FAIL")], read
+    assert read[3]["args"] == {"addr": "0x10", "value": 1}, "a step's call is its own arguments"
+    assert read[3]["reply"] == {"status": "ok", "written": True}
+    assert all(r["section"] == "demos/x/TRANSCRIPT.md" and r["normalised"] for r in read)
+
+
+def test_a_transcript_whose_call_is_not_json_is_invalid() -> None:
+    broken = _transcript(("peek", {"addr": "0x10"}, {"status": "ok"}, "OK")).replace(
+        '"addr"', "addr", 1)
+    with pytest.raises(Invalid, match="call 1 is not the JSON a run writes"):
+        transcript.records(broken, "t.md")
+
+
+def test_a_transcript_s_values_are_kept_as_it_spells_them(tmp_path: Path) -> None:
+    norm = Normaliser(tmp_path, Path.home(), {})
+    text = _transcript(("peek", {"addr": "0x10"}, {
+        "status": "ok", "pid": demo.VOLATILE_MARK, "path": "./out.png",
+        "session": {"alive": True}}, "OK"))
+    shown = reference.examples_from(transcript.records(text, "t.md"), {"peek"}, norm)["peek"]
+    assert shown == {"from": "t.md: call 1", "call": {"addr": "0x10"},
+                     "reply": {"status": "ok", "pid": demo.VOLATILE_MARK, "path": "./out.png"}}
+
+
 def test_the_example_picked_is_the_first_ok_reply_of_an_ok_cell_else_the_first_refusal(
         tmp_path: Path) -> None:
     norm = Normaliser(tmp_path, Path.home(), {})
@@ -492,6 +690,10 @@ def test_the_command_writes_then_finds_no_drift_then_names_one(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _examples(tmp_path)
+    assert _main(tmp_path, monkeypatch, "--write") == 1, "no ask yet, so no page"
+    assert "`peek` has no entry in docs/reference/asks.json" in capsys.readouterr().out
+    assert not (tmp_path / "REFERENCE.md").exists(), "a page was written with entries missing"
+    _asks(tmp_path)
     assert _main(tmp_path, monkeypatch, "--write") == 0
     assert _main(tmp_path, monkeypatch) == 0
     page = tmp_path / "docs/reference/read.md"
@@ -504,11 +706,27 @@ def test_the_command_writes_then_finds_no_drift_then_names_one(
 def test_the_command_builds_the_examples_from_a_transcript(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     jsonl = tmp_path / "transcript.jsonl"
-    jsonl.write_text("\n".join(json.dumps(_record(t, "OK", {"status": "ok"}))
+    jsonl.write_text("\n".join(json.dumps({**_record(t, "OK", {"status": "ok"}),
+                                           "args": _CALLS[t]})
                                for t in ("peek", "poke")) + "\n", encoding="utf-8")
+    _asks(tmp_path)
     assert _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--write") == 0
     held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
     assert set(held) == {"peek", "poke"}
+
+
+def test_the_command_takes_a_demo_s_transcript_named_by_its_path_in_the_repository(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    page = tmp_path / "demos/x/TRANSCRIPT.md"
+    page.parent.mkdir(parents=True)
+    page.write_text(_transcript(("peek", _CALLS["peek"], {"status": "ok", "value": 7}, "OK"),
+                                ("poke", _CALLS["poke"], {"status": "ok"}, "OK")),
+                    encoding="utf-8")
+    _asks(tmp_path)
+    assert _main(tmp_path, monkeypatch, "--examples", str(page), "--write") == 0
+    held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
+    assert held["peek"]["from"] == "demos/x/TRANSCRIPT.md: call 1", held
+    assert _main(tmp_path, monkeypatch) == 0
 
 
 def test_the_command_skips_the_cells_a_pattern_names_and_needs_the_transcript_to_do_so(
@@ -519,6 +737,7 @@ def test_the_command_skips_the_cells_a_pattern_names_and_needs_the_transcript_to
     with pytest.raises(SystemExit) as usage:
         _main(tmp_path, monkeypatch, "--skip", "private")
     assert usage.value.code == 2
+    _asks(tmp_path)
     assert _main(tmp_path, monkeypatch, "--examples", str(jsonl), "--skip", "private",
                  "--write") == 0
     held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
@@ -583,12 +802,19 @@ REGISTRY = reference.Registry(server=server, models={"ping": reply_schema.ReplyE
                               roster=roster.Roster(families=(("Net", ("ping",)),), answering=()),
                               envelope=reply_schema.ReplyEnvelope, root=Path(__file__).parent)
 '''
+_COMMAND_ASKS = {"families": {"Net": "The tool that asks whether anybody is there."},
+                 "tools": {"ping": {
+                     "what": "Ask whether the other end answers.", "ask": "Is it there?",
+                     "on": "Anywhere.", "call": {}, "shows": ["status"],
+                     "reads": "`status` says it answered.", "arguments": {}, "returns": {},
+                     "refuses": [], "why": [], "why_more": [], "related": []}}}
 
 
 def test_the_command_run_as_a_module_takes_the_registry_a_server_built(tmp_path: Path) -> None:
     """`python -m` runs this module as `__main__`, a second copy whose `Registry` is not the one a
     server imports: the command must judge the spec with the copy the server used."""
     (tmp_path / "cli_registry.py").write_text(_COMMAND_FIXTURE, encoding="utf-8")
+    _asks(tmp_path, _COMMAND_ASKS)
     done = subprocess.run([sys.executable, "-m", "scry_core.reference", "cli_registry:REGISTRY",
                            "--write"], cwd=tmp_path, capture_output=True, text=True,
                           check=False, timeout=60)
@@ -654,7 +880,7 @@ def test_a_description_s_indented_line_is_text_and_never_a_code_block(tmp_path: 
         return {"status": "ok"}
 
     strict_arguments(server)
-    block = reference.tool_block(registered(server)[0], PokeReply, FixtureEnvelope, None)
+    block = _block_of(registered(server)[0], PokeReply)
     assert "\nReads files only: it needs no machine." in block, block
 
 
@@ -663,7 +889,7 @@ def test_a_tool_s_heading_is_one_level_under_its_page_s_and_its_caption_is_plain
     _written(_registry(tmp_path))
     text = _read(tmp_path)
     assert "\n## `peek`\n" in text and "### `peek`" not in text, text
-    assert "Example, from a live run:" in text and "[A] fixture" not in text, text
+    assert "\n### Try it\n" in text and "[A] fixture" not in text, text
 
 
 def test_a_union_names_each_type_once_and_a_double_backtick_span_is_left_alone(
@@ -676,8 +902,8 @@ def test_a_union_names_each_type_once_and_a_double_backtick_span_is_left_alone(
         return {"status": "ok"}
 
     strict_arguments(server)
-    block = reference.tool_block(registered(server)[0], PokeReply, FixtureEnvelope, None)
-    assert "| `bases` | object or null | `null` |" in block, block
+    block = _block_of(registered(server)[0], PokeReply)
+    assert "- `bases` (object, optional): The bases." in block, block
     assert "``registerpoint '<ref>'``" in block, block
 
 
@@ -707,7 +933,7 @@ def test_a_fence_and_a_nested_list_keep_their_shape_and_spans_stay_spans() -> No
         return {"status": "ok"}
 
     strict_arguments(server)
-    block = reference.tool_block(registered(server)[0], PokeReply, FixtureEnvelope, None)
+    block = _block_of(registered(server)[0], PokeReply)
     assert "```\nx  <y>\n    indented\n```" in block, block
     assert "A &lt;ref> and `y<z` and ``a`b <c>``." in block, block
     assert 'A span `{"by":\n"<who>"}` wraps a line.' in block, block
@@ -720,7 +946,7 @@ def test_a_fence_and_a_nested_list_keep_their_shape_and_spans_stay_spans() -> No
 ])
 def test_a_stray_backtick_never_spans_a_paragraph_and_flush_left_starts_only_a_line(
         text: str, shown: str) -> None:
-    assert reference._markdown_text(text) == shown
+    assert entry.markdown_text(text) == shown
 
 
 def test_a_page_titled_the_old_way_is_drift_and_a_rewrite_retitles_it(tmp_path: Path) -> None:
@@ -776,6 +1002,35 @@ def test_an_example_the_code_no_longer_answers_is_drift(
     (tmp_path / EXAMPLES).write_text(json.dumps(held), encoding="utf-8")
     assert any(f.startswith(f"{EXAMPLES}: {named}") for f in reference.drift(reg)), \
         reference.drift(reg)
+
+
+@pytest.mark.parametrize(("example", "then", "named"), [
+    ({"call": {"addr": "0x20"}, "reply": {"status": "ok"}}, None,
+     "`peek`'s example call is not the call its ask is written for"),
+    ({"call": _CALLS["peek"], "reply": {"status": "ok"},
+      "then": {"tool": "poke", "call": _CALLS["poke"], "reply": {"status": "ok"}}}, None,
+     "`peek`'s example has a second call, and its ask has none"),
+    ({"call": _CALLS["peek"], "reply": {"status": "ok"}},
+     {"lead": "Then:", "tool": "poke", "call": _CALLS["poke"], "shows": ["status"]},
+     "`peek`'s example has no second call, and its ask has one"),
+    ({"call": _CALLS["peek"], "reply": {"status": "ok"},
+      "then": {"tool": "poke", "call": {"addr": "0x20", "value": 1}, "reply": {"status": "ok"}}},
+     {"lead": "Then:", "tool": "poke", "call": _CALLS["poke"], "shows": ["status"]},
+     "`peek`'s second call is not the `poke` call its ask is written for"),
+])
+def test_an_example_that_is_not_the_one_its_ask_is_written_for_is_drift(
+        tmp_path: Path, example: dict[str, Any], then: dict[str, Any] | None,
+        named: str) -> None:
+    reg = _written(_registry(tmp_path))
+    assert reference.drift(reg) == []
+    held = json.loads((tmp_path / EXAMPLES).read_text(encoding="utf-8"))
+    held["peek"] = {"from": "[A] fixture: a cell", **example}
+    (tmp_path / EXAMPLES).write_text(json.dumps(held), encoding="utf-8")
+    said = _held()
+    if then is not None:
+        said["tools"]["peek"]["then"] = then
+    _asks(tmp_path, said)
+    assert f"{EXAMPLES}: {named}" in reference.drift(reg), reference.drift(reg)
 
 
 def test_an_example_call_is_kept_whole_as_a_reader_would_type_it(tmp_path: Path) -> None:

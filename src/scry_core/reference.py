@@ -1,23 +1,26 @@
-"""A server's reference generated from its registry: per tool its call, arguments, reply fields,
-description and a live example, on its family's page (`docs/reference/<family>.md`), and in
-`REFERENCE.md` the index and the envelope every reply carries.
+"""A server's reference generated from its registry and its hand-written `asks.json`: per tool
+one entry in the order `scry_core.entry` gives it, on its family's page
+(`docs/reference/<family>.md`), and in `REFERENCE.md` the index and the fields every reply
+carries.
 
 Generated because a hand-written argument list falls behind the code unseen; each server's drift
 test holds the pages to the registry. The prose outside the markers is hand-written and a rewrite
-keeps it, each paragraph travelling with the block it follows. Examples come from a live run's
-transcript (`examples_from`, held in `docs/reference/examples.json`), never typed by hand.
+keeps it, each paragraph travelling with the block it follows. An example is a call a run made
+and the reply it got (`examples_from`, held in `docs/reference/examples.json`), never typed by
+hand: a demo's committed transcript gives it, or a live run's records.
 
     uv run python -m scry_core.reference <module>:<attribute> \
-        [--examples JSONL ... [--mark PATH=TEXT ...] [--skip REGEX]] [--write]
+        [--examples TRANSCRIPT ... [--mark PATH=TEXT ...] [--skip REGEX]] [--write]
 
 Run from the server's repository. `--examples` rewrites `examples.json` from the transcripts
-first (`--mark` spells a host directory as the text it names, `--skip` leaves out the cells a
-pattern matches); `--write` rewrites the pages,
-else they are compared. Exit codes: 0 the pages agree with
-the registry (or were rewritten); 1 drift, one finding a line; 2 a usage error (a spec naming no
-registry included); 3 INVALID, nothing was compared (a registry with no tool or a roster naming
-one it lacks, a transcript or an `examples.json` that cannot be read, a transcript with no OK
-cell of a tool of the server).
+first, a demo's normalised `.md` or a live run's `.jsonl`, taking for each tool the call its
+ask is written for (`--mark` spells a host directory as the text it names, `--skip` leaves out
+the cells a pattern matches); `--write` rewrites the pages, else they are compared. Exit codes:
+0 the pages agree with the registry (or were rewritten); 1 they differ or `asks.json` falls
+short, one finding a line, and nothing was written; 2 a usage error (a spec naming no registry
+included); 3 INVALID, nothing was compared (a registry with no tool or a roster naming one it
+lacks, a transcript, an `examples.json` or an `asks.json` that cannot be read, a transcript with
+no OK call of a tool of the server).
 """
 
 from __future__ import annotations
@@ -27,28 +30,18 @@ import importlib
 import json
 import os
 import re
-import types
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import (
-    Annotated,
-    Any,
-    Literal,
-    NotRequired,
-    Required,
-    Union,
-    get_args,
-    get_origin,
-    get_type_hints,
-    is_typeddict,
-)
+from typing import Any, get_type_hints
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.tools import Tool
 
-from scry_core import demo, file_names, reply_contract
+from scry_core import asks as asked
+from scry_core import demo, entry, file_names, reply_contract, transcript
 from scry_core import example as shape
+from scry_core.asks import Ask, Asks
 from scry_core.reply_schema import model_gap, own_fields
 from scry_core.roster import Roster
 from scry_core.strict_arguments import refused, registered
@@ -94,143 +87,43 @@ def _page(family: str) -> str:
         raise Invalid(str(e)) from None
 
 
-# ======================================================================== rendering
+# ======================================================================== the pages
 
 
-_PLAIN = {str: "string", int: "integer", float: "number", bool: "boolean",
-          type(None): "null", Any: "any"}
+def _tools(reg: Registry) -> dict[str, Tool]:
+    """The registry's tools by name; `Invalid` when it cannot be a reference's source."""
+    tools = {t.name: t for t in registered(reg.server)}
+    if not tools:
+        raise Invalid("the registry holds no tool, so there is nothing to compare")
+    if unlisted := reg.roster.unlisted(tools):
+        raise Invalid("the roster is not the registry: " + "; ".join(unlisted))
+    if gap := model_gap(tools, reg.models):
+        raise Invalid(gap)
+    if len({_page(f) for f, _ in reg.roster.families}) != len(reg.roster.families):
+        raise Invalid("two families share a page: "
+                      + ", ".join(f"{f} -> {_page(f)}" for f, _ in reg.roster.families))
+    return tools
 
 
-def _one_of(values: Iterable[Any]) -> str:
-    return "one of " + ", ".join(f"`{json.dumps(v)}`" for v in values)
-
-
-def _either(phrases: Iterable[str]) -> str:
-    """Alternatives joined, each named once: `dict[str, str] | dict[str, int]` is one object."""
-    return " or ".join(dict.fromkeys(phrases))
-
-
-def _array_of(item: str | None) -> str:
-    return f"array of {item}" if item else "array"
-
-
-def _reply_type(hint: Any) -> str:
-    """A reply field's Python type, as a phrase in JSON's names."""
-    origin, args = get_origin(hint), get_args(hint)
-    if origin in (Required, NotRequired, Annotated):
-        return _reply_type(args[0])
-    if origin is Literal:
-        return _one_of(args)
-    if origin in (Union, types.UnionType):
-        return _either(_reply_type(a) for a in args)
-    if origin in (list, tuple):
-        return _array_of(None if not args or args[0] is Any else _reply_type(args[0]))
-    if origin is dict or hint is dict or is_typeddict(hint):
-        return "object"
-    return _PLAIN.get(hint, getattr(hint, "__name__", str(hint)))
-
-
-def _argument_type(spec: Mapping[str, Any]) -> str:
-    """An argument's JSON schema as a phrase: its type, its words, its bounds."""
-    if "anyOf" in spec:
-        text = _either(_argument_type(s) for s in spec["anyOf"])
-    elif "enum" in spec:
-        text = _one_of(spec["enum"])
-    elif "const" in spec:
-        text = f"`{json.dumps(spec['const'])}`"
-    elif spec.get("type") == "array":
-        text = _array_of(_argument_type(spec["items"]) if spec.get("items") else None)
-    else:
-        text = spec.get("type", "any")
-    bounds = [f"{word} {spec[key]}" for key, word in (
-        ("minimum", ">="), ("exclusiveMinimum", ">"), ("maximum", "<="),
-        ("exclusiveMaximum", "<")) if key in spec]
-    if "pattern" in spec:
-        bounds.append(f"matching `{spec['pattern']}`")
-    return f"{text} ({', '.join(bounds)})" if bounds else text
-
-
-def _in_cell(text: str) -> str:
-    return text.replace("|", "\\|").replace("\n", " ")
-
-
-def _markdown_text(text: str) -> str:
-    """A description as markdown shows it: `<` outside code is text, and indentation is flush."""
-    parts = _CODE.split(text)
-    # A text piece after a span starts mid-line: only its later lines may be flushed.
-    return "".join(p if i % 2 else (_CODE_BLOCK_INDENT if i else _FIRST_INDENT).sub("", p)
-                   .replace("<", "&lt;") for i, p in enumerate(parts))
-
-
-#: What markdown shows as typed: a fenced block, a double-backtick span, a single one; a span may
-#: wrap a line, never a paragraph.
-_CODE = re.compile(r"(```.*?```|``(?:[^\n]|\n(?!\n))+?``|`(?:[^`\n]|\n(?!\n))+`)", re.DOTALL)
-#: Four spaces open a markdown code block; a list nests with fewer, and keeps them.
-_CODE_BLOCK_INDENT = re.compile(r"(?<=\n) {4,}")
-_FIRST_INDENT = re.compile(r"^ {4,}", re.MULTILINE)
-
-
-def _signature(tool: Tool) -> str:
-    props = tool.parameters.get("properties", {})
-    return f"{tool.name}(" + ", ".join(
-        name if "default" not in spec else f"{name}={json.dumps(spec['default'])}"
-        for name, spec in props.items()) + ")"
-
-
-def _argument_table(tool: Tool) -> list[str]:
-    props: dict[str, Any] = tool.parameters.get("properties", {})
-    if not props:
-        return ["Takes no argument."]
-    required = set(tool.parameters.get("required", ()))
-    lines = ["| argument | type | default |", "|---|---|---|"]
-    for name, spec in props.items():
-        default = "required" if name in required else f"`{json.dumps(spec.get('default'))}`"
-        lines.append(f"| `{name}` | {_in_cell(_argument_type(spec))} | {_in_cell(default)} |")
-    notes = [f"- `{n}`: {_markdown_text(' '.join(s['description'].split()))}"
-             for n, s in props.items() if "description" in s]
-    return lines + ([""] + notes if notes else [])
-
-
-def _field_table(hints: Mapping[str, Any], names: Iterable[str], head: str) -> list[str]:
-    return [f"| {head} | type |", "|---|---|",
-            *(f"| `{n}` | {_in_cell(_reply_type(hints[n]))} |" for n in names)]
-
-
-def _reply_fields(model: type, envelope: type) -> list[str]:
-    own = own_fields(model, envelope)
-    if not own:
-        return ["The reply carries the envelope's fields only."]
-    return _field_table(get_type_hints(model, include_extras=True), own, "reply field")
-
-
-def _example(example: Mapping[str, Any] | None) -> list[str]:
-    if example is None:
-        return ["No example yet: a live run's transcript gives it."]
-    return ["Example, from a live run:", "", shape.fenced(example["call"]), "",
-            shape.fenced(example["reply"])]
-
-
-def tool_block(tool: Tool, model: type, envelope: type,
-               example: Mapping[str, Any] | None) -> str:
-    """One tool's generated block."""
-    lines = [f"## `{tool.name}`", ""]
-    if tool.title:
-        lines += [f"*{tool.title}*", ""]
-    lines += ["```text", _signature(tool), "```", "",
-              _markdown_text((tool.description or "").strip()), "",
-              *_argument_table(tool), "",
-              *_reply_fields(model, envelope), "", *_example(example)]
-    return "\n".join(lines)
-
-
-def _index(reg: Registry) -> str:
-    return "\n".join(f"- [{family}]({_page(family)}): " + ", ".join(
+def _index(reg: Registry, families: Mapping[str, str]) -> str:
+    """Each family with the line saying what it holds, then its tools."""
+    def said(family: str) -> str:
+        line = families.get(family, "").strip().rstrip(".")
+        return f"{line}. " if line else ""
+    return "\n".join(f"- [{family}]({_page(family)}): {said(family)}" + ", ".join(
         f"[`{t}`]({_page(family)}#{t})" for t in tools) for family, tools in reg.roster.families)
 
 
 def _envelope(reg: Registry) -> str:
     hints = get_type_hints(reg.envelope, include_extras=True)
-    return "\n".join(_field_table(hints, hints, "field"))
+    return "\n".join(["| field | type |", "|---|---|",
+                      *(f"| `{n}` | {entry.in_cell(entry.reply_type(h))} |"
+                        for n, h in hints.items())])
+
+
+def _call_and_reply(value: Any) -> bool:
+    return (isinstance(value, dict) and isinstance(value.get("call"), dict)
+            and isinstance(value.get("reply"), dict))
 
 
 def _examples(reg: Registry) -> dict[str, Any]:
@@ -243,9 +136,9 @@ def _examples(reg: Registry) -> dict[str, Any]:
         raise Invalid(f"{EXAMPLES_PATH} cannot be read: {e}") from e
     if not isinstance(held, dict):
         raise Invalid(f"{EXAMPLES_PATH} holds a {type(held).__name__}, not an object by tool")
-    if odd := sorted(n for n, e in held.items()
-                     if not (isinstance(e, dict) and isinstance(e.get("call"), dict)
-                             and isinstance(e.get("reply"), dict))):
+    if odd := sorted(n for n, e in held.items() if not _call_and_reply(e) or (
+            "then" in e and not (_call_and_reply(e["then"])
+                                 and isinstance(e["then"].get("tool"), str)))):
         raise Invalid(f"{EXAMPLES_PATH}: no call and reply objects for {', '.join(odd)}")
     return held
 
@@ -259,26 +152,75 @@ class _Expected:
     family: str = ""
 
 
-def _generated(reg: Registry, examples: Mapping[str, Any]) -> dict[str, _Expected]:
-    """Every page the registry generates, by repository-relative path."""
-    tools = {t.name: t for t in registered(reg.server)}
-    if not tools:
-        raise Invalid("the registry holds no tool, so there is nothing to compare")
-    if unlisted := reg.roster.unlisted(tools):
-        raise Invalid("the roster is not the registry: " + "; ".join(unlisted))
-    if gap := model_gap(tools, reg.models):
-        raise Invalid(gap)
-    if len({_page(f) for f, _ in reg.roster.families}) != len(reg.roster.families):
-        raise Invalid("two families share a page: "
-                      + ", ".join(f"{f} -> {_page(f)}" for f, _ in reg.roster.families))
-    pages = {REFERENCE_PAGE: _Expected("# Reference", {INDEX_BLOCK: _index(reg),
-                                                      ENVELOPE_BLOCK: _envelope(reg)})}
+@dataclass(frozen=True)
+class _Pages:
+    """Every page the registry generates, by repository-relative path, and what kept a block
+    from being built, one finding a line: a block with a finding is in no page."""
+
+    pages: dict[str, _Expected]
+    unbuilt: list[str]
+
+
+def _example_faults(name: str, ask: Ask, example: Mapping[str, Any]) -> list[str]:
+    """How `example` is not the one `ask` is written for."""
+    found = []
+    if dict(example["call"]) != dict(ask.call):
+        found.append(f"{EXAMPLES_PATH}: `{name}`'s example call is not the call its ask is "
+                     "written for")
+    then, second = ask.then, example.get("then")
+    if (then is None) != (second is None):
+        found.append(f"{EXAMPLES_PATH}: `{name}`'s example has "
+                     f"{'a' if second is not None else 'no'} second call, and its ask has "
+                     f"{'none' if then is None else 'one'}")
+    elif then is not None and second is not None and (
+            second["tool"] != then.tool or dict(second["call"]) != dict(then.call)):
+        found.append(f"{EXAMPLES_PATH}: `{name}`'s second call is not the `{then.tool}` call "
+                     "its ask is written for")
+    return found
+
+
+def _link(page_of: Mapping[str, str], here: str) -> Callable[[str], str]:
+    """The address of a tool's entry as the page `here` links to it."""
+    def link(tool: str) -> str:
+        there = page_of[tool]
+        return f"#{tool}" if there == here else f"{there.rsplit('/', 1)[1]}#{tool}"
+    return link
+
+
+def _generated(reg: Registry, examples: Mapping[str, Any], said: Asks) -> _Pages:
+    """The pages as the registry, the asks and the examples give them."""
+    tools = _tools(reg)
+    page_of = {n: _page(family) for family, names in reg.roster.families for n in names}
+    pages = {REFERENCE_PAGE: _Expected("# Reference", {
+        INDEX_BLOCK: _index(reg, said.families), ENVELOPE_BLOCK: _envelope(reg)})}
+    unbuilt: list[str] = []
     for family, names in reg.roster.families:
+        here = _page(family)
+        blocks = {}
+        for n in names:
+            ask, example = said.tools.get(n), examples.get(n)
+            if ask is None:
+                continue  # `asks.faults` names it
+            if example is not None and (faults := _example_faults(n, ask, example)):
+                unbuilt += faults
+                continue
+            try:
+                block = entry.tool_block(tools[n], reg.models[n], reg.envelope, ask, example,
+                                         _link(page_of, here))
+            except (ValueError, KeyError) as e:
+                unbuilt.append(f"`{n}`'s entry: {e}")
+                continue
+            blocks[n] = block
         # a page titled `# Lua` would take the anchor `#lua` its own tool needs.
-        pages[_page(family)] = _Expected(f"# The {family} tools", {
-            n: tool_block(tools[n], reg.models[n], reg.envelope, examples.get(n))
-            for n in names}, family)
-    return pages
+        pages[here] = _Expected(f"# The {family} tools", blocks, family)
+    return _Pages(pages, unbuilt)
+
+
+def _asks_faults(reg: Registry, said: Asks) -> list[str]:
+    tools = _tools(reg)
+    return asked.faults(said, tools, reg.models,
+                        {n: own_fields(reg.models[n], reg.envelope) for n in tools},
+                        [family for family, _ in reg.roster.families])
 
 
 # ======================================================================== a page's text
@@ -345,16 +287,27 @@ def _rewritten(text: str, want: _Expected) -> str:
 # ===================================================================== the comparison
 
 
+def _named(reg: Registry, want: _Expected) -> list[str]:
+    """The blocks a page holds, in order: a family's tools, or `REFERENCE.md`'s own."""
+    if not want.family:
+        return list(want.blocks)
+    return [n for family, names in reg.roster.families if family == want.family for n in names]
+
+
 def drift(reg: Registry) -> list[str]:
-    """Each way the pages and `examples.json` depart from the registry; `Invalid` when nothing
-    could be compared."""
+    """Each way the pages, `asks.json` and `examples.json` depart from the registry; `Invalid`
+    when nothing could be compared."""
     examples = _examples(reg)
-    pages = _generated(reg, examples)
-    found: list[str] = []
-    for rel, want in pages.items():
+    said = asked.load(reg.root)
+    found = _asks_faults(reg, said)
+    built = _generated(reg, examples, said)
+    found += built.unbuilt
+    tools = _tools(reg)
+    for rel, want in built.pages.items():
         path = reg.root / rel
+        named = _named(reg, want)
         if not path.is_file():
-            found.append(f"{rel}: missing, and it holds {', '.join(want.blocks)}")
+            found.append(f"{rel}: missing, and it holds {', '.join(named)}")
             continue
         try:
             _, segments = _parsed(path.read_text(encoding="utf-8"))
@@ -365,44 +318,63 @@ def drift(reg: Registry) -> list[str]:
         if want.family and first.startswith("# ") and first != want.title:
             found.append(f"{rel}: titled {first!r}, not {want.title!r}")
         held = {s.name: s.block for s in segments}
-        for name, block in want.blocks.items():
+        for name in named:
             if name not in held:
                 found.append(f"{rel}: no block for `{name}`")
-            elif diff := demo.first_difference(held[name], block, ("the page", "the registry")):
+            elif name in want.blocks and (diff := demo.first_difference(
+                    held[name], want.blocks[name], ("the page", "the registry"))):
                 found.append(f"`{name}` in {rel}: {diff}")
         for s in segments:
-            if s.name not in want.blocks:
+            if s.name not in named:
                 found.append(f"{rel}: `{s.name}` is no tool of the {want.family} family"
                              if want.family else f"{rel}: `{s.name}` is no block of it")
-        order = [s.name for s in segments if s.name in want.blocks]
-        if order != [n for n in want.blocks if n in held]:
+        order = [s.name for s in segments if s.name in named]
+        if order != [n for n in named if n in held]:
             found.append(f"{rel}: blocks out of the roster's order: {', '.join(order)}")
     docs = reg.root / PAGES_DIR
     for extra in sorted(docs.glob("*.md")) if docs.is_dir() else []:
-        if (rel := extra.relative_to(reg.root).as_posix()) not in pages:
+        if (rel := extra.relative_to(reg.root).as_posix()) not in built.pages:
             found.append(f"{rel}: names no family")
-    tools = {t.name: t for t in registered(reg.server)}
     found += [f"`{n}` has no example in {EXAMPLES_PATH}"
               for n in sorted(set(tools) - set(examples))]
     for name, example in sorted(examples.items()):
         if name not in tools:
             found.append(f"{EXAMPLES_PATH}: `{name}` is no tool")
-        else:
-            if why := refused(tools[name], example["call"]):
+            continue
+        second = [(example["then"]["tool"], example["then"])] if "then" in example else []
+        for tool, shown in ((name, example), *second):
+            if tool not in tools:
+                found.append(f"{EXAMPLES_PATH}: `{name}`'s second call is to `{tool}`, which "
+                             "is no tool")
+                continue
+            if why := refused(tools[tool], shown["call"]):
                 found.append(f"{EXAMPLES_PATH}: `{name}`'s example call is one the tool refuses "
                              f"({why})")
-            known = set(get_type_hints(reg.models[name], include_extras=True))
-            for field_name in sorted(set(example["reply"]) - known):
+            known = set(get_type_hints(reg.models[tool], include_extras=True))
+            for field_name in sorted(set(shown["reply"]) - known):
                 found.append(f"{EXAMPLES_PATH}: `{name}`'s example replies `{field_name}`, "
                              "which its model does not name")
     return found
 
 
+class Unready(Exception):
+    """The pages cannot be written yet: `findings` says what each entry lacks."""
+
+    def __init__(self, findings: list[str]) -> None:
+        super().__init__(f"{len(findings)} findings")
+        self.findings = findings
+
+
 def write(reg: Registry) -> list[str]:
     """Rewrite every page from the registry and answer the paths that changed. All are rebuilt
-    before the first is written, so an `Invalid` page leaves every one as it was."""
+    before the first is written, so an `Invalid` page leaves every one as it was; so does an
+    entry that cannot be built, which is `Unready` with each reason."""
+    said = asked.load(reg.root)
+    built = _generated(reg, _examples(reg), said)
+    if short := _asks_faults(reg, said) + built.unbuilt:
+        raise Unready(short)
     changed = {}
-    for rel, want in _generated(reg, _examples(reg)).items():
+    for rel, want in built.pages.items():
         path = reg.root / rel
         before = path.read_text(encoding="utf-8") if path.is_file() else f"{want.title}\n"
         try:
@@ -455,36 +427,91 @@ def _leaves(value: Any) -> Iterator[str]:
         yield value if isinstance(value, str) else json.dumps(value)
 
 
+def _spelled(rec: Mapping[str, Any], norm: demo.Normaliser) -> tuple[dict[str, Any], Any]:
+    """A record's call and reply as a page spells them: a demo's transcript already hides what
+    its run decides, a live run's records are spelled here."""
+    args = dict(rec.get("args") or {})
+    reply = {k: v for k, v in rec["reply"].items() if k not in LEFT_OUT}
+    if rec.get("normalised"):
+        return args, shape.abridged(reply)
+    return (_steady(norm.reply(args, RUN_KEYS)),
+            shape.abridged(_steady(norm.reply(reply, RUN_KEYS))))
+
+
+def _candidate(rec: Mapping[str, Any], tools: set[str], skip: re.Pattern[str] | None) -> bool:
+    """Whether a record may be an example: an OK cell of a tool, with a reply that carries a
+    `status`, which `skip` matches nowhere."""
+    reply = rec.get("reply")
+    return (rec.get("tool") in tools and rec.get("verdict") == "OK" and isinstance(reply, dict)
+            and "status" in reply
+            and not (skip and any(skip.search(leaf) for leaf in _leaves(
+                [rec.get("args"), reply, rec.get("section"), rec.get("label")]))))
+
+
+def _later_call(records: Sequence[Mapping[str, Any]], at: int, then: asked.Then,
+                norm: demo.Normaliser, skip: re.Pattern[str] | None
+                ) -> dict[str, Any] | None:
+    """The call `then` names, as the run of record `at` made it later on, or None."""
+    run = records[at].get("section")
+    for rec in records[at + 1:]:
+        if rec.get("section") == run and _candidate(rec, {then.tool}, skip):
+            call, reply = _spelled(rec, norm)
+            if call == dict(then.call):
+                return {"tool": then.tool, "call": call, "reply": reply}
+    return None
+
+
 def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
-                  norm: demo.Normaliser, skip: re.Pattern[str] | None = None) -> dict[str, Any]:
-    """One example per tool of `tools` from a live run's records. Only an OK cell whose reply
-    carries a `status` is a candidate, and not one whose call, reply or name `skip` matches; the
-    first `ok` reply wins, else the first refusal. Paths are spelled host-independently, `LEFT_OUT`
-    dropped, the run's own values (`RUN_KEYS`, clock readings) hidden, long values abridged."""
-    ok: dict[str, Mapping[str, Any]] = {}
-    refused: dict[str, Mapping[str, Any]] = {}
-    for rec in records:
-        name, reply = rec.get("tool"), rec.get("reply")
-        if (name in tools and rec.get("verdict") == "OK" and isinstance(reply, dict)
-                and "status" in reply
-                and not (skip and any(skip.search(leaf) for leaf in _leaves(
-                    [rec.get("args"), reply, rec.get("section"), rec.get("label")])))):
-            (ok if reply["status"] == "ok" else refused).setdefault(str(name), rec)
-    return {name: {"from": f"{rec.get('section', '')}: {rec.get('label', '')}",
-                   "call": _steady(norm.reply(dict(rec.get("args") or {}), RUN_KEYS)),
-                   "reply": shape.abridged(_steady(norm.reply(
-                       {k: v for k, v in rec["reply"].items() if k not in LEFT_OUT},
-                       RUN_KEYS)))}
-            for name, rec in sorted({**refused, **ok}.items())}
+                  norm: demo.Normaliser, skip: re.Pattern[str] | None = None,
+                  wanted: Mapping[str, Ask] | None = None) -> dict[str, Any]:
+    """One example per tool of `tools` from a run's records. Only an OK cell whose reply carries
+    a `status` is a candidate, and not one whose call, reply or name `skip` matches. A tool
+    `wanted` names takes the first such cell whose call is the one its ask is written for, with
+    the second call its ask names as the same run made it later; any other tool takes its first
+    `ok` reply, else its first refusal. Paths are spelled host-independently, `LEFT_OUT` dropped,
+    the run's own values (`RUN_KEYS`, clock readings) hidden, long values abridged."""
+    records = list(records)
+    wanted = wanted or {}
+    ok: dict[str, dict[str, Any]] = {}
+    refusal: dict[str, dict[str, Any]] = {}
+    for at, rec in enumerate(records):
+        name = str(rec.get("tool"))
+        if name in ok or not _candidate(rec, tools, skip):
+            continue
+        call, reply = _spelled(rec, norm)
+        found = {"from": f"{rec.get('section', '')}: {rec.get('label', '')}", "call": call,
+                 "reply": reply}
+        ask = wanted.get(name)
+        if ask is None:
+            (ok if reply["status"] == "ok" else refusal).setdefault(name, found)
+            continue
+        if call != dict(ask.call):
+            continue
+        if ask.then is not None:
+            second = _later_call(records, at, ask.then, norm, skip)
+            if second is None:
+                continue
+            found["then"] = second
+        ok[name] = found
+    return dict(sorted({**refusal, **ok}.items()))
 
 
-def _records(paths: Sequence[Path]) -> list[dict[str, Any]]:
-    """Every record of the JSON Lines files `paths`."""
-    try:
-        return [json.loads(line) for p in paths
-                for line in p.read_text(encoding="utf-8").splitlines() if line.strip()]
-    except (OSError, ValueError) as e:
-        raise Invalid(f"a transcript cannot be read: {e}") from e
+def _records(paths: Sequence[Path], root: Path) -> list[dict[str, Any]]:
+    """Every record of `paths`: a live run's JSON Lines, or a demo's normalised transcript
+    (`.md`), named by its path under `root`."""
+    found: list[dict[str, Any]] = []
+    for p in paths:
+        try:
+            text = p.read_text(encoding="utf-8")
+            if p.suffix == ".md":
+                inside = p.resolve().is_relative_to(root)
+                found += transcript.records(
+                    text, p.resolve().relative_to(root).as_posix() if inside else p.name)
+            else:
+                found += [json.loads(line) for line in text.splitlines() if line.strip()]
+        except (OSError, ValueError) as e:
+            raise Invalid(f"a transcript cannot be read: {e}") from e
+    return found
 
 
 # ======================================================================== the command
@@ -535,8 +562,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 epilog="Exit codes: 0 agree (or rewritten), 1 drift, 2 a usage "
                                        "error, 3 nothing was compared.")
     p.add_argument("registry", help="<module>:<attribute> naming the server's Registry")
-    p.add_argument("--examples", nargs="+", type=Path, metavar="JSONL",
-                   help=f"rewrite {EXAMPLES_PATH} from these live transcripts first")
+    p.add_argument("--examples", nargs="+", type=Path, metavar="TRANSCRIPT",
+                   help=f"rewrite {EXAMPLES_PATH} from these first: a demo's normalised "
+                        "transcript (.md) or a live run's records (.jsonl)")
     p.add_argument("--mark", action="append", default=[], metavar="PATH=TEXT", type=_mark,
                    help="spell a directory of the live run's host as TEXT in the examples (its "
                         "scratch as $TMPDIR, its bench, its builds); repeatable")
@@ -565,9 +593,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                      for spelled in (path, os.path.realpath(path))}
             norm = demo.Normaliser(root, Path.home().resolve(), {},
                                    marks={**marks, str(root): demo.placeholder(root)})
-            picked = examples_from(_records(ns.examples), tools, norm, ns.skip)
+            picked = examples_from(_records(ns.examples, root), tools, norm, ns.skip,
+                                   asked.load(reg.root).tools)
             if not picked:
-                raise Invalid("the transcripts hold no OK cell of a tool of this server")
+                raise Invalid("the transcripts hold no OK call of a tool of this server")
             (reg.root / PAGES_DIR).mkdir(parents=True, exist_ok=True)
             (reg.root / EXAMPLES_PATH).write_text(
                 json.dumps(picked, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -577,6 +606,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(f"written: {rel}")
             return EXIT_PASS
         found = drift(reg)
+    except Unready as e:
+        found = [*e.findings, "nothing was written: the entries above cannot be built"]
     except Invalid as e:
         print(f"INVALID: {e}")
         return EXIT_INVALID
