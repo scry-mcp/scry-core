@@ -101,22 +101,6 @@ def in_cell(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
 
 
-#: What markdown shows as typed: a fenced block, a double-backtick span, a single one; a span may
-#: wrap a line, never a paragraph.
-_CODE = re.compile(r"(```.*?```|``(?:[^\n]|\n(?!\n))+?``|`(?:[^`\n]|\n(?!\n))+`)", re.DOTALL)
-#: Four spaces open a markdown code block; a list nests with fewer, and keeps them.
-_CODE_BLOCK_INDENT = re.compile(r"(?<=\n) {4,}")
-_FIRST_INDENT = re.compile(r"^ {4,}", re.MULTILINE)
-
-
-def markdown_text(text: str) -> str:
-    """A description as markdown shows it: `<` outside code is text, and indentation is flush."""
-    parts = _CODE.split(text)
-    # A text piece after a span starts mid-line: only its later lines may be flushed.
-    return "".join(p if i % 2 else (_CODE_BLOCK_INDENT if i else _FIRST_INDENT).sub("", p)
-                   .replace("<", "&lt;") for i, p in enumerate(parts))
-
-
 def signature(tool: Tool) -> str:
     props = tool.parameters.get("properties", {})
     return f"{tool.name}(" + ", ".join(
@@ -192,12 +176,14 @@ def _returns(model: type, envelope: type, ask: Ask) -> list[str]:
 
 
 def _contract(tool: Tool) -> list[str]:
+    """The tool's description and its arguments' own, as the client receives them: text, in a
+    fence longer than any the description opens."""
     props: dict[str, Any] = tool.parameters.get("properties", {})
-    notes = [f"- `{n}`: {markdown_text(' '.join(s['description'].split()))}"
+    notes = [f"{n}: {' '.join(s['description'].split())}"
              for n, s in props.items() if "description" in s]
-    return [f"<details><summary>{CONTRACT}</summary>", "",
-            markdown_text((tool.description or "").strip()),
-            *(["", *notes] if notes else []), "", "</details>"]
+    text = "\n\n".join([(tool.description or "").strip(), *notes])
+    fence = "`" * max(3, 1 + max((len(run) for run in re.findall(r"`+", text)), default=0))
+    return shape.folded(CONTRACT, f"{fence}text\n{text}\n{fence}")
 
 
 def tool_block(tool: Tool, model: type, envelope: type, ask: Ask,

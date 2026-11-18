@@ -213,12 +213,15 @@ def test_the_index_and_the_envelope_go_to_reference_md_in_the_roster_s_order(
     assert "| `status` |" in text and "| `last_stop` | object |" in text, text
 
 
-def test_a_description_s_bare_angle_bracket_is_text_and_its_paragraphs_stay_flush(
+def test_the_contract_is_the_description_as_the_client_receives_it_folded(
         tmp_path: Path) -> None:
-    _written(_registry(tmp_path))
+    reg = _written(_registry(tmp_path))
     text = _block(_read(tmp_path), "peek")
-    assert "a &lt;ref> as typed, `x<y` kept in a code span" in text, text
-    assert "\nReply: `value`" in text, "the SDK dedents; an indented one would be a code block"
+    description = next(t for t in registered(reg.server) if t.name == "peek").description
+    assert description and "a <ref> as typed, `x<y` kept in a code span" in description
+    assert text.endswith(f"<details><summary>{entry.CONTRACT}</summary>\n\n```text\n"
+                         f"{description.strip()}\n```\n\n</details>\n"
+                         + end_marker("peek")), text
 
 
 def test_an_argument_s_bounds_its_alternatives_its_items_and_a_constant_are_named() -> None:
@@ -868,7 +871,7 @@ def test_an_example_spells_the_repository_as_an_absolute_placeholder(
     assert held["peek"]["reply"]["conf"] == f"/path/to/{tmp_path.name}/tests/guest/a.conf", held
 
 
-def test_a_description_s_indented_line_is_text_and_never_a_code_block(tmp_path: Path) -> None:
+def test_a_description_s_indented_line_is_kept_as_it_is_sent(tmp_path: Path) -> None:
     server = MCPServer("indent")
 
     @server.tool()
@@ -881,7 +884,7 @@ def test_a_description_s_indented_line_is_text_and_never_a_code_block(tmp_path: 
 
     strict_arguments(server)
     block = _block_of(registered(server)[0], PokeReply)
-    assert "\nReads files only: it needs no machine." in block, block
+    assert "\n    Reads files only: it needs no machine.\n" in block, "as the client reads it"
 
 
 def test_a_tool_s_heading_is_one_level_under_its_page_s_and_its_caption_is_plain(
@@ -913,7 +916,7 @@ def test_a_page_s_title_never_shares_its_anchor_with_a_tool(tmp_path: Path) -> N
     assert _read(tmp_path, "peek").startswith("# The Peek tools\n")
 
 
-def test_a_fence_and_a_nested_list_keep_their_shape_and_spans_stay_spans() -> None:
+def test_a_description_that_opens_a_fence_is_held_in_a_longer_one() -> None:
     server = MCPServer("fence")
 
     @server.tool()
@@ -934,19 +937,9 @@ def test_a_fence_and_a_nested_list_keep_their_shape_and_spans_stay_spans() -> No
 
     strict_arguments(server)
     block = _block_of(registered(server)[0], PokeReply)
-    assert "```\nx  <y>\n    indented\n```" in block, block
-    assert "A &lt;ref> and `y<z` and ``a`b <c>``." in block, block
-    assert 'A span `{"by":\n"<who>"}` wraps a line.' in block, block
-    assert "- outer\n  - inner" in block, block
-
-
-@pytest.mark.parametrize(("text", "shown"), [
-    ("Use `` for it.\n\nSee ``x <y>`` here.", "Use `` for it.\n\nSee ``x <y>`` here."),
-    ("`a`     b", "`a`     b"),
-])
-def test_a_stray_backtick_never_spans_a_paragraph_and_flush_left_starts_only_a_line(
-        text: str, shown: str) -> None:
-    assert entry.markdown_text(text) == shown
+    assert "\n\n````text\nUse:\n\n```\nx  <y>\n    indented\n```\n" in block, block
+    assert "- outer\n  - inner\nReply: `written`.\n````\n\n</details>" in block, \
+        "the fence that holds the description is longer than the one it opens"
 
 
 def test_a_page_titled_the_old_way_is_drift_and_a_rewrite_retitles_it(tmp_path: Path) -> None:
