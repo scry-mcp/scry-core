@@ -598,6 +598,14 @@ def test_an_example_that_shows_a_written_pictures_digest_fails_its_step(
            "transcript hides in a written picture" in said, said
 
 
+def test_a_written_picture_inside_a_shown_field_is_found_and_other_fields_pass() -> None:
+    shot = {"path": "/x/shot.png", "sha256": "0" * 64, "bytes": 9, "width": 1}
+    with pytest.raises(ValueError, match=r"shows \['bytes', 'sha256'\]"):
+        d._shows_no_picture_bytes({"shots": [{"kept": shot}]}, ("shots",))
+    d._shows_no_picture_bytes({"shots": [{"kept": shot}], "n": 1}, ("n",))
+    d._shows_no_picture_bytes({"sha256": "1", "path": "/x/a.txt"}, ("sha256",))
+
+
 def test_a_lead_that_answers_with_a_written_pictures_digest_fails_its_step(
         tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
     front = tmp_path / "README.md"
