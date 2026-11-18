@@ -103,7 +103,17 @@ def test_a_shared_tool_filed_under_another_family_is_named() -> None:
 def test_the_shared_declaration_names_each_tool_in_one_family() -> None:
     assert roster.SHARED_FAMILIES["debug"] == "Write"
     families = set(roster.SHARED_FAMILIES.values())
-    assert {"Captures", "Lists", "Machine", "Names", "Screen"} <= families
+    assert {"Captures", "Machine", "Names", "Screen"} <= families
+
+
+@pytest.mark.parametrize(("tool", "family"), [
+    ("run_to", "Run"), ("screen_wait", "Run"), ("watch_add", "Breakpoints"),
+    ("declaration_clear", "Breakpoints"), ("perform", "Sequences"), ("drive", "Sequences"),
+    ("promote", "Project")])
+def test_a_family_s_name_says_what_it_holds(tool: str, family: str) -> None:
+    assert roster.SHARED_FAMILIES[tool] == family
+    assert not {"Advance", "Declarations", "Lists", "Store"} & set(
+        roster.SHARED_FAMILIES.values()), "a name a stranger cannot read is still a family"
 
 
 def test_the_record_family_declares_the_words_and_its_reply_fields() -> None:
