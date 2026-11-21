@@ -81,6 +81,9 @@
     "dosbox-x:src/hardware/cmos.cpp cmos_writereg default": {
       "line": "        default:"
     },
+    "dosbox-x:src/hardware/dbopl.cpp Chip::WriteAddr opl3Active": {
+      "line": "\t\tif ( opl3Active || (val == 0x05u) )"
+    },
     "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x20": {
       "line": "\tcase 0x20 >> 4:"
     },
@@ -372,6 +375,12 @@
     },
     "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index": {
       "line": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+    },
+    "mame:3rdparty/ymfm/src/ymfm_opl.cpp ymf262::write_address_hi address": {
+      "line": "\tm_address = data | 0x100;"
+    },
+    "mame:3rdparty/ymfm/src/ymfm_opl.cpp ymf262::write_address_hi newflag": {
+      "line": "\tif (m_fm.regs().newflag() == 0 && m_address != 0x105)"
     },
     "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 01": {
       "line": "//           01 xxxxxxxx Test register",
