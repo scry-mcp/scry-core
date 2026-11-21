@@ -11,8 +11,9 @@ import shutil
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
+import anyio
 import pytest
 from mcp.client import Client
 
@@ -347,6 +348,7 @@ def test_a_run_writes_its_timeline_beside_the_transcript_with_the_frames_each_ca
         d.Step("aim", "point", {"x": 12, "y": 34}, _said("summary"), events=_pointed),
         d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
                lambda reply, run: "a picture"),
+        d.Step("look", "read", {}, _said("value")),
         d.Step("end", "close", {}, lambda reply, run: "closed"),
     ]
     assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_PASS
@@ -354,14 +356,33 @@ def test_a_run_writes_its_timeline_beside_the_transcript_with_the_frames_each_ca
     calls = written["calls"]
     assert [(c["tool"], c["before"], c["after"]) for c in calls] == [
         ("start", None, None), ("press", 0, 5), ("point", 5, 8), ("picture", 8, 8),
-        ("close", 8, 8)]
+        ("read", 8, 8), ("close", 8, 8)]
     assert calls[1]["args"] == {"key": "Fire 1", "frames": 4}
+    assert calls[1]["caption"] == {"text": "press Fire 1 4", "tint": "write"}
+    assert calls[4]["caption"] == {"text": "read", "tint": "read"}, "the server marks it read-only"
     assert calls[1]["events"] == [
         {"kind": "key", "name": "Fire 1", "down": True, "frame": 0},
         {"kind": "key", "name": "Fire 1", "down": False, "frame": 4}]
     assert calls[2]["events"] == [{"kind": "pointer", "x": 12, "y": 34, "frame": 8}], \
         "a reply that counts no `frame_after` ends at the frame it stopped at"
     assert str(tmp_path) not in json.dumps(calls[3]["args"]), "a path is spelled as the transcript"
+
+
+def test_the_read_only_tools_are_read_across_every_page_the_server_lists() -> None:
+    from mcp.types import ListToolsResult, Tool, ToolAnnotations
+
+    def tool(name: str, read_only: bool | None) -> Tool:
+        hint = None if read_only is None else ToolAnnotations(read_only_hint=read_only)
+        return Tool(name=name, input_schema={"type": "object"}, annotations=hint)
+
+    pages = {None: ListToolsResult(tools=[tool("a", True), tool("b", None)], next_cursor="2"),
+             "2": ListToolsResult(tools=[tool("c", True), tool("d", False)])}
+
+    class Listing:
+        async def list_tools(self, cursor: str | None = None) -> ListToolsResult:
+            return pages[cursor]
+
+    assert anyio.run(d._readers, cast(Client, Listing())) == frozenset({"a", "c"})
 
 
 def test_a_failed_step_is_in_the_timeline_with_its_status_and_no_events(

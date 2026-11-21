@@ -28,7 +28,7 @@ import re
 import shutil
 import struct
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -101,6 +101,11 @@ class Picture:
     height: int
     rgb: bytes
     ms: int
+
+
+#: Draws over one cut's frames as they are shown: the cut's place in the loop, the frame of the
+#: recording each one is, the frames, the recording's frames a second and the part kept.
+Decorator = Callable[[int, Sequence[int], Sequence[Picture], Fraction, Box], list[Picture]]
 
 
 def programs() -> dict[str, str]:
@@ -389,9 +394,9 @@ def _assembled(img2webp: str, pictures: Sequence[Picture], work: Path, lossless:
     return out.read_bytes()
 
 
-def build(cuts: Sequence[Cut], work: Path) -> Built:
+def build(cuts: Sequence[Cut], work: Path, decorate: Decorator | None = None) -> Built:
     """The loop of `cuts`, made in `work`: lossless where it fits `BUDGET_BYTES`, else lossy,
-    else `Invalid` naming its bytes."""
+    else `Invalid` naming its bytes. `decorate` draws over each cut once it is shown at 4:3."""
     plan = planned(cuts)
     found = programs()
     per_cut = [_frames(found["ffmpeg"], cut, per_second, step, work / f"cut-{n}")
@@ -404,11 +409,21 @@ def build(cuts: Sequence[Cut], work: Path) -> Built:
                                                             pictures[0].height)}:
         raise Invalid(f"the moments are not one size: {pictures[0].width}x{pictures[0].height} "
                       f"and {sorted(sizes)}; a loop shows one video mode")
-    pictures = merged(pictures)
-    box = kept(pictures)
-    pictures = merged([cropped(picture, box) for picture in pictures])
+    box = kept(merged(pictures))
     times = factor(box)
     shape = box.display(times)
+    if decorate is None:
+        pictures = merged([cropped(picture, box) for picture in pictures])
+    else:
+        drawn, at = [], 0
+        for n, ((cut, per_second, step), group) in enumerate(zip(plan, per_cut, strict=True)):
+            shown = [displayed(cropped(picture, box), times, *shape)
+                     for picture in pictures[at:at + len(group)]]
+            at += len(group)
+            drawn += decorate(n, range(cut.first, cut.first + cut.frames, step), shown,
+                              per_second, box)
+        pictures = merged(drawn)
+        times, shape = 1, (list(range(pictures[0].width)), list(range(pictures[0].height)))
     weighed = []
     for lossless in (True, False):
         data = _assembled(found["img2webp"], pictures, work / "webp", lossless, times, shape)

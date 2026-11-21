@@ -37,6 +37,13 @@ def test_a_call_is_captioned_at_once_and_tinted_by_its_kind() -> None:
     assert c.shown(2.0) == tl.Caption("registers", "read", TINTS.read, 2)
 
 
+def test_a_caption_made_before_is_shown_as_made_and_its_burst_still_joins() -> None:
+    c = tl.Captions(TINTS, 1.0, 3.0)
+    c.began("run_to", {"ref": "0x10"}, False, False, 0.0, text="run_to Draw_Title (0x10)")
+    c.began("run_to", {"ref": "0x20"}, False, False, 0.5, text="run_to Draw_Board (0x20)")
+    assert c.shown(0.5) == tl.Caption("run_to Draw_Board (0x20) x2", "write", TINTS.write, 1)
+
+
 def test_a_call_that_did_not_answer_ok_turns_its_caption_refused() -> None:
     c = _captions()
     _call(c, "write", 0.0, refused=True, ref="0x10", data_hex="00")

@@ -10,13 +10,17 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
+from scry_core import abbreviation
 from scry_core.verdict import Invalid
 
-VERSION = 1
+VERSION = 2
 Kind = Literal["key", "button", "pointer"]
 KINDS: tuple[Kind, ...] = ("key", "button", "pointer")
+Tint = Literal["write", "read", "refused"]
+TINTS: tuple[Tint, ...] = ("write", "read", "refused")
 DOCUMENT_KEYS = {"version", "demo", "calls"}
-CALL_KEYS = {"n", "step", "tool", "args", "status", "before", "after", "events"}
+CALL_KEYS = {"n", "step", "tool", "args", "status", "caption", "before", "after", "events"}
+CAPTION_KEYS = {"text", "tint"}
 
 
 @dataclass(frozen=True)
@@ -58,15 +62,20 @@ class Builder:
     _frame: int | None = None
 
     def add(self, step: str, tool: str, args: Mapping[str, Any], status: str,
-            counted: tuple[int | None, int | None], events: Sequence[Event] = ()) -> None:
-        """A call made: `counted` is the frames its reply said it began and ended at, or None."""
+            counted: tuple[int | None, int | None], events: Sequence[Event] = (),
+            read_only: bool = False) -> None:
+        """A call made: `counted` is the frames its reply said it began and ended at, or None;
+        `read_only` is the tool's `readOnlyHint`, which tints its caption."""
         before = counted[0] if counted[0] is not None else self._frame
         after = counted[1] if counted[1] is not None else before
         if after is not None:
             self._frame = after
+        tint: Tint = "refused" if status != "ok" else "read" if read_only else "write"
         self.calls.append({"n": len(self.calls) + 1, "step": step, "tool": tool,
-                           "args": dict(args), "status": status, "before": before,
-                           "after": after, "events": [e.fields(after) for e in events]})
+                           "args": dict(args), "status": status,
+                           "caption": {"text": abbreviation.caption(tool, args), "tint": tint},
+                           "before": before, "after": after,
+                           "events": [e.fields(after) for e in events]})
 
     def dumps(self) -> str:
         document = {"version": VERSION, "demo": self.demo, "calls": self.calls}
@@ -108,6 +117,11 @@ def _check(document: Any) -> None:
                 raise Invalid(f"call {n} of the timeline has no `{name}` text")
         if not isinstance(call.get("args"), dict) or not isinstance(call.get("events"), list):
             raise Invalid(f"call {n} of the timeline has no `args` object or `events` list")
+        caption = call["caption"]
+        if not isinstance(caption, dict) or set(caption) != CAPTION_KEYS \
+                or not isinstance(caption["text"], str) or caption["tint"] not in TINTS:
+            raise Invalid(f"call {n}'s caption is not a `text` and a `tint` of "
+                          f"{', '.join(TINTS)}")
         before, after = call.get("before"), call.get("after")
         _frame(before, f"call {n} `before`")
         _frame(after, f"call {n} `after`")

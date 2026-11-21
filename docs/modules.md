@@ -135,6 +135,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.motion` | A demo's `loop.webp` and `screen.png`: stretches cut from a run's recordings and assembled with ffmpeg and `img2webp`, both shown at 4:3. |
 | `scry_core.aspect` | The shape a game's picture is shown in: the whole frame at 4:3, one function for the loop and the still. |
 | `scry_core.timeline` | What a demo run did, call by call, in the emulator's frames: the file the demo decorator reads. |
+| `scry_core.decorate` | A demo's clip with the presence layers drawn in from its run's timeline, richer than live; `python -m scry_core.decorate` makes one decorated loop. The only module that needs the `decorate` extra (Pillow and numpy). |
 | `scry_core.install` | The table of MCP clients and the block of a server's README that says how to add it to each. |
 | `scry_core.game_demo` | One game's demo written once for both servers, with a `Binding` for what each emulator does differently. |
 | `scry_core.games` | The scripts of the games both servers run, one module per game. |
@@ -143,13 +144,14 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 
 A run writes `<transcript>-timeline.json` beside its transcript: the calls it made, in order, with the emulator frame each began and ended at. `scry_core.timeline.loads` reads it back and refuses a document the writer never writes.
 
-The document is `{"version": 1, "demo": <name>, "calls": [...]}`. Each call holds:
+The document is `{"version": 2, "demo": <name>, "calls": [...]}`. Each call holds:
 
 | Field | Holds |
 |---|---|
 | `n`, `step`, `tool` | Its position in the run from 1, the demo's name for it, and the tool called. |
 | `args` | The arguments as the demo gave them: a symbol stays the symbol written, with host paths spelled as in the transcript. |
 | `status` | The reply's `status`, or `ended` when there was no reply. |
+| `caption` | What the overlay's caption reads for the call: `text`, made by `abbreviation.caption` from `args`, and `tint`: `refused` when `status` is not `ok`, else `read` for a tool its server marks `readOnlyHint`, else `write`. The decorator draws this text and never makes its own. |
 | `before`, `after` | The frame the call began and ended at, or null before any reply counted one. |
 | `events` | The input the call fired, each with its `frame`. |
 

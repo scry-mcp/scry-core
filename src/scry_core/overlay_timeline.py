@@ -73,13 +73,14 @@ class Captions:
         self._serial = 0
 
     def began(self, tool: str, given: Mapping[str, Any], read_only: bool, nested: bool,
-              now: float) -> None:
+              now: float, text: str | None = None) -> None:
+        """`text` is the caption already made, as a demo's timeline holds it; else `given`'s."""
         if nested:
             if self._open is not None:
                 self._open.steps += 1
             return
         self._advance(now)
-        text = abbreviation.caption(tool, given)
+        text = abbreviation.caption(tool, given) if text is None else text
         kind: Kind = "read" if read_only else "write"
         young = self._shown is not None and now - self._shown.up < self._min_s
         for joined in (self._waiting, self._shown if young and self._waiting is None else None):

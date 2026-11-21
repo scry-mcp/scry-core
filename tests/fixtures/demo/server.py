@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp.server import MCPServer
-from mcp.types import CallToolResult, ImageContent, TextContent
+from mcp.types import CallToolResult, ImageContent, TextContent, ToolAnnotations
 
 from scry_core import png
 
@@ -46,7 +46,7 @@ def start(value: int = 7, binary: str = "", shared: bool = False,
     return _answer(body)
 
 
-@server.tool()
+@server.tool(annotations=ToolAnnotations(read_only_hint=True))
 def read() -> CallToolResult:
     body: dict[str, Any] = {"status": "ok", "summary": "read", "value": _held["value"]}
     if note := os.environ.get("DEMO_NOTE"):     # a field the server adds only sometimes

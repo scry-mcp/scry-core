@@ -43,6 +43,19 @@ def test_the_frames_of_a_recorded_run_are_the_ones_its_replies_counted() -> None
         {"kind": "key", "name": "Coin 1", "down": False, "frame": 265}]
 
 
+def test_a_call_carries_its_caption_tinted_by_what_the_tool_does_and_how_it_answered() -> None:
+    made = timeline.Builder("x")
+    made.add("a", "run_to", {"ref": "Draw_Title", "dest": "/tmp/run/a.png"}, "ok", (1, 9))
+    made.add("b", "read_memory", {"ref": "0x10", "length": 4}, "ok", (9, 9), read_only=True)
+    made.add("c", "read_memory", {}, "INVALID", (9, 9), read_only=True)
+    made.add("d", "close", {}, "ended", (None, None))
+    assert [c["caption"] for c in timeline.loads(made.dumps())["calls"]] == [
+        {"text": "run_to Draw_Title a.png", "tint": "write"},
+        {"text": "read_memory 0x10 4", "tint": "read"},
+        {"text": "read_memory", "tint": "refused"},
+        {"text": "close", "tint": "refused"}]
+
+
 def test_a_symbol_the_agent_gave_reaches_the_timeline_as_given() -> None:
     made = _built(("go", "run_to", {"ref": "Draw_High_Scores_Screen"}, "ok", (None, 10), []))
     assert timeline.loads(made.dumps())["calls"][0]["args"] == {"ref": "Draw_High_Scores_Screen"}
@@ -74,22 +87,27 @@ def test_the_document_is_the_same_bytes_every_time_it_is_written() -> None:
 
 def _document(**call: Any) -> str:
     base: dict[str, Any] = {"n": 1, "step": "a", "tool": "t", "args": {}, "status": "ok",
-                            "before": 1, "after": 5, "events": []}
+                            "caption": {"text": "t", "tint": "write"}, "before": 1, "after": 5,
+                            "events": []}
     return json.dumps({"version": timeline.VERSION, "demo": "x", "calls": [{**base, **call}]})
 
 
 @pytest.mark.parametrize(("text", "why"), [
     ("not json", "is not JSON"),
-    (json.dumps({"version": 0, "demo": "x", "calls": []}), "not a version 1 document"),
-    (json.dumps({"version": True, "demo": "x", "calls": []}), "not a version 1 document"),
-    (json.dumps({"version": 1, "demo": "x"}), "not \\['calls', 'demo', 'version'\\]"),
-    (json.dumps({"version": 1, "demo": "x", "calls": [], "more": 1}), "holds \\['calls'"),
+    (json.dumps({"version": 1, "demo": "x", "calls": []}), "not a version 2 document"),
+    (json.dumps({"version": True, "demo": "x", "calls": []}), "not a version 2 document"),
+    (json.dumps({"version": 2, "demo": "x"}), "not \\['calls', 'demo', 'version'\\]"),
+    (json.dumps({"version": 2, "demo": "x", "calls": [], "more": 1}), "holds \\['calls'"),
     (_document(n=2), "call 1 of the timeline is not numbered 1"),
     (_document(n=1.0), "is not numbered 1"),
     (_document(n=True), "is not numbered 1"),
     (_document(extra=1), "does not hold exactly"),
     (_document(tool=3), "has no `tool` text"),
     (_document(args=[]), "no `args` object or `events` list"),
+    (_document(caption="t"), "caption is not a `text` and a `tint`"),
+    (_document(caption={"text": "t", "tint": "blue"}), "caption is not a `text` and a `tint`"),
+    (_document(caption={"text": 3, "tint": "read"}), "caption is not a `text` and a `tint`"),
+    (_document(caption={"text": "t"}), "caption is not a `text` and a `tint`"),
     (_document(after=None), "began at frame 1 and names no end"),
     (_document(before=-1), "not a frame number or null"),
     (_document(events=[{"kind": "wheel"}]), "an event of kind 'wheel'"),
