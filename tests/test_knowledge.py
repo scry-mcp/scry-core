@@ -727,6 +727,33 @@ def test_a_port_range_too_long_to_hold_is_a_fault_and_never_a_crash(tmp_path: Pa
     assert "`ports`" in base.entry_faults[0]
 
 
+def test_a_name_that_is_also_its_alias_is_found_once(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
+        an_entry("0x10", "exit", aliases=["EXIT", "quit", "Quit"])])
+    base = knowledge.Base.load(tmp_path)
+    assert ids(knowledge.Found(entries=base.by_alias("exit"))) == ["ibm-pc:port:0x10"]
+    assert len(base.by_alias("QUIT")) == 1
+
+
+def test_text_with_no_ascii_in_it_is_found_the_same_way_on_both_paths(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
+        an_entry("0x10", "timer", description="Stra\u00dfe timer \ufb01ne \u00b2.")])
+    host = knowledge.Base.load(tmp_path)
+    if not host.uses_fts5:
+        pytest.skip("this host's SQLite has no FTS5")
+    ours = knowledge.Base.load(tmp_path, fts5=False)
+    for asked in ("Stra\u00dfe", "strasse", "fine", "\ufb01ne", "2", "stra*"):
+        assert host.search(words=asked).total == ours.search(words=asked).total == 1, asked
+
+
+def test_the_neighbours_of_a_missed_call_tie_in_load_order(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "z", "call", "zz", [an_entry("0x21/0x4C", "exit")])
+    write_dictionary(tmp_path, "zz", "call", "aa", [an_entry("0x21/0x4C", "exit")])
+    base = knowledge.Base.load(tmp_path)
+    assert ids(knowledge.Found(entries=base.search("call", "0x21/0x4E").nearest)) == [
+        "zz:call:0x21/0x4C"]
+
+
 def test_a_range_of_calls_is_the_calls_inside_it_and_a_miss_names_its_neighbours(
         base: knowledge.Base) -> None:
     assert ids(base.search("call", "0x21/0x4C..0x21/0x4C")) == ["ibm-pc:call:0x21/0x4C"]

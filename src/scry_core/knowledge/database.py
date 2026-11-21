@@ -193,7 +193,8 @@ class Base:
         assert n is not None
         self._count += 1
         self._db.executemany("INSERT INTO alias VALUES (?,?)",
-                             [(a.casefold(), n) for a in (got.name, *got.aliases)])
+                             [(a, n) for a in sorted({a.casefold() for a in
+                                                     (got.name, *got.aliases)})])
         self._db.executemany("INSERT OR IGNORE INTO relation VALUES (?,?,?)", [
             (n, rel, str(t)) for rel, ts in (("contains", got.contains), ("irq", got.irq),
                                              ("dma", got.dma)) for t in ts])
@@ -201,11 +202,13 @@ class Base:
                              [(n, b, b + length - 1) for b, length in got.ports])
         fields = {"name": got.name, "aliases": " ".join(got.aliases),
                   "description": got.description, "behaviour": got.behaviour}
+        words = {k: text.words(v) for k, v in fields.items()}
         if self._fallback is None:
             self._db.execute("INSERT INTO entry_text (rowid, name, aliases, description, "
-                             "behaviour) VALUES (?,?,?,?,?)", (n, *fields.values()))
+                             "behaviour) VALUES (?,?,?,?,?)",
+                             (n, *(" ".join(w) for w in words.values())))
         else:
-            self._fallback.add(n, {k: set(text.words(v)) for k, v in fields.items()})
+            self._fallback.add(n, {k: set(w) for k, w in words.items()})
 
     def _entry(self, row: Sequence[Any]) -> fmt.Entry:
         """The entry of one row of `_COLUMNS`."""
@@ -422,7 +425,7 @@ class Base:
         if bounds is not None:
             first, last = bounds
             calls = [(keys.span("call", row_key).parts, n) for n, row_key in self._db.execute(
-                f"SELECT n, key FROM entry WHERE {where} AND kind = 'call'", args)]
+                f"SELECT n, key FROM entry WHERE {where} AND kind = 'call' ORDER BY n", args)]
             below = [c for c in calls if c[0][:len(first)] < first]
             above = [c for c in calls if c[0][:len(last)] > last]
             return [self._of(x[1]) for x in (max(below, key=lambda c: c[0], default=None),
