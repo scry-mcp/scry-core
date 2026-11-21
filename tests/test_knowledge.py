@@ -36,7 +36,8 @@ def parsed(raw: dict[str, Any], kind: str = "port") -> tuple[fmt.Entry | None, l
     ("call", "0x33/0x0/0x3", "0x33/0x00/0x03"), ("memory", "0040:0049", "0040:0049"),
     ("memory", "0040:00ab", "0040:00AB".upper()), ("memory", "0x9000", "0x9000"),
     ("memory", "0x9000..0x9fff", "0x9000..0x9FFF"), ("input", ":IN1/Coin 1", ":IN1/Coin 1"),
-    ("device", "vga-seq", "vga-seq")])
+    ("register", "0x20..0x35", "0x20..0x35"), ("register", "0x2a..0x2B", "0x2A..0x2B"),
+    ("command", "0xe0..0xe3", "0xE0..0xE3"), ("device", "vga-seq", "vga-seq")])
 def test_a_key_has_one_spelling(kind: str, typed: str, canonical: str) -> None:
     assert keys.canonical(kind, typed) == canonical
 
@@ -46,7 +47,9 @@ def test_a_key_has_one_spelling(kind: str, typed: str, canonical: str) -> None:
     ("call", "0x21"), ("call", "0x21/0x4C/0x01/0x02"), ("call", "0x121/0x4C"),
     ("memory", "0x9000..0x8000"), ("device", "VGA"), ("device", ""), ("vector", "0x"),
     ("nothing", "1"), ("port", "0x" + "F" * 13), ("input", "x" * 65), ("input", "a\x00b"),
-    ("irq", "9" * 20), ("irq", str(2**48)), ("error", "9" * 5000), ("vector", "9" * 17)])
+    ("irq", "9" * 20), ("irq", str(2**48)), ("error", "9" * 5000), ("vector", "9" * 17),
+    ("register", "0x35..0x20"), ("register", "0x20.."), ("command", "..0x20"),
+    ("register", "0x20..0x35..0x40"), ("port", "0x10..0x20"), ("vector", "0x1..0x2")])
 def test_a_key_that_is_none_of_its_kind_is_refused(kind: str, typed: str) -> None:
     with pytest.raises(KeyFault):
         keys.canonical(kind, typed)
@@ -57,6 +60,8 @@ def test_a_key_covers_the_numbers_it_stands_for() -> None:
     assert keys.span("memory", "0040:0049").lo == 0x449
     assert keys.span("memory", "0x9000..0x9FFF") == keys.Span(0x9000, 0x9FFF)
     assert keys.span("input", "space") == keys.Span(None, None)
+    assert keys.span("register", "0x20..0x35") == keys.Span(0x20, 0x35)
+    assert keys.span("command", "0xE0..0xE3") == keys.Span(0xE0, 0xE3)
     assert keys.span("vector", "2").lo == 2 and keys.span("vector", "0x02").lo == 2
 
 
@@ -573,6 +578,44 @@ def test_more_faults_an_entry_can_have_are_each_named() -> None:
         raw = {**an_entry("0x3C8", "n"), **change}
         got, faults = parsed(raw, kind)
         assert got is None and any(says in f for f in faults), (says, faults)
+
+
+def bank(tmp_path: Path, *entries: dict[str, Any], kind: str = "register") -> knowledge.Base:
+    write_dictionary(tmp_path, "regs", kind, "ym", list(entries))
+    return knowledge.Base.load(tmp_path)
+
+
+def test_a_bank_of_registers_is_one_entry_and_a_number_inside_it_finds_it(
+        tmp_path: Path) -> None:
+    base = bank(tmp_path, an_entry("0x20..0x35", "operator control"),
+                an_entry("0x40", "level"), an_entry("0xE0..0xE3", "bank"))
+    assert base.faults() == []
+    assert ids(base.search("register", "0x23")) == ["ym:register:0x20..0x35"]
+    assert ids(base.search("register", "0x35")) == ["ym:register:0x20..0x35"]
+    assert ids(base.search("register", "0x36")) == []
+    assert ids(base.search("register", "0x30..0x40")) == [
+        "ym:register:0x20..0x35", "ym:register:0x40"]
+    assert ids(base.search(key="0x2a", scopes=("ym",))) == ["ym:register:0x20..0x35"]
+    assert base.get("register", "0x20..0x35", "ym") is not None
+    commands = bank(tmp_path / "c", an_entry("0xE0..0xE3", "bank"), kind="command")
+    assert ids(commands.search("command", "0xe2")) == ["ym:command:0xE0..0xE3"]
+
+
+@pytest.mark.parametrize(("second", "lone"), [
+    ("0x30..0x40", "0x20..0x35"), ("0x35", "0x20..0x35"), ("0x20", "0x20..0x35"),
+    ("0x28..0x29", "0x10..0x40")])
+def test_two_registers_of_one_dictionary_may_not_overlap(
+        tmp_path: Path, second: str, lone: str) -> None:
+    base = bank(tmp_path, an_entry(lone, "first"), an_entry(second, "second"))
+    assert len(base) == 1 and len(base.faults()) == 1, base.faults()
+    assert "overlaps" in base.faults()[0] and "ym:register:" in base.faults()[0]
+
+
+def test_two_dictionaries_may_share_a_range_of_registers(
+        tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "one", "register", "ym", [an_entry("0x20..0x35", "a")])
+    write_dictionary(tmp_path, "two", "register", "other", [an_entry("0x20..0x35", "b")])
+    assert knowledge.Base.load(tmp_path).faults() == []
 
 
 def test_a_memory_area_sits_where_its_key_says_and_a_device_holds_its_ranges() -> None:

@@ -181,6 +181,11 @@ class Base:
         self.entry_faults.extend(f"{where}: {f}" for f in faults)
         if got is None:
             return
+        clash = self._overlap(got, h)
+        if clash:
+            self.load_faults.append(f"{where}: {got.id} overlaps {clash} in its dictionary and "
+                                    "access does not tell them apart; the second is skipped")
+            return
         added = self._db.execute(
             f"INSERT OR IGNORE INTO entry ({_COLUMNS}) VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (got.id, got.scope, got.kind, got.key, got.access, got.lo, got.hi, got.a_lo, got.a_hi,
@@ -209,6 +214,19 @@ class Base:
                              (n, *(" ".join(w) for w in words.values())))
         else:
             self._fallback.add(n, {k: set(w) for k, w in words.items()})
+
+    def _overlap(self, got: fmt.Entry, h: int) -> str:
+        """The id of an entry already loaded from the same dictionary whose numbers overlap `got`'s
+        and whose access does not differ from its own: only registers and commands, whose banks
+        must name one entry for a number (a memory area may hold another)."""
+        if got.kind not in ("register", "command"):
+            return ""
+        for id_, access in self._db.execute(
+                "SELECT id, access FROM entry WHERE kind = ? AND scope = ? AND h = ? "
+                "AND lo <= ? AND hi >= ? ORDER BY n", (got.kind, got.scope, h, got.hi, got.lo)):
+            if id_ != got.id and not (access and got.access and access != got.access):
+                return str(id_)
+        return ""
 
     def _entry(self, row: Sequence[Any]) -> fmt.Entry:
         """The entry of one row of `_COLUMNS`."""

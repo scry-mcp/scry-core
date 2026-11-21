@@ -14,6 +14,8 @@ from dataclasses import dataclass
 KINDS = ("vector", "call", "error", "port", "irq", "memory", "input", "device", "register",
          "command")
 NUMBERED = ("vector", "call", "error", "port", "irq", "memory", "register", "command")
+#: Kinds whose key may be a range `A..B`: an area of memory, a bank of registers or of commands.
+RANGED = ("memory", "register", "command")
 
 _DECIMAL = re.compile(r"0|[1-9][0-9]*")
 _HEX = re.compile(r"0[xX]([0-9a-fA-F]+)")
@@ -65,7 +67,8 @@ def _shown(value: int) -> str:
 def canonical(kind: str, key: str) -> str:
     """`key` in the one spelling of `kind`, or `KeyFault`: hex as `0x` and upper-case digits, at
     least two; `error` and `irq` decimal; a `vector` either; a `call` its parts by `/`; a `memory`
-    key `SSSS:OOOO`, an address or a range `A..B`."""
+    key `SSSS:OOOO`, an address or a range `A..B`; a `register` or `command` an address or a
+    range."""
     if not isinstance(key, str) or not key or key != key.strip():
         raise KeyFault(f"a key is text with no space around it; got {key!r}")
     if kind not in KINDS:
@@ -90,17 +93,15 @@ def canonical(kind: str, key: str) -> str:
         if any(v > 0xFF for v in values):
             raise KeyFault(f"a call part is a byte; got {key!r}")
         return "/".join(_shown(v) for v in values)
-    if kind == "memory":
-        seg = _SEG_OFF.fullmatch(key)
-        if seg:
-            return f"{seg.group(1).upper()}:{seg.group(2).upper()}"
-        if ".." in key:
-            first, _, last = key.partition("..")
-            low, high = _hex(first, "a memory range"), _hex(last, "a memory range")
-            if high < low:
-                raise KeyFault(f"a memory range runs upward; got {key!r}")
-            return f"{_shown(low)}..{_shown(high)}"
-        return _shown(_hex(key, "a memory key"))
+    seg = _SEG_OFF.fullmatch(key) if kind == "memory" else None
+    if seg:
+        return f"{seg.group(1).upper()}:{seg.group(2).upper()}"
+    if kind in RANGED and ".." in key:
+        first, _, last = key.partition("..")
+        low, high = _hex(first, f"a {kind} range"), _hex(last, f"a {kind} range")
+        if high < low:
+            raise KeyFault(f"a {kind} range runs upward; got {key!r}")
+        return f"{_shown(low)}..{_shown(high)}"
     return _shown(_hex(key, f"a {kind} key"))
 
 
@@ -115,14 +116,13 @@ def span(kind: str, key: str) -> Span:
     if kind == "call":
         parts = tuple(int(p, 16) for p in key.split("/"))
         return Span(parts[0], parts[0], parts)
-    if kind == "memory":
-        seg = _SEG_OFF.fullmatch(key)
-        if seg:
-            n = int(seg.group(1), 16) * 16 + int(seg.group(2), 16)
-            return Span(n, n, (n,))
-        if ".." in key:
-            first, _, last = key.partition("..")
-            return Span(int(first, 16), int(last, 16))
+    seg = _SEG_OFF.fullmatch(key) if kind == "memory" else None
+    if seg:
+        n = int(seg.group(1), 16) * 16 + int(seg.group(2), 16)
+        return Span(n, n, (n,))
+    if kind in RANGED and ".." in key:
+        first, _, last = key.partition("..")
+        return Span(int(first, 16), int(last, 16))
     n = int(key) if _DECIMAL.fullmatch(key) else int(key, 16)
     return Span(n, n, (n,))
 
