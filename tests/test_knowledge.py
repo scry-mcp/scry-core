@@ -654,9 +654,10 @@ def test_a_bank_of_registers_is_one_entry_and_a_number_inside_it_finds_it(
     ("0x28..0x29", "0x10..0x40")])
 def test_two_registers_of_one_dictionary_may_not_overlap(
         tmp_path: Path, second: str, lone: str) -> None:
-    base = bank(tmp_path, an_entry(lone, "first"), an_entry(second, "second"))
-    assert len(base) == 1 and len(base.faults()) == 1, base.faults()
-    assert "overlaps" in base.faults()[0] and "ym:register:" in base.faults()[0]
+    for n, order in enumerate(((lone, second), (second, lone))):
+        base = bank(tmp_path / str(n), an_entry(order[0], "first"), an_entry(order[1], "second"))
+        assert len(base) == 1 and len(base.faults()) == 1, (order, base.faults())
+        assert "overlaps" in base.faults()[0] and "ym:register:" in base.faults()[0]
 
 
 def test_a_register_or_a_command_has_a_read_and_a_write_of_one_number(tmp_path: Path) -> None:

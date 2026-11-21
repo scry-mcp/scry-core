@@ -124,6 +124,9 @@ class Base:
         self.entry_faults: list[str] = []
         self.load_faults: list[str] = []
         self._count = 0
+        #: The highest number of a register or a command loaded per dictionary, scope and kind:
+        #: an entry above it overlaps nothing, so the common ordered file never asks the database.
+        self._top: dict[tuple[int, str, str], int] = {}
         self._db = sqlite3.connect(":memory:", check_same_thread=False)
         self._db.executescript(_SCHEMA)
         self.uses_fts5 = fts5 is not False and self._create_fts()
@@ -197,6 +200,9 @@ class Base:
         n = added.lastrowid
         assert n is not None
         self._count += 1
+        if got.kind in ("register", "command") and got.hi is not None:
+            top = self._top.get((h, got.kind, got.scope))
+            self._top[(h, got.kind, got.scope)] = got.hi if top is None else max(top, got.hi)
         self._db.executemany("INSERT INTO alias VALUES (?,?)",
                              [(a, n) for a in sorted({a.casefold() for a in
                                                      (got.name, *got.aliases)})])
@@ -219,7 +225,10 @@ class Base:
         """The id of an entry already loaded from the same dictionary whose numbers overlap `got`'s
         and whose access does not differ from its own: only registers and commands, whose banks
         must name one entry for a number (a memory area may hold another)."""
-        if got.kind not in ("register", "command"):
+        if got.kind not in ("register", "command") or got.lo is None or got.hi is None:
+            return ""
+        top = self._top.get((h, got.kind, got.scope))
+        if top is None or got.lo > top:
             return ""
         for id_, access in self._db.execute(
                 "SELECT id, access FROM entry WHERE kind = ? AND scope = ? AND h = ? "
