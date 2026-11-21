@@ -344,10 +344,28 @@ def test_a_hit_in_the_name_outranks_one_in_the_behaviour(tmp_path: Path) -> None
 
 def test_a_device_is_everything_of_it_and_of_what_it_holds(base: knowledge.Base) -> None:
     assert ids(base.search(device="sb")) == [
-        "ibm-pc:port:0x226:read", "ibm-pc:port:0x226:write", "sb-dsp:command:0xE1"]
+        "ibm-pc:device:sb", "ibm-pc:port:0x226:read", "ibm-pc:port:0x226:write",
+        "sb-dsp:command:0xE1"]
     assert ids(base.search(device="vga-seq", kind="register")) == ["vga-seq:register:0x04"]
-    assert ids(base.search(device="vga-dac")) == ["ibm-pc:port:0x3C8", "ibm-pc:port:0x3C9"]
+    assert ids(base.search(device="vga-dac")) == [
+        "ibm-pc:device:vga-dac", "ibm-pc:port:0x3C8", "ibm-pc:port:0x3C9"]
     assert base.search(device="sb-dsp", words="version").total == 1
+    assert ids(base.search(device="sb-dsp", kind="device")) == ["ibm-pc:device:sb-dsp"]
+
+
+def test_a_devices_own_entry_leads_what_is_found_of_it_and_only_its_own(
+        base: knowledge.Base) -> None:
+    found = base.search(device="vga-seq", limit=1)
+    assert ids(found) == ["ibm-pc:device:vga-seq"] and found.total == 4
+    assert "ibm-pc:device:sb-dsp" not in ids(base.search(device="sb"))
+    assert ids(base.search(device="vga-seq", words="sequencer"))[0] == "ibm-pc:device:vga-seq"
+
+
+def test_a_devices_own_entry_leads_even_where_its_scope_sorts_last(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "ports", "port", "aaa", [an_entry("0x10", "p", device="dev")])
+    write_dictionary(tmp_path, "devices", "device", "zzz", [an_entry("dev", "Device")])
+    assert ids(knowledge.Base.load(tmp_path).search(device="dev")) == [
+        "zzz:device:dev", "aaa:port:0x10"]
 
 
 def test_nothing_found_says_how_much_was_searched_and_what_is_near(base: knowledge.Base) -> None:
@@ -728,7 +746,8 @@ def test_a_cycle_of_devices_holding_each_other_ends(tmp_path: Path) -> None:
     write_dictionary(tmp_path, "devices", "device", "ibm-pc", [
         an_entry("a", "A", contains=["b"]), an_entry("b", "B", contains=["a"])])
     write_dictionary(tmp_path, "ports", "port", "ibm-pc", [an_entry("0x10", "p", device="b")])
-    assert ids(knowledge.Base.load(tmp_path).search(device="a")) == ["ibm-pc:port:0x10"]
+    assert ids(knowledge.Base.load(tmp_path).search(device="a")) == [
+        "ibm-pc:device:a", "ibm-pc:port:0x10"]
 
 
 def test_a_number_with_no_kind_may_be_a_segment_an_odd_range_or_a_name(

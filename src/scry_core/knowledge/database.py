@@ -348,8 +348,9 @@ class Base:
                scopes: Iterable[str] = (), limit: int = 10) -> Found:
         """The entries that answer every filter given: `kind`; `key` (a number or a range read
         by number, an interrupt's functions, an input's or a device's name); `words` (every word,
-        `*` for a prefix); `device` (its ports, lines, registers and commands, and those of the
-        devices it holds); `scopes`. A `KeyFault` says a `key` is no key of its kind."""
+        `*` for a prefix); `device` (its own entry first, then its ports, lines, registers and
+        commands, and those of the devices it holds); `scopes`. A `KeyFault` says a `key` is no
+        key of its kind."""
         where, args = self._base_filters(kind, tuple(scopes))
         examined = self._db.execute(f"SELECT COUNT(*) FROM entry WHERE {where}", args).fetchone()[0]
         clauses, more = [where], list(args)
@@ -358,14 +359,16 @@ class Base:
             keep = sorted(self._closure(device))
             marks = ",".join("?" * len(keep))
             clauses.append(f"(device IN ({marks}) OR (kind IN ('register','command') "
-                           f"AND scope IN ({marks})))")
-            more += keep + keep
+                           f"AND scope IN ({marks})) OR (kind = 'device' AND key = ?))")
+            more += [*keep, *keep, device]
         asked = text.terms(words) if words else []
         if words and not asked:
             return Found(examined=examined)
         tiers = self._tiers(asked) if asked else {}
+        first = "(kind = 'device' AND key = ?) DESC, " if device else ""
         rows = [(n, k, row_key) for n, k, row_key in self._db.execute(
-            f"SELECT n, kind, key FROM entry WHERE {' AND '.join(clauses)} ORDER BY {_ORDER}", more)
+            f"SELECT n, kind, key FROM entry WHERE {' AND '.join(clauses)} "
+            f"ORDER BY {first}{_ORDER}", [*more, *([device] if device else [])])
             if (not asked or n in tiers) and (
                 number is None or self._prefix_of(kind, key, k, row_key))]
         if asked:

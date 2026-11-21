@@ -89,7 +89,7 @@ def test_several_matches_are_rows_and_the_whole_entry_is_asked_by_id(base: Base)
                                "name": "sequencer index", "scope": "ibm-pc",
                                "device": "vga-seq"}]
     assert ask(base, kind="port")["truncated"] is False
-    assert ask(base, device="vga-seq")["entries_total"] == 3
+    assert ask(base, device="vga-seq")["entries_total"] == 4
 
 
 def test_words_find_entries_and_a_number_with_no_kind_finds_every_kind(base: Base) -> None:
@@ -244,7 +244,7 @@ def test_the_signature_the_client_sees_is_not_a_body() -> None:
 
 def test_a_live_machine_narrows_the_answer_to_its_scopes_and_the_devices_inside_them(
         base: Base) -> None:
-    assert ask(base, Machine(True), device="vga-seq")["entries_total"] == 3
+    assert ask(base, Machine(True), device="vga-seq")["entries_total"] == 4
     assert ask(base, Machine(True), kind="register")["entries_total"] == 1
 
 
