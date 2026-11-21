@@ -101,10 +101,13 @@ def against_sources(base: Base, index: SourceIndex) -> list[str]:
 
 
 def _same_key(e: Entry, other: str) -> bool:
+    """`other`, a list row's key, is the entry's, or for a call's variant its parent's: one section
+    of a list covers a whole family of variants."""
     try:
-        return keys.canonical(e.kind, other) == e.key
+        asked = keys.canonical(e.kind, other)
     except keys.KeyFault:
         return other == e.key
+    return asked == e.key or (e.kind == "call" and asked == keys.without_selector(e.key))
 
 
 def covered(base: Base, index: SourceIndex) -> list[str]:

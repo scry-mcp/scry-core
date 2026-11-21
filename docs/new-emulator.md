@@ -202,7 +202,9 @@ public source each fact was checked against. A server ships dictionaries and one
   picks; the registers are `AL AH BL BH CL CH DL DH AX BX CX DX SI DI`. A variant sorts and
   ranges with its parent, which may be an entry too: `knowledge_find` for the parent lists the
   variants, for a key with the selector answers the variant. The variants of one call select on
-  one register and no value picks two, or the second is a load fault.
+  one register and no value picks two, or the second is a load fault. A list section keyed by
+  the parent (`0x10/0x12`) is the source of every variant that cites it, so a variant needs no
+  key of its own in the source index.
 - **Checked entries**: a second session reads an entry against its source and adds `checked`
   with `by`, `writer` and `against` (per source `ref`, the line it compared: the entry's own
   `cites`, or a part of the line the source index holds for it). Then one command seals it:

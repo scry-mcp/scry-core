@@ -9,7 +9,7 @@ import pytest
 from null_server import an_entry, write_dictionary
 
 from scry_core import knowledge, knowledge_tool
-from scry_core.knowledge import KeyFault, keys
+from scry_core.knowledge import KeyFault, check, keys, sources
 from scry_core.reply_contract import Invalid
 
 
@@ -169,3 +169,32 @@ def test_a_selector_never_goes_with_a_range_of_calls(tmp_path: Path, kind: str) 
     for typed in ("0x10/0x12..0x10/0x13/BL=0x36", "0x10/0x12/BL=0x36..0x10/0x13"):
         with pytest.raises(KeyFault, match="one call"):
             base.search(kind, typed)
+
+
+def test_a_list_section_of_the_parent_is_the_source_of_the_variants_that_cite_it(
+        tmp_path: Path) -> None:
+    base = parent_with_variants(tmp_path)
+    ref = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
+    line = next(iter(base.entries())).sources[0].cites
+
+    def refused_for(row_key: str) -> set[str]:
+        index = sources.SourceIndex(rows={ref: sources.Row(line, row_key)})
+        return {problem.rsplit("not of ", 1)[1] for problem in check.against_sources(base, index)}
+
+    family = {"0x10/0x12", "0x10/0x12/BL=0x10", "0x10/0x12/BL=0x31..0x32", "0x10/0x12/BL=0x36"}
+    assert refused_for("0x10/0x12") == {"0x10/0x11", "0x10/0x13"}
+    assert refused_for("0x10/0x12/BL=0x10") == (family | {"0x10/0x11", "0x10/0x13"}) - {
+        "0x10/0x12/BL=0x10"}
+    assert refused_for("0x10/0x11") == (family | {"0x10/0x13"})
+    assert refused_for("0x10") == family | {"0x10/0x11", "0x10/0x13"}
+
+
+def test_a_key_with_an_equals_sign_of_another_kind_is_never_read_as_a_selector(
+        tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "inputs", "input", "ibm-pc", [an_entry(":IN0/Dip=1", "dip")])
+    base = knowledge.Base.load(tmp_path)
+    ref = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
+    line = next(iter(base.entries())).sources[0].cites
+    index = sources.SourceIndex(rows={ref: sources.Row(line, "0x10/0x12")})
+    assert check.against_sources(base, index) == [
+        f"inputs :IN0/Dip=1: {ref} is the source of 0x10/0x12, not of :IN0/Dip=1"]

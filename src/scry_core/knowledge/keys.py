@@ -114,6 +114,11 @@ def _peel(key: str) -> tuple[str, Selector | None]:
     return head, _selector(last.strip())
 
 
+def without_selector(key: str) -> str:
+    """A call key without its selector: the call the variant varies."""
+    return _peel(key)[0]
+
+
 def call_selector(kind: str, key: str) -> Selector | None:
     """The selector a call query ends in, or None: no selector, or not a call query."""
     if not key or (kind != "call" and not (not kind and "/" in key)):
