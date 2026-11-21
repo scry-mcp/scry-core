@@ -260,7 +260,11 @@ public source each fact was checked against. A server ships dictionaries and one
 - **The source index**: a tool of the server captures, from the real sources, the rows its
   dictionaries cite (the line, the key the locator carries, the read and write marks) and the
   lists they must cover (`scry-knowledge-sources/1`, `scry_core.knowledge.sources`), and the
-  result is committed. The tests need no network.
+  result is committed. The tests need no network. A row holds the `line` or, where the index
+  must not copy a third party's text, the `digest` of it (`sources.digest`: the SHA-256 of the
+  line's UTF-8 bytes, in lower-case hex), never both; an entry's `cites` is then held to the
+  digest, and a check's `against` line to the whole `cites`, since a digest cannot say what part
+  of a line it came from.
 - **The tests**: a subclass of `conformance.KnowledgeContract` with a `subject` that gives the
   declaration, the loaded `Base` (`fts5=False` forces the search index of our own), the source
   index, the lock of the checked entries (`scry_core.knowledge.read_lock`) and the scopes the

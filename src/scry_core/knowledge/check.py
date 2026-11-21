@@ -89,8 +89,10 @@ def against_sources(base: Base, index: SourceIndex) -> list[str]:
             where = f"{e.dictionary} {e.key}"
             if row is None:
                 out.append(f"{where} cites {src.ref}, which is no row of the source index")
-            elif row.line != src.cites:
-                out.append(f"{where} cites {src.cites!r}, and {src.ref} reads {row.line!r}")
+            elif not row.holds(src.cites):
+                reads = (f"holds a line of digest {row.digest[:12]}, which is not that line's"
+                         if row.digest else f"reads {row.line!r}")
+                out.append(f"{where} cites {src.cites!r}, and {src.ref} {reads}")
             elif row.key and _same_key(e, row.key):
                 continue
             elif row.key:
