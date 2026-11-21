@@ -108,6 +108,36 @@ def test_a_lock_that_is_no_lock_is_refused_by_name(tmp_path: Path) -> None:
             lock.parse_lock(text)
 
 
+def test_a_check_may_quote_a_part_of_the_indexed_line_and_nothing_else(tmp_path: Path) -> None:
+    copy = Copy(tmp_path)
+    for line, passes in (("case 0x4c:", True), ("case 0x4d:", False)):
+        write(copy, lambda d, line=line: entry(d, "0x21/0x4C")["checked"]["against"][0].update(
+            line=line))
+        assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
+        assert (check.against_sources(copy.subject().base(), copy.subject().sources())
+                == []) is passes
+
+
+def test_a_source_no_machine_opens_is_checked_against_the_line_the_entry_cites(
+        tmp_path: Path) -> None:
+    ref = "datasheet:Fixture sheet 1, table 2, page 3"
+    cites = "Bit 7 selects the bank."
+    raw = an_entry("0x10", "bank", sources=[{"role": "documentation", "ref": ref,
+                                            "cites": cites}])
+    raw["checked"] = {"by": "second checker", "writer": "fixture writer", "digest": "",
+                      "against": [{"ref": ref, "line": cites}]}
+    path = write_dictionary(tmp_path / "dictionaries", "ports", "port", "ibm-pc", [raw])
+    path.write_text(lock.dumps(json.loads(path.read_text(encoding="utf-8"))), encoding="utf-8")
+    where = tmp_path / "lock.json"
+    for line, faults in ((cites, 0), ("Bit 7 selects another bank.", 1)):
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc["entries"][0]["checked"]["against"][0]["line"] = line
+        path.write_text(lock.dumps(doc), encoding="utf-8")
+        assert seal.seal(path, ["ibm-pc:port:0x10"], where) == []
+        assert len(check.against_sources(knowledge.Base.load(path.parent),
+                                         knowledge.SourceIndex())) == faults
+
+
 def test_what_cannot_be_read_or_written_is_refused_and_not_a_traceback(
         tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     copy = Copy(tmp_path)

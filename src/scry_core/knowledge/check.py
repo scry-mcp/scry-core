@@ -60,11 +60,27 @@ def undeclared(base: Base, support: Support, code_scopes: Iterable[str]) -> list
     return out
 
 
+def _checked_lines(e: Entry, index: SourceIndex) -> list[str]:
+    """What a check compared is the source's line: the entry's `cites` for that source, or a part
+    of what the index holds for it. Anything else is free text, and a check of it checks nothing."""
+    cites = {s.ref: s.cites for s in e.sources}
+    out: list[str] = []
+    for ref, line in e.checked.against if e.checked else ():
+        row = index.rows.get(ref)
+        if line != cites.get(ref) and not (row is not None and line in row.line):
+            out.append(f"{e.dictionary} {e.key}: checked against {line!r} for {ref}, which is "
+                       f"neither the line it cites ({cites.get(ref)!r}) nor in the source index: "
+                       "a check compares the source's own line")
+    return out
+
+
 def against_sources(base: Base, index: SourceIndex) -> list[str]:
     """Every machine-checked source of every entry is a row of the index, quotes it character
-    for character, and carries the key the entry has."""
+    for character, and carries the key the entry has; and the line a check compared is the
+    source's own."""
     out: list[str] = []
     for e in base.entries():
+        out += _checked_lines(e, index)
         for src in e.sources:
             scheme, _ = sources.split(src.ref)
             if not sources.SCHEMES[scheme].machine_checked:

@@ -13,7 +13,7 @@ import pytest
 from null_server import KNOWLEDGE, NullKnowledge
 
 from scry_core import conformance
-from scry_core.knowledge import Device, Scope, Support, digest, text
+from scry_core.knowledge import Device, Scope, Support, digest, lock, seal, text
 
 CASES = sorted(n for n in dir(conformance.KnowledgeContract) if n.startswith("test_"))
 OWED = "test_every_declared_scope_device_and_chip_has_the_dictionaries_it_owes"
@@ -30,6 +30,7 @@ REWORDED = "test_a_checked_entry_is_never_reworded"
 LOCKED = "test_every_checked_entry_is_locked_and_stays_as_it_was_locked"
 EXAMINED = "test_the_check_examined_something"
 EXIT = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
+EXIT_ID = "ibm-pc:call:0x21/0x4C"
 SEQ_PORT = "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ 0x3c4"
 
 
@@ -56,7 +57,7 @@ class Copy:
         path = self.root / f"{name}.json"
         doc = json.loads(path.read_text(encoding="utf-8"))
         change(doc)
-        path.write_text(json.dumps(doc), encoding="utf-8")
+        path.write_text(lock.dumps(doc), encoding="utf-8")
 
     def index(self, change: Callable[[dict[str, Any]], None]) -> None:
         doc = json.loads(self.index_path.read_text(encoding="utf-8"))
@@ -152,6 +153,12 @@ def lock_names_an_entry_that_was_never_checked(c: Copy) -> None:
     c.relock(lambda d: d["checked"].update({"ibm-pc:call:0x21/0x4D": "0" * 64}))
 
 
+def checked_against_free_text(c: Copy) -> None:
+    c.edit("calls", lambda d: entry(d, "0x21/0x4C")["checked"]["against"][0].update(
+        line="I read it and it looked right"))
+    assert seal.seal(c.root / "calls.json", [EXIT_ID], c.lock_path) == []
+
+
 def checked_by_its_writer(c: Copy) -> None:
     c.edit("calls", lambda d: entry(d, "0x21/0x4C")["checked"].update(by="fixture writer"))
 
@@ -201,6 +208,7 @@ def reached_port_unknown(c: Copy) -> None:
     (left_out_forgotten, {COVERED}),
     (left_out_wrongly, {COVERED}),
     (checked_entry_reworded, {REWORDED, LOCKED}),
+    (checked_against_free_text, {AGAINST}),
     (checked_record_edited, {REWORDED, LOCKED}),
     (checked_record_deleted, {LOCKED}),
     (checked_entry_removed, {COVERED, LOCKED}),
