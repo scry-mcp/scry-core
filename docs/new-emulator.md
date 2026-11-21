@@ -199,7 +199,8 @@ public source each fact was checked against. A server ships dictionaries and one
   direction, and it is part of the id (`ym:register:0x0F:read`). A `call` key is `INT/AH` or
   `INT/AH/AL`, and may end in one selector, a register and its value (`0x10/0x12/BL=0x36`, or a
   range of values `BL=0x31..0x36`), for a call whose variants a register other than AH or AL
-  picks; the registers are `AL AH BL BH CL CH DL DH AX BX CX DX SI DI`. A variant sorts and
+  picks; the registers are `BL BH CL CH DL DH BX CX DX SI DI`, never `AH`, `AL` or `AX`, which
+  the key's own parts already say (`0x21/0x44/0x00`, not `0x21/0x44/AL=0x00`). A variant sorts and
   ranges with its parent, which may be an entry too: `knowledge_find` for the parent lists the
   variants, for a key with the selector answers the variant. The variants of one call select on
   one register and no value picks two, or the second is a load fault. A list section keyed by

@@ -24,8 +24,11 @@ _DEVICE = re.compile(r"[a-z0-9][a-z0-9_-]*")
 #: The widest a number is held: a 32-bit address space and a little more.
 _BITS = 48
 #: The registers a call's selector may read, and how wide each is in bits.
-REGISTERS = {"AL": 8, "AH": 8, "BL": 8, "BH": 8, "CL": 8, "CH": 8, "DL": 8, "DH": 8,
-             "AX": 16, "BX": 16, "CX": 16, "DX": 16, "SI": 16, "DI": 16}
+REGISTERS = {"BL": 8, "BH": 8, "CL": 8, "CH": 8, "DL": 8, "DH": 8,
+             "BX": 16, "CX": 16, "DX": 16, "SI": 16, "DI": 16}
+#: The registers a call's key already says, as its own parts: never a selector, so one call has
+#: one spelling.
+IN_THE_KEY = {"AH": "the second part", "AL": "the third part", "AX": "the second and third parts"}
 
 
 def fits(value: int) -> bool:
@@ -89,6 +92,9 @@ def _shown(value: int) -> str:
 def _selector(text: str) -> Selector:
     register, eq, value = text.partition("=")
     register = register.upper()
+    if eq and register in IN_THE_KEY:
+        raise KeyFault(f"{register} is already {IN_THE_KEY[register]} of the key: write the call "
+                       f"as INT/AH/AL, `0x21/0x44/0x00`, not as a selector; got {text!r}")
     if not eq or register not in REGISTERS:
         raise KeyFault(f"a call selector is a register and its value, `BL=0x36`; the registers "
                        f"are {', '.join(REGISTERS)}; got {text!r}")
