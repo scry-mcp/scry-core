@@ -228,8 +228,8 @@
         "initialization word 1"
       ],
       "description": "ICW1: starts the initialization sequence and resets the controller.",
-      "behaviour": "Bit 4 set marks it; bits 7 to 5 are address bits for 8080 mode and are not keyed. Bit 3 selects level-triggered mode, bit 2 an interval of 4, bit 1 single and bit 0 that ICW4 follows. It clears the mask and in-service registers.",
-      "differs": "DOSBox-X logs level-triggered mode, the interval of 4 and 8080 mode as not handled; MAME keeps the level-triggered flag.",
+      "behaviour": "Bit 4 set marks it; bits 7 to 5 are address bits for 8080 mode and are not keyed. Bit 3 selects level-triggered mode, bit 2 an interval of 4, bit 1 single and bit 0 that ICW4 follows. It clears the mask register.",
+      "differs": "MAME also clears the in-service register; DOSBox-X leaves it. DOSBox-X logs level-triggered mode, the interval of 4 and 8080 mode as not handled; MAME keeps the level-triggered flag.",
       "sources": [
         {
           "role": "documentation",
@@ -423,8 +423,8 @@
       "key": "0xA0..0xA7",
       "name": "rotate on non-spec. EOI",
       "description": "OCW2 rotate on non-specific EOI: the in-service interrupt is finished and becomes the lowest priority.",
-      "behaviour": "Chosen when bits 7 to 5 are 101 and bits 4 and 3 are 0; bits 2 to 0 are ignored. MAME clears the first in-service bit from the priority base and rotates the base past it.",
-      "differs": "DOSBox-X logs that rotation is not supported and performs a plain non-specific EOI.",
+      "behaviour": "Chosen when bits 7 to 5 are 101 and bits 4 and 3 are 0; bits 2 to 0 are ignored. MAME clears the first in-service bit counted from the priority base and, when it found one, moves the base on by one place.",
+      "differs": "DOSBox-X logs that rotation is not supported and performs a plain non-specific EOI. MAME moves the base one place from where it was, not past the bit it cleared.",
       "sources": [
         {
           "role": "documentation",

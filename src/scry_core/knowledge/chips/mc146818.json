@@ -18,7 +18,7 @@
       "name": "seconds",
       "description": "Seconds of the clock.",
       "behaviour": "Holds the seconds, 0 to 59, in BCD or binary as bit 2 of status register B selects. Bit 7 is read only. The chip advances it as time passes.",
-      "differs": "DOSBox-X refuses a write that is not valid BCD or is over 59; MAME stores the byte with bit 7 cleared.",
+      "differs": "DOSBox-X refuses a value over 59, and in BCD mode invalid BCD; MAME stores the byte with bit 7 cleared.",
       "sources": [
         {
           "role": "documentation",
@@ -35,33 +35,14 @@
           "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_SECONDS",
           "cites": "\tcase REG_SECONDS:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 00h SECONDS",
-            "line": "CMOS 00h - RTC - SECONDS"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x00",
-            "line": "        case 0x00:      /* Seconds */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_SECONDS",
-            "line": "\tcase REG_SECONDS:"
-          }
-        ],
-        "digest": "59e8377bf0ffa0b557179aa03368ca2cfcff7e18bebc8f8507e0fe9931ec1bf6"
-      }
+      ]
     },
     {
       "key": "0x01",
       "name": "seconds alarm",
       "description": "Alarm seconds.",
       "behaviour": "Holds the alarm seconds in BCD or binary as bit 2 of status register B selects. A value with bits 7 and 6 both set matches any second.",
-      "differs": "DOSBox-X refuses a write that is not valid BCD or is out of range; MAME stores the byte as written.",
+      "differs": "DOSBox-X refuses a value over 59, and in BCD mode invalid BCD, so it never holds one with bits 7 and 6 set; MAME stores the byte as written and lets it match any second.",
       "sources": [
         {
           "role": "documentation",
@@ -78,33 +59,14 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_SECONDS",
           "cites": "\t\tREG_ALARM_SECONDS = 1,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 01h SECOND ALARM",
-            "line": "CMOS 01h - RTC - SECOND ALARM"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x01",
-            "line": "        case 0x01:      /* Seconds, alarm */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_SECONDS",
-            "line": "\t\tREG_ALARM_SECONDS = 1,"
-          }
-        ],
-        "digest": "1b00b3aa7e3d2f0ba41b1a3957bc87c28bdd7885600b6c37e137a550346a0351"
-      }
+      ]
     },
     {
       "key": "0x02",
       "name": "minutes",
       "description": "Minutes of the clock.",
       "behaviour": "Holds the minutes, 0 to 59, in BCD or binary as bit 2 of status register B selects. The chip advances it as time passes.",
-      "differs": "DOSBox-X refuses a write that is not valid BCD or is out of range; MAME stores the byte as written.",
+      "differs": "DOSBox-X refuses a value over 59, and in BCD mode invalid BCD; MAME stores the byte as written.",
       "sources": [
         {
           "role": "documentation",
@@ -121,33 +83,14 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_MINUTES",
           "cites": "\t\tREG_MINUTES = 2,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 02h MINUTES",
-            "line": "CMOS 02h - RTC - MINUTES"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x02",
-            "line": "        case 0x02:      /* Minutes */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_MINUTES",
-            "line": "\t\tREG_MINUTES = 2,"
-          }
-        ],
-        "digest": "e5fe5319dd8bdac10a1d13609ea12fe8901279cd4c30ba1a58817e06ed8e35b6"
-      }
+      ]
     },
     {
       "key": "0x03",
       "name": "minutes alarm",
       "description": "Alarm minutes.",
       "behaviour": "Holds the alarm minutes in BCD or binary as bit 2 of status register B selects. A value with bits 7 and 6 both set matches any minute.",
-      "differs": "DOSBox-X refuses a write that is not valid BCD or is out of range; MAME stores the byte as written.",
+      "differs": "DOSBox-X refuses a value over 59, and in BCD mode invalid BCD, so it never holds one with bits 7 and 6 set; MAME stores the byte as written and lets it match any minute.",
       "sources": [
         {
           "role": "documentation",
@@ -164,33 +107,14 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_MINUTES",
           "cites": "\t\tREG_ALARM_MINUTES = 3,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 03h MINUTE ALARM",
-            "line": "CMOS 03h - RTC - MINUTE ALARM"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x03",
-            "line": "        case 0x03:      /* Minutes, alarm */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_MINUTES",
-            "line": "\t\tREG_ALARM_MINUTES = 3,"
-          }
-        ],
-        "digest": "2f7e1e980aac85c4b8a4b2a483f2938205944de75c439b1c07977a1654b06bdd"
-      }
+      ]
     },
     {
       "key": "0x04",
       "name": "hours",
       "description": "Hours of the clock.",
       "behaviour": "Holds the hours in BCD or binary as bit 2 of status register B selects: 0 to 23 in 24-hour mode, 1 to 12 in 12-hour mode with bit 7 set for PM. Bit 1 of status register B selects the mode.",
-      "differs": "DOSBox-X refuses a write that is not valid BCD or is out of range; MAME stores the byte as written.",
+      "differs": "DOSBox-X refuses an hour out of range for the mode, and in BCD mode invalid BCD; its BCD PM hours 0x81 to 0x89 convert wrongly (0x81 stores 23, 0x83 is refused). MAME stores the byte as written.",
       "sources": [
         {
           "role": "documentation",
@@ -207,33 +131,14 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_HOURS",
           "cites": "\t\tREG_HOURS = 4,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 04h HOURS",
-            "line": "CMOS 04h - RTC - HOURS"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x04",
-            "line": "        case 0x04:      /* Hours */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_HOURS",
-            "line": "\t\tREG_HOURS = 4,"
-          }
-        ],
-        "digest": "88bf940f05f6cf4be13ff6119dfa17c1d4ed0511f1ff624088faca08889a1b23"
-      }
+      ]
     },
     {
       "key": "0x05",
       "name": "hours alarm",
       "description": "Alarm hours.",
       "behaviour": "Holds the alarm hours in the same form as the hours. A value with bits 7 and 6 both set matches any hour; the alarm flag is set when seconds, minutes and hours all match.",
-      "differs": "DOSBox-X refuses a write that is not valid BCD or is out of range; MAME stores the byte as written.",
+      "differs": "DOSBox-X refuses an out-of-range hour, invalid BCD in BCD mode, and bits 7 and 6 set; it converts BCD PM hours 0x81 to 0x89 wrongly. MAME stores the byte as written and lets bits 7 and 6 match any hour.",
       "sources": [
         {
           "role": "documentation",
@@ -250,33 +155,14 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_HOURS",
           "cites": "\t\tREG_ALARM_HOURS = 5,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 05h HOUR ALARM",
-            "line": "CMOS 05h - RTC - HOUR ALARM"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x05",
-            "line": "        case 0x05:      /* Hours, alarm */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_HOURS",
-            "line": "\t\tREG_ALARM_HOURS = 5,"
-          }
-        ],
-        "digest": "6af84d4aebd885fd04bb1d8e0eb94035f48544366e0f8c39f02b8a20b7658543"
-      }
+      ]
     },
     {
       "key": "0x06",
       "name": "day of week",
       "description": "Day of the week of the clock.",
       "behaviour": "Holds the day of the week, 1 to 7 with Sunday as 1, in BCD or binary as bit 2 of status register B selects. The chip advances it at midnight.",
-      "differs": "DOSBox-X refuses a write that is not valid BCD or is out of range; MAME stores the byte as written.",
+      "differs": "DOSBox-X refuses a value outside 1 to 7, and in BCD mode invalid BCD; MAME stores the byte as written.",
       "sources": [
         {
           "role": "documentation",
@@ -293,33 +179,14 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFWEEK",
           "cites": "\t\tREG_DAYOFWEEK = 6,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 06h DAY OF WEEK",
-            "line": "CMOS 06h - RTC - DAY OF WEEK"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x06",
-            "line": "        case 0x06:      /* Day of week */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFWEEK",
-            "line": "\t\tREG_DAYOFWEEK = 6,"
-          }
-        ],
-        "digest": "64ed5e331eaf076b9011f7b5f791565cb1dd9d5cb00f5f409d39fc1a7ad9af34"
-      }
+      ]
     },
     {
       "key": "0x07",
       "name": "day of month",
       "description": "Day of the month of the clock.",
       "behaviour": "Holds the day of the month, 1 to 31, in BCD or binary as bit 2 of status register B selects. The chip advances it at midnight and wraps it at the end of the month.",
-      "differs": "DOSBox-X refuses a write that is not valid BCD or is out of range; MAME stores the byte as written.",
+      "differs": "DOSBox-X refuses a value outside 1 to 31, and in BCD mode invalid BCD; MAME stores the byte as written.",
       "sources": [
         {
           "role": "documentation",
@@ -336,33 +203,14 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFMONTH",
           "cites": "\t\tREG_DAYOFMONTH = 7,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 07h DATE OF MONTH",
-            "line": "CMOS 07h - RTC - DATE OF MONTH"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x07",
-            "line": "        case 0x07:      /* Day of month */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFMONTH",
-            "line": "\t\tREG_DAYOFMONTH = 7,"
-          }
-        ],
-        "digest": "0a1f5041988cec2302dc170b78c552a64d84ed45f0c1453ee7f7bbbcafe4e60f"
-      }
+      ]
     },
     {
       "key": "0x08",
       "name": "month",
       "description": "Month of the clock.",
       "behaviour": "Holds the month, 1 to 12, in BCD or binary as bit 2 of status register B selects. The chip advances it at the end of the month.",
-      "differs": "DOSBox-X refuses a write that is not valid BCD or is out of range; MAME stores the byte as written.",
+      "differs": "DOSBox-X refuses a value outside 1 to 12, and in BCD mode invalid BCD; MAME stores the byte as written.",
       "sources": [
         {
           "role": "documentation",
@@ -379,33 +227,14 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_MONTH",
           "cites": "\t\tREG_MONTH = 8,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 08h MONTH",
-            "line": "CMOS 08h - RTC - MONTH"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x08",
-            "line": "        case 0x08:      /* Month */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_MONTH",
-            "line": "\t\tREG_MONTH = 8,"
-          }
-        ],
-        "digest": "a11d352c3afcf839e3d67a9f4ce0723b9393a5d6b09df79ce8133b8cc2cb1874"
-      }
+      ]
     },
     {
       "key": "0x09",
       "name": "year",
       "description": "Year of the clock within its century.",
       "behaviour": "Holds the year, 0 to 99, in BCD or binary as bit 2 of status register B selects. The chip advances it at the end of December.",
-      "differs": "DOSBox-X refuses a write that is not valid BCD or is out of range; MAME stores the byte as written.",
+      "differs": "DOSBox-X refuses a value over 99, and in BCD mode invalid BCD; MAME stores the byte as written.",
       "sources": [
         {
           "role": "documentation",
@@ -422,26 +251,7 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_YEAR",
           "cites": "\t\tREG_YEAR = 9,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 09h YEAR",
-            "line": "CMOS 09h - RTC - YEAR"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x09",
-            "line": "        case 0x09:      /* Year */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_YEAR",
-            "line": "\t\tREG_YEAR = 9,"
-          }
-        ],
-        "digest": "ac5022099dddba631eb1ea6f443eb1db7454083c89f638056935a7797de8f683"
-      }
+      ]
     },
     {
       "key": "0x0A",
@@ -585,8 +395,8 @@
         "register D"
       ],
       "description": "Status register D, read only: whether the clock's battery kept its RAM valid.",
-      "behaviour": "Bit 7 set means the RAM and the time are valid, and a read sets it. A write has no effect in MAME.",
-      "differs": "DOSBox-X keeps bit 7 of a write to it; MAME ignores a write.",
+      "behaviour": "Bit 7 set means the battery kept the RAM and the time valid; bits 6 to 0 read 0. The chip's register is read only.",
+      "differs": "DOSBox-X holds bit 7 from the start, returns it unchanged on a read and keeps bit 7 of a write; MAME sets it only after a read (unless its RAM was loaded) and ignores a write.",
       "sources": [
         {
           "role": "documentation",
@@ -613,7 +423,7 @@
       ],
       "description": "The battery-backed RAM bytes after the clock registers.",
       "behaviour": "A write stores the byte and a read returns it. The first fourteen bytes are the clock and its status registers, so these are the bytes left over.",
-      "differs": "DOSBox-X computes some of these bytes from the emulated machine (floppy and disk types) and keeps seven bits of a write to one; MAME holds plain RAM.",
+      "differs": "DOSBox-X computes the floppy and disk bytes (0x10, 0x12, 0x19 to 0x2C) from its drives, reads 0x39 and 0x3A as 0, keeps 7 bits at 0x0F, and keeps the clock's century at 0x32 and 0x37; MAME holds plain RAM.",
       "sources": [
         {
           "role": "documentation",
@@ -630,26 +440,7 @@
           "ref": "mame:src/devices/machine/mc146818.h data size",
           "cites": "\tvirtual int data_size() const { return 64; }"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 00h-0Dh clock functions",
-            "line": "The first fourteen bytes are dedicated to the MC146818 chip clock functions "
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg default",
-            "line": "        default:"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h data size",
-            "line": "\tvirtual int data_size() const { return 64; }"
-          }
-        ],
-        "digest": "76a814105d2999acfab52fa806968da6309ab1105fa8d349ba711096072282d1"
-      }
+      ]
     }
   ]
 }

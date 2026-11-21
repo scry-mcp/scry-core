@@ -112,20 +112,6 @@
           "line": "\t\tPC = 0x0038;"
         }
       ]
-    },
-    "z80:vector:0x66": {
-      "digest": "4a006a0e13ed6fa2b95a21751a5ca7a65fff945fe0faa8c66d0504f90e073c7a",
-      "by": "phase Kcc",
-      "against": [
-        {
-          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, NMI pin",
-          "line": "restart at location 0066h."
-        },
-        {
-          "ref": "mame:src/devices/cpu/z80/z80.lst NMI",
-          "line": "\tPC = 0x0066;"
-        }
-      ]
     }
   }
 }

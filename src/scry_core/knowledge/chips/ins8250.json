@@ -289,7 +289,7 @@
         "MSR"
       ],
       "description": "Modem status register: the modem input lines and their changes.",
-      "behaviour": "Bits 7 to 4 are DCD, RI, DSR and CTS, and bits 3 to 0 flag a change of each. A read clears the change bits and the modem status interrupt; in loopback the bits follow the modem control outputs.",
+      "behaviour": "Bits 7 to 4 are DCD, RI, DSR and CTS. Bits 3, 1 and 0 flag a change of DCD, DSR and CTS, and bit 2 flags the trailing edge of RI. A read clears the change bits and the modem status interrupt; in loopback the bits follow the modem control outputs.",
       "sources": [
         {
           "role": "documentation",
@@ -306,7 +306,8 @@
           "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 6",
           "cites": "\t\tcase 6:"
         }
-      ]
+      ],
+      "differs": "DOSBox-X flags RI only on its trailing edge. MAME flags any RI change outside loopback, and only the trailing edge in loopback."
     },
     {
       "key": "0x07",

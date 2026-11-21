@@ -80,25 +80,7 @@
           "cites": "//           02 xxxxxxxx Timer A value (4 * OPN)"
         }
       ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B AdLib index 02h",
-            "line": " 02h\tTimer #1 data (OPL2 and OPL3 in OPL2 mode only)"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x02",
-            "line": "\tcase 0x02:"
-          },
-          {
-            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 02",
-            "line": "//           02 xxxxxxxx Timer A value (4 * OPN)"
-          }
-        ],
-        "digest": "7494c6ef2ab712da4f82357c623c4499984e66fd18871ae0086e473d93348020"
-      }
+      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds."
     },
     {
       "key": "0x03",
@@ -125,25 +107,7 @@
           "cites": "//           03 xxxxxxxx Timer B value"
         }
       ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B AdLib index 03h",
-            "line": " 03h\tTimer #2 data (OPL2 and OPL3 in OPL2 mode only)"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x03",
-            "line": "\tcase 0x03:"
-          },
-          {
-            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 03",
-            "line": "//           03 xxxxxxxx Timer B value"
-          }
-        ],
-        "digest": "5310ede808310ba194a360c4c42484870a1ae3a6488640ac827c7fb4aaac2c83"
-      }
+      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds."
     },
     {
       "key": "0x04",
@@ -170,25 +134,7 @@
           "cites": "//           04 x------- RST"
         }
       ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B AdLib index 04h",
-            "line": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
-            "line": "\tcase 0x04:"
-          },
-          {
-            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
-            "line": "//           04 x------- RST"
-          }
-        ],
-        "digest": "4736fbf1cc2a57c73978d7c2065e04013242550ae76085ddf48a8f16ae5af235"
-      }
+      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds."
     },
     {
       "key": "0x08",
@@ -260,25 +206,7 @@
           "cites": "//           BD x------- AM depth"
         }
       ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B AdLib index BDh",
-            "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
-            "line": "\t\tif ( reg == 0xbd ) {"
-          },
-          {
-            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
-            "line": "//           BD x------- AM depth"
-          }
-        ],
-        "digest": "8be0b18a73626d506908c4458bd2cf467a989f995851e87227be5e713fa44bfb"
-      }
+      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds."
     },
     {
       "key": "0x20..0x35",

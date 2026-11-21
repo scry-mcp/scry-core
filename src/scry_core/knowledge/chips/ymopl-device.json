@@ -92,8 +92,8 @@
         "AdLib chip 2",
         "OPL3 FM"
       ],
-      "description": "Yamaha FM synthesizer, the OPL2's successor: eighteen channels in two register banks, four outputs, four-operator channels and eight waveforms. OPL2 compatible until a mode bit enables the new features.",
-      "behaviour": "Register select and data ports as on the OPL2, plus a second address port that selects the 0x100 bank. Writes above 0xFF are masked off until the OPL3 mode bit is set, except to register 0x105.",
+      "description": "Yamaha FM synthesizer, the OPL2's successor: a second register bank, four outputs, four-operator channels and eight waveforms. OPL2 compatible until a mode bit enables the new features.",
+      "behaviour": "Register select and data ports as on the OPL2, plus a second address port that selects the 0x100 bank. Bit 0 of register 0x105 is the OPL3 mode bit and is off by default; while it is off that port reaches only register 0x105.",
       "classes": [
         "ymf262_device"
       ],
@@ -116,6 +116,11 @@
           "role": "emulator",
           "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ymf262",
           "cites": "DEFINE_DEVICE_TYPE(YMF262, ymf262_device, \"ymf262\", \"YMF262 OPL3\")"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x105",
+          "cites": "\t\t} else if ( reg == 0x105 ) {"
         }
       ]
     }
