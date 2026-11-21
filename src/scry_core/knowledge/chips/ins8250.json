@@ -32,7 +32,26 @@
           "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 0",
           "cites": "\t\tcase 0:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03F8 receiver buffer",
+            "line": "03F8  R-  receiver buffer register (RBR), which contains the received"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case THR",
+            "line": "\t\tcase THR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 0",
+            "line": "\t\tcase 0:"
+          }
+        ],
+        "digest": "28655f9a2af1764893d8a6c36d292fbf22378347af07d519e168aeecbbb37444"
+      }
     },
     {
       "key": "0x01",
@@ -59,7 +78,26 @@
           "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 1",
           "cites": "\t\tcase 1:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03F9 interrupt enable",
+            "line": "03F9  RW  interrupt enable register (IER) when DLAB=0 (see #P0877)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case IER",
+            "line": "\t\tcase IER_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 1",
+            "line": "\t\tcase 1:"
+          }
+        ],
+        "digest": "58cba2f7e895b45986fde4c5140977ce8a2f756e0ec443cd1d56598059356a56"
+      }
     },
     {
       "key": "0x02",
@@ -87,7 +125,26 @@
           "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 2",
           "cites": "\t\tcase 2:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FA interrupt identification",
+            "line": "03FA  R-  interrupt identification register (see #P0878)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case FCR",
+            "line": "\t\tcase FCR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 2",
+            "line": "\t\tcase 2:"
+          }
+        ],
+        "digest": "d24dc52d9c5ae0cc9f32c78f8766c3dbb500e7a2e14acc3202a601a84285a4b9"
+      }
     },
     {
       "key": "0x03",
@@ -113,7 +170,26 @@
           "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 3",
           "cites": "\t\tcase 3:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FB line control",
+            "line": "03FB  RW  line control register (LCR) (see #P0880)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case LCR",
+            "line": "\t\tcase LCR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 3",
+            "line": "\t\tcase 3:"
+          }
+        ],
+        "digest": "ff0b7546a0498e587e7041db79effa2eae338b0c20af5e9df894c49695b3458b"
+      }
     },
     {
       "key": "0x04",
@@ -139,7 +215,26 @@
           "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 4",
           "cites": "\t\tcase 4:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FC modem control",
+            "line": "03FC  RW  modem control register (see #P0881)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case MCR",
+            "line": "\t\tcase MCR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 4",
+            "line": "\t\tcase 4:"
+          }
+        ],
+        "digest": "40bd61868e2781caf3f0dd7e08b407b03580563db5c8100d2c969f85cf18fd1a"
+      }
     },
     {
       "key": "0x05",
@@ -166,7 +261,26 @@
           "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 5",
           "cites": "\t\tcase 5:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FD line status",
+            "line": "03FD  R-  line status register (LSR) (see #P0882)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write reserved",
+            "line": "\t\tdefault:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 5",
+            "line": "\t\tcase 5:"
+          }
+        ],
+        "digest": "59679b26a171696ee92783bd3cf46a0d9ea51eb3089e3a165a8e2fe24bb43fdf"
+      }
     },
     {
       "key": "0x06",
@@ -220,7 +334,26 @@
           "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 7",
           "cites": "\t\tcase 7:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FF scratch",
+            "line": "03FF  RW  scratch register (SCR)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case SPR",
+            "line": "\t\tcase SPR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 7",
+            "line": "\t\tcase 7:"
+          }
+        ],
+        "digest": "39c8419d2e23d0a15a99779ad0d90a5a119e80bf9d4e46c75ae59dbb5981fb14"
+      }
     }
   ]
 }

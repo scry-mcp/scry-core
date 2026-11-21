@@ -38,7 +38,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x00",
           "cites": "\t\tcase 0x00:  m_horiz_char_total =   data & 0xff; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 00h horizontal total",
+            "line": " 00h\thorizontal total\t\t\t  61h\t35h   38h   71h\t  38h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x00",
+            "line": "\tcase 0x00:\t\t//Horizontal total"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x00",
+            "line": "\t\tcase 0x00:  m_horiz_char_total =   data & 0xff; break;"
+          }
+        ],
+        "digest": "01fe89d9167aa7baec6a85bcbe795b982df0b77026605afb7be191f8b2e42f34"
+      }
     },
     {
       "key": "0x01",
@@ -65,7 +84,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x01",
           "cites": "\t\tcase 0x01:  m_horiz_disp       =   data & 0xff; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 01h horizontal displayed",
+            "line": " 01h\thorizontal displayed\t\t\t  50h\t2Dh   28h   50h\t  28h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x01",
+            "line": "\tcase 0x01:\t\t//Horizontal displayed chars"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x01",
+            "line": "\t\tcase 0x01:  m_horiz_disp       =   data & 0xff; break;"
+          }
+        ],
+        "digest": "90b280fe29309e201dd6b55bfb21130a270da80454bdc9fd0b64a30b030e6e7d"
+      }
     },
     {
       "key": "0x02",
@@ -92,7 +130,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x02",
           "cites": "\t\tcase 0x02:  m_horiz_sync_pos   =   data & 0xff; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 02h horizontal sync position",
+            "line": " 02h\thorizontal sync position\t\t  52h\t2Eh   2Dh 5Ah/5Ch 2Dh"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x02",
+            "line": "\tcase 0x02:\t\t//Horizontal sync position"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x02",
+            "line": "\t\tcase 0x02:  m_horiz_sync_pos   =   data & 0xff; break;"
+          }
+        ],
+        "digest": "00d2cc37d5cb24d7c3a7a973c76268d1d398f91cf36cbb2ecf0d48b67fdabf7f"
+      }
     },
     {
       "key": "0x03",
@@ -119,7 +176,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x03",
           "cites": "\t\tcase 0x03:  m_sync_width       =   data & 0xff; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 03h sync pulse width",
+            "line": " 03h\tsync pulse width\t\t\t  0Fh 07h/0Fh 0Ah   0Ah\t  0Ah"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x03",
+            "line": "\tcase 0x03:\t\t//Horizontal sync width"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x03",
+            "line": "\t\tcase 0x03:  m_sync_width       =   data & 0xff; break;"
+          }
+        ],
+        "digest": "08a16f459b1c2f09bef15403f13113345b2644f35f4731a80817bcac6d2a095a"
+      }
     },
     {
       "key": "0x04",
@@ -146,7 +222,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x04",
           "cites": "\t\tcase 0x04:  m_vert_char_total  =   data & 0x7f; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 04h vertical total",
+            "line": " 04h\tvertical total (vcycle-1)\t\t  19h\t5Bh   1Fh   1Fh\t  7Fh"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x04",
+            "line": "\tcase 0x04:\t\t//Vertical total"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x04",
+            "line": "\t\tcase 0x04:  m_vert_char_total  =   data & 0x7f; break;"
+          }
+        ],
+        "digest": "3ac2334b6a457deca036964c23aa9eb6b278dee59395e0007e42c45d99318023"
+      }
     },
     {
       "key": "0x05",
@@ -173,7 +268,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x05",
           "cites": "\t\tcase 0x05:  m_vert_total_adj   =   data & 0x1f; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 05h vertical total adjust",
+            "line": " 05h\tvertical total adjust\t\t\t  06h\t02h   06h   06h\t  06h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x05",
+            "line": "\tcase 0x05:\t\t//Vertical display adjust"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x05",
+            "line": "\t\tcase 0x05:  m_vert_total_adj   =   data & 0x1f; break;"
+          }
+        ],
+        "digest": "6da353c40bc2c5e3f7e16b970faf6802954980c58ceb1ca7e9603d32fdd5c52a"
+      }
     },
     {
       "key": "0x06",
@@ -200,7 +314,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x06",
           "cites": "\t\tcase 0x06:  m_vert_disp        =   data & 0x7f; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 06h vertical displayed",
+            "line": " 06h\tvertical displayed\t\t\t  19h\t57h   19h   19h\t  64h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x06",
+            "line": "\tcase 0x06:\t\t//Vertical rows"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x06",
+            "line": "\t\tcase 0x06:  m_vert_disp        =   data & 0x7f; break;"
+          }
+        ],
+        "digest": "5f070ce0360623053f3689975e6cd87049d8dc19c2c274f3c655ae71f8c67546"
+      }
     },
     {
       "key": "0x07",
@@ -222,7 +355,22 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x07",
           "cites": "\t\tcase 0x07:  m_vert_sync_pos    =   data & 0x7f; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x07",
+            "line": "\tcase 0x07:\t\t//Vertical sync position"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x07",
+            "line": "\t\tcase 0x07:  m_vert_sync_pos    =   data & 0x7f; break;"
+          }
+        ],
+        "digest": "2ebbea330987b581b49e52d49f30efcdaf3a73bc9e3afda61fb995eeb6685d6b"
+      }
     },
     {
       "key": "0x08",
@@ -249,7 +397,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x08",
           "cites": "\t\tcase 0x08:  m_mode_control     =   data & 0xff; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 08h interlace mode",
+            "line": " 08h\tinterlace mode (not MCGA)\t\t  02h\t02h   02h   02h\t  02h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+            "line": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x08",
+            "line": "\t\tcase 0x08:  m_mode_control     =   data & 0xff; break;"
+          }
+        ],
+        "digest": "c9ff1137eeda6dd597e9ec8ecf3224766017767b5eed6815b732290f4df01f5e"
+      }
     },
     {
       "key": "0x09",
@@ -276,7 +443,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x09",
           "cites": "\t\tcase 0x09:  m_max_ras_addr     =   data & 0x1f; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 09h maximum scan lines",
+            "line": " 09h\tmaximum scan lines\t\t\t  0Dh\t03h   07h   07h\t  01h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x09",
+            "line": "\tcase 0x09:\t\t//Max scanline"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x09",
+            "line": "\t\tcase 0x09:  m_max_ras_addr     =   data & 0x1f; break;"
+          }
+        ],
+        "digest": "b7ff09535ceb0a7aa4738474f74b22b06744c35e1cd3674511aabc9762377afa"
+      }
     },
     {
       "key": "0x0A",
@@ -303,7 +489,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0a",
           "cites": "\t\tcase 0x0a:  m_cursor_start_ras =   data & 0x7f; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 0Ah cursor start",
+            "line": " 0Ah\tcursor start\t\t\t\t  0Bh\t00h   06h   06h 06h/00h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0a",
+            "line": "\tcase 0x0A:\t/* Cursor Start Register */"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0a",
+            "line": "\t\tcase 0x0a:  m_cursor_start_ras =   data & 0x7f; break;"
+          }
+        ],
+        "digest": "ae55f90f402798176c17d40174f5bcbb8433f700080791c911265372029cbb62"
+      }
     },
     {
       "key": "0x0B",
@@ -330,7 +535,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0b",
           "cites": "\t\tcase 0x0b:  m_cursor_end_ras   =   data & 0x1f; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 0Bh cursor end",
+            "line": " 0Bh\tcursor end\t\t\t\t  0Ch\t00h   07h   07h 07h/00h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0b",
+            "line": "\tcase 0x0B:\t/* Cursor End Register */"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0b",
+            "line": "\t\tcase 0x0b:  m_cursor_end_ras   =   data & 0x1f; break;"
+          }
+        ],
+        "digest": "f399b87429633df3ee35c7085b4d72ee252220c162316f943254e349caec60d3"
+      }
     },
     {
       "key": "0x0C",
@@ -357,7 +581,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0c",
           "cites": "\t\tcase 0x0c:  ret = m_supports_disp_start_addr_r ? (m_disp_start_addr >> 8) & 0xff : 0; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 0Ch start address high",
+            "line": " 0Ch RW\tstart address high\t\t\t  00h\t00h   00h   00h\t  00h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0c",
+            "line": "\tcase 0x0C:\t/* Start Address High Register */"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0c",
+            "line": "\t\tcase 0x0c:  ret = m_supports_disp_start_addr_r ? (m_disp_start_addr >> 8) & 0xff : 0; break;"
+          }
+        ],
+        "digest": "ef1b25989d9c481bf54d76ea0cc439f51a9c07846aa5fe7ef2cd4810446d63f1"
+      }
     },
     {
       "key": "0x0D",
@@ -384,7 +627,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0d",
           "cites": "\t\tcase 0x0d:  ret = m_supports_disp_start_addr_r ? (m_disp_start_addr >> 0) & 0xff : 0; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 0Dh start address low",
+            "line": " 0Dh RW\tstart address low\t\t\t  00h\t00h   00h   00h\t  00h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0d",
+            "line": "\tcase 0x0D:\t/* Start Address Low Register */"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0d",
+            "line": "\t\tcase 0x0d:  ret = m_supports_disp_start_addr_r ? (m_disp_start_addr >> 0) & 0xff : 0; break;"
+          }
+        ],
+        "digest": "89ce5a9bbd31fa95f372c3438f3584ec7f42fc25469ed1b0555ad5b9c7db9f8e"
+      }
     },
     {
       "key": "0x0E",
@@ -411,7 +673,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0e",
           "cites": "\t\tcase 0x0e:  ret = (m_cursor_addr    >> 8) & 0xff; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 0Eh cursor location high",
+            "line": " 0Eh RW\tcursor location high\t\t\t  00h\t00h   00h   00h\t  00h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0e",
+            "line": "\tcase 0x0E:\t/*Cursor Location High Register */"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0e",
+            "line": "\t\tcase 0x0e:  ret = (m_cursor_addr    >> 8) & 0xff; break;"
+          }
+        ],
+        "digest": "0255e5444c1da3976bbbb46019e726c89b982d1c2e0f3957ceed243d3f11cc58"
+      }
     },
     {
       "key": "0x0F",
@@ -437,7 +718,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0f",
           "cites": "\t\tcase 0x0f:  ret = (m_cursor_addr    >> 0) & 0xff; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 0Fh cursor location low",
+            "line": " 0Fh RW cursor location low\t\t\t  00h\t00h   00h   00h\t  00h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0f",
+            "line": "\tcase 0x0F:\t/* Cursor Location Low Register */"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0f",
+            "line": "\t\tcase 0x0f:  ret = (m_cursor_addr    >> 0) & 0xff; break;"
+          }
+        ],
+        "digest": "afee38ef15c58731c066bdd9002f8b6a5cd532f5bb989d3c42522d6d3bb606ac"
+      }
     },
     {
       "key": "0x10",
@@ -464,7 +764,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x10",
           "cites": "\t\tcase 0x10:  ret = (m_light_pen_addr >> 8) & 0xff; m_light_pen_latched = false; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 10h light pen high",
+            "line": " 10h R-\tlight pen high (MDA/CGA/EGA only, some HGC, few VGA"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x10",
+            "line": "\tcase 0x10:\t/* Light Pen High */"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x10",
+            "line": "\t\tcase 0x10:  ret = (m_light_pen_addr >> 8) & 0xff; m_light_pen_latched = false; break;"
+          }
+        ],
+        "digest": "5d49be1ece8c9898c74938497dc0c096ca1073a87e86683a5d5dcc46e9e298ed"
+      }
     },
     {
       "key": "0x11",
@@ -491,7 +810,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x11",
           "cites": "\t\tcase 0x11:  ret = (m_light_pen_addr >> 0) & 0xff; m_light_pen_latched = false; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 11h light pen low",
+            "line": " 11h R- light pen low (MDA/CGA/EGA only, some HGC, few VGA"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x11",
+            "line": "\tcase 0x11:\t/* Light Pen Low */"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x11",
+            "line": "\t\tcase 0x11:  ret = (m_light_pen_addr >> 0) & 0xff; m_light_pen_latched = false; break;"
+          }
+        ],
+        "digest": "9af85f925639663a300645ecec23ec5245ff31c1a060f96013b681e8778c2c67"
+      }
     },
     {
       "key": "0x12",
@@ -510,7 +848,22 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x12",
           "cites": "\t\tcase 0x12:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+            "line": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x12",
+            "line": "\t\tcase 0x12:"
+          }
+        ],
+        "digest": "2a8c6d82cd87caf16763270e8c3ec71a3b9d0fa96b2e0e9c226edcff19330a70"
+      }
     },
     {
       "key": "0x13",
@@ -529,7 +882,22 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x13",
           "cites": "\t\tcase 0x13:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+            "line": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x13",
+            "line": "\t\tcase 0x13:"
+          }
+        ],
+        "digest": "46be1647a86c76aac2bde15c5e389eb49cedbe73cc1460512eb14dbf303aa3e5"
+      }
     },
     {
       "key": "0x1F",
@@ -548,7 +916,22 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x1f",
           "cites": "\t\tcase 0x1f:  transparent_update(); break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+            "line": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x1f",
+            "line": "\t\tcase 0x1f:  transparent_update(); break;"
+          }
+        ],
+        "digest": "71f859e5f84eac6518b224f05439741d2270878495bf354b16ba4e527706886f"
+      }
     }
   ]
 }

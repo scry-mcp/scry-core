@@ -54,7 +54,22 @@
           "ref": "mame:src/devices/machine/am9517a.cpp DEFINE_DEVICE_TYPE am9517a",
           "cites": "DEFINE_DEVICE_TYPE(AM9517A,      am9517a_device,      \"am9517a\",  \"AM9517A\")"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Register Description",
+            "line": "REGISTER DESCRIPTION"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp DEFINE_DEVICE_TYPE am9517a",
+            "line": "DEFINE_DEVICE_TYPE(AM9517A,      am9517a_device,      \"am9517a\",  \"AM9517A\")"
+          }
+        ],
+        "digest": "64bd6a64babc89d1649375e06894853f2299eda22e1e0d92a6e33f0c84ad3491"
+      }
     }
   ]
 }

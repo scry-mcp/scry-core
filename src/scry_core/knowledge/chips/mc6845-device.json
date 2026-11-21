@@ -71,7 +71,22 @@
           "ref": "mame:src/devices/video/mc6845.cpp DEFINE_DEVICE_TYPE mc6845",
           "cites": "DEFINE_DEVICE_TYPE(MC6845,   mc6845_device,   \"mc6845\",   \"Motorola MC6845 CRTC\")"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03B0-03BF MDA",
+            "line": "PORT 03B0-03BF - MDA  (Monochrome Display Adapter based on 6845)"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp DEFINE_DEVICE_TYPE mc6845",
+            "line": "DEFINE_DEVICE_TYPE(MC6845,   mc6845_device,   \"mc6845\",   \"Motorola MC6845 CRTC\")"
+          }
+        ],
+        "digest": "24b406c13bb2c5a83f2b9bec105a379499ba22a7e63e20f74e1a97bfbe811806"
+      }
     }
   ]
 }

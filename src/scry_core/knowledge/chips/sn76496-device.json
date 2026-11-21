@@ -85,7 +85,22 @@
           "ref": "mame:src/devices/sound/sn76496.cpp DEFINE_DEVICE_TYPE sn76496",
           "cites": "DEFINE_DEVICE_TYPE(SN76496,  sn76496_device,   \"sn76496\",      \"SN76496\")"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+            "line": "The SN76489 has 8 \"registers\" - 4 x 4 bit volume registers, 3 x 10 bit"
+          },
+          {
+            "ref": "mame:src/devices/sound/sn76496.cpp DEFINE_DEVICE_TYPE sn76496",
+            "line": "DEFINE_DEVICE_TYPE(SN76496,  sn76496_device,   \"sn76496\",      \"SN76496\")"
+          }
+        ],
+        "digest": "2811b961fd0f399f752ae58cf4fcaec3f52218660c34abb7400d0bccd4e79a82"
+      }
     }
   ]
 }

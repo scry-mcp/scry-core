@@ -67,7 +67,22 @@
           "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ym3812",
           "cites": "DEFINE_DEVICE_TYPE(YM3812, ym3812_device, \"ym3812\", \"YM3812 OPL2\")"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 01h",
+            "line": " 01h\tEnable waveform control"
+          },
+          {
+            "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ym3812",
+            "line": "DEFINE_DEVICE_TYPE(YM3812, ym3812_device, \"ym3812\", \"YM3812 OPL2\")"
+          }
+        ],
+        "digest": "d1be568620c7f16810b035b0e7fb70c9891d00927f8b94486d57126b682abd7c"
+      }
     },
     {
       "key": "ymf262",

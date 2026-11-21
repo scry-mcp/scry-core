@@ -35,7 +35,26 @@
           "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_SECONDS",
           "cites": "\tcase REG_SECONDS:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 00h SECONDS",
+            "line": "CMOS 00h - RTC - SECONDS"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x00",
+            "line": "        case 0x00:      /* Seconds */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_SECONDS",
+            "line": "\tcase REG_SECONDS:"
+          }
+        ],
+        "digest": "59e8377bf0ffa0b557179aa03368ca2cfcff7e18bebc8f8507e0fe9931ec1bf6"
+      }
     },
     {
       "key": "0x01",
@@ -59,7 +78,26 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_SECONDS",
           "cites": "\t\tREG_ALARM_SECONDS = 1,"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 01h SECOND ALARM",
+            "line": "CMOS 01h - RTC - SECOND ALARM"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x01",
+            "line": "        case 0x01:      /* Seconds, alarm */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_SECONDS",
+            "line": "\t\tREG_ALARM_SECONDS = 1,"
+          }
+        ],
+        "digest": "1b00b3aa7e3d2f0ba41b1a3957bc87c28bdd7885600b6c37e137a550346a0351"
+      }
     },
     {
       "key": "0x02",
@@ -83,7 +121,26 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_MINUTES",
           "cites": "\t\tREG_MINUTES = 2,"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 02h MINUTES",
+            "line": "CMOS 02h - RTC - MINUTES"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x02",
+            "line": "        case 0x02:      /* Minutes */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.h REG REG_MINUTES",
+            "line": "\t\tREG_MINUTES = 2,"
+          }
+        ],
+        "digest": "e5fe5319dd8bdac10a1d13609ea12fe8901279cd4c30ba1a58817e06ed8e35b6"
+      }
     },
     {
       "key": "0x03",
@@ -107,7 +164,26 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_MINUTES",
           "cites": "\t\tREG_ALARM_MINUTES = 3,"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 03h MINUTE ALARM",
+            "line": "CMOS 03h - RTC - MINUTE ALARM"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x03",
+            "line": "        case 0x03:      /* Minutes, alarm */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_MINUTES",
+            "line": "\t\tREG_ALARM_MINUTES = 3,"
+          }
+        ],
+        "digest": "2f7e1e980aac85c4b8a4b2a483f2938205944de75c439b1c07977a1654b06bdd"
+      }
     },
     {
       "key": "0x04",
@@ -131,7 +207,26 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_HOURS",
           "cites": "\t\tREG_HOURS = 4,"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 04h HOURS",
+            "line": "CMOS 04h - RTC - HOURS"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x04",
+            "line": "        case 0x04:      /* Hours */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.h REG REG_HOURS",
+            "line": "\t\tREG_HOURS = 4,"
+          }
+        ],
+        "digest": "88bf940f05f6cf4be13ff6119dfa17c1d4ed0511f1ff624088faca08889a1b23"
+      }
     },
     {
       "key": "0x05",
@@ -155,7 +250,26 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_HOURS",
           "cites": "\t\tREG_ALARM_HOURS = 5,"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 05h HOUR ALARM",
+            "line": "CMOS 05h - RTC - HOUR ALARM"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x05",
+            "line": "        case 0x05:      /* Hours, alarm */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_HOURS",
+            "line": "\t\tREG_ALARM_HOURS = 5,"
+          }
+        ],
+        "digest": "6af84d4aebd885fd04bb1d8e0eb94035f48544366e0f8c39f02b8a20b7658543"
+      }
     },
     {
       "key": "0x06",
@@ -179,7 +293,26 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFWEEK",
           "cites": "\t\tREG_DAYOFWEEK = 6,"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 06h DAY OF WEEK",
+            "line": "CMOS 06h - RTC - DAY OF WEEK"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x06",
+            "line": "        case 0x06:      /* Day of week */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFWEEK",
+            "line": "\t\tREG_DAYOFWEEK = 6,"
+          }
+        ],
+        "digest": "64ed5e331eaf076b9011f7b5f791565cb1dd9d5cb00f5f409d39fc1a7ad9af34"
+      }
     },
     {
       "key": "0x07",
@@ -203,7 +336,26 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFMONTH",
           "cites": "\t\tREG_DAYOFMONTH = 7,"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 07h DATE OF MONTH",
+            "line": "CMOS 07h - RTC - DATE OF MONTH"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x07",
+            "line": "        case 0x07:      /* Day of month */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFMONTH",
+            "line": "\t\tREG_DAYOFMONTH = 7,"
+          }
+        ],
+        "digest": "0a1f5041988cec2302dc170b78c552a64d84ed45f0c1453ee7f7bbbcafe4e60f"
+      }
     },
     {
       "key": "0x08",
@@ -227,7 +379,26 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_MONTH",
           "cites": "\t\tREG_MONTH = 8,"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 08h MONTH",
+            "line": "CMOS 08h - RTC - MONTH"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x08",
+            "line": "        case 0x08:      /* Month */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.h REG REG_MONTH",
+            "line": "\t\tREG_MONTH = 8,"
+          }
+        ],
+        "digest": "a11d352c3afcf839e3d67a9f4ce0723b9393a5d6b09df79ce8133b8cc2cb1874"
+      }
     },
     {
       "key": "0x09",
@@ -251,7 +422,26 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_YEAR",
           "cites": "\t\tREG_YEAR = 9,"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 09h YEAR",
+            "line": "CMOS 09h - RTC - YEAR"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x09",
+            "line": "        case 0x09:      /* Year */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.h REG REG_YEAR",
+            "line": "\t\tREG_YEAR = 9,"
+          }
+        ],
+        "digest": "ac5022099dddba631eb1ea6f443eb1db7454083c89f638056935a7797de8f683"
+      }
     },
     {
       "key": "0x0A",
@@ -277,7 +467,26 @@
           "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_A",
           "cites": "\tcase REG_A:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 0Ah STATUS REGISTER A",
+            "line": "CMOS 0Ah - RTC - STATUS REGISTER A (read/write) (usu 26h)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x0a",
+            "line": "        case 0x0a:      /* Status reg A */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_A",
+            "line": "\tcase REG_A:"
+          }
+        ],
+        "digest": "132eece214decee284fec17a5f73c71a37035914a5ce99728f70369fc310d8c9"
+      }
     },
     {
       "key": "0x0B",
@@ -303,7 +512,26 @@
           "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_B",
           "cites": "\tcase REG_B:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 0Bh STATUS REGISTER B",
+            "line": "CMOS 0Bh - RTC - STATUS REGISTER B (read/write) "
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x0b",
+            "line": "        case 0x0b:      /* Status reg B */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_B",
+            "line": "\tcase REG_B:"
+          }
+        ],
+        "digest": "1c879c383fa3c9c8842e1158064cc68129622cc1ce361649fec0b970608614f7"
+      }
     },
     {
       "key": "0x0C",
@@ -329,7 +557,26 @@
           "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_read case REG_C",
           "cites": "\tcase REG_C:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 0Ch STATUS REGISTER C",
+            "line": "CMOS 0Ch - RTC - STATUS REGISTER C (Read only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_readreg case 0x0c",
+            "line": "    case 0x0c:      /* Status register C */"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_read case REG_C",
+            "line": "\tcase REG_C:"
+          }
+        ],
+        "digest": "052c52a6c6d175604f1b845fdaf640e6b8c7554e48a6424568692b6537151dc5"
+      }
     },
     {
       "key": "0x0D",
@@ -383,7 +630,26 @@
           "ref": "mame:src/devices/machine/mc146818.h data size",
           "cites": "\tvirtual int data_size() const { return 64; }"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 00h-0Dh clock functions",
+            "line": "The first fourteen bytes are dedicated to the MC146818 chip clock functions "
+          },
+          {
+            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg default",
+            "line": "        default:"
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.h data size",
+            "line": "\tvirtual int data_size() const { return 64; }"
+          }
+        ],
+        "digest": "76a814105d2999acfab52fa806968da6309ab1105fa8d349ba711096072282d1"
+      }
     }
   ]
 }

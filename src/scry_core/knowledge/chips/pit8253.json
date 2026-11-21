@@ -30,7 +30,26 @@
           "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
           "cites": "\t\tm_counter[offset]->count_w(data);"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+            "line": "Read/Write least significant byte first,"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x40",
+            "line": "        WriteHandler[0].Install(0x40,write_latch,IO_MB);"
+          },
+          {
+            "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
+            "line": "\t\tm_counter[offset]->count_w(data);"
+          }
+        ],
+        "digest": "d356a439a80032bfc06099f2926844dde74b329b92ed9f3d6aba41647d3c3141"
+      }
     },
     {
       "key": "0x01",
@@ -57,7 +76,26 @@
           "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
           "cites": "\t\tm_counter[offset]->count_w(data);"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+            "line": "Read/Write least significant byte first,"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x41",
+            "line": "//\t    WriteHandler[1].Install(0x41,write_latch,IO_MB);"
+          },
+          {
+            "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
+            "line": "\t\tm_counter[offset]->count_w(data);"
+          }
+        ],
+        "digest": "babbba72a89611c45e7129446244a85952f68601630b61dabb76ec627e6b5905"
+      }
     },
     {
       "key": "0x02",
@@ -83,7 +121,26 @@
           "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
           "cites": "\t\tm_counter[offset]->count_w(data);"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+            "line": "Read/Write least significant byte first,"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x42",
+            "line": "        WriteHandler[2].Install(0x42,write_latch,IO_MB);"
+          },
+          {
+            "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
+            "line": "\t\tm_counter[offset]->count_w(data);"
+          }
+        ],
+        "digest": "32ac6dd82d4a0a199d51f9e5c5b24a4e034556d37eb490b682b081bb02f8a297"
+      }
     },
     {
       "key": "0x03",
@@ -111,7 +168,26 @@
           "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write control_w",
           "cites": "\t\t\tm_counter[timer]->control_w(data);"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+            "line": "The Control Word Register can only be written to;"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x43",
+            "line": "        WriteHandler[3].Install(0x43,write_p43,IO_MB);"
+          },
+          {
+            "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write control_w",
+            "line": "\t\t\tm_counter[timer]->control_w(data);"
+          }
+        ],
+        "digest": "2287117b1594745c6deb3f5b5c9e39ac2f321aa39168cae947716371b13f053e"
+      }
     }
   ]
 }

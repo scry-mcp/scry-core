@@ -30,7 +30,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
           "cites": "\t\tcase REGISTER_ADDRESS:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+            "line": "Base and Current Address        Write"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+            "line": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+            "line": "\t\tcase REGISTER_ADDRESS:"
+          }
+        ],
+        "digest": "707e8504559f509853d0c27455126a984fcfc4d773812d2e2915817f0435ee5e"
+      }
     },
     {
       "key": "0x01",
@@ -56,7 +75,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
           "cites": "\t\tcase REGISTER_WORD_COUNT:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+            "line": "Base and Current Word Count     Write"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+            "line": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+            "line": "\t\tcase REGISTER_WORD_COUNT:"
+          }
+        ],
+        "digest": "78ee87c41a4416cbbcf56008a7cedbcdba66bdede3ec737b5018bf2fc32a0282"
+      }
     },
     {
       "key": "0x02",
@@ -82,7 +120,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
           "cites": "\t\tcase REGISTER_ADDRESS:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+            "line": "Base and Current Address        Write"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+            "line": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+            "line": "\t\tcase REGISTER_ADDRESS:"
+          }
+        ],
+        "digest": "ba4640b3221453c40529294d3781188a3941f723837b0db3fee616804ccfb721"
+      }
     },
     {
       "key": "0x03",
@@ -108,7 +165,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
           "cites": "\t\tcase REGISTER_WORD_COUNT:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+            "line": "Base and Current Word Count     Write"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+            "line": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+            "line": "\t\tcase REGISTER_WORD_COUNT:"
+          }
+        ],
+        "digest": "be9cb7423a28ea8bab5b15dc5084ae842753100898bf4519a95330bbbc548cf5"
+      }
     },
     {
       "key": "0x04",
@@ -134,7 +210,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
           "cites": "\t\tcase REGISTER_ADDRESS:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+            "line": "Base and Current Address        Write"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+            "line": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+            "line": "\t\tcase REGISTER_ADDRESS:"
+          }
+        ],
+        "digest": "530f65141d790cc08c26af55b3bae91d3fa5a482463daabb0715976f469536d9"
+      }
     },
     {
       "key": "0x05",
@@ -160,7 +255,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
           "cites": "\t\tcase REGISTER_WORD_COUNT:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+            "line": "Base and Current Word Count     Write"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+            "line": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+            "line": "\t\tcase REGISTER_WORD_COUNT:"
+          }
+        ],
+        "digest": "19f487cc93fd86a4c9d3bf1bf5936bf3add7b759d0d3074cf888b31f0e3f6aa8"
+      }
     },
     {
       "key": "0x06",
@@ -186,7 +300,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
           "cites": "\t\tcase REGISTER_ADDRESS:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+            "line": "Base and Current Address        Write"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+            "line": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+            "line": "\t\tcase REGISTER_ADDRESS:"
+          }
+        ],
+        "digest": "c951cb4e7cc41dbc7f5159444248acec3c90f72f48eb9c6e123875087c4343f0"
+      }
     },
     {
       "key": "0x07",
@@ -212,7 +345,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
           "cites": "\t\tcase REGISTER_WORD_COUNT:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+            "line": "Base and Current Word Count     Write"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+            "line": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+            "line": "\t\tcase REGISTER_WORD_COUNT:"
+          }
+        ],
+        "digest": "578bc15049e585251a05eda9474f6c83f68819ca99e2a6c7f3792c076ea438ff"
+      }
     },
     {
       "key": "0x08",
@@ -239,7 +391,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_STATUS",
           "cites": "\t\tcase REGISTER_STATUS:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Status Register",
+            "line": "Reset and on each Status Read. Bits 4–7 are set"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::ReadControllerReg case 0x8",
+            "line": "\tcase 0x8:\t\t/* Status Register */"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_STATUS",
+            "line": "\t\tcase REGISTER_STATUS:"
+          }
+        ],
+        "digest": "71f3235696fcc442b5e8bf4d9e6821c481f18a527da5a8032713fe7011c5037e"
+      }
     },
     {
       "key": "0x08",
@@ -267,7 +438,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_COMMAND",
           "cites": "\t\tcase REGISTER_COMMAND:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Command Register",
+            "line": "Write Command Register"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0x8",
+            "line": "\tcase 0x8:\t\t/* Command reg not used */"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_COMMAND",
+            "line": "\t\tcase REGISTER_COMMAND:"
+          }
+        ],
+        "digest": "82ced901ccda4e02ba241b9b2aaf5c9749e385cebd3be363d345f300310a1a9f"
+      }
     },
     {
       "key": "0x09",
@@ -291,7 +481,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_REQUEST",
           "cites": "\t\tcase REGISTER_REQUEST:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Request Register",
+            "line": "Write Request Register"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0x9",
+            "line": "\tcase 0x9:\t\t/* Request registers, memory to memory */"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_REQUEST",
+            "line": "\t\tcase REGISTER_REQUEST:"
+          }
+        ],
+        "digest": "e65c7600047312802246f279e84c4462271e1a265a02e3e69f5b4b05f0bfe5ab"
+      }
     },
     {
       "key": "0x0A",
@@ -317,7 +526,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_SINGLE_MASK",
           "cites": "\t\tcase REGISTER_SINGLE_MASK:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Mask Register",
+            "line": "Write Single Mask Register Bit"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xa",
+            "line": "\tcase 0xa:\t\t/* Mask Register */"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_SINGLE_MASK",
+            "line": "\t\tcase REGISTER_SINGLE_MASK:"
+          }
+        ],
+        "digest": "b84ba3465beae1f0b3ba81e3f625d037dea645481604dec991079a19d49c3f3c"
+      }
     },
     {
       "key": "0x0B",
@@ -341,7 +569,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MODE",
           "cites": "\t\tcase REGISTER_MODE:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Mode Register",
+            "line": "Write Mode Register"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xb",
+            "line": "\tcase 0xb:\t\t/* Mode Register */"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MODE",
+            "line": "\t\tcase REGISTER_MODE:"
+          }
+        ],
+        "digest": "876c5c27dfdfa3bb259185cf8c1676b007e421e344087bdb1f7239119f2d2038"
+      }
     },
     {
       "key": "0x0C",
@@ -368,7 +615,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_BYTE_POINTER",
           "cites": "\t\tcase REGISTER_BYTE_POINTER:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Software Commands",
+            "line": "Clear First/Last Flip-Flop: This command must be"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xc",
+            "line": "\tcase 0xc:\t\t/* Clear Flip/Flip */"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_BYTE_POINTER",
+            "line": "\t\tcase REGISTER_BYTE_POINTER:"
+          }
+        ],
+        "digest": "f715a5a4e57d6c6973ad63ee370cf095d56d1befdf44415a2ccc31ca6c22aed2"
+      }
     },
     {
       "key": "0x0D",
@@ -396,7 +662,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MASTER_CLEAR",
           "cites": "\t\tcase REGISTER_MASTER_CLEAR:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Software Commands",
+            "line": "Master Clear: This software instruction has the"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xd",
+            "line": "\tcase 0xd:\t\t/* Master Clear/Reset */"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MASTER_CLEAR",
+            "line": "\t\tcase REGISTER_MASTER_CLEAR:"
+          }
+        ],
+        "digest": "d10741326af11c81355d0997b7fe934c95aa3972f4a2de421dca58c433b47c09"
+      }
     },
     {
       "key": "0x0D",
@@ -421,7 +706,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_TEMPORARY",
           "cites": "\t\tcase REGISTER_TEMPORARY:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Temporary Register",
+            "line": "Read Temporary Register"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::ReadControllerReg undefined port",
+            "line": "\t\tLOG(LOG_DMACONTROL,LOG_NORMAL)(\"Trying to read undefined DMA port %x\",(int)reg);"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_TEMPORARY",
+            "line": "\t\tcase REGISTER_TEMPORARY:"
+          }
+        ],
+        "digest": "7766eb9ad424a77ef73723f05957c5ce3b18c843ff4f1a8ecf2c42e60f72e9e1"
+      }
     },
     {
       "key": "0x0E",
@@ -447,7 +751,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_CLEAR_MASK",
           "cites": "\t\tcase REGISTER_CLEAR_MASK:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Software Commands",
+            "line": "Clear Mask Register: This command clears the"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xe",
+            "line": "\tcase 0xe:\t\t/* Clear Mask register */\t\t"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_CLEAR_MASK",
+            "line": "\t\tcase REGISTER_CLEAR_MASK:"
+          }
+        ],
+        "digest": "50a4bf0d131aea9cbaf8cdd770524ad609cb0b2057a83738b858bb0ea4c43c56"
+      }
     },
     {
       "key": "0x0F",
@@ -474,7 +797,26 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MASK",
           "cites": "\t\tcase REGISTER_MASK:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Mask Register",
+            "line": "Write All Mask Register Bits"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xf",
+            "line": "\tcase 0xf:\t\t/* Multiple Mask register */"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MASK",
+            "line": "\t\tcase REGISTER_MASK:"
+          }
+        ],
+        "digest": "2fa3204fa1e781068f36fc33941ee098e4428a973fad2c7b25fae2105230b604"
+      }
     },
     {
       "key": "0x0F",
@@ -496,7 +838,22 @@
           "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_MASK",
           "cites": "\t\tcase REGISTER_MASK:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "dosbox-x:src/hardware/dma.cpp DmaController::ReadControllerReg case 0xf",
+            "line": "\tcase 0xf:\t\t/* Multiple Mask register, undocumented read back */"
+          },
+          {
+            "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_MASK",
+            "line": "\t\tcase REGISTER_MASK:"
+          }
+        ],
+        "digest": "f1c197f329528b083f2935e3fff09bea58f60900b4b5a796029d18da22ae682f"
+      }
     }
   ]
 }

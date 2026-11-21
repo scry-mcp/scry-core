@@ -34,7 +34,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base waveform_enable",
           "cites": "\tuint32_t waveform_enable() const                 { return IsOpl2 ? byte(0x01, 5, 1) : (IsOpl3Plus ? 1 : 0); }"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 01h",
+            "line": " 01h\tEnable waveform control"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x01",
+            "line": "\t\tif ( reg == 0x01 ) {"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base waveform_enable",
+            "line": "\tuint32_t waveform_enable() const                 { return IsOpl2 ? byte(0x01, 5, 1) : (IsOpl3Plus ? 1 : 0); }"
+          }
+        ],
+        "digest": "898285fa18f723d92bc39148ca9abd2174481d744a2b1863a1419f32451b7164"
+      }
     },
     {
       "key": "0x02",
@@ -60,7 +79,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 02",
           "cites": "//           02 xxxxxxxx Timer A value (4 * OPN)"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 02h",
+            "line": " 02h\tTimer #1 data (OPL2 and OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x02",
+            "line": "\tcase 0x02:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 02",
+            "line": "//           02 xxxxxxxx Timer A value (4 * OPN)"
+          }
+        ],
+        "digest": "0ff6008337a2c8c8f862123838eca9840d10969436cf4e963a5665257d882786"
+      }
     },
     {
       "key": "0x03",
@@ -86,7 +124,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 03",
           "cites": "//           03 xxxxxxxx Timer B value"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 03h",
+            "line": " 03h\tTimer #2 data (OPL2 and OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x03",
+            "line": "\tcase 0x03:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 03",
+            "line": "//           03 xxxxxxxx Timer B value"
+          }
+        ],
+        "digest": "af4483fd8b4113192660daf59dcfec76f7383927721f0ccbcbe48f880d85dbea"
+      }
     },
     {
       "key": "0x04",
@@ -112,7 +169,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
           "cites": "//           04 x------- RST"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 04h",
+            "line": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
+            "line": "\tcase 0x04:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
+            "line": "//           04 x------- RST"
+          }
+        ],
+        "digest": "f5a23f26afffba1911a15884ed4c1627ab8f936ba1d54f15c8c94805984df75f"
+      }
     },
     {
       "key": "0x08",
@@ -138,7 +214,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 08",
           "cites": "//           08 x------- CSM mode [OPL/OPL2 only]"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 08h",
+            "line": " 08h\tSpeech synthesis mode"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x08",
+            "line": "\t\t} else if ( reg == 0x08 ) {"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 08",
+            "line": "//           08 x------- CSM mode [OPL/OPL2 only]"
+          }
+        ],
+        "digest": "429e2888b921a391fd54dc9c704724431defcfcebbe10c4f975cfc25a511b562"
+      }
     },
     {
       "key": "0xBD",
@@ -164,7 +259,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
           "cites": "//           BD x------- AM depth"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index BDh",
+            "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
+            "line": "\t\tif ( reg == 0xbd ) {"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
+            "line": "//           BD x------- AM depth"
+          }
+        ],
+        "digest": "b66d5b86dbf1558bc016df2293d1d31b1e00514f3a5cf2f594bf1c6f049195db"
+      }
     },
     {
       "key": "0x20..0x35",
@@ -190,7 +304,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 20-35",
           "cites": "//        20-35 x------- AM enable"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 20h-35h",
+            "line": " 20h-35h Amplitude Modulation / Vibrato"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x20",
+            "line": "\tcase 0x20 >> 4:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 20-35",
+            "line": "//        20-35 x------- AM enable"
+          }
+        ],
+        "digest": "4d8d32f6484632abd1e4ff031942dc72f545f5e492d43eed1bd80b5118cee3fc"
+      }
     },
     {
       "key": "0x40..0x55",
@@ -216,7 +349,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 40-55",
           "cites": "//        40-55 xx------ Key scale level (0-3)"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 40h-55h",
+            "line": " 40h-55h Level key scaling / Total level"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x40",
+            "line": "\tcase 0x40 >> 4:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 40-55",
+            "line": "//        40-55 xx------ Key scale level (0-3)"
+          }
+        ],
+        "digest": "7f45a34e1baef1db2ab60a7ca72b00f033927d1d45eb536b6b490ad971300e27"
+      }
     },
     {
       "key": "0x60..0x75",
@@ -242,7 +394,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 60-75",
           "cites": "//        60-75 xxxx---- Attack rate (0-15)"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 60h-75h",
+            "line": " 60h-75h Attack / Decay rate"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x60",
+            "line": "\tcase 0x60 >> 4:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 60-75",
+            "line": "//        60-75 xxxx---- Attack rate (0-15)"
+          }
+        ],
+        "digest": "fe7ce3de31eed3eda59d8d275d4ae24d4baecfc52464c12231c508787c5a4a4d"
+      }
     },
     {
       "key": "0x80..0x95",
@@ -268,7 +439,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 80-95",
           "cites": "//        80-95 xxxx---- Sustain level (0-15)"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 80h-95h",
+            "line": " 80h-95h Sustain / Release rate"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x80",
+            "line": "\tcase 0x80 >> 4:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 80-95",
+            "line": "//        80-95 xxxx---- Sustain level (0-15)"
+          }
+        ],
+        "digest": "87ee3d8ca4926594f4305a17d73415338955d98df26d752c7469abbf190d2984"
+      }
     },
     {
       "key": "0xA0..0xA8",
@@ -294,7 +484,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base A0-A8",
           "cites": "//        A0-A8 xxxxxxxx F-number (low 8 bits)"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index A0h-A8h",
+            "line": " A0h-A8h Octave / Frequency (LSB)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xa0",
+            "line": "\tcase 0xa0 >> 4:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base A0-A8",
+            "line": "//        A0-A8 xxxxxxxx F-number (low 8 bits)"
+          }
+        ],
+        "digest": "e472a3705bdb2a56f5333088d1ee9d1ec1e4a2125501efc102d31b159b30987c"
+      }
     },
     {
       "key": "0xB0..0xB8",
@@ -321,7 +530,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base B0-B8",
           "cites": "//        B0-B8 --x----- Key on"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index B0h-B8h",
+            "line": " B0h-B8h Octave / Frequency Number"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xb0",
+            "line": "\tcase 0xb0 >> 4:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base B0-B8",
+            "line": "//        B0-B8 --x----- Key on"
+          }
+        ],
+        "digest": "c1213e1707c84b43ebd3b5a3b2c7b5827cc5f3623b60620b56f75c9a59d01474"
+      }
     },
     {
       "key": "0xC0..0xC8",
@@ -348,7 +576,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base ch_feedback",
           "cites": "\tuint32_t ch_feedback(uint32_t choffs) const      { return byte(0xc0, 1, 3, choffs); }"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index C0h-C8h",
+            "line": " C0h-C8h Feedback / Algorithm"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xc0",
+            "line": "\tcase 0xc0 >> 4:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base ch_feedback",
+            "line": "\tuint32_t ch_feedback(uint32_t choffs) const      { return byte(0xc0, 1, 3, choffs); }"
+          }
+        ],
+        "digest": "8a66f33cc94e340e14ec429982c1d5fff4eaac7423f9696207ecbecc4aed4af1"
+      }
     },
     {
       "key": "0xE0..0xF5",
@@ -374,7 +621,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base op_waveform",
           "cites": "\tuint32_t op_waveform(uint32_t opoffs) const      { return waveform_enable() ? byte(0xe0, 0, newflag() ? 3 : 2, opoffs) : 0; }"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index E0h-F5h",
+            "line": " E0h-F5h Waveform Selection"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xe0",
+            "line": "\tcase 0xe0 >> 4:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base op_waveform",
+            "line": "\tuint32_t op_waveform(uint32_t opoffs) const      { return waveform_enable() ? byte(0xe0, 0, newflag() ? 3 : 2, opoffs) : 0; }"
+          }
+        ],
+        "digest": "1a426a62bbd4101dd79a51eca8d25b09cdfe28e91711613e74f6107a0d9c2e35"
+      }
     }
   ]
 }

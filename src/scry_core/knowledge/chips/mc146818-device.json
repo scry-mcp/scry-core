@@ -48,7 +48,22 @@
           "ref": "mame:src/devices/machine/mc146818.cpp DEFINE_DEVICE_TYPE mc146818",
           "cites": "DEFINE_DEVICE_TYPE(MC146818, mc146818_device, \"mc146818\", \"MC146818 RTC\")"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 00h-0Dh clock functions",
+            "line": "The first fourteen bytes are dedicated to the MC146818 chip clock functions "
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.cpp DEFINE_DEVICE_TYPE mc146818",
+            "line": "DEFINE_DEVICE_TYPE(MC146818, mc146818_device, \"mc146818\", \"MC146818 RTC\")"
+          }
+        ],
+        "digest": "a1e22de248f135026e839f3fde5d0e07fc57a923a5ebee46022a6c651af6124e"
+      }
     }
   ]
 }

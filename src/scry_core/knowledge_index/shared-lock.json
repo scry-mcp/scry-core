@@ -1,0 +1,2447 @@
+{
+  "format": "scry-knowledge-lock/2",
+  "checked": {
+    "am9517a:register:0x00": {
+      "digest": "707e8504559f509853d0c27455126a984fcfc4d773812d2e2915817f0435ee5e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "line": "Base and Current Address        Write"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+          "line": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+          "line": "\t\tcase REGISTER_ADDRESS:"
+        }
+      ]
+    },
+    "am9517a:register:0x01": {
+      "digest": "78ee87c41a4416cbbcf56008a7cedbcdba66bdede3ec737b5018bf2fc32a0282",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "line": "Base and Current Word Count     Write"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+          "line": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+          "line": "\t\tcase REGISTER_WORD_COUNT:"
+        }
+      ]
+    },
+    "am9517a:register:0x02": {
+      "digest": "ba4640b3221453c40529294d3781188a3941f723837b0db3fee616804ccfb721",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "line": "Base and Current Address        Write"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+          "line": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+          "line": "\t\tcase REGISTER_ADDRESS:"
+        }
+      ]
+    },
+    "am9517a:register:0x03": {
+      "digest": "be9cb7423a28ea8bab5b15dc5084ae842753100898bf4519a95330bbbc548cf5",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "line": "Base and Current Word Count     Write"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+          "line": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+          "line": "\t\tcase REGISTER_WORD_COUNT:"
+        }
+      ]
+    },
+    "am9517a:register:0x04": {
+      "digest": "530f65141d790cc08c26af55b3bae91d3fa5a482463daabb0715976f469536d9",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "line": "Base and Current Address        Write"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+          "line": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+          "line": "\t\tcase REGISTER_ADDRESS:"
+        }
+      ]
+    },
+    "am9517a:register:0x05": {
+      "digest": "19f487cc93fd86a4c9d3bf1bf5936bf3add7b759d0d3074cf888b31f0e3f6aa8",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "line": "Base and Current Word Count     Write"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+          "line": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+          "line": "\t\tcase REGISTER_WORD_COUNT:"
+        }
+      ]
+    },
+    "am9517a:register:0x06": {
+      "digest": "c951cb4e7cc41dbc7f5159444248acec3c90f72f48eb9c6e123875087c4343f0",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "line": "Base and Current Address        Write"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+          "line": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+          "line": "\t\tcase REGISTER_ADDRESS:"
+        }
+      ]
+    },
+    "am9517a:register:0x07": {
+      "digest": "578bc15049e585251a05eda9474f6c83f68819ca99e2a6c7f3792c076ea438ff",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "line": "Base and Current Word Count     Write"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+          "line": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+          "line": "\t\tcase REGISTER_WORD_COUNT:"
+        }
+      ]
+    },
+    "am9517a:register:0x08:read": {
+      "digest": "71f3235696fcc442b5e8bf4d9e6821c481f18a527da5a8032713fe7011c5037e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Status Register",
+          "line": "Reset and on each Status Read. Bits 4–7 are set"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::ReadControllerReg case 0x8",
+          "line": "\tcase 0x8:\t\t/* Status Register */"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_STATUS",
+          "line": "\t\tcase REGISTER_STATUS:"
+        }
+      ]
+    },
+    "am9517a:register:0x08:write": {
+      "digest": "82ced901ccda4e02ba241b9b2aaf5c9749e385cebd3be363d345f300310a1a9f",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Command Register",
+          "line": "Write Command Register"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0x8",
+          "line": "\tcase 0x8:\t\t/* Command reg not used */"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_COMMAND",
+          "line": "\t\tcase REGISTER_COMMAND:"
+        }
+      ]
+    },
+    "am9517a:register:0x09": {
+      "digest": "e65c7600047312802246f279e84c4462271e1a265a02e3e69f5b4b05f0bfe5ab",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Request Register",
+          "line": "Write Request Register"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0x9",
+          "line": "\tcase 0x9:\t\t/* Request registers, memory to memory */"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_REQUEST",
+          "line": "\t\tcase REGISTER_REQUEST:"
+        }
+      ]
+    },
+    "am9517a:register:0x0A": {
+      "digest": "b84ba3465beae1f0b3ba81e3f625d037dea645481604dec991079a19d49c3f3c",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Mask Register",
+          "line": "Write Single Mask Register Bit"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xa",
+          "line": "\tcase 0xa:\t\t/* Mask Register */"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_SINGLE_MASK",
+          "line": "\t\tcase REGISTER_SINGLE_MASK:"
+        }
+      ]
+    },
+    "am9517a:register:0x0B": {
+      "digest": "876c5c27dfdfa3bb259185cf8c1676b007e421e344087bdb1f7239119f2d2038",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Mode Register",
+          "line": "Write Mode Register"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xb",
+          "line": "\tcase 0xb:\t\t/* Mode Register */"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MODE",
+          "line": "\t\tcase REGISTER_MODE:"
+        }
+      ]
+    },
+    "am9517a:register:0x0C": {
+      "digest": "f715a5a4e57d6c6973ad63ee370cf095d56d1befdf44415a2ccc31ca6c22aed2",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Software Commands",
+          "line": "Clear First/Last Flip-Flop: This command must be"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xc",
+          "line": "\tcase 0xc:\t\t/* Clear Flip/Flip */"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_BYTE_POINTER",
+          "line": "\t\tcase REGISTER_BYTE_POINTER:"
+        }
+      ]
+    },
+    "am9517a:register:0x0D:read": {
+      "digest": "7766eb9ad424a77ef73723f05957c5ce3b18c843ff4f1a8ecf2c42e60f72e9e1",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Temporary Register",
+          "line": "Read Temporary Register"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::ReadControllerReg undefined port",
+          "line": "\t\tLOG(LOG_DMACONTROL,LOG_NORMAL)(\"Trying to read undefined DMA port %x\",(int)reg);"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_TEMPORARY",
+          "line": "\t\tcase REGISTER_TEMPORARY:"
+        }
+      ]
+    },
+    "am9517a:register:0x0D:write": {
+      "digest": "d10741326af11c81355d0997b7fe934c95aa3972f4a2de421dca58c433b47c09",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Software Commands",
+          "line": "Master Clear: This software instruction has the"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xd",
+          "line": "\tcase 0xd:\t\t/* Master Clear/Reset */"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MASTER_CLEAR",
+          "line": "\t\tcase REGISTER_MASTER_CLEAR:"
+        }
+      ]
+    },
+    "am9517a:register:0x0E": {
+      "digest": "50a4bf0d131aea9cbaf8cdd770524ad609cb0b2057a83738b858bb0ea4c43c56",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Software Commands",
+          "line": "Clear Mask Register: This command clears the"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xe",
+          "line": "\tcase 0xe:\t\t/* Clear Mask register */\t\t"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_CLEAR_MASK",
+          "line": "\t\tcase REGISTER_CLEAR_MASK:"
+        }
+      ]
+    },
+    "am9517a:register:0x0F:read": {
+      "digest": "f1c197f329528b083f2935e3fff09bea58f60900b4b5a796029d18da22ae682f",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::ReadControllerReg case 0xf",
+          "line": "\tcase 0xf:\t\t/* Multiple Mask register, undocumented read back */"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_MASK",
+          "line": "\t\tcase REGISTER_MASK:"
+        }
+      ]
+    },
+    "am9517a:register:0x0F:write": {
+      "digest": "2fa3204fa1e781068f36fc33941ee098e4428a973fad2c7b25fae2105230b604",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Mask Register",
+          "line": "Write All Mask Register Bits"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xf",
+          "line": "\tcase 0xf:\t\t/* Multiple Mask register */"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MASK",
+          "line": "\t\tcase REGISTER_MASK:"
+        }
+      ]
+    },
+    "chip:device:am9517a": {
+      "digest": "64bd6a64babc89d1649375e06894853f2299eda22e1e0d92a6e33f0c84ad3491",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Register Description",
+          "line": "REGISTER DESCRIPTION"
+        },
+        {
+          "ref": "mame:src/devices/machine/am9517a.cpp DEFINE_DEVICE_TYPE am9517a",
+          "line": "DEFINE_DEVICE_TYPE(AM9517A,      am9517a_device,      \"am9517a\",  \"AM9517A\")"
+        }
+      ]
+    },
+    "chip:device:ins8250": {
+      "digest": "90558abd48a0c67f369a4640e5b6e6bab66a0e204f56aeabb47dd67a192c8203",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 03F8-03FF serial port",
+          "line": "PORT 03F8-03FF - Serial port (8250,8250A,8251,16450,16550,16550A,etc.) COM1"
+        },
+        {
+          "ref": "mame:src/devices/machine/ins8250.cpp DEFINE_DEVICE_TYPE ins8250",
+          "line": "DEFINE_DEVICE_TYPE(INS8250,  ins8250_device, \"ins8250\",  \"National Semiconductor INS8250 UART\")"
+        }
+      ]
+    },
+    "chip:device:mc146818": {
+      "digest": "a1e22de248f135026e839f3fde5d0e07fc57a923a5ebee46022a6c651af6124e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 00h-0Dh clock functions",
+          "line": "The first fourteen bytes are dedicated to the MC146818 chip clock functions "
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.cpp DEFINE_DEVICE_TYPE mc146818",
+          "line": "DEFINE_DEVICE_TYPE(MC146818, mc146818_device, \"mc146818\", \"MC146818 RTC\")"
+        }
+      ]
+    },
+    "chip:device:mc6845": {
+      "digest": "24b406c13bb2c5a83f2b9bec105a379499ba22a7e63e20f74e1a97bfbe811806",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 03B0-03BF MDA",
+          "line": "PORT 03B0-03BF - MDA  (Monochrome Display Adapter based on 6845)"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp DEFINE_DEVICE_TYPE mc6845",
+          "line": "DEFINE_DEVICE_TYPE(MC6845,   mc6845_device,   \"mc6845\",   \"Motorola MC6845 CRTC\")"
+        }
+      ]
+    },
+    "chip:device:pic8259": {
+      "digest": "ee70f9e5b84bd3caa4e55bcdc50ec74ef8d5cf1c46416089a524516008711bc9",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW1",
+          "line": "OCW1 sets and clears the mask bits in the interrupt"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp DEFINE_DEVICE_TYPE pic8259",
+          "line": "DEFINE_DEVICE_TYPE(PIC8259, pic8259_device, \"pic8259\", \"Intel 8259 PIC\")"
+        }
+      ]
+    },
+    "chip:device:pit8253": {
+      "digest": "3fd2af0db3b4265cabf2f1192e14c5a4c5a6f72168d638e95cd4446dd9e1a2fc",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Counter 0, 1, 2",
+          "line": "These three functional blocks are identical in opera-"
+        },
+        {
+          "ref": "mame:src/devices/machine/pit8253.cpp DEFINE_DEVICE_TYPE pit8253",
+          "line": "DEFINE_DEVICE_TYPE(PIT8253, pit8253_device, \"pit8253\", \"Intel 8253 PIT\")"
+        }
+      ]
+    },
+    "chip:device:saa1099": {
+      "digest": "4dab520dd3f137e38a80ef77f627972604cd12786a84d807d68898b6b93449c0",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 0210-0211 Game Blaster",
+          "line": "PORT 0210-0211 - Game Blaster"
+        },
+        {
+          "ref": "mame:src/devices/sound/saa1099.cpp DEFINE_DEVICE_TYPE saa1099",
+          "line": "DEFINE_DEVICE_TYPE(SAA1099, saa1099_device, \"saa1099\", \"Philips SAA1099\")"
+        }
+      ]
+    },
+    "chip:device:sn76496": {
+      "digest": "2811b961fd0f399f752ae58cf4fcaec3f52218660c34abb7400d0bccd4e79a82",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "line": "The SN76489 has 8 \"registers\" - 4 x 4 bit volume registers, 3 x 10 bit"
+        },
+        {
+          "ref": "mame:src/devices/sound/sn76496.cpp DEFINE_DEVICE_TYPE sn76496",
+          "line": "DEFINE_DEVICE_TYPE(SN76496,  sn76496_device,   \"sn76496\",      \"SN76496\")"
+        }
+      ]
+    },
+    "chip:device:ym3812": {
+      "digest": "d1be568620c7f16810b035b0e7fb70c9891d00927f8b94486d57126b682abd7c",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 01h",
+          "line": " 01h\tEnable waveform control"
+        },
+        {
+          "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ym3812",
+          "line": "DEFINE_DEVICE_TYPE(YM3812, ym3812_device, \"ym3812\", \"YM3812 OPL2\")"
+        }
+      ]
+    },
+    "ins8250:register:0x00": {
+      "digest": "28655f9a2af1764893d8a6c36d292fbf22378347af07d519e168aeecbbb37444",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 03F8 receiver buffer",
+          "line": "03F8  R-  receiver buffer register (RBR), which contains the received"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case THR",
+          "line": "\t\tcase THR_OFFSET:"
+        },
+        {
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 0",
+          "line": "\t\tcase 0:"
+        }
+      ]
+    },
+    "ins8250:register:0x01": {
+      "digest": "58cba2f7e895b45986fde4c5140977ce8a2f756e0ec443cd1d56598059356a56",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 03F9 interrupt enable",
+          "line": "03F9  RW  interrupt enable register (IER) when DLAB=0 (see #P0877)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case IER",
+          "line": "\t\tcase IER_OFFSET:"
+        },
+        {
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 1",
+          "line": "\t\tcase 1:"
+        }
+      ]
+    },
+    "ins8250:register:0x02": {
+      "digest": "d24dc52d9c5ae0cc9f32c78f8766c3dbb500e7a2e14acc3202a601a84285a4b9",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 03FA interrupt identification",
+          "line": "03FA  R-  interrupt identification register (see #P0878)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case FCR",
+          "line": "\t\tcase FCR_OFFSET:"
+        },
+        {
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 2",
+          "line": "\t\tcase 2:"
+        }
+      ]
+    },
+    "ins8250:register:0x03": {
+      "digest": "ff0b7546a0498e587e7041db79effa2eae338b0c20af5e9df894c49695b3458b",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 03FB line control",
+          "line": "03FB  RW  line control register (LCR) (see #P0880)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case LCR",
+          "line": "\t\tcase LCR_OFFSET:"
+        },
+        {
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 3",
+          "line": "\t\tcase 3:"
+        }
+      ]
+    },
+    "ins8250:register:0x04": {
+      "digest": "40bd61868e2781caf3f0dd7e08b407b03580563db5c8100d2c969f85cf18fd1a",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 03FC modem control",
+          "line": "03FC  RW  modem control register (see #P0881)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case MCR",
+          "line": "\t\tcase MCR_OFFSET:"
+        },
+        {
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 4",
+          "line": "\t\tcase 4:"
+        }
+      ]
+    },
+    "ins8250:register:0x05": {
+      "digest": "59679b26a171696ee92783bd3cf46a0d9ea51eb3089e3a165a8e2fe24bb43fdf",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 03FD line status",
+          "line": "03FD  R-  line status register (LSR) (see #P0882)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write reserved",
+          "line": "\t\tdefault:"
+        },
+        {
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 5",
+          "line": "\t\tcase 5:"
+        }
+      ]
+    },
+    "ins8250:register:0x07": {
+      "digest": "39c8419d2e23d0a15a99779ad0d90a5a119e80bf9d4e46c75ae59dbb5981fb14",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 03FF scratch",
+          "line": "03FF  RW  scratch register (SCR)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case SPR",
+          "line": "\t\tcase SPR_OFFSET:"
+        },
+        {
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 7",
+          "line": "\t\tcase 7:"
+        }
+      ]
+    },
+    "mc146818:register:0x00": {
+      "digest": "59e8377bf0ffa0b557179aa03368ca2cfcff7e18bebc8f8507e0fe9931ec1bf6",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 00h SECONDS",
+          "line": "CMOS 00h - RTC - SECONDS"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x00",
+          "line": "        case 0x00:      /* Seconds */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_SECONDS",
+          "line": "\tcase REG_SECONDS:"
+        }
+      ]
+    },
+    "mc146818:register:0x01": {
+      "digest": "1b00b3aa7e3d2f0ba41b1a3957bc87c28bdd7885600b6c37e137a550346a0351",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 01h SECOND ALARM",
+          "line": "CMOS 01h - RTC - SECOND ALARM"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x01",
+          "line": "        case 0x01:      /* Seconds, alarm */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_SECONDS",
+          "line": "\t\tREG_ALARM_SECONDS = 1,"
+        }
+      ]
+    },
+    "mc146818:register:0x02": {
+      "digest": "e5fe5319dd8bdac10a1d13609ea12fe8901279cd4c30ba1a58817e06ed8e35b6",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 02h MINUTES",
+          "line": "CMOS 02h - RTC - MINUTES"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x02",
+          "line": "        case 0x02:      /* Minutes */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_MINUTES",
+          "line": "\t\tREG_MINUTES = 2,"
+        }
+      ]
+    },
+    "mc146818:register:0x03": {
+      "digest": "2f7e1e980aac85c4b8a4b2a483f2938205944de75c439b1c07977a1654b06bdd",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 03h MINUTE ALARM",
+          "line": "CMOS 03h - RTC - MINUTE ALARM"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x03",
+          "line": "        case 0x03:      /* Minutes, alarm */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_MINUTES",
+          "line": "\t\tREG_ALARM_MINUTES = 3,"
+        }
+      ]
+    },
+    "mc146818:register:0x04": {
+      "digest": "88bf940f05f6cf4be13ff6119dfa17c1d4ed0511f1ff624088faca08889a1b23",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 04h HOURS",
+          "line": "CMOS 04h - RTC - HOURS"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x04",
+          "line": "        case 0x04:      /* Hours */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_HOURS",
+          "line": "\t\tREG_HOURS = 4,"
+        }
+      ]
+    },
+    "mc146818:register:0x05": {
+      "digest": "6af84d4aebd885fd04bb1d8e0eb94035f48544366e0f8c39f02b8a20b7658543",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 05h HOUR ALARM",
+          "line": "CMOS 05h - RTC - HOUR ALARM"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x05",
+          "line": "        case 0x05:      /* Hours, alarm */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_HOURS",
+          "line": "\t\tREG_ALARM_HOURS = 5,"
+        }
+      ]
+    },
+    "mc146818:register:0x06": {
+      "digest": "64ed5e331eaf076b9011f7b5f791565cb1dd9d5cb00f5f409d39fc1a7ad9af34",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 06h DAY OF WEEK",
+          "line": "CMOS 06h - RTC - DAY OF WEEK"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x06",
+          "line": "        case 0x06:      /* Day of week */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFWEEK",
+          "line": "\t\tREG_DAYOFWEEK = 6,"
+        }
+      ]
+    },
+    "mc146818:register:0x07": {
+      "digest": "0a1f5041988cec2302dc170b78c552a64d84ed45f0c1453ee7f7bbbcafe4e60f",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 07h DATE OF MONTH",
+          "line": "CMOS 07h - RTC - DATE OF MONTH"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x07",
+          "line": "        case 0x07:      /* Day of month */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFMONTH",
+          "line": "\t\tREG_DAYOFMONTH = 7,"
+        }
+      ]
+    },
+    "mc146818:register:0x08": {
+      "digest": "a11d352c3afcf839e3d67a9f4ce0723b9393a5d6b09df79ce8133b8cc2cb1874",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 08h MONTH",
+          "line": "CMOS 08h - RTC - MONTH"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x08",
+          "line": "        case 0x08:      /* Month */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_MONTH",
+          "line": "\t\tREG_MONTH = 8,"
+        }
+      ]
+    },
+    "mc146818:register:0x09": {
+      "digest": "ac5022099dddba631eb1ea6f443eb1db7454083c89f638056935a7797de8f683",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 09h YEAR",
+          "line": "CMOS 09h - RTC - YEAR"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x09",
+          "line": "        case 0x09:      /* Year */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_YEAR",
+          "line": "\t\tREG_YEAR = 9,"
+        }
+      ]
+    },
+    "mc146818:register:0x0A": {
+      "digest": "132eece214decee284fec17a5f73c71a37035914a5ce99728f70369fc310d8c9",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 0Ah STATUS REGISTER A",
+          "line": "CMOS 0Ah - RTC - STATUS REGISTER A (read/write) (usu 26h)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x0a",
+          "line": "        case 0x0a:      /* Status reg A */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_A",
+          "line": "\tcase REG_A:"
+        }
+      ]
+    },
+    "mc146818:register:0x0B": {
+      "digest": "1c879c383fa3c9c8842e1158064cc68129622cc1ce361649fec0b970608614f7",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 0Bh STATUS REGISTER B",
+          "line": "CMOS 0Bh - RTC - STATUS REGISTER B (read/write) "
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x0b",
+          "line": "        case 0x0b:      /* Status reg B */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_B",
+          "line": "\tcase REG_B:"
+        }
+      ]
+    },
+    "mc146818:register:0x0C": {
+      "digest": "052c52a6c6d175604f1b845fdaf640e6b8c7554e48a6424568692b6537151dc5",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 0Ch STATUS REGISTER C",
+          "line": "CMOS 0Ch - RTC - STATUS REGISTER C (Read only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_readreg case 0x0c",
+          "line": "    case 0x0c:      /* Status register C */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_read case REG_C",
+          "line": "\tcase REG_C:"
+        }
+      ]
+    },
+    "mc146818:register:0x0E..0x3F": {
+      "digest": "76a814105d2999acfab52fa806968da6309ab1105fa8d349ba711096072282d1",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 00h-0Dh clock functions",
+          "line": "The first fourteen bytes are dedicated to the MC146818 chip clock functions "
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg default",
+          "line": "        default:"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h data size",
+          "line": "\tvirtual int data_size() const { return 64; }"
+        }
+      ]
+    },
+    "mc6845:register:0x00": {
+      "digest": "01fe89d9167aa7baec6a85bcbe795b982df0b77026605afb7be191f8b2e42f34",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 00h horizontal total",
+          "line": " 00h\thorizontal total\t\t\t  61h\t35h   38h   71h\t  38h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x00",
+          "line": "\tcase 0x00:\t\t//Horizontal total"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x00",
+          "line": "\t\tcase 0x00:  m_horiz_char_total =   data & 0xff; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x01": {
+      "digest": "90b280fe29309e201dd6b55bfb21130a270da80454bdc9fd0b64a30b030e6e7d",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 01h horizontal displayed",
+          "line": " 01h\thorizontal displayed\t\t\t  50h\t2Dh   28h   50h\t  28h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x01",
+          "line": "\tcase 0x01:\t\t//Horizontal displayed chars"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x01",
+          "line": "\t\tcase 0x01:  m_horiz_disp       =   data & 0xff; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x02": {
+      "digest": "00d2cc37d5cb24d7c3a7a973c76268d1d398f91cf36cbb2ecf0d48b67fdabf7f",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 02h horizontal sync position",
+          "line": " 02h\thorizontal sync position\t\t  52h\t2Eh   2Dh 5Ah/5Ch 2Dh"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x02",
+          "line": "\tcase 0x02:\t\t//Horizontal sync position"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x02",
+          "line": "\t\tcase 0x02:  m_horiz_sync_pos   =   data & 0xff; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x03": {
+      "digest": "08a16f459b1c2f09bef15403f13113345b2644f35f4731a80817bcac6d2a095a",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 03h sync pulse width",
+          "line": " 03h\tsync pulse width\t\t\t  0Fh 07h/0Fh 0Ah   0Ah\t  0Ah"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x03",
+          "line": "\tcase 0x03:\t\t//Horizontal sync width"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x03",
+          "line": "\t\tcase 0x03:  m_sync_width       =   data & 0xff; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x04": {
+      "digest": "3ac2334b6a457deca036964c23aa9eb6b278dee59395e0007e42c45d99318023",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 04h vertical total",
+          "line": " 04h\tvertical total (vcycle-1)\t\t  19h\t5Bh   1Fh   1Fh\t  7Fh"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x04",
+          "line": "\tcase 0x04:\t\t//Vertical total"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x04",
+          "line": "\t\tcase 0x04:  m_vert_char_total  =   data & 0x7f; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x05": {
+      "digest": "6da353c40bc2c5e3f7e16b970faf6802954980c58ceb1ca7e9603d32fdd5c52a",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 05h vertical total adjust",
+          "line": " 05h\tvertical total adjust\t\t\t  06h\t02h   06h   06h\t  06h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x05",
+          "line": "\tcase 0x05:\t\t//Vertical display adjust"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x05",
+          "line": "\t\tcase 0x05:  m_vert_total_adj   =   data & 0x1f; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x06": {
+      "digest": "5f070ce0360623053f3689975e6cd87049d8dc19c2c274f3c655ae71f8c67546",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 06h vertical displayed",
+          "line": " 06h\tvertical displayed\t\t\t  19h\t57h   19h   19h\t  64h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x06",
+          "line": "\tcase 0x06:\t\t//Vertical rows"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x06",
+          "line": "\t\tcase 0x06:  m_vert_disp        =   data & 0x7f; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x07": {
+      "digest": "2ebbea330987b581b49e52d49f30efcdaf3a73bc9e3afda61fb995eeb6685d6b",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x07",
+          "line": "\tcase 0x07:\t\t//Vertical sync position"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x07",
+          "line": "\t\tcase 0x07:  m_vert_sync_pos    =   data & 0x7f; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x08": {
+      "digest": "c9ff1137eeda6dd597e9ec8ecf3224766017767b5eed6815b732290f4df01f5e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 08h interlace mode",
+          "line": " 08h\tinterlace mode (not MCGA)\t\t  02h\t02h   02h   02h\t  02h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+          "line": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x08",
+          "line": "\t\tcase 0x08:  m_mode_control     =   data & 0xff; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x09": {
+      "digest": "b7ff09535ceb0a7aa4738474f74b22b06744c35e1cd3674511aabc9762377afa",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 09h maximum scan lines",
+          "line": " 09h\tmaximum scan lines\t\t\t  0Dh\t03h   07h   07h\t  01h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x09",
+          "line": "\tcase 0x09:\t\t//Max scanline"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x09",
+          "line": "\t\tcase 0x09:  m_max_ras_addr     =   data & 0x1f; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x0A": {
+      "digest": "ae55f90f402798176c17d40174f5bcbb8433f700080791c911265372029cbb62",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 0Ah cursor start",
+          "line": " 0Ah\tcursor start\t\t\t\t  0Bh\t00h   06h   06h 06h/00h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0a",
+          "line": "\tcase 0x0A:\t/* Cursor Start Register */"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0a",
+          "line": "\t\tcase 0x0a:  m_cursor_start_ras =   data & 0x7f; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x0B": {
+      "digest": "f399b87429633df3ee35c7085b4d72ee252220c162316f943254e349caec60d3",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 0Bh cursor end",
+          "line": " 0Bh\tcursor end\t\t\t\t  0Ch\t00h   07h   07h 07h/00h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0b",
+          "line": "\tcase 0x0B:\t/* Cursor End Register */"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0b",
+          "line": "\t\tcase 0x0b:  m_cursor_end_ras   =   data & 0x1f; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x0C": {
+      "digest": "ef1b25989d9c481bf54d76ea0cc439f51a9c07846aa5fe7ef2cd4810446d63f1",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 0Ch start address high",
+          "line": " 0Ch RW\tstart address high\t\t\t  00h\t00h   00h   00h\t  00h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0c",
+          "line": "\tcase 0x0C:\t/* Start Address High Register */"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0c",
+          "line": "\t\tcase 0x0c:  ret = m_supports_disp_start_addr_r ? (m_disp_start_addr >> 8) & 0xff : 0; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x0D": {
+      "digest": "89ce5a9bbd31fa95f372c3438f3584ec7f42fc25469ed1b0555ad5b9c7db9f8e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 0Dh start address low",
+          "line": " 0Dh RW\tstart address low\t\t\t  00h\t00h   00h   00h\t  00h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0d",
+          "line": "\tcase 0x0D:\t/* Start Address Low Register */"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0d",
+          "line": "\t\tcase 0x0d:  ret = m_supports_disp_start_addr_r ? (m_disp_start_addr >> 0) & 0xff : 0; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x0E": {
+      "digest": "0255e5444c1da3976bbbb46019e726c89b982d1c2e0f3957ceed243d3f11cc58",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 0Eh cursor location high",
+          "line": " 0Eh RW\tcursor location high\t\t\t  00h\t00h   00h   00h\t  00h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0e",
+          "line": "\tcase 0x0E:\t/*Cursor Location High Register */"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0e",
+          "line": "\t\tcase 0x0e:  ret = (m_cursor_addr    >> 8) & 0xff; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x0F": {
+      "digest": "afee38ef15c58731c066bdd9002f8b6a5cd532f5bb989d3c42522d6d3bb606ac",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 0Fh cursor location low",
+          "line": " 0Fh RW cursor location low\t\t\t  00h\t00h   00h   00h\t  00h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0f",
+          "line": "\tcase 0x0F:\t/* Cursor Location Low Register */"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0f",
+          "line": "\t\tcase 0x0f:  ret = (m_cursor_addr    >> 0) & 0xff; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x10": {
+      "digest": "5d49be1ece8c9898c74938497dc0c096ca1073a87e86683a5d5dcc46e9e298ed",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 10h light pen high",
+          "line": " 10h R-\tlight pen high (MDA/CGA/EGA only, some HGC, few VGA"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x10",
+          "line": "\tcase 0x10:\t/* Light Pen High */"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x10",
+          "line": "\t\tcase 0x10:  ret = (m_light_pen_addr >> 8) & 0xff; m_light_pen_latched = false; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x11": {
+      "digest": "9af85f925639663a300645ecec23ec5245ff31c1a060f96013b681e8778c2c67",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 11h light pen low",
+          "line": " 11h R- light pen low (MDA/CGA/EGA only, some HGC, few VGA"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x11",
+          "line": "\tcase 0x11:\t/* Light Pen Low */"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x11",
+          "line": "\t\tcase 0x11:  ret = (m_light_pen_addr >> 0) & 0xff; m_light_pen_latched = false; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x12": {
+      "digest": "2a8c6d82cd87caf16763270e8c3ec71a3b9d0fa96b2e0e9c226edcff19330a70",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+          "line": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x12",
+          "line": "\t\tcase 0x12:"
+        }
+      ]
+    },
+    "mc6845:register:0x13": {
+      "digest": "46be1647a86c76aac2bde15c5e389eb49cedbe73cc1460512eb14dbf303aa3e5",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+          "line": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x13",
+          "line": "\t\tcase 0x13:"
+        }
+      ]
+    },
+    "mc6845:register:0x1F": {
+      "digest": "71f859e5f84eac6518b224f05439741d2270878495bf354b16ba4e527706886f",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+          "line": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x1f",
+          "line": "\t\tcase 0x1f:  transparent_update(); break;"
+        }
+      ]
+    },
+    "pic8259:command:0x00..0x07": {
+      "digest": "1ef90ae3cb5fa3cfc137a3b8acf3436984d6e2d010678b42a41bf3096596731c",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Automatic Rotation",
+          "line": "tion using OCW2, the Rotation on Non-Specific EOI"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command rotate in auto EOI mode",
+          "line": "            if ((val&0x40)==0) {        // rotate in auto EOI mode"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x00..0x07",
+          "line": "\t\t\t\t\t\tcase 0x00:"
+        }
+      ]
+    },
+    "pic8259:command:0x08..0x0F": {
+      "digest": "e2870d90c3b2ef76c0953fe3b036a75381774bc59fd73af6f320285a4e0aa38c",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW3",
+          "line": "Operation Control Word 3 (OCW3)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command OCW3",
+          "line": "    } else if (GCC_UNLIKELY(val&0x08)) {    // OCW3 issued"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x08..0x0F",
+          "line": "\t\t\t\tif ((data & 0x98) == 0x08)"
+        }
+      ]
+    },
+    "pic8259:command:0x20..0x27": {
+      "digest": "d7f9811d3f76066ef217bc1f956640a79fe379af602ed63fead9cd30d8896ff2",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, End of Interrupt",
+          "line": "and serviced. A non-specific EOI can be issued with"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command nonspecific EOI",
+          "line": "            } else {        // nonspecific EOI"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x20..0x27",
+          "line": "\t\t\t\t\t\tcase 0x20:"
+        }
+      ]
+    },
+    "pic8259:command:0x40..0x47": {
+      "digest": "562a3a953354cc8db4a704d1141ada2f2285f9f447545d37415b05770b79e8ec",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command no operation",
+          "line": "            }   // else NOP command"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x40..0x47",
+          "line": "\t\t\t\t\t\tcase 0x40:"
+        }
+      ]
+    },
+    "pic8259:command:0x48..0x4F": {
+      "digest": "bcbb53d42678f025a2873ee5ccfa41d95ab9e6675494fd8b6807a4f15a2d274e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW3",
+          "line": "Operation Control Word 3 (OCW3)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command OCW3",
+          "line": "    } else if (GCC_UNLIKELY(val&0x08)) {    // OCW3 issued"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x48..0x4F",
+          "line": "\t\t\t\tif ((data & 0x98) == 0x08)"
+        }
+      ]
+    },
+    "pic8259:command:0x60..0x67": {
+      "digest": "d62dfd655dd2d46bf9c296c5f9c3a8c0a52cf2acdbdee0570d3011523d886653",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, End of Interrupt",
+          "line": "to be reset. A specific EOI can be issued with OCW2"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command specific EOI",
+          "line": "            if (val&0x40) {     // specific EOI"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x60..0x67",
+          "line": "\t\t\t\t\t\tcase 0x60:"
+        }
+      ]
+    },
+    "pic8259:command:0x68..0x6F": {
+      "digest": "95735f0f346137119557f877a508c5e704a934f20a62ca3e5982c6f2d689ab30",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW3",
+          "line": "Operation Control Word 3 (OCW3)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command OCW3",
+          "line": "    } else if (GCC_UNLIKELY(val&0x08)) {    // OCW3 issued"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x68..0x6F",
+          "line": "\t\t\t\tif ((data & 0x98) == 0x08)"
+        }
+      ]
+    },
+    "pic8259:command:0x80..0x87": {
+      "digest": "55329ea2eb11c80a2c83e4d82b6702e1c3891be4b81faedd3d961a2a78277e00",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Automatic Rotation",
+          "line": "in Automatic EOI Mode which is set by"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command rotate in auto EOI mode",
+          "line": "            if ((val&0x40)==0) {        // rotate in auto EOI mode"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x80..0x87",
+          "line": "\t\t\t\t\t\tcase 0x80:"
+        }
+      ]
+    },
+    "pic8259:command:0xC0..0xC7": {
+      "digest": "56bbfad42e5ed60ad3f3834d6a24b2764059ca14e677dd6d7b4e146ce0bcdb10",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Specific Rotation",
+          "line": "The Set Priority command is issued in OCW2 where:"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command set priority",
+          "line": "                LOG(LOG_PIC,LOG_NORMAL)(\"set priority command not handled\");"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xC0..0xC7",
+          "line": "\t\t\t\t\t\tcase 0xc0:"
+        }
+      ]
+    },
+    "pic8259:command:0xE0..0xE7": {
+      "digest": "af2867c8c72653478f15a1a7d05a276d05347a9822cfd458dfafa698ea96447e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Specific Rotation",
+          "line": "executed during an EOI command by using the Ro-"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command rotate mode",
+          "line": "            if (GCC_UNLIKELY(val&0x80)) LOG_MSG(\"rotate mode not supported\");"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xE0..0xE7",
+          "line": "\t\t\t\t\t\tcase 0xe0:"
+        }
+      ]
+    },
+    "pic8259:register:0x00:read": {
+      "digest": "1e163bcf98074eb3e89cd4bacf0061838753893fc63ff14c0eaac19cf1a539d5",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Status read",
+          "line": "The IRR can be read when, prior to the RD pulse, a"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp read_command status",
+          "line": "    if (pic->request_issr){"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::read ISR",
+          "line": "\t\t\t\t\tdata = m_isr & ~m_imr;"
+        }
+      ]
+    },
+    "pic8259:register:0x00:write": {
+      "digest": "a3986d46f5793d8c511dc33473ec7211cb9ff18c6e4fc4c1bdd233407dbebeb7",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Initialization Command Words 1 and 2",
+          "line": "Initialization Command Words 1 and 2"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command ICW1",
+          "line": "    if (GCC_UNLIKELY(val&0x10)) {       // ICW1 issued"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write case 0",
+          "line": "\t\tcase 0:    /* PIC acknowledge IRQ */"
+        }
+      ]
+    },
+    "pic8259:register:0x01:read": {
+      "digest": "1f5f8efa89fb30608b0947aab0a542fb4f7761ee3e1a8813120a9b3e18e6e36b",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Status read",
+          "line": "For reading the IMR, no OCW3 is needed. The out-"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp read_data mask",
+          "line": "    return pic->imr;"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::read case 1",
+          "line": "\t\tcase 1: /* PIC mask register */"
+        }
+      ]
+    },
+    "pic8259:register:0x01:write": {
+      "digest": "083caea46ee4027bd7715930c9b0b195c30f4600bdfff36178483ac0ea644d2e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW1",
+          "line": "OCW1 sets and clears the mask bits in the interrupt"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_data mask register",
+          "line": "    case 0:                        /* mask register */"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write OCW1",
+          "line": "\t\t\t\t\tm_imr = data;"
+        }
+      ]
+    },
+    "pit8253:register:0x00": {
+      "digest": "d356a439a80032bfc06099f2926844dde74b329b92ed9f3d6aba41647d3c3141",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+          "line": "Read/Write least significant byte first,"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x40",
+          "line": "        WriteHandler[0].Install(0x40,write_latch,IO_MB);"
+        },
+        {
+          "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
+          "line": "\t\tm_counter[offset]->count_w(data);"
+        }
+      ]
+    },
+    "pit8253:register:0x01": {
+      "digest": "babbba72a89611c45e7129446244a85952f68601630b61dabb76ec627e6b5905",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+          "line": "Read/Write least significant byte first,"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x41",
+          "line": "//\t    WriteHandler[1].Install(0x41,write_latch,IO_MB);"
+        },
+        {
+          "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
+          "line": "\t\tm_counter[offset]->count_w(data);"
+        }
+      ]
+    },
+    "pit8253:register:0x02": {
+      "digest": "32ac6dd82d4a0a199d51f9e5c5b24a4e034556d37eb490b682b081bb02f8a297",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+          "line": "Read/Write least significant byte first,"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x42",
+          "line": "        WriteHandler[2].Install(0x42,write_latch,IO_MB);"
+        },
+        {
+          "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
+          "line": "\t\tm_counter[offset]->count_w(data);"
+        }
+      ]
+    },
+    "pit8253:register:0x03": {
+      "digest": "2287117b1594745c6deb3f5b5c9e39ac2f321aa39168cae947716371b13f053e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+          "line": "The Control Word Register can only be written to;"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x43",
+          "line": "        WriteHandler[3].Install(0x43,write_p43,IO_MB);"
+        },
+        {
+          "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write control_w",
+          "line": "\t\t\tm_counter[timer]->control_w(data);"
+        }
+      ]
+    },
+    "saa1099:register:0x00..0x05": {
+      "digest": "3b315a5214856d255482c7e48575b02e08cc021ec0275530ff4c1106c6bb649b",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/mame/saa1099.cpp saa1099_device::data_w case 0x00",
+          "line": "\tcase 0x00:  case 0x01:  case 0x02:  case 0x03:  case 0x04:  case 0x05:"
+        },
+        {
+          "ref": "mame:src/devices/sound/saa1099.cpp saa1099_device::data_w case 0x00",
+          "line": "\tcase 0x00:  case 0x01:  case 0x02:  case 0x03:  case 0x04:  case 0x05:"
+        }
+      ]
+    },
+    "saa1099:register:0x08..0x0D": {
+      "digest": "e84cadc1df6661c671fe3c1e600fa51420b9b3293566cc6e0d696cde259cf223",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/mame/saa1099.cpp saa1099_device::data_w case 0x08",
+          "line": "\tcase 0x08:  case 0x09:  case 0x0a:  case 0x0b:  case 0x0c:  case 0x0d:"
+        },
+        {
+          "ref": "mame:src/devices/sound/saa1099.cpp saa1099_device::data_w case 0x08",
+          "line": "\tcase 0x08:  case 0x09:  case 0x0a:  case 0x0b:  case 0x0c:  case 0x0d:"
+        }
+      ]
+    },
+    "saa1099:register:0x10..0x12": {
+      "digest": "2dc96600ea0a198f07a5ca4436c3c7e7a3d6a74bf05e6583d436a97ccc1fc3f4",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/mame/saa1099.cpp saa1099_device::data_w case 0x10",
+          "line": "\tcase 0x10:  case 0x11:  case 0x12:"
+        },
+        {
+          "ref": "mame:src/devices/sound/saa1099.cpp saa1099_device::data_w case 0x10",
+          "line": "\tcase 0x10:  case 0x11:  case 0x12:"
+        }
+      ]
+    },
+    "saa1099:register:0x14": {
+      "digest": "ef2d15c5cc1b85e170f579f38fde07a33a07e7b60b7414ec255fceddbe76e78b",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/mame/saa1099.cpp saa1099_device::data_w case 0x14",
+          "line": "\tcase 0x14:"
+        },
+        {
+          "ref": "mame:src/devices/sound/saa1099.cpp saa1099_device::data_w case 0x14",
+          "line": "\tcase 0x14:"
+        }
+      ]
+    },
+    "saa1099:register:0x15": {
+      "digest": "7754c5016239a1d3d6c380fd3d7e757c3e84c81a0c810dd4e0795161e01c6ba9",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/mame/saa1099.cpp saa1099_device::data_w case 0x15",
+          "line": "\tcase 0x15:"
+        },
+        {
+          "ref": "mame:src/devices/sound/saa1099.cpp saa1099_device::data_w case 0x15",
+          "line": "\tcase 0x15:"
+        }
+      ]
+    },
+    "saa1099:register:0x16": {
+      "digest": "b3d706feed2e1455ddbfc8f04680b3f1242abb582070eb626e8e78084cc88d43",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/mame/saa1099.cpp saa1099_device::data_w case 0x16",
+          "line": "\tcase 0x16:"
+        },
+        {
+          "ref": "mame:src/devices/sound/saa1099.cpp saa1099_device::data_w case 0x16",
+          "line": "\tcase 0x16:"
+        }
+      ]
+    },
+    "saa1099:register:0x18..0x19": {
+      "digest": "2db196191afeee98c591b2e7385aeff25ce8fb305b2ac92e648c29f4c0ed7e5a",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/mame/saa1099.cpp saa1099_device::data_w case 0x18",
+          "line": "\tcase 0x18:  case 0x19:"
+        },
+        {
+          "ref": "mame:src/devices/sound/saa1099.cpp saa1099_device::data_w case 0x18",
+          "line": "\tcase 0x18:  case 0x19:"
+        }
+      ]
+    },
+    "saa1099:register:0x1C": {
+      "digest": "987cc51bbc9fc0e250c4462bd31d79e167ee405ba6f423f35806e7b0d378d2ea",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/mame/saa1099.cpp saa1099_device::data_w case 0x1c",
+          "line": "\tcase 0x1c:"
+        },
+        {
+          "ref": "mame:src/devices/sound/saa1099.cpp saa1099_device::data_w case 0x1c",
+          "line": "\tcase 0x1c:"
+        }
+      ]
+    },
+    "sn76496:register:0x00": {
+      "digest": "d18b2572b0d19d5e89122939d9f7163c9718283410c1726e554efb783282b3cb",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "line": "Tone registersThese give a counter reset value for the tone generators. Hence, low values give high frequencies and vice versa."
+        },
+        {
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 0",
+          "line": "\t\tcase 0: // tone 0: frequency"
+        },
+        {
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 0",
+          "line": "\t\tcase 0: // tone 0: frequency"
+        }
+      ]
+    },
+    "sn76496:register:0x01": {
+      "digest": "16d2712bff439a0b36df8d5a0e39e35f1b94fbc6630d268112613f2e76bd1ae2",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "line": "Volume registersThe value represents the attenuation of the output. Hence, %0000 is full volume and %1111 is silence."
+        },
+        {
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 1",
+          "line": "\t\tcase 1: // tone 0: volume"
+        },
+        {
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 1",
+          "line": "\t\tcase 1: // tone 0: volume"
+        }
+      ]
+    },
+    "sn76496:register:0x02": {
+      "digest": "8eb4fb5c6ac9ae8498e597d2f494744a7d317e0a03d993c2b177f0c0c162a140",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "line": "Tone registersThese give a counter reset value for the tone generators. Hence, low values give high frequencies and vice versa."
+        },
+        {
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 2",
+          "line": "\t\tcase 2: // tone 1: frequency"
+        },
+        {
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 2",
+          "line": "\t\tcase 2: // tone 1: frequency"
+        }
+      ]
+    },
+    "sn76496:register:0x03": {
+      "digest": "e77df785b9bbbaf064b6b13abce2541fb1882cdb5419afcd65e77e894ea48f1a",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "line": "Volume registersThe value represents the attenuation of the output. Hence, %0000 is full volume and %1111 is silence."
+        },
+        {
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 3",
+          "line": "\t\tcase 3: // tone 1: volume"
+        },
+        {
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 3",
+          "line": "\t\tcase 3: // tone 1: volume"
+        }
+      ]
+    },
+    "sn76496:register:0x04": {
+      "digest": "2ec891e6a14e88ea13543824965e722c89bb22eadfbba1270de014b6c81da083",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "line": "Tone registersThese give a counter reset value for the tone generators. Hence, low values give high frequencies and vice versa."
+        },
+        {
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 4",
+          "line": "\t\tcase 4: // tone 2: frequency"
+        },
+        {
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 4",
+          "line": "\t\tcase 4: // tone 2: frequency"
+        }
+      ]
+    },
+    "sn76496:register:0x05": {
+      "digest": "22e324b0581340d9f958a94a59a52a03b0de5712fc3e19ad0572383d43d78e6b",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "line": "Volume registersThe value represents the attenuation of the output. Hence, %0000 is full volume and %1111 is silence."
+        },
+        {
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 5",
+          "line": "\t\tcase 5: // tone 2: volume"
+        },
+        {
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 5",
+          "line": "\t\tcase 5: // tone 2: volume"
+        }
+      ]
+    },
+    "sn76496:register:0x06": {
+      "digest": "53c383c5253052511ca039f01b336bc9edd9aaca2ac2b21accd113fef45947c7",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "line": "Noise registerOne bit selects the mode (\"periodic\" or \"white\") and the other two select a shift rate."
+        },
+        {
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 6",
+          "line": "\t\tcase 6: // noise: frequency, mode"
+        },
+        {
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 6",
+          "line": "\t\tcase 6: // noise: frequency, mode"
+        }
+      ]
+    },
+    "sn76496:register:0x07": {
+      "digest": "ab211fb767cd334dc65cf9ebfe14cbf55c9b708518ba16d67e585c109e64e18f",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "line": "Volume registersThe value represents the attenuation of the output. Hence, %0000 is full volume and %1111 is silence."
+        },
+        {
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 7",
+          "line": "\t\tcase 7: // noise: volume"
+        },
+        {
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 7",
+          "line": "\t\tcase 7: // noise: volume"
+        }
+      ]
+    },
+    "ym3812:register:0x01": {
+      "digest": "898285fa18f723d92bc39148ca9abd2174481d744a2b1863a1419f32451b7164",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 01h",
+          "line": " 01h\tEnable waveform control"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x01",
+          "line": "\t\tif ( reg == 0x01 ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base waveform_enable",
+          "line": "\tuint32_t waveform_enable() const                 { return IsOpl2 ? byte(0x01, 5, 1) : (IsOpl3Plus ? 1 : 0); }"
+        }
+      ]
+    },
+    "ym3812:register:0x02": {
+      "digest": "0ff6008337a2c8c8f862123838eca9840d10969436cf4e963a5665257d882786",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 02h",
+          "line": " 02h\tTimer #1 data (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x02",
+          "line": "\tcase 0x02:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 02",
+          "line": "//           02 xxxxxxxx Timer A value (4 * OPN)"
+        }
+      ]
+    },
+    "ym3812:register:0x03": {
+      "digest": "af4483fd8b4113192660daf59dcfec76f7383927721f0ccbcbe48f880d85dbea",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 03h",
+          "line": " 03h\tTimer #2 data (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x03",
+          "line": "\tcase 0x03:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 03",
+          "line": "//           03 xxxxxxxx Timer B value"
+        }
+      ]
+    },
+    "ym3812:register:0x04": {
+      "digest": "f5a23f26afffba1911a15884ed4c1627ab8f936ba1d54f15c8c94805984df75f",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 04h",
+          "line": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
+          "line": "\tcase 0x04:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
+          "line": "//           04 x------- RST"
+        }
+      ]
+    },
+    "ym3812:register:0x08": {
+      "digest": "429e2888b921a391fd54dc9c704724431defcfcebbe10c4f975cfc25a511b562",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 08h",
+          "line": " 08h\tSpeech synthesis mode"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x08",
+          "line": "\t\t} else if ( reg == 0x08 ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 08",
+          "line": "//           08 x------- CSM mode [OPL/OPL2 only]"
+        }
+      ]
+    },
+    "ym3812:register:0x20..0x35": {
+      "digest": "4d8d32f6484632abd1e4ff031942dc72f545f5e492d43eed1bd80b5118cee3fc",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 20h-35h",
+          "line": " 20h-35h Amplitude Modulation / Vibrato"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x20",
+          "line": "\tcase 0x20 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 20-35",
+          "line": "//        20-35 x------- AM enable"
+        }
+      ]
+    },
+    "ym3812:register:0x40..0x55": {
+      "digest": "7f45a34e1baef1db2ab60a7ca72b00f033927d1d45eb536b6b490ad971300e27",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 40h-55h",
+          "line": " 40h-55h Level key scaling / Total level"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x40",
+          "line": "\tcase 0x40 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 40-55",
+          "line": "//        40-55 xx------ Key scale level (0-3)"
+        }
+      ]
+    },
+    "ym3812:register:0x60..0x75": {
+      "digest": "fe7ce3de31eed3eda59d8d275d4ae24d4baecfc52464c12231c508787c5a4a4d",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 60h-75h",
+          "line": " 60h-75h Attack / Decay rate"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x60",
+          "line": "\tcase 0x60 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 60-75",
+          "line": "//        60-75 xxxx---- Attack rate (0-15)"
+        }
+      ]
+    },
+    "ym3812:register:0x80..0x95": {
+      "digest": "87ee3d8ca4926594f4305a17d73415338955d98df26d752c7469abbf190d2984",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 80h-95h",
+          "line": " 80h-95h Sustain / Release rate"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x80",
+          "line": "\tcase 0x80 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 80-95",
+          "line": "//        80-95 xxxx---- Sustain level (0-15)"
+        }
+      ]
+    },
+    "ym3812:register:0xA0..0xA8": {
+      "digest": "e472a3705bdb2a56f5333088d1ee9d1ec1e4a2125501efc102d31b159b30987c",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index A0h-A8h",
+          "line": " A0h-A8h Octave / Frequency (LSB)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xa0",
+          "line": "\tcase 0xa0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base A0-A8",
+          "line": "//        A0-A8 xxxxxxxx F-number (low 8 bits)"
+        }
+      ]
+    },
+    "ym3812:register:0xB0..0xB8": {
+      "digest": "c1213e1707c84b43ebd3b5a3b2c7b5827cc5f3623b60620b56f75c9a59d01474",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index B0h-B8h",
+          "line": " B0h-B8h Octave / Frequency Number"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xb0",
+          "line": "\tcase 0xb0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base B0-B8",
+          "line": "//        B0-B8 --x----- Key on"
+        }
+      ]
+    },
+    "ym3812:register:0xBD": {
+      "digest": "b66d5b86dbf1558bc016df2293d1d31b1e00514f3a5cf2f594bf1c6f049195db",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index BDh",
+          "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
+          "line": "\t\tif ( reg == 0xbd ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
+          "line": "//           BD x------- AM depth"
+        }
+      ]
+    },
+    "ym3812:register:0xC0..0xC8": {
+      "digest": "8a66f33cc94e340e14ec429982c1d5fff4eaac7423f9696207ecbecc4aed4af1",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index C0h-C8h",
+          "line": " C0h-C8h Feedback / Algorithm"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xc0",
+          "line": "\tcase 0xc0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base ch_feedback",
+          "line": "\tuint32_t ch_feedback(uint32_t choffs) const      { return byte(0xc0, 1, 3, choffs); }"
+        }
+      ]
+    },
+    "ym3812:register:0xE0..0xF5": {
+      "digest": "1a426a62bbd4101dd79a51eca8d25b09cdfe28e91711613e74f6107a0d9c2e35",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index E0h-F5h",
+          "line": " E0h-F5h Waveform Selection"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xe0",
+          "line": "\tcase 0xe0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base op_waveform",
+          "line": "\tuint32_t op_waveform(uint32_t opoffs) const      { return waveform_enable() ? byte(0xe0, 0, newflag() ? 3 : 2, opoffs) : 0; }"
+        }
+      ]
+    },
+    "ymf262:register:0x01": {
+      "digest": "d6b9d3a6ed09073bdce504e41c6cf1573cad6617323a817b7000a31df56cc46c",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 01h",
+          "line": " 01h\tEnable waveform control"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x01",
+          "line": "\t\tif ( reg == 0x01 ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base waveform_enable",
+          "line": "\tuint32_t waveform_enable() const                 { return IsOpl2 ? byte(0x01, 5, 1) : (IsOpl3Plus ? 1 : 0); }"
+        }
+      ]
+    },
+    "ymf262:register:0x02": {
+      "digest": "7494c6ef2ab712da4f82357c623c4499984e66fd18871ae0086e473d93348020",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 02h",
+          "line": " 02h\tTimer #1 data (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x02",
+          "line": "\tcase 0x02:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 02",
+          "line": "//           02 xxxxxxxx Timer A value (4 * OPN)"
+        }
+      ]
+    },
+    "ymf262:register:0x03": {
+      "digest": "5310ede808310ba194a360c4c42484870a1ae3a6488640ac827c7fb4aaac2c83",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 03h",
+          "line": " 03h\tTimer #2 data (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x03",
+          "line": "\tcase 0x03:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 03",
+          "line": "//           03 xxxxxxxx Timer B value"
+        }
+      ]
+    },
+    "ymf262:register:0x04": {
+      "digest": "4736fbf1cc2a57c73978d7c2065e04013242550ae76085ddf48a8f16ae5af235",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 04h",
+          "line": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
+          "line": "\tcase 0x04:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
+          "line": "//           04 x------- RST"
+        }
+      ]
+    },
+    "ymf262:register:0x08": {
+      "digest": "2b7f634dd897bc80c21bf506ff3e8a97a5a4f05ec81bb3c26f7b7d6b318b9b28",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 08h",
+          "line": " 08h\tSpeech synthesis mode"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x08",
+          "line": "\t\t} else if ( reg == 0x08 ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 08",
+          "line": "//           08 x------- CSM mode [OPL/OPL2 only]"
+        }
+      ]
+    },
+    "ymf262:register:0x101": {
+      "digest": "46588c954e42acd6f2778ae484cd8483a014cc160cd12571caafabf628e7b893",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 101",
+          "line": "//          101 --xxxxxx Test register 2 [OPL3 only]"
+        }
+      ]
+    },
+    "ymf262:register:0x104": {
+      "digest": "b0b887ef3881189b03284f631a1b7f1d716a52bec688f6682693ed257bb4c9af",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 04h OPL3",
+          "line": " 04h\t(OPL3 in OPL3 mode only) connection select"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x104",
+          "line": "\t\t} else if ( reg == 0x104 ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 104",
+          "line": "//          104 --x----- Channel 6 4-operator mode [OPL3 only]"
+        }
+      ]
+    },
+    "ymf262:register:0x105": {
+      "digest": "5192c9a02e7867624c2acab1577067085902f0e97beff9261f6113597a4f34d6",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 05h",
+          "line": " 05h\t(OPL3) compatibility register"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x105",
+          "line": "\t\t} else if ( reg == 0x105 ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 105",
+          "line": "//          105 -------x New [OPL3 only]"
+        }
+      ]
+    },
+    "ymf262:register:0x120..0x135": {
+      "digest": "390083254db9e5cc8895890db5cb84560ba9ac0bc8bac1731e62a73deb32d2f7",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x20",
+          "line": "\tcase 0x20 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 20-35 +100",
+          "line": "//        20-35 x------- AM enable"
+        }
+      ]
+    },
+    "ymf262:register:0x140..0x155": {
+      "digest": "b83b5abde05277216978795c958350a68cb33943b9475446864f69bb3aa817f2",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x40",
+          "line": "\tcase 0x40 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 40-55 +100",
+          "line": "//        40-55 xx------ Key scale level (0-3)"
+        }
+      ]
+    },
+    "ymf262:register:0x160..0x175": {
+      "digest": "b5951560f32fed9420542b63e14081b7f5e9f43d6ba6e8aa0b2e339ffa92e416",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x60",
+          "line": "\tcase 0x60 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 60-75 +100",
+          "line": "//        60-75 xxxx---- Attack rate (0-15)"
+        }
+      ]
+    },
+    "ymf262:register:0x180..0x195": {
+      "digest": "3d5a9ba1cd63e9efe785fa898a6178ec658e306a0fce9ac567990e1d2c0501d7",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x80",
+          "line": "\tcase 0x80 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 80-95 +100",
+          "line": "//        80-95 xxxx---- Sustain level (0-15)"
+        }
+      ]
+    },
+    "ymf262:register:0x1A0..0x1A8": {
+      "digest": "0bad705765fd5878918f0fb1ffef33da18ffaad2eb2206348b90a1e94ec50030",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xa0",
+          "line": "\tcase 0xa0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base A0-A8 +100",
+          "line": "//        A0-A8 xxxxxxxx F-number (low 8 bits)"
+        }
+      ]
+    },
+    "ymf262:register:0x1B0..0x1B8": {
+      "digest": "021a7b7a8e696837767645699e52f805d6d6b7954aff2f34bc95c4b4fd9e44cb",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xb0",
+          "line": "\tcase 0xb0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base B0-B8 +100",
+          "line": "//        B0-B8 --x----- Key on"
+        }
+      ]
+    },
+    "ymf262:register:0x1C0..0x1C8": {
+      "digest": "5bb0707b3a653487f4904cfb9333157a42963b7993061efb094d88dda677dafc",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xc0",
+          "line": "\tcase 0xc0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base C0-C8 +100",
+          "line": "//        C0-C8 x------- CHD output (to DO0 pin) [OPL3+ only]"
+        }
+      ]
+    },
+    "ymf262:register:0x1E0..0x1F5": {
+      "digest": "4e8c239d91a2b1a499dd8cee25d1eb2c2e6b247b527846b057058268257e9075",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xe0",
+          "line": "\tcase 0xe0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base op_waveform",
+          "line": "\tuint32_t op_waveform(uint32_t opoffs) const      { return waveform_enable() ? byte(0xe0, 0, newflag() ? 3 : 2, opoffs) : 0; }"
+        }
+      ]
+    },
+    "ymf262:register:0x20..0x35": {
+      "digest": "a306d2cd0c0f80a5d2f5550a2a8fa7dc8377ab759ac20d1313ae3c6b2ea3a0dd",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 20h-35h",
+          "line": " 20h-35h Amplitude Modulation / Vibrato"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x20",
+          "line": "\tcase 0x20 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 20-35",
+          "line": "//        20-35 x------- AM enable"
+        }
+      ]
+    },
+    "ymf262:register:0x40..0x55": {
+      "digest": "1ff57e738ffc9b85fcc09d2158685f7d7f952d76fe274ffcb83d6f4bf4a0337c",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 40h-55h",
+          "line": " 40h-55h Level key scaling / Total level"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x40",
+          "line": "\tcase 0x40 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 40-55",
+          "line": "//        40-55 xx------ Key scale level (0-3)"
+        }
+      ]
+    },
+    "ymf262:register:0x60..0x75": {
+      "digest": "33a46632a36758541ee1c945cc5f030528c3504da03744136d26c72162c49ffd",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 60h-75h",
+          "line": " 60h-75h Attack / Decay rate"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x60",
+          "line": "\tcase 0x60 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 60-75",
+          "line": "//        60-75 xxxx---- Attack rate (0-15)"
+        }
+      ]
+    },
+    "ymf262:register:0x80..0x95": {
+      "digest": "b3c63b5d8f65acfcdbf20e1153e8aa45ce3809dcb6800503f1e7d1f233aff48f",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 80h-95h",
+          "line": " 80h-95h Sustain / Release rate"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x80",
+          "line": "\tcase 0x80 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 80-95",
+          "line": "//        80-95 xxxx---- Sustain level (0-15)"
+        }
+      ]
+    },
+    "ymf262:register:0xA0..0xA8": {
+      "digest": "09083e3628d1dae501c593760f9f47c2561b44b22da0175a48601323ca98180e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index A0h-A8h",
+          "line": " A0h-A8h Octave / Frequency (LSB)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xa0",
+          "line": "\tcase 0xa0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base A0-A8",
+          "line": "//        A0-A8 xxxxxxxx F-number (low 8 bits)"
+        }
+      ]
+    },
+    "ymf262:register:0xB0..0xB8": {
+      "digest": "951807e7055883f0ca05ff391e131895349b1c3ee85915664854e8b49819ba9d",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index B0h-B8h",
+          "line": " B0h-B8h Octave / Frequency Number"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xb0",
+          "line": "\tcase 0xb0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base B0-B8",
+          "line": "//        B0-B8 --x----- Key on"
+        }
+      ]
+    },
+    "ymf262:register:0xBD": {
+      "digest": "8be0b18a73626d506908c4458bd2cf467a989f995851e87227be5e713fa44bfb",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index BDh",
+          "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
+          "line": "\t\tif ( reg == 0xbd ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
+          "line": "//           BD x------- AM depth"
+        }
+      ]
+    },
+    "ymf262:register:0xC0..0xC8": {
+      "digest": "aa6c4fcbc360073065956bf0b4882f5b213a2babca97514bbd072d521a9bed46",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index C0h-C8h",
+          "line": " C0h-C8h Feedback / Algorithm"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xc0",
+          "line": "\tcase 0xc0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base C0-C8",
+          "line": "//        C0-C8 x------- CHD output (to DO0 pin) [OPL3+ only]"
+        }
+      ]
+    },
+    "ymf262:register:0xE0..0xF5": {
+      "digest": "508cdec6d9656af5d02012fa45fbc5b5c5be6c3d98e11b4b3a68aac1d3dfbbd7",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index E0h-F5h",
+          "line": " E0h-F5h Waveform Selection"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xe0",
+          "line": "\tcase 0xe0 >> 4:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base op_waveform",
+          "line": "\tuint32_t op_waveform(uint32_t opoffs) const      { return waveform_enable() ? byte(0xe0, 0, newflag() ? 3 : 2, opoffs) : 0; }"
+        }
+      ]
+    }
+  }
+}

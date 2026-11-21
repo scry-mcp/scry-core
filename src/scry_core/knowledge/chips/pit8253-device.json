@@ -51,7 +51,22 @@
           "ref": "mame:src/devices/machine/pit8253.cpp DEFINE_DEVICE_TYPE pit8253",
           "cites": "DEFINE_DEVICE_TYPE(PIT8253, pit8253_device, \"pit8253\", \"Intel 8253 PIT\")"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Counter 0, 1, 2",
+            "line": "These three functional blocks are identical in opera-"
+          },
+          {
+            "ref": "mame:src/devices/machine/pit8253.cpp DEFINE_DEVICE_TYPE pit8253",
+            "line": "DEFINE_DEVICE_TYPE(PIT8253, pit8253_device, \"pit8253\", \"Intel 8253 PIT\")"
+          }
+        ],
+        "digest": "3fd2af0db3b4265cabf2f1192e14c5a4c5a6f72168d638e95cd4446dd9e1a2fc"
+      }
     }
   ]
 }

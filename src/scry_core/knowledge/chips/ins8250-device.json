@@ -53,7 +53,22 @@
           "ref": "mame:src/devices/machine/ins8250.cpp DEFINE_DEVICE_TYPE ins8250",
           "cites": "DEFINE_DEVICE_TYPE(INS8250,  ins8250_device, \"ins8250\",  \"National Semiconductor INS8250 UART\")"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03F8-03FF serial port",
+            "line": "PORT 03F8-03FF - Serial port (8250,8250A,8251,16450,16550,16550A,etc.) COM1"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp DEFINE_DEVICE_TYPE ins8250",
+            "line": "DEFINE_DEVICE_TYPE(INS8250,  ins8250_device, \"ins8250\",  \"National Semiconductor INS8250 UART\")"
+          }
+        ],
+        "digest": "90558abd48a0c67f369a4640e5b6e6bab66a0e204f56aeabb47dd67a192c8203"
+      }
     }
   ]
 }

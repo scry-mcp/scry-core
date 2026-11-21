@@ -23,6 +23,7 @@ from scry_core.knowledge import (
     Support,
     check,
     read_index,
+    read_lock,
     shared,
 )
 
@@ -30,6 +31,10 @@ PACKAGE = Path(scry_core.__file__).parent
 CHIPS = PACKAGE / "knowledge" / "chips"
 CPUS = PACKAGE / "knowledge" / "cpus"
 INDEX = PACKAGE / "knowledge_index" / "shared.json"
+LOCKS = {
+    CHIPS: PACKAGE / "knowledge_index" / "shared-lock.json",
+    CPUS: PACKAGE / "knowledge_index" / "cpus-lock.json",
+}
 ROOT = Path(__file__).resolve().parent.parent
 SAMPLE = Path(__file__).parent / "fixtures" / "knowledge" / "shared-sample"
 
@@ -51,7 +56,11 @@ class Shared:
         return read_index(INDEX)
 
     def lock(self) -> Lock:
-        return Lock({})
+        return Lock({
+            id_: held
+            for directory in self.directories
+            for id_, held in read_lock(LOCKS[directory]).checked.items()
+        })
 
     def code_scopes(self) -> Iterable[str]:
         return ()

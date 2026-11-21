@@ -32,7 +32,26 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::read ISR",
           "cites": "\t\t\t\t\tdata = m_isr & ~m_imr;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Status read",
+            "line": "The IRR can be read when, prior to the RD pulse, a"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/pic.cpp read_command status",
+            "line": "    if (pic->request_issr){"
+          },
+          {
+            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::read ISR",
+            "line": "\t\t\t\t\tdata = m_isr & ~m_imr;"
+          }
+        ],
+        "digest": "1e163bcf98074eb3e89cd4bacf0061838753893fc63ff14c0eaac19cf1a539d5"
+      }
     },
     {
       "key": "0x00",
@@ -60,7 +79,26 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write case 0",
           "cites": "\t\tcase 0:    /* PIC acknowledge IRQ */"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Initialization Command Words 1 and 2",
+            "line": "Initialization Command Words 1 and 2"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/pic.cpp write_command ICW1",
+            "line": "    if (GCC_UNLIKELY(val&0x10)) {       // ICW1 issued"
+          },
+          {
+            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write case 0",
+            "line": "\t\tcase 0:    /* PIC acknowledge IRQ */"
+          }
+        ],
+        "digest": "a3986d46f5793d8c511dc33473ec7211cb9ff18c6e4fc4c1bdd233407dbebeb7"
+      }
     },
     {
       "key": "0x01",
@@ -87,7 +125,26 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::read case 1",
           "cites": "\t\tcase 1: /* PIC mask register */"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Status read",
+            "line": "For reading the IMR, no OCW3 is needed. The out-"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/pic.cpp read_data mask",
+            "line": "    return pic->imr;"
+          },
+          {
+            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::read case 1",
+            "line": "\t\tcase 1: /* PIC mask register */"
+          }
+        ],
+        "digest": "1f5f8efa89fb30608b0947aab0a542fb4f7761ee3e1a8813120a9b3e18e6e36b"
+      }
     },
     {
       "key": "0x01",
@@ -116,7 +173,26 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write OCW1",
           "cites": "\t\t\t\t\tm_imr = data;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW1",
+            "line": "OCW1 sets and clears the mask bits in the interrupt"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/pic.cpp write_data mask register",
+            "line": "    case 0:                        /* mask register */"
+          },
+          {
+            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write OCW1",
+            "line": "\t\t\t\t\tm_imr = data;"
+          }
+        ],
+        "digest": "083caea46ee4027bd7715930c9b0b195c30f4600bdfff36178483ac0ea644d2e"
+      }
     }
   ]
 }
