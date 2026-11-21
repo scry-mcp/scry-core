@@ -1,0 +1,360 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "ins8250",
+  "kind": "register",
+  "scope": "ins8250",
+  "covers": "The eight registers of the 8250, 16450 and 16550 UARTs",
+  "complete_against": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w",
+  "entries": [
+    {
+      "key": "0x00",
+      "name": "data / divisor low",
+      "aliases": [
+        "THR",
+        "RBR",
+        "DLL"
+      ],
+      "description": "Receive and transmit data register, or the low byte of the baud rate divisor when the divisor latch bit is set.",
+      "behaviour": "With the divisor latch bit of the line control register clear, a write loads the transmit register and a read takes the received character. With it set, both access the low byte of the baud rate divisor.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B 03F8 receiver buffer",
+          "cites": "03F8  R-  receiver buffer register (RBR), which contains the received"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case THR",
+          "cites": "\t\tcase THR_OFFSET:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 0",
+          "cites": "\t\tcase 0:"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03F8 receiver buffer",
+            "line": "03F8  R-  receiver buffer register (RBR), which contains the received"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case THR",
+            "line": "\t\tcase THR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 0",
+            "line": "\t\tcase 0:"
+          }
+        ],
+        "digest": "28655f9a2af1764893d8a6c36d292fbf22378347af07d519e168aeecbbb37444"
+      }
+    },
+    {
+      "key": "0x01",
+      "name": "interrupt enable",
+      "aliases": [
+        "IER",
+        "DLM"
+      ],
+      "description": "Interrupt enable register, or the high byte of the baud rate divisor when the divisor latch bit is set.",
+      "behaviour": "With the divisor latch bit clear, bits 0 to 3 enable the received-data, transmitter-empty, line-status and modem-status interrupts, and a read returns only those four bits. With it set, the register is the high byte of the baud rate divisor.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B 03F9 interrupt enable",
+          "cites": "03F9  RW  interrupt enable register (IER) when DLAB=0 (see #P0877)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case IER",
+          "cites": "\t\tcase IER_OFFSET:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 1",
+          "cites": "\t\tcase 1:"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03F9 interrupt enable",
+            "line": "03F9  RW  interrupt enable register (IER) when DLAB=0 (see #P0877)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case IER",
+            "line": "\t\tcase IER_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 1",
+            "line": "\t\tcase 1:"
+          }
+        ],
+        "digest": "58cba2f7e895b45986fde4c5140977ce8a2f756e0ec443cd1d56598059356a56"
+      }
+    },
+    {
+      "key": "0x02",
+      "name": "interrupt id, FIFO ctl",
+      "aliases": [
+        "IIR",
+        "FCR"
+      ],
+      "description": "Interrupt identification register on a read, FIFO control register on a write.",
+      "behaviour": "A read returns the identification register: bit 0 clear means an interrupt is pending and bits 3 to 1 say which. A write sets FIFO control on the 16550 only (bit 0 enable, bit 1 clear receive, bit 2 clear transmit, bits 7 and 6 the trigger of 1, 4, 8 or 14 bytes); the 8250 and 16450 ignore it.",
+      "differs": "DOSBox-X has one FIFO control write for every UART type; in MAME only the 16550's takes effect.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B 03FA interrupt identification",
+          "cites": "03FA  R-  interrupt identification register (see #P0878)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case FCR",
+          "cites": "\t\tcase FCR_OFFSET:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 2",
+          "cites": "\t\tcase 2:"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FA interrupt identification",
+            "line": "03FA  R-  interrupt identification register (see #P0878)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case FCR",
+            "line": "\t\tcase FCR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 2",
+            "line": "\t\tcase 2:"
+          }
+        ],
+        "digest": "d24dc52d9c5ae0cc9f32c78f8766c3dbb500e7a2e14acc3202a601a84285a4b9"
+      }
+    },
+    {
+      "key": "0x03",
+      "name": "line control",
+      "aliases": [
+        "LCR"
+      ],
+      "description": "Line control register: the word format and the divisor latch.",
+      "behaviour": "Bits 1 and 0 give the word length (5 to 8 bits), bit 2 two stop bits (1.5 with five bits), bits 5 to 3 the parity, bit 6 forces a break and bit 7 is the divisor latch access bit.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B 03FB line control",
+          "cites": "03FB  RW  line control register (LCR) (see #P0880)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case LCR",
+          "cites": "\t\tcase LCR_OFFSET:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 3",
+          "cites": "\t\tcase 3:"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FB line control",
+            "line": "03FB  RW  line control register (LCR) (see #P0880)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case LCR",
+            "line": "\t\tcase LCR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 3",
+            "line": "\t\tcase 3:"
+          }
+        ],
+        "digest": "ff0b7546a0498e587e7041db79effa2eae338b0c20af5e9df894c49695b3458b"
+      }
+    },
+    {
+      "key": "0x04",
+      "name": "modem control",
+      "aliases": [
+        "MCR"
+      ],
+      "description": "Modem control register: the modem output lines and loopback.",
+      "behaviour": "Bit 0 drives DTR, bit 1 RTS, bit 2 OUT1 and bit 3 OUT2; bit 4 loops the transmitter back to the receiver and the outputs to the modem status inputs. Bits 7 to 5 are not kept.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B 03FC modem control",
+          "cites": "03FC  RW  modem control register (see #P0881)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case MCR",
+          "cites": "\t\tcase MCR_OFFSET:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 4",
+          "cites": "\t\tcase 4:"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FC modem control",
+            "line": "03FC  RW  modem control register (see #P0881)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case MCR",
+            "line": "\t\tcase MCR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 4",
+            "line": "\t\tcase 4:"
+          }
+        ],
+        "digest": "40bd61868e2781caf3f0dd7e08b407b03580563db5c8100d2c969f85cf18fd1a"
+      }
+    },
+    {
+      "key": "0x05",
+      "name": "line status",
+      "aliases": [
+        "LSR"
+      ],
+      "description": "Line status register: the transmitter and receiver state and the receive errors.",
+      "behaviour": "Bit 0 data ready, 1 overrun, 2 parity error, 3 framing error, 4 break, 5 transmit holding register empty, 6 transmitter empty. A read clears bits 1 to 4 and the line status interrupt.",
+      "differs": "MAME lets a write set the status bits and raise their interrupts; DOSBox-X treats a write as a reserved register.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B 03FD line status",
+          "cites": "03FD  R-  line status register (LSR) (see #P0882)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write reserved",
+          "cites": "\t\tdefault:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 5",
+          "cites": "\t\tcase 5:"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FD line status",
+            "line": "03FD  R-  line status register (LSR) (see #P0882)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write reserved",
+            "line": "\t\tdefault:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 5",
+            "line": "\t\tcase 5:"
+          }
+        ],
+        "digest": "59679b26a171696ee92783bd3cf46a0d9ea51eb3089e3a165a8e2fe24bb43fdf"
+      }
+    },
+    {
+      "key": "0x06",
+      "name": "modem status",
+      "aliases": [
+        "MSR"
+      ],
+      "description": "Modem status register: the modem input lines and their changes.",
+      "behaviour": "Bits 7 to 4 are DCD, RI, DSR and CTS. Bits 3, 1 and 0 flag a change of DCD, DSR and CTS, and bit 2 flags the trailing edge of RI. A read clears the change bits and the modem status interrupt; in loopback the bits follow the modem control outputs.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B 03FE modem status",
+          "cites": "03FE  R-  modem status register (MSR) (see #P0883)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case MSR",
+          "cites": "\t\tcase MSR_OFFSET:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 6",
+          "cites": "\t\tcase 6:"
+        }
+      ],
+      "differs": "DOSBox-X flags RI only on its trailing edge. MAME flags any RI change outside loopback, and only the trailing edge in loopback."
+    },
+    {
+      "key": "0x07",
+      "name": "scratch",
+      "aliases": [
+        "SCR",
+        "SPR"
+      ],
+      "description": "Scratch register: a byte the program may keep there.",
+      "behaviour": "A write stores a byte and a read returns it. The original 8250 has no such register, so a write is ignored and a read returns all ones.",
+      "differs": "DOSBox-X always keeps and returns the byte, whatever the UART type; MAME's 8250 type does not.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B 03FF scratch",
+          "cites": "03FF  RW  scratch register (SCR)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case SPR",
+          "cites": "\t\tcase SPR_OFFSET:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 7",
+          "cites": "\t\tcase 7:"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FF scratch",
+            "line": "03FF  RW  scratch register (SCR)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case SPR",
+            "line": "\t\tcase SPR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 7",
+            "line": "\t\tcase 7:"
+          }
+        ],
+        "digest": "39c8419d2e23d0a15a99779ad0d90a5a119e80bf9d4e46c75ae59dbb5981fb14"
+      }
+    }
+  ]
+}

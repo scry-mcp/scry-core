@@ -1,0 +1,106 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "sn76496-device",
+  "kind": "device",
+  "scope": "chip",
+  "covers": "The SN76496 family of programmable sound generators as a chip",
+  "complete_against": "mame:src/devices/sound/sn76496.cpp DEFINE_DEVICE_TYPE",
+  "left_out": [
+    {
+      "key": "y2404",
+      "why": "a type of sn76496: the same write handler, the constructors differ only in flags"
+    },
+    {
+      "key": "sn76489",
+      "why": "a type of sn76496: the same write handler, the constructors differ only in flags"
+    },
+    {
+      "key": "sn76489a",
+      "why": "a type of sn76496: the same write handler, the constructors differ only in flags"
+    },
+    {
+      "key": "sn76494",
+      "why": "a type of sn76496: the same write handler, the constructors differ only in flags"
+    },
+    {
+      "key": "sn94624",
+      "why": "a type of sn76496: the same write handler, the constructors differ only in flags"
+    },
+    {
+      "key": "ncr8496",
+      "why": "a type of sn76496: the same write handler, the constructors differ only in flags"
+    },
+    {
+      "key": "pssj3",
+      "why": "a type of sn76496: the same write handler, the constructors differ only in flags"
+    },
+    {
+      "key": "gamegear_psg",
+      "why": "a type of sn76496: the same write handler, the constructors differ only in flags"
+    },
+    {
+      "key": "segapsg",
+      "why": "a type of sn76496: the same write handler, the constructors differ only in flags"
+    }
+  ],
+  "entries": [
+    {
+      "key": "sn76496",
+      "name": "SN76496 PSG",
+      "aliases": [
+        "SN76489",
+        "SN76489A",
+        "TMS9919",
+        "NCR8496",
+        "PSG"
+      ],
+      "description": "Programmable sound generator with three square-wave tone channels and one noise channel, each with a 4-bit attenuator, written a byte at a time through one port.",
+      "behaviour": "A byte with bit 7 set latches a register and sets its low four bits. A byte with bit 7 clear supplies the high six bits of a latched tone register.",
+      "classes": [
+        "sn76496_base_device",
+        "sn76496_device",
+        "y2404_device",
+        "sn76489_device",
+        "sn76489a_device",
+        "sn76494_device",
+        "sn94624_device",
+        "ncr8496_device",
+        "pssj3_device",
+        "gamegear_device",
+        "segapsg_device"
+      ],
+      "handlers": {
+        "write": "register write",
+        "stereo_w": "stereo output mask",
+        "ready_r": "ready line"
+      },
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "cites": "The SN76489 has 8 \"registers\" - 4 x 4 bit volume registers, 3 x 10 bit"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/sn76496.cpp DEFINE_DEVICE_TYPE sn76496",
+          "cites": "DEFINE_DEVICE_TYPE(SN76496,  sn76496_device,   \"sn76496\",      \"SN76496\")"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+            "line": "The SN76489 has 8 \"registers\" - 4 x 4 bit volume registers, 3 x 10 bit"
+          },
+          {
+            "ref": "mame:src/devices/sound/sn76496.cpp DEFINE_DEVICE_TYPE sn76496",
+            "line": "DEFINE_DEVICE_TYPE(SN76496,  sn76496_device,   \"sn76496\",      \"SN76496\")"
+          }
+        ],
+        "digest": "2811b961fd0f399f752ae58cf4fcaec3f52218660c34abb7400d0bccd4e79a82"
+      }
+    }
+  ]
+}

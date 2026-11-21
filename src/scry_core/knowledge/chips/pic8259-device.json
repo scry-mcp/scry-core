@@ -1,0 +1,66 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "pic8259-device",
+  "kind": "device",
+  "scope": "chip",
+  "covers": "The 8259 programmable interrupt controller as a chip",
+  "complete_against": "mame:src/devices/machine/pic8259.cpp DEFINE_DEVICE_TYPE",
+  "left_out": [
+    {
+      "key": "v5x_icu",
+      "why": "a different chip, the interrupt controller of the NEC V5X, whose overrides were not read"
+    },
+    {
+      "key": "mk98pic",
+      "why": "a different chip, the Elektronika MK-98 controller, whose overrides were not read"
+    }
+  ],
+  "entries": [
+    {
+      "key": "pic8259",
+      "name": "8259 interrupt ctrl",
+      "aliases": [
+        "8259",
+        "8259A",
+        "PIC",
+        "interrupt controller"
+      ],
+      "description": "Programmable interrupt controller: eight prioritised interrupt request inputs, masked and acknowledged under software control, that can be cascaded to a second controller.",
+      "behaviour": "Two registers selected by one address bit. Writes to the first are command words told apart by bits 4 and 3, and writes to the second are the next initialization word or the interrupt mask.",
+      "classes": [
+        "pic8259_device"
+      ],
+      "handlers": {
+        "read": "register read",
+        "write": "register write"
+      },
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW1",
+          "cites": "OCW1 sets and clears the mask bits in the interrupt"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/pic8259.cpp DEFINE_DEVICE_TYPE pic8259",
+          "cites": "DEFINE_DEVICE_TYPE(PIC8259, pic8259_device, \"pic8259\", \"Intel 8259 PIC\")"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW1",
+            "line": "OCW1 sets and clears the mask bits in the interrupt"
+          },
+          {
+            "ref": "mame:src/devices/machine/pic8259.cpp DEFINE_DEVICE_TYPE pic8259",
+            "line": "DEFINE_DEVICE_TYPE(PIC8259, pic8259_device, \"pic8259\", \"Intel 8259 PIC\")"
+          }
+        ],
+        "digest": "ee70f9e5b84bd3caa4e55bcdc50ec74ef8d5cf1c46416089a524516008711bc9"
+      }
+    }
+  ]
+}

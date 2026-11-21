@@ -1,0 +1,74 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "ins8250-device",
+  "kind": "device",
+  "scope": "chip",
+  "covers": "The 8250 family of serial UARTs as a chip",
+  "complete_against": "mame:src/devices/machine/ins8250.cpp DEFINE_DEVICE_TYPE",
+  "left_out": [
+    {
+      "key": "ns16450",
+      "why": "a type of ins8250: same registers, it adds the scratch register the 8250 lacks"
+    },
+    {
+      "key": "ns16550",
+      "why": "a type of ins8250: same registers, the FIFO control register is the difference"
+    },
+    {
+      "key": "pc16552d",
+      "why": "two UARTs in one package, whose wiring was not read"
+    }
+  ],
+  "entries": [
+    {
+      "key": "ins8250",
+      "name": "INS8250 UART",
+      "aliases": [
+        "8250",
+        "16450",
+        "16550",
+        "NS16550",
+        "UART"
+      ],
+      "description": "Asynchronous serial transmitter and receiver with a baud rate divisor and line, modem and interrupt control. The 16450 and 16550 are compatible successors; the 16550 adds FIFOs.",
+      "behaviour": "Eight registers selected by the low three address bits. The divisor latch bit of the line control register swaps the first two for the baud rate divisor. The original 8250 has no scratch register.",
+      "classes": [
+        "ins8250_device",
+        "ns16450_device",
+        "ns16550_device",
+        "ins8250_uart_device"
+      ],
+      "handlers": {
+        "ins8250_r": "register read",
+        "ins8250_w": "register write"
+      },
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B 03F8-03FF serial port",
+          "cites": "PORT 03F8-03FF - Serial port (8250,8250A,8251,16450,16550,16550A,etc.) COM1"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/ins8250.cpp DEFINE_DEVICE_TYPE ins8250",
+          "cites": "DEFINE_DEVICE_TYPE(INS8250,  ins8250_device, \"ins8250\",  \"National Semiconductor INS8250 UART\")"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03F8-03FF serial port",
+            "line": "PORT 03F8-03FF - Serial port (8250,8250A,8251,16450,16550,16550A,etc.) COM1"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp DEFINE_DEVICE_TYPE ins8250",
+            "line": "DEFINE_DEVICE_TYPE(INS8250,  ins8250_device, \"ins8250\",  \"National Semiconductor INS8250 UART\")"
+          }
+        ],
+        "digest": "90558abd48a0c67f369a4640e5b6e6bab66a0e204f56aeabb47dd67a192c8203"
+      }
+    }
+  ]
+}

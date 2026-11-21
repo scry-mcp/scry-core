@@ -1,0 +1,128 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "ymopl-device",
+  "kind": "device",
+  "scope": "chip",
+  "covers": "The Yamaha OPL2 and OPL3 FM synthesizers as chips",
+  "complete_against": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE",
+  "left_out": [
+    {
+      "key": "ym3526",
+      "why": "the OPL1 is in no DOSBox-X mode, so it is written by the MAME server alone"
+    },
+    {
+      "key": "y8950",
+      "why": "a different chip with its own register map, not read"
+    },
+    {
+      "key": "ymf278b",
+      "why": "a different chip, the OPL4, with its own register map, not read"
+    },
+    {
+      "key": "ym2413",
+      "why": "a different chip, the OPLL, with its own register map, not read"
+    },
+    {
+      "key": "ym2423",
+      "why": "a different chip, the OPLL-X, with its own register map, not read"
+    },
+    {
+      "key": "ymf281",
+      "why": "a different chip, the OPLLP, with its own register map, not read"
+    },
+    {
+      "key": "ds1001",
+      "why": "a different chip with its own register map, not read"
+    }
+  ],
+  "entries": [
+    {
+      "key": "ym3812",
+      "name": "YM3812 OPL2",
+      "aliases": [
+        "OPL2",
+        "AdLib chip",
+        "OPL"
+      ],
+      "description": "Yamaha FM synthesizer with nine two-operator channels, a rhythm mode and two timers, programmed through an address register and a data register.",
+      "behaviour": "A write to the address port selects a register and a write to the data port sets it. A read returns the status: bit 7 interrupt, bit 6 timer 1 overflow, bit 5 timer 2 overflow.",
+      "classes": [
+        "ym3812_device"
+      ],
+      "handlers": {
+        "read": "register or status read",
+        "status_r": "status",
+        "write": "register write",
+        "address_w": "register select",
+        "data_w": "register data"
+      },
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 01h",
+          "cites": " 01h\tEnable waveform control"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ym3812",
+          "cites": "DEFINE_DEVICE_TYPE(YM3812, ym3812_device, \"ym3812\", \"YM3812 OPL2\")"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 01h",
+            "line": " 01h\tEnable waveform control"
+          },
+          {
+            "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ym3812",
+            "line": "DEFINE_DEVICE_TYPE(YM3812, ym3812_device, \"ym3812\", \"YM3812 OPL2\")"
+          }
+        ],
+        "digest": "d1be568620c7f16810b035b0e7fb70c9891d00927f8b94486d57126b682abd7c"
+      }
+    },
+    {
+      "key": "ymf262",
+      "name": "YMF262 OPL3",
+      "aliases": [
+        "OPL3",
+        "AdLib chip 2",
+        "OPL3 FM"
+      ],
+      "description": "Yamaha FM synthesizer, the OPL2's successor: a second register bank, four outputs, four-operator channels and eight waveforms. OPL2 compatible until a mode bit enables the new features.",
+      "behaviour": "Register select and data ports as on the OPL2, plus a second address port that selects the 0x100 bank. Bit 0 of register 0x105 is the OPL3 mode bit and is off by default; while it is off that port reaches only register 0x105.",
+      "classes": [
+        "ymf262_device"
+      ],
+      "handlers": {
+        "read": "register or status read",
+        "status_r": "status",
+        "write": "register write",
+        "address_w": "register select",
+        "data_w": "register data",
+        "address_hi_w": "register select, 0x100 bank",
+        "data_hi_w": "register data, 0x100 bank"
+      },
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 05h",
+          "cites": " 05h\t(OPL3) compatibility register"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ymf262",
+          "cites": "DEFINE_DEVICE_TYPE(YMF262, ymf262_device, \"ymf262\", \"YMF262 OPL3\")"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x105",
+          "cites": "\t\t} else if ( reg == 0x105 ) {"
+        }
+      ]
+    }
+  ]
+}

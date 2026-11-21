@@ -1,0 +1,69 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "mc146818-device",
+  "kind": "device",
+  "scope": "chip",
+  "covers": "The MC146818 real-time clock as a chip",
+  "complete_against": "mame:src/devices/machine/mc146818.cpp DEFINE_DEVICE_TYPE",
+  "left_out": [
+    {
+      "key": "ds1287",
+      "why": "a different chip derived from it, whose overrides were not read"
+    },
+    {
+      "key": "ds1397",
+      "why": "a different chip that adds 4096 bytes of RAM, whose overrides were not read"
+    }
+  ],
+  "entries": [
+    {
+      "key": "mc146818",
+      "name": "MC146818 RTC",
+      "aliases": [
+        "146818",
+        "RTC",
+        "CMOS RTC",
+        "real time clock"
+      ],
+      "description": "Real-time clock with battery-backed RAM: fourteen clock and status registers followed by general purpose bytes, reached through an index register and a data register.",
+      "behaviour": "A write to the address register selects one of 64 bytes, and the data register then reads or writes the selected byte. The first fourteen are the clock.",
+      "classes": [
+        "mc146818_device"
+      ],
+      "handlers": {
+        "address_w": "register select",
+        "data_r": "register data read",
+        "data_w": "register data write",
+        "read_direct": "register read by offset",
+        "write_direct": "register write by offset"
+      },
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:CMOS.LST CMOS 00h-0Dh clock functions",
+          "cites": "The first fourteen bytes are dedicated to the MC146818 chip clock functions "
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/mc146818.cpp DEFINE_DEVICE_TYPE mc146818",
+          "cites": "DEFINE_DEVICE_TYPE(MC146818, mc146818_device, \"mc146818\", \"MC146818 RTC\")"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "rbil61:CMOS.LST CMOS 00h-0Dh clock functions",
+            "line": "The first fourteen bytes are dedicated to the MC146818 chip clock functions "
+          },
+          {
+            "ref": "mame:src/devices/machine/mc146818.cpp DEFINE_DEVICE_TYPE mc146818",
+            "line": "DEFINE_DEVICE_TYPE(MC146818, mc146818_device, \"mc146818\", \"MC146818 RTC\")"
+          }
+        ],
+        "digest": "a1e22de248f135026e839f3fde5d0e07fc57a923a5ebee46022a6c651af6124e"
+      }
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "format": "scry-knowledge-lock/2",
+  "checked": {
+    "z80:vector:0x00": {
+      "digest": "80185d98347b9ee7ecff8c91f193694c077ab948db7e58e29632d8988576421e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "line": "0000h C7 RST 0"
+        },
+        {
+          "ref": "mame:src/devices/cpu/z80/z80.cpp z80_device::device_reset PC",
+          "line": "\tPC = 0;"
+        }
+      ]
+    },
+    "z80:vector:0x08": {
+      "digest": "191ce7382371ab8cbd2ec0824ba8909cd7ec3166e746709c574f65750ee2f99c",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "line": "0008h CF RST 8"
+        },
+        {
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x08",
+          "line": "\t@rst 0x08"
+        }
+      ]
+    },
+    "z80:vector:0x10": {
+      "digest": "318680ec0147a01fc01c75478bbecca12a7ab7661a7fbc7d729f6409b12a7eb3",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "line": "0010h D7 RST 16"
+        },
+        {
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x10",
+          "line": "\t@rst 0x10"
+        }
+      ]
+    },
+    "z80:vector:0x18": {
+      "digest": "a6e5dcc571d88042a56e6d619dfb58292990d3a356216da9f0ceb612dcb2a40e",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "line": "0018h DF RST 24"
+        },
+        {
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x18",
+          "line": "\t@rst 0x18"
+        }
+      ]
+    },
+    "z80:vector:0x20": {
+      "digest": "dcd691a8d7821a263eff313bb3ee8633e0452b8ff88e0c7b800a69ae0c793840",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "line": "0020h E7 RST 32"
+        },
+        {
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x20",
+          "line": "\t@rst 0x20"
+        }
+      ]
+    },
+    "z80:vector:0x28": {
+      "digest": "79f2cdbdd2585241a4249cfebe88b733fb6094aa89aafbdcc1e438ede3a4b74f",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "line": "0028h EF RST 40"
+        },
+        {
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x28",
+          "line": "\t@rst 0x28"
+        }
+      ]
+    },
+    "z80:vector:0x30": {
+      "digest": "0a6ab66ff6e8ea89e7cc45619c34608e9b3642830170d0c5a7fccbbcc7db21e2",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "line": "0030h F7 RST 48"
+        },
+        {
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x30",
+          "line": "\t@rst 0x30"
+        }
+      ]
+    },
+    "z80:vector:0x38": {
+      "digest": "b65321f8865ecc01230660e97a7fe8bf417ae8d5b777595d29965a47175e638a",
+      "by": "phase Kcc",
+      "against": [
+        {
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "line": "0038h FF RST 56"
+        },
+        {
+          "ref": "mame:src/devices/cpu/z80/z80.lst interrupt mode 1",
+          "line": "\t\tPC = 0x0038;"
+        }
+      ]
+    }
+  }
+}

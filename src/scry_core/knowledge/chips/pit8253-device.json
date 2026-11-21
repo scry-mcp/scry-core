@@ -1,0 +1,72 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "pit8253-device",
+  "kind": "device",
+  "scope": "chip",
+  "covers": "The 8253 and 8254 programmable interval timer as a chip",
+  "complete_against": "mame:src/devices/machine/pit8253.cpp DEFINE_DEVICE_TYPE",
+  "left_out": [
+    {
+      "key": "pit_counter",
+      "why": "one counter inside the chip, not a chip of its own"
+    },
+    {
+      "key": "pit8254",
+      "why": "a type of pit8253: it adds the read-back command, which the 8253 type ignores"
+    },
+    {
+      "key": "fe2010_pit",
+      "why": "a different chip whose overrides were not read"
+    }
+  ],
+  "entries": [
+    {
+      "key": "pit8253",
+      "name": "8253 interval timer",
+      "aliases": [
+        "8253",
+        "8254",
+        "PIT",
+        "Intel 8254",
+        "programmable interval timer"
+      ],
+      "description": "Programmable interval timer: three independent 16-bit down counters, each with its own mode, clock input, gate and output, behind one interface of four registers.",
+      "behaviour": "The low two address bits select counter 0, 1 or 2, or the control word. The 8254 adds a read-back command that the 8253 lacks.",
+      "classes": [
+        "pit8253_device",
+        "pit8254_device"
+      ],
+      "handlers": {
+        "read": "counter read",
+        "write": "counter or control word write"
+      },
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Counter 0, 1, 2",
+          "cites": "These three functional blocks are identical in opera-"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/pit8253.cpp DEFINE_DEVICE_TYPE pit8253",
+          "cites": "DEFINE_DEVICE_TYPE(PIT8253, pit8253_device, \"pit8253\", \"Intel 8253 PIT\")"
+        }
+      ],
+      "checked": {
+        "by": "phase Kcc",
+        "writer": "phase Kc",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Counter 0, 1, 2",
+            "line": "These three functional blocks are identical in opera-"
+          },
+          {
+            "ref": "mame:src/devices/machine/pit8253.cpp DEFINE_DEVICE_TYPE pit8253",
+            "line": "DEFINE_DEVICE_TYPE(PIT8253, pit8253_device, \"pit8253\", \"Intel 8253 PIT\")"
+          }
+        ],
+        "digest": "3fd2af0db3b4265cabf2f1192e14c5a4c5a6f72168d638e95cd4446dd9e1a2fc"
+      }
+    }
+  ]
+}
