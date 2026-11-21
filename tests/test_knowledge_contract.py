@@ -252,6 +252,25 @@ def test_two_sources_that_mark_a_port_differently_need_a_sentence_saying_so(
     assert run(copy.subject()) == set()
 
 
+def test_the_two_emulators_that_mark_a_port_differently_need_a_sentence_saying_so(
+        tmp_path: Path) -> None:
+    copy = Copy(tmp_path)
+    ref = "mame:src/devices/video/mc6845.cpp mc6845_device::register_w"
+    line = "\tcase 0x0c:"
+    copy.index(lambda d: d["rows"].update({ref: {"line": line, "key": "0x3C4", "marks": "RW"}}))
+    copy.index(lambda d: d["rows"][SEQ_PORT].update(marks="RW"))
+
+    def second_emulator(d: dict[str, Any]) -> None:
+        entry(d, "0x3C4")["sources"].append({"role": "emulator", "ref": ref, "cites": line})
+    copy.edit("ports", second_emulator)
+    assert run(copy.subject()) == set(), "two emulators that agree need no sentence"
+    copy.index(lambda d: d["rows"][SEQ_PORT].update(marks="W"))
+    assert run(copy.subject()) == {BOTH}
+    copy.edit("ports", lambda d: entry(d, "0x3C4").update(
+        differs="DOSBox-X takes writes only; MAME also answers reads."))
+    assert run(copy.subject()) == set()
+
+
 def test_text_searched_through_both_paths_that_differ_fails_the_fallback_case(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     subject = Copy(tmp_path).subject()

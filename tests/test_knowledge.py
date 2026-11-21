@@ -127,7 +127,37 @@ def test_an_entry_with_a_fault_says_what_it_is(change: dict[str, Any], says: str
 def test_two_sources_of_one_role_are_refused() -> None:
     raw = valid()
     raw["sources"] = raw["sources"] * 2
-    assert any("two sources of one role" in f for f in parsed(raw)[1])
+    assert any("`dosbox-x:` and `mame:`" in f for f in parsed(raw)[1])
+
+
+DOC = {"role": "documentation", "ref": "datasheet:MC6845 data sheet, table 3", "cites": "R12"}
+DOSBOX = {"role": "emulator", "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc",
+          "cites": "case 0x0c:"}
+MAME = {"role": "emulator", "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w",
+        "cites": "case 0x0c:"}
+
+
+@pytest.mark.parametrize("listed", [
+    [DOC, DOSBOX, MAME], [DOSBOX, MAME], [MAME, DOSBOX], [DOC, MAME], [DOC, DOSBOX], [DOC]])
+def test_an_entry_cites_a_documentation_and_the_two_emulators_that_model_the_chip(
+        listed: list[dict[str, str]]) -> None:
+    got, faults = parsed({**valid(), "sources": listed})
+    assert faults == [] and got is not None and [s.ref for s in got.sources] == [
+        s["ref"] for s in listed]
+
+
+@pytest.mark.parametrize(("listed", "says"), [
+    ([DOC, DOC], "at most one `documentation`"),
+    ([DOC, {**DOC, "ref": "datasheet:other"}, DOSBOX], "at most one `documentation`"),
+    ([DOSBOX, {**DOSBOX, "ref": "dosbox-x:src/other.cpp other"}], "`dosbox-x:` and `mame:`"),
+    ([MAME, {**MAME, "ref": "mame:src/other.cpp other"}], "`dosbox-x:` and `mame:`"),
+    ([DOSBOX, {**DOC, "role": "emulator"}], "`dosbox-x:` and `mame:`"),
+    ([DOC, DOSBOX, MAME, {**DOC, "ref": "datasheet:third"}], "no source"),
+    ([DOC, DOSBOX, MAME, {**MAME, "ref": "mame:src/other.cpp other"}], "no source")])
+def test_what_is_not_a_documentation_and_the_two_emulators_is_refused(
+        listed: list[dict[str, str]], says: str) -> None:
+    got, faults = parsed({**valid(), "sources": listed})
+    assert got is None and any(says in f for f in faults), faults
 
 
 def stamp(raw: dict[str, Any], by: str = "checker", writer: str = "writer") -> dict[str, Any]:

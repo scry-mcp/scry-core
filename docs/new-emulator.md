@@ -185,8 +185,11 @@ public source each fact was checked against. A server ships dictionaries and one
   documentation and the emulator both exist) and its `entries`. An entry holds its `key` in the
   one spelling of its kind (`scry_core.knowledge.keys`), a `name` of at most 24 ASCII
   characters, a `description`, a `behaviour` that summarises the source without losing
-  precision, and one or two `sources`, each a `ref` of a known scheme and the source's own line
-  in `cites`. An entry with no source is not written. A `register` or `command` key may be a
+  precision, and one to three `sources`, each a `ref` of a known scheme and the source's own line
+  in `cites`: at most one `documentation`, and two `emulator` sources only when one is
+  `dosbox-x:` and the other `mame:` (a chip both emulators model); `differs` says how the
+  sources disagree, and is required when the index's read and write marks of two sources
+  differ. An entry with no source is not written. A `register` or `command` key may be a
   range (`0x20..0x35`, a bank as one entry) and a number inside it finds the entry; two
   registers or two commands of one dictionary may not overlap unless their `access` tells them
   apart. `access` (`read` or `write`) is for a port, a register or a command that differs by

@@ -16,6 +16,8 @@ from typing import Any
 
 INDEX_FORMAT = "scry-knowledge-sources/1"
 ROLES = ("documentation", "emulator")
+#: The schemes of the two emulators that may both be cited by one entry, sorted.
+EMULATORS = ("dosbox-x", "mame")
 _FILE_THEN_SYMBOL = re.compile(r"[A-Za-z0-9_./+-]*\.[A-Za-z0-9_+-]+ \S.*")
 
 

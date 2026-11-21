@@ -20,6 +20,7 @@ from scry_core.knowledge import keys, sources
 FORMAT = "scry-knowledge/1"
 NAME_MAX, ALIAS_MAX, ALIASES_MAX = 24, 32, 6
 DESCRIPTION_WORDS, BEHAVIOUR_WORDS, BEHAVIOUR_SENTENCES, DIFFERS_WORDS = 30, 60, 3, 40
+SOURCES_MAX = 3
 ACCESS = ("read", "write")
 #: The kinds that can hold a read and a write of one number, each its own entry.
 WITH_ACCESS = ("port", "register", "command")
@@ -168,9 +169,9 @@ def _strings(raw: Mapping[str, Any], name: str, faults: list[str]) -> tuple[str,
 
 def _sources(raw: Mapping[str, Any], faults: list[str]) -> tuple[Source, ...]:
     listed = raw.get("sources")
-    if not isinstance(listed, list) or not 1 <= len(listed) <= 2:
-        faults.append("no source; an entry with none is not written (one or two, each with "
-                      "`role`, `ref` and `cites`)")
+    if not isinstance(listed, list) or not 1 <= len(listed) <= SOURCES_MAX:
+        faults.append("no source; an entry with none is not written (one to "
+                      f"{SOURCES_MAX}, each with `role`, `ref` and `cites`)")
         return ()
     made: list[Source] = []
     for i, one in enumerate(listed):
@@ -188,8 +189,12 @@ def _sources(raw: Mapping[str, Any], faults: list[str]) -> tuple[Source, ...]:
         if not one["cites"].strip():
             faults.append(f"{where}: `cites` is the source's own line, not empty")
         made.append(Source(one["role"], one["ref"], one["cites"]))
-    if len({s.role for s in made}) != len(made):
-        faults.append("two sources of one role: one `documentation` and one `emulator` at most")
+    if sum(s.role == "documentation" for s in made) > 1:
+        faults.append("an entry cites at most one `documentation` source")
+    schemes = sorted(s.ref.partition(":")[0] for s in made if s.role == "emulator")
+    if len(schemes) > 1 and schemes != list(sources.EMULATORS):
+        faults.append("two `emulator` sources are for a chip both `dosbox-x:` and `mame:` "
+                      "model, one each")
     return tuple(made)
 
 

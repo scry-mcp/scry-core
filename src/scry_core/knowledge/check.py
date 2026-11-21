@@ -164,21 +164,21 @@ def relations(base: Base) -> list[str]:
 
 
 def both_sources(base: Base, index: SourceIndex) -> list[str]:
-    """A dictionary that says both sources exist has both on every entry, and where both carry
-    read and write marks that differ the entry says so in `differs`."""
+    """A dictionary that says both sources exist has both on every entry, and where the sources
+    carry read and write marks that differ the entry says so in `differs`."""
     out: list[str] = []
     both = {d.dictionary for d in base.dictionaries if d.both}
     for e in base.entries():
-        roles = {s.role: s for s in e.sources}
-        if e.dictionary in both and set(roles) != set(sources.ROLES):
-            out.append(f"{e.dictionary} {e.key} cites {sorted(roles)} and its dictionary says "
-                       "both sources exist: cite both, or list the key under left_out")
-        marks = {r: index.rows[s.ref].marks for r, s in roles.items()
+        where = f"{e.dictionary} {e.key}"
+        if e.dictionary in both and {s.role for s in e.sources} != set(sources.ROLES):
+            out.append(f"{where} cites {sorted({s.role for s in e.sources})} and its dictionary "
+                       "says both sources exist: cite both, or list the key under left_out")
+        marks = {(s.ref.partition(":")[0] if s.role == "emulator" else s.role):
+                 index.rows[s.ref].marks for s in e.sources
                  if s.ref in index.rows and index.rows[s.ref].marks}
-        if len(marks) == 2 and len(set(marks.values())) > 1 and not e.differs:
-            out.append(f"{e.dictionary} {e.key}: the documentation marks it "
-                       f"{marks['documentation']} and the emulator {marks['emulator']}; say so "
-                       "in differs")
+        if len(set(marks.values())) > 1 and not e.differs:
+            seen = ", ".join(f"{who} {mark}" for who, mark in marks.items())
+            out.append(f"{where}: the sources mark it differently ({seen}); say so in differs")
     return out
 
 
