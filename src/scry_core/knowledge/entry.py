@@ -232,8 +232,9 @@ def _ports(raw: Mapping[str, Any], faults: list[str]) -> tuple[tuple[int, int], 
     for one in listed if isinstance(listed, list) else [None]:
         try:
             if not (isinstance(one, dict) and set(one) == {"base", "length"}
-                    and isinstance(one["length"], int) and one["length"] >= 1):
-                raise keys.KeyFault("a port range is `base` and `length`")
+                    and isinstance(one["length"], int) and one["length"] >= 1
+                    and keys.fits(one["length"])):
+                raise keys.KeyFault("a port range is `base` and `length`, a whole number from 1")
             base = keys.span("port", keys.canonical("port", one["base"])).lo
             out.append((base or 0, one["length"]))
         except keys.KeyFault as bad:

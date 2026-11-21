@@ -4,7 +4,9 @@ lookups, and the text search through FTS5 and through the index of our own."""
 from __future__ import annotations
 
 import copy
+import gc
 import json
+import tracemalloc
 from pathlib import Path
 from typing import Any
 
@@ -233,8 +235,8 @@ def ids(found: knowledge.Found) -> list[str]:
 
 
 def test_an_entry_is_found_by_id_by_key_and_by_name(base: knowledge.Base) -> None:
-    assert base.by_id("ibm-pc:port:0x3C8") is base.get("port", "0x3C8", "ibm-pc")
-    assert base.by_id("ibm-pc:port:0x226:write") is not base.by_id("ibm-pc:port:0x226:read")
+    assert base.by_id("ibm-pc:port:0x3C8") == base.get("port", "0x3C8", "ibm-pc")
+    assert base.by_id("ibm-pc:port:0x226:write") != base.by_id("ibm-pc:port:0x226:read")
     assert base.by_id("ibm-pc:port:0x999") is None and base.get("port", "0x3C8", "m68000") is None
     assert [e.id for e in base.by_alias("pel ADDRESS")] == ["ibm-pc:port:0x3C8"]
     assert [e.id for e in base.by_alias("dac write address")] == ["ibm-pc:port:0x3C8"]
@@ -325,7 +327,7 @@ def test_a_search_lists_the_first_limit_and_says_it_cut(base: knowledge.Base) ->
 def test_a_relation_leads_from_a_thing_to_its_hardware(base: knowledge.Base) -> None:
     port = base.by_id("ibm-pc:port:0x3C8")
     assert port is not None
-    assert base.related(port).device is base.by_id("ibm-pc:device:vga-dac")
+    assert base.related(port).device == base.by_id("ibm-pc:device:vga-dac")
     sb = base.by_id("ibm-pc:device:sb")
     assert sb is not None
     related = base.related(sb)
@@ -334,7 +336,7 @@ def test_a_relation_leads_from_a_thing_to_its_hardware(base: knowledge.Base) -> 
     register = base.by_id("vga-seq:register:0x04")
     assert register is not None
     shown = base.related(register)
-    assert shown.device is base.by_id("ibm-pc:device:vga-seq")
+    assert shown.device == base.by_id("ibm-pc:device:vga-seq")
     assert dict(shown.reached) == {"index": ("ibm-pc:port:0x3C4",), "data": ("ibm-pc:port:0x3C5",)}
     seven = base.by_id("ibm-pc:irq:0")
     assert seven is not None and [d.key for d in base.related(seven).used_by] == ["pit8253"]
@@ -347,10 +349,10 @@ def test_a_device_is_resolved_from_its_own_scope_then_the_shared_one(tmp_path: P
     write_dictionary(tmp_path, "pc", "device", "ibm-pc", [an_entry("opl", "OPL"),
                                                            an_entry("ym2151", "PC YM2151")])
     base = knowledge.Base.load(tmp_path)
-    assert base.device_entry("ibm-pc", "ym2151") is base.by_id("ibm-pc:device:ym2151")
-    assert base.device_entry("m6809", "ym2151") is base.by_id("chip:device:ym2151")
-    assert base.device_entry("", "ym2151") is base.by_id("chip:device:ym2151")
-    assert base.device_entry("", "opl") is base.by_id("ibm-pc:device:opl")
+    assert base.device_entry("ibm-pc", "ym2151") == base.by_id("ibm-pc:device:ym2151")
+    assert base.device_entry("m6809", "ym2151") == base.by_id("chip:device:ym2151")
+    assert base.device_entry("", "ym2151") == base.by_id("chip:device:ym2151")
+    assert base.device_entry("", "opl") == base.by_id("ibm-pc:device:opl")
     assert base.device_entry("", "none") is None
 
 
@@ -417,6 +419,77 @@ def test_the_fallback_answers_what_fts5_answers_in_the_same_order(
         pytest.skip("this host's SQLite has no FTS5")
     assert ids(ours.search(words=asked, limit=50)) == ids(host.search(words=asked, limit=50))
     assert ours.search(words=asked).total == host.search(words=asked).total
+
+
+def test_an_entry_built_from_its_row_is_the_entry_the_file_parsed(tmp_path: Path) -> None:
+    device = an_entry("sb", "Sound Blaster", aliases=["SB", "SB16"], differs="The list says more.",
+                      contains=["sb-dsp"], irq=[5, 7], dma=[1, 5], classes=["sound"],
+                      ports=[{"base": "0x220", "length": 16}, {"base": "0x388", "length": 4}],
+                      handlers={"write+0": "register select"})
+    area = an_entry("0040:0049", "video mode", address=0x449, length=1)
+    port = stamp(an_entry("0x3C4", "sequencer index", device="vga-seq"))
+    register = an_entry("0x04", "memory mode")
+    plan = [("devices", "device", "ibm-pc", [device], None), ("memory", "memory", "ibm-pc",
+                                                              [area], None),
+            ("ports", "port", "ibm-pc", [port], None),
+            ("vga-seq", "register", "vga-seq", [register], {"index": "0x3C4", "data": "0x3C5"})]
+    for dictionary, kind, scope, raws, reached in plan:
+        write_dictionary(tmp_path, dictionary, kind, scope, raws, **(
+            {"reached": reached} if reached else {}))
+    base = knowledge.Base.load(tmp_path)
+    assert base.faults() == []
+    for dictionary, kind, scope, raws, reached in plan:
+        made = fmt.Header("t.json", dictionary, kind, scope, "covers", "list", (), reached, False)
+        for raw in raws:
+            want, faults = fmt.parse_entry(raw, made)
+            assert faults == [] and want is not None
+            assert base.by_id(want.id) == want
+    got = base.by_id("ibm-pc:port:0x3C4")
+    assert got is not None and got.checked is not None and got.checked.digest == got.digest
+
+
+def sized(folder: Path, count: int) -> None:
+    """`count` entries the size a real dictionary's are: two aliases, a description and a
+    behaviour of a few dozen words, a device and a source, in files of sixty."""
+    pool = ["register", "port", "timer", "counter", "palette", "index", "status", "write", "read",
+            "latch", "channel", "volume", "sprite", "vector", "interrupt", "mask", "enable",
+            "reset", "data", "address", "control", "mode", "clock"]
+
+    def sentence(n: int, words: int) -> str:
+        return " ".join(pool[(n * k + k * k) % len(pool)] for k in range(1, words + 1)) + "."
+
+    for first in range(0, count, 60):
+        write_dictionary(folder, f"d{first // 60:03d}", "port", f"scope{first // 60}", [
+            an_entry(f"0x{0x100 + n:X}",
+                     f"{pool[n % len(pool)]} {pool[(n * 7) % len(pool)]} {n}"[:24],
+                     aliases=[f"A{n}", f"R{n}"], description=sentence(n, 22),
+                     behaviour=sentence(n, 18) + " " + sentence(n + 1, 14), device="dev0")
+            for n in range(first, min(first + 60, count))])
+
+
+#: What the base may keep in Python objects per entry, in bytes. The loader keeps the rows in
+#: SQLite and builds an `Entry` when asked, so what stays is a header per file and a few
+#: constants: a few dozen bytes an entry at this size. The bound sits above that and below the
+#: size of one `Entry` (a frozen dataclass of dozens of fields), so keeping even one object per
+#: entry fails it.
+KEPT_PER_ENTRY = 64
+
+
+def test_a_loaded_base_keeps_no_python_object_per_entry(tmp_path: Path) -> None:
+    count = 2000
+    sized(tmp_path, count)
+    if not knowledge.Base.load(tmp_path).uses_fts5:
+        pytest.skip("this host's SQLite has no FTS5, so the index of our own is built in Python")
+    gc.collect()
+    tracemalloc.start()
+    try:
+        base = knowledge.Base.load(tmp_path)
+        gc.collect()
+        kept, _ = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert len(base) == count and base.faults() == []
+    assert kept / count < KEPT_PER_ENTRY, f"{kept / count:.0f} bytes kept an entry"
 
 
 def test_the_comparison_of_the_two_paths_runs_on_every_base(tmp_path: Path) -> None:
@@ -554,11 +627,6 @@ def test_a_register_reached_by_handlers_names_them_and_not_ports(tmp_path: Path)
     assert check.relations(base) == []
 
 
-def test_a_term_held_by_no_field_ranks_last() -> None:
-    held = {"name": {"a"}, "aliases": set(), "description": set(), "behaviour": set()}
-    assert text.tier([text.Term("a", False)], held) == 0
-    assert text.tier([text.Term("zebra", False)], held) == 4
-
 
 def test_a_datasheet_is_not_held_to_the_index_and_a_missing_list_is_named(
         tmp_path: Path) -> None:
@@ -639,6 +707,15 @@ def test_a_number_too_wide_to_hold_is_a_fault_or_a_miss_and_never_a_crash(
     assert len(base) == 0 and len(base.entry_faults) == 3
     for wide in ("9" * 25, "0xFFFFFFFFFFFFFFFFFFFF", "9" * 5000):
         assert base.search(key=wide).total == 0
+
+
+def test_a_port_range_too_long_to_hold_is_a_fault_and_never_a_crash(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "devices", "device", "ibm-pc", [
+        an_entry("sb", "SB", ports=[{"base": "0x220", "length": 10**30}]),
+        an_entry("ok", "OK", ports=[{"base": "0x220", "length": 16}])])
+    base = knowledge.Base.load(tmp_path)
+    assert [e.key for e in base.entries()] == ["ok"] and len(base.entry_faults) == 1
+    assert "`ports`" in base.entry_faults[0]
 
 
 def test_a_range_of_calls_is_the_calls_inside_it_and_a_miss_names_its_neighbours(

@@ -28,11 +28,10 @@ class Term:
     word: str
     prefix: bool
 
-    def held_by(self, tokens: set[str]) -> bool:
-        return any(t.startswith(self.word) for t in tokens) if self.prefix else self.word in tokens
-
-    def fts(self) -> str:
-        return f'"{self.word}"' + ("*" if self.prefix else "")
+    def fts(self, fields: tuple[str, ...] = ()) -> str:
+        """The FTS5 query for this word, held by `fields` only when some are given."""
+        match = f'"{self.word}"' + ("*" if self.prefix else "")
+        return f"{{{' '.join(fields)}}} : {match}" if fields else match
 
 
 def terms(query: str) -> list[Term]:
@@ -45,43 +44,43 @@ def terms(query: str) -> list[Term]:
     return out
 
 
-def tier(asked: list[Term], fields: dict[str, set[str]]) -> int:
-    """0 when the name holds every word, 1 with the aliases, 2 with the description, 3 else."""
-    seen: set[str] = set()
-    for i, name in enumerate(FIELDS):
-        seen |= fields[name]
-        if all(t.held_by(seen) for t in asked):
-            return i
-    return len(FIELDS)
-
-
 class Fallback:
-    """Word to the entries that hold it, for a host with no FTS5."""
+    """Word to the entries that hold it, per field, for a host with no FTS5."""
 
     def __init__(self) -> None:
-        self._held: dict[str, set[int]] = {}
-        self._sorted: list[str] = []
+        self._held: dict[str, dict[str, set[int]]] = {f: {} for f in FIELDS}
+        self._sorted: dict[str, list[str]] = {}
 
     def add(self, n: int, fields: dict[str, set[str]]) -> None:
-        for tokens in fields.values():
+        for field, tokens in fields.items():
+            held = self._held[field]
             for word in tokens:
-                self._held.setdefault(word, set()).add(n)
+                held.setdefault(word, set()).add(n)
 
     def freeze(self) -> None:
-        self._sorted = sorted(self._held)
+        self._sorted = {f: sorted(held) for f, held in self._held.items()}
 
-    def find(self, asked: list[Term]) -> set[int]:
-        found: set[int] | None = None
-        for term in asked:
-            if term.prefix:
-                at = bisect.bisect_left(self._sorted, term.word)
-                have: set[int] = set()
-                while at < len(self._sorted) and self._sorted[at].startswith(term.word):
-                    have |= self._held[self._sorted[at]]
-                    at += 1
-            else:
-                have = self._held.get(term.word, set())
-            found = set(have) if found is None else found & have
-            if not found:
-                return set()
-        return found or set()
+    def _in(self, field: str, term: Term) -> set[int]:
+        held = self._held[field]
+        if not term.prefix:
+            return held.get(term.word, set())
+        words = self._sorted[field]
+        at = bisect.bisect_left(words, term.word)
+        have: set[int] = set()
+        while at < len(words) and words[at].startswith(term.word):
+            have |= held[words[at]]
+            at += 1
+        return have
+
+    def tiers(self, asked: list[Term]) -> dict[int, int]:
+        """The entries that hold every word of `asked`, each with the first field (an index of
+        `FIELDS`) at which the fields so far hold them all: 0 when the name does, 1 with the
+        aliases, and so on. `asked` is not empty."""
+        so_far: list[set[int]] = [set() for _ in asked]
+        found: dict[int, int] = {}
+        for tier, field in enumerate(FIELDS):
+            for have, term in zip(so_far, asked, strict=True):
+                have |= self._in(field, term)
+            for n in set.intersection(*so_far):
+                found.setdefault(n, tier)
+        return found

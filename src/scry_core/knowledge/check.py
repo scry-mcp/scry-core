@@ -191,10 +191,10 @@ def held(base: Base) -> list[str]:
     name and its words, and a range over its number."""
     out: list[str] = []
     for e in base.entries():
-        if base.by_id(e.id) is not e:
+        if base.by_id(e.id) != e:
             out.append(f"{e.id} did not load by id")
             continue
-        if base.get(e.kind, e.key, e.scope, e.access) is not e:
+        if base.get(e.kind, e.key, e.scope, e.access) != e:
             out.append(f"{e.id} is not found by its kind, key and scope")
         if e not in base.by_alias(e.name):
             out.append(f"{e.id} is not found by its name")

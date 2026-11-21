@@ -207,9 +207,12 @@ def test_text_searched_through_both_paths_that_differ_fails_the_fallback_case(
     subject = Copy(tmp_path).subject()
     if not subject.base().uses_fts5:
         pytest.skip("this host's SQLite has no FTS5")
-    found = text.Fallback.find
-    monkeypatch.setattr(text.Fallback, "find",
-                        lambda self, asked: set(sorted(found(self, asked))[1:]))
+    found = text.Fallback.tiers
+
+    def without_the_first(self: text.Fallback, asked: list[text.Term]) -> dict[int, int]:
+        got = found(self, asked)
+        return {n: t for n, t in got.items() if n != min(got)}
+    monkeypatch.setattr(text.Fallback, "tiers", without_the_first)
     assert run(subject) == {FALLBACK}
 
 
