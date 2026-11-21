@@ -66,3 +66,21 @@ def test_a_reason_for_a_layer_not_asked_or_an_empty_one_is_refused(
         lacking: dict[ov.Layer, str], message: str) -> None:
     with pytest.raises(ValueError, match=message):
         ov.reply(ov.Overlay(keys=False), lacking)
+
+
+def test_a_reply_model_holding_the_overlay_builds_on_every_python_the_package_takes() -> None:
+    """Below 3.12 pydantic refuses `typing.TypedDict`; `typing_extensions`' class builds on all,
+    and on 3.12 and later the two are different classes, so the second line is red there too."""
+    from pydantic import BaseModel, TypeAdapter
+    from typing_extensions import TypedDict
+
+    class Reply(BaseModel):
+        overlay: ov.OverlayReply
+
+    class Probe(TypedDict):
+        pass
+
+    assert Reply(overlay=ov.reply(ov.OVERLAY, {})).overlay["place"] == "auto"
+    made: object = type(ov.OverlayReply)
+    assert made is type(Probe)
+    assert TypeAdapter(ov.OverlayReply).validate_python({"layers": [], "place": "top"})

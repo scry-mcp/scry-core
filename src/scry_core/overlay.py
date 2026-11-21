@@ -4,9 +4,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Literal, NotRequired, TypedDict
+from typing import Literal, NotRequired
 
 from pydantic import BaseModel, ConfigDict
+from typing_extensions import TypedDict
 
 Place = Literal["top", "bottom", "auto"]
 Layer = Literal["edge", "calls", "keys", "pointer", "pause"]
