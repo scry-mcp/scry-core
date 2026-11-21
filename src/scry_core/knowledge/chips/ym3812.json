@@ -169,7 +169,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
           "cites": "//           04 x------- RST"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc3",
+        "writer": "phase Kcf2",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 04h",
+            "line": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
+            "line": "\tcase 0x04:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
+            "line": "//           04 x------- RST"
+          }
+        ],
+        "digest": "7549ab30351b12e7208db96e4fab6fc0aa1d52cc447e5aea145abaae48466038"
+      }
     },
     {
       "key": "0x08",
@@ -240,7 +259,26 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
           "cites": "//           BD x------- AM depth"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc3",
+        "writer": "phase Kcf2",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index BDh",
+            "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
+            "line": "\t\tif ( reg == 0xbd ) {"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
+            "line": "//           BD x------- AM depth"
+          }
+        ],
+        "digest": "a5b3459637b1ee8bfc6a05e87fa53b72298ced27d3ae7b1adb3a43d8e56ca32d"
+      }
     },
     {
       "key": "0x20..0x35",

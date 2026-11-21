@@ -465,6 +465,24 @@
         }
       ]
     },
+    "chip:device:ymf262": {
+      "digest": "27faf408baa32092febe197f51d82342fe2095fb991de8d9840b2593adf3af9c",
+      "by": "phase Kcc3",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 05h",
+          "line": " 05h\t(OPL3) compatibility register"
+        },
+        {
+          "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ymf262",
+          "line": "DEFINE_DEVICE_TYPE(YMF262, ymf262_device, \"ymf262\", \"YMF262 OPL3\")"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteAddr opl3Active",
+          "line": "\t\tif ( opl3Active || (val == 0x05u) )"
+        }
+      ]
+    },
     "ins8250:register:0x00": {
       "digest": "28655f9a2af1764893d8a6c36d292fbf22378347af07d519e168aeecbbb37444",
       "by": "phase Kcc",
@@ -1907,6 +1925,24 @@
         }
       ]
     },
+    "ym3812:register:0x04": {
+      "digest": "7549ab30351b12e7208db96e4fab6fc0aa1d52cc447e5aea145abaae48466038",
+      "by": "phase Kcc3",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 04h",
+          "line": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
+          "line": "\tcase 0x04:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
+          "line": "//           04 x------- RST"
+        }
+      ]
+    },
     "ym3812:register:0x08": {
       "digest": "429e2888b921a391fd54dc9c704724431defcfcebbe10c4f975cfc25a511b562",
       "by": "phase Kcc",
@@ -2033,6 +2069,24 @@
         }
       ]
     },
+    "ym3812:register:0xBD": {
+      "digest": "a5b3459637b1ee8bfc6a05e87fa53b72298ced27d3ae7b1adb3a43d8e56ca32d",
+      "by": "phase Kcc3",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index BDh",
+          "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
+          "line": "\t\tif ( reg == 0xbd ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
+          "line": "//           BD x------- AM depth"
+        }
+      ]
+    },
     "ym3812:register:0xC0..0xC8": {
       "digest": "8a66f33cc94e340e14ec429982c1d5fff4eaac7423f9696207ecbecc4aed4af1",
       "by": "phase Kcc",
@@ -2120,6 +2174,24 @@
         {
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 03",
           "line": "//           03 xxxxxxxx Timer B value"
+        }
+      ]
+    },
+    "ymf262:register:0x04": {
+      "digest": "9bcc8e4ffc6732d0e07a80328a03a5326385aefa4e2dd8102ac426717f4fccaf",
+      "by": "phase Kcc3",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 04h",
+          "line": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
+          "line": "\tcase 0x04:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
+          "line": "//           04 x------- RST"
         }
       ]
     },
@@ -2404,6 +2476,24 @@
         {
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base B0-B8",
           "line": "//        B0-B8 --x----- Key on"
+        }
+      ]
+    },
+    "ymf262:register:0xBD": {
+      "digest": "1310918a928d60e7f5066b32869a4dccb607f5de67503fa05470358dc6606a89",
+      "by": "phase Kcc3",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index BDh",
+          "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
+          "line": "\t\tif ( reg == 0xbd ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
+          "line": "//           BD x------- AM depth"
         }
       ]
     },
