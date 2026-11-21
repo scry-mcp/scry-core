@@ -80,7 +80,26 @@
           "cites": "//           02 xxxxxxxx Timer A value (4 * OPN)"
         }
       ],
-      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds."
+      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds.",
+      "checked": {
+        "by": "phase Kcc2",
+        "writer": "phase Kcf",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 02h",
+            "line": " 02h\tTimer #1 data (OPL2 and OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x02",
+            "line": "\tcase 0x02:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 02",
+            "line": "//           02 xxxxxxxx Timer A value (4 * OPN)"
+          }
+        ],
+        "digest": "29bd321a6c3b5a44da0b72eb44c3c72810b8d0cf589159e97a821145cd98e14e"
+      }
     },
     {
       "key": "0x03",
@@ -107,7 +126,26 @@
           "cites": "//           03 xxxxxxxx Timer B value"
         }
       ],
-      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds."
+      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds.",
+      "checked": {
+        "by": "phase Kcc2",
+        "writer": "phase Kcf",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 03h",
+            "line": " 03h\tTimer #2 data (OPL2 and OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x03",
+            "line": "\tcase 0x03:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 03",
+            "line": "//           03 xxxxxxxx Timer B value"
+          }
+        ],
+        "digest": "fd6a4cb93cee10634be8103c29376453d5563ebcbcd4b284c08705297069ab32"
+      }
     },
     {
       "key": "0x04",

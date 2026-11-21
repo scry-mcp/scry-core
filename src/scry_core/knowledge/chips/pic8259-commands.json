@@ -246,7 +246,26 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x10..0x1F",
           "cites": "\t\t\tif (data & 0x10)"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc2",
+        "writer": "phase Kcf",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, ICW1",
+            "line": "b. The Interrupt Mask Register is cleared."
+          },
+          {
+            "ref": "dosbox-x:src/hardware/pic.cpp write_command ICW1",
+            "line": "    if (GCC_UNLIKELY(val&0x10)) {       // ICW1 issued"
+          },
+          {
+            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x10..0x1F",
+            "line": "\t\t\tif (data & 0x10)"
+          }
+        ],
+        "digest": "a62dd94019a359f2bbd59a76dc2932ebc1301ec3a93e856088edd3fede249a7b"
+      }
     },
     {
       "key": "0x20..0x27",
@@ -441,7 +460,26 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xA0..0xA7",
           "cites": "\t\t\t\t\t\tcase 0xa0:"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc2",
+        "writer": "phase Kcf",
+        "against": [
+          {
+            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Automatic Rotation",
+            "line": "tion using OCW2, the Rotation on Non-Specific EOI"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/pic.cpp write_command rotate mode",
+            "line": "            if (GCC_UNLIKELY(val&0x80)) LOG_MSG(\"rotate mode not supported\");"
+          },
+          {
+            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xA0..0xA7",
+            "line": "\t\t\t\t\t\tcase 0xa0:"
+          }
+        ],
+        "digest": "a375d878afda1711445043d09bfaee1928d1d9c0046c8272ad4a9478f3b8d934"
+      }
     },
     {
       "key": "0xC0..0xC7",

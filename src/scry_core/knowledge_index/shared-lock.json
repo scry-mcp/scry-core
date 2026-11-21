@@ -573,6 +573,24 @@
         }
       ]
     },
+    "ins8250:register:0x06": {
+      "digest": "815d9335afa3861cbb39411da0b19300dbfb14c79725c6ab17092731a843721c",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B 03FE modem status",
+          "line": "03FE  R-  modem status register (MSR) (see #P0883)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case MSR",
+          "line": "\t\tcase MSR_OFFSET:"
+        },
+        {
+          "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 6",
+          "line": "\t\tcase 6:"
+        }
+      ]
+    },
     "ins8250:register:0x07": {
       "digest": "39c8419d2e23d0a15a99779ad0d90a5a119e80bf9d4e46c75ae59dbb5981fb14",
       "by": "phase Kcc",
@@ -588,6 +606,186 @@
         {
           "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_w case 7",
           "line": "\t\tcase 7:"
+        }
+      ]
+    },
+    "mc146818:register:0x00": {
+      "digest": "bf2d663296cf6bccee03690e06f75a373d8dff36745e377a0f3baec5125ab2ea",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 00h SECONDS",
+          "line": "CMOS 00h - RTC - SECONDS"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x00",
+          "line": "        case 0x00:      /* Seconds */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_SECONDS",
+          "line": "\tcase REG_SECONDS:"
+        }
+      ]
+    },
+    "mc146818:register:0x01": {
+      "digest": "3f023459ae233dc22626e25fdc0072df6506ea8012b77af2b55a124d6b98472b",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 01h SECOND ALARM",
+          "line": "CMOS 01h - RTC - SECOND ALARM"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x01",
+          "line": "        case 0x01:      /* Seconds, alarm */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_SECONDS",
+          "line": "\t\tREG_ALARM_SECONDS = 1,"
+        }
+      ]
+    },
+    "mc146818:register:0x02": {
+      "digest": "6080cc7c50d649b46c582253568274da896210553ca4d0417c7914fe3fcc8f2f",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 02h MINUTES",
+          "line": "CMOS 02h - RTC - MINUTES"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x02",
+          "line": "        case 0x02:      /* Minutes */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_MINUTES",
+          "line": "\t\tREG_MINUTES = 2,"
+        }
+      ]
+    },
+    "mc146818:register:0x03": {
+      "digest": "3e0a0b5d61d6c47a8bb585854f85b3d7563f818f0331ef5f2390bfbde1cf2f67",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 03h MINUTE ALARM",
+          "line": "CMOS 03h - RTC - MINUTE ALARM"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x03",
+          "line": "        case 0x03:      /* Minutes, alarm */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_MINUTES",
+          "line": "\t\tREG_ALARM_MINUTES = 3,"
+        }
+      ]
+    },
+    "mc146818:register:0x04": {
+      "digest": "6a346406441fa1a543f3b7c108bc7f711a7622095083972ba27e0dfa88fa2201",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 04h HOURS",
+          "line": "CMOS 04h - RTC - HOURS"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x04",
+          "line": "        case 0x04:      /* Hours */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_HOURS",
+          "line": "\t\tREG_HOURS = 4,"
+        }
+      ]
+    },
+    "mc146818:register:0x05": {
+      "digest": "6c2c2b0cccbb8614a115656d40803d967407671927dfa98ffc84e019a544e9b4",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 05h HOUR ALARM",
+          "line": "CMOS 05h - RTC - HOUR ALARM"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x05",
+          "line": "        case 0x05:      /* Hours, alarm */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_HOURS",
+          "line": "\t\tREG_ALARM_HOURS = 5,"
+        }
+      ]
+    },
+    "mc146818:register:0x06": {
+      "digest": "4c74c21f216fcb8a3823e9527d23aec31474cd2dce06b3aeb316cb2d04e7cc4e",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 06h DAY OF WEEK",
+          "line": "CMOS 06h - RTC - DAY OF WEEK"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x06",
+          "line": "        case 0x06:      /* Day of week */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFWEEK",
+          "line": "\t\tREG_DAYOFWEEK = 6,"
+        }
+      ]
+    },
+    "mc146818:register:0x07": {
+      "digest": "dfba9618c8d6ec5aa5e19fbdb25db042b454579e39359bb13eb5abc40aa185ea",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 07h DATE OF MONTH",
+          "line": "CMOS 07h - RTC - DATE OF MONTH"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x07",
+          "line": "        case 0x07:      /* Day of month */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_DAYOFMONTH",
+          "line": "\t\tREG_DAYOFMONTH = 7,"
+        }
+      ]
+    },
+    "mc146818:register:0x08": {
+      "digest": "563533b031081eadfea025adb28abaa3f187d1cde67784b5022e61a04b043cd2",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 08h MONTH",
+          "line": "CMOS 08h - RTC - MONTH"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x08",
+          "line": "        case 0x08:      /* Month */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_MONTH",
+          "line": "\t\tREG_MONTH = 8,"
+        }
+      ]
+    },
+    "mc146818:register:0x09": {
+      "digest": "84c80e672d84486d3cf0912003b01283e9dbcc17aa50b8a1c29258dde8303382",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 09h YEAR",
+          "line": "CMOS 09h - RTC - YEAR"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x09",
+          "line": "        case 0x09:      /* Year */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h REG REG_YEAR",
+          "line": "\t\tREG_YEAR = 9,"
         }
       ]
     },
@@ -642,6 +840,42 @@
         {
           "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_read case REG_C",
           "line": "\tcase REG_C:"
+        }
+      ]
+    },
+    "mc146818:register:0x0D": {
+      "digest": "47efec8373b885000b8fe54887c22ed3397ee0e5323fcf47cdf48751fe65e849",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 0Dh STATUS REGISTER D",
+          "line": "CMOS 0Dh - RTC - STATUS REGISTER D (read only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x0d",
+          "line": "        case 0x0d:      /* Status reg D */"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_read case REG_D",
+          "line": "\tcase REG_D:"
+        }
+      ]
+    },
+    "mc146818:register:0x0E..0x3F": {
+      "digest": "e777d81552413d37b970438f4c5c6ce8b66ef3c045b4ccc33aaeb4a54e158052",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:CMOS.LST CMOS 00h-0Dh clock functions",
+          "line": "The first fourteen bytes are dedicated to the MC146818 chip clock functions "
+        },
+        {
+          "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg default",
+          "line": "        default:"
+        },
+        {
+          "ref": "mame:src/devices/machine/mc146818.h data size",
+          "line": "\tvirtual int data_size() const { return 64; }"
         }
       ]
     },
@@ -818,6 +1052,24 @@
         {
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x09",
           "line": "\t\tcase 0x09:  m_max_ras_addr     =   data & 0x1f; break;"
+        }
+      ]
+    },
+    "mc6845:register:0x0A": {
+      "digest": "734b415558144e1517cb64821cc608cae8e330ebc8e2336490a9307a64754309",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B CRT register 0Ah cursor start",
+          "line": " 0Ah\tcursor start\t\t\t\t  0Bh\t00h   06h   06h 06h/00h"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0a",
+          "line": "\tcase 0x0A:\t/* Cursor Start Register */"
+        },
+        {
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0a",
+          "line": "\t\tcase 0x0a:  m_cursor_start_ras =   data & 0x7f; break;"
         }
       ]
     },
@@ -1025,6 +1277,24 @@
         }
       ]
     },
+    "pic8259:command:0x10..0x1F": {
+      "digest": "a62dd94019a359f2bbd59a76dc2932ebc1301ec3a93e856088edd3fede249a7b",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, ICW1",
+          "line": "b. The Interrupt Mask Register is cleared."
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command ICW1",
+          "line": "    if (GCC_UNLIKELY(val&0x10)) {       // ICW1 issued"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x10..0x1F",
+          "line": "\t\t\tif (data & 0x10)"
+        }
+      ]
+    },
     "pic8259:command:0x20..0x27": {
       "digest": "d7f9811d3f76066ef217bc1f956640a79fe379af602ed63fead9cd30d8896ff2",
       "by": "phase Kcc",
@@ -1126,6 +1396,24 @@
         {
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x80..0x87",
           "line": "\t\t\t\t\t\tcase 0x80:"
+        }
+      ]
+    },
+    "pic8259:command:0xA0..0xA7": {
+      "digest": "a375d878afda1711445043d09bfaee1928d1d9c0046c8272ad4a9478f3b8d934",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Automatic Rotation",
+          "line": "tion using OCW2, the Rotation on Non-Specific EOI"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/pic.cpp write_command rotate mode",
+          "line": "            if (GCC_UNLIKELY(val&0x80)) LOG_MSG(\"rotate mode not supported\");"
+        },
+        {
+          "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xA0..0xA7",
+          "line": "\t\t\t\t\t\tcase 0xa0:"
         }
       ]
     },
@@ -1832,6 +2120,42 @@
         {
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base waveform_enable",
           "line": "\tuint32_t waveform_enable() const                 { return IsOpl2 ? byte(0x01, 5, 1) : (IsOpl3Plus ? 1 : 0); }"
+        }
+      ]
+    },
+    "ymf262:register:0x02": {
+      "digest": "29bd321a6c3b5a44da0b72eb44c3c72810b8d0cf589159e97a821145cd98e14e",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 02h",
+          "line": " 02h\tTimer #1 data (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x02",
+          "line": "\tcase 0x02:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 02",
+          "line": "//           02 xxxxxxxx Timer A value (4 * OPN)"
+        }
+      ]
+    },
+    "ymf262:register:0x03": {
+      "digest": "fd6a4cb93cee10634be8103c29376453d5563ebcbcd4b284c08705297069ab32",
+      "by": "phase Kcc2",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 03h",
+          "line": " 03h\tTimer #2 data (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x03",
+          "line": "\tcase 0x03:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 03",
+          "line": "//           03 xxxxxxxx Timer B value"
         }
       ]
     },

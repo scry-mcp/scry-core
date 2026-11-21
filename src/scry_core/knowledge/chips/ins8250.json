@@ -307,7 +307,26 @@
           "cites": "\t\tcase 6:"
         }
       ],
-      "differs": "DOSBox-X flags RI only on its trailing edge. MAME flags any RI change outside loopback, and only the trailing edge in loopback."
+      "differs": "DOSBox-X flags RI only on its trailing edge. MAME flags any RI change outside loopback, and only the trailing edge in loopback.",
+      "checked": {
+        "by": "phase Kcc2",
+        "writer": "phase Kcf",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B 03FE modem status",
+            "line": "03FE  R-  modem status register (MSR) (see #P0883)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/serialport/serialport.cpp SERIAL_Write case MSR",
+            "line": "\t\tcase MSR_OFFSET:"
+          },
+          {
+            "ref": "mame:src/devices/machine/ins8250.cpp ins8250_uart_device::ins8250_r case 6",
+            "line": "\t\tcase 6:"
+          }
+        ],
+        "digest": "815d9335afa3861cbb39411da0b19300dbfb14c79725c6ab17092731a843721c"
+      }
     },
     {
       "key": "0x07",

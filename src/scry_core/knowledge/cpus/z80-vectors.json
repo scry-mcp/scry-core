@@ -333,7 +333,22 @@
           "ref": "mame:src/devices/cpu/z80/z80.lst NMI",
           "cites": "\tPC = 0x0066;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc2",
+        "writer": "phase Kcf",
+        "against": [
+          {
+            "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, NMI pin",
+            "line": "restart at location 0066h."
+          },
+          {
+            "ref": "mame:src/devices/cpu/z80/z80.lst NMI",
+            "line": "\tPC = 0x0066;"
+          }
+        ],
+        "digest": "3bc4df6e8a12266d48f12230cc97de4f7511432c655f192316ea0242cc3518d1"
+      }
     }
   ]
 }
