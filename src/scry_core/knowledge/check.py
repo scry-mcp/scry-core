@@ -89,8 +89,10 @@ def against_sources(base: Base, index: SourceIndex) -> list[str]:
             where = f"{e.dictionary} {e.key}"
             if row is None:
                 out.append(f"{where} cites {src.ref}, which is no row of the source index")
-            elif row.line != src.cites:
-                out.append(f"{where} cites {src.cites!r}, and {src.ref} reads {row.line!r}")
+            elif not row.holds(src.cites):
+                reads = (f"holds a line of digest {row.digest[:12]}, which is not that line's"
+                         if row.digest else f"reads {row.line!r}")
+                out.append(f"{where} cites {src.cites!r}, and {src.ref} {reads}")
             elif row.key and _same_key(e, row.key):
                 continue
             elif row.key:
@@ -99,10 +101,13 @@ def against_sources(base: Base, index: SourceIndex) -> list[str]:
 
 
 def _same_key(e: Entry, other: str) -> bool:
+    """`other`, a list row's key, is the entry's, or for a call's variant its parent's: one section
+    of a list covers a whole family of variants."""
     try:
-        return keys.canonical(e.kind, other) == e.key
+        asked = keys.canonical(e.kind, other)
     except keys.KeyFault:
         return other == e.key
+    return asked == e.key or (e.kind == "call" and asked == keys.without_selector(e.key))
 
 
 def covered(base: Base, index: SourceIndex) -> list[str]:

@@ -8,6 +8,7 @@ from __future__ import annotations
 import difflib
 import functools
 import inspect
+import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Annotated, Any, Protocol, Required
 
@@ -21,6 +22,7 @@ from scry_core.reply_schema import ReplyEnvelope
 
 TITLE = "What a number is called"
 LIMIT_DEFAULT, LIMIT_MAX = 10, 50
+KEYS_SHOWN = 12
 HOW = "give `id` for the whole entry"
 REFERENCE = "Reference: REFERENCE.md, Names for numbers."
 
@@ -103,15 +105,53 @@ def _nearest_ids(base: Base, wanted: str) -> list[str]:
     return difflib.get_close_matches(wanted, ids, n=5, cutoff=0.0)
 
 
-def _refuse_scope(base: Base, scope: str) -> None:
-    if scope and scope not in base.scopes():
+def _read_scope(base: Base, scope: str) -> tuple[str, str]:
+    """`scope` as the base holds it and, when a near miss was read as one (`6809` for `m6809`,
+    `M-6809`: the same letters and digits, or a few letters before them), what was read."""
+    held = base.scopes()
+    if not scope or scope in held:
+        return scope, ""
+    plain = re.sub(r"[^a-z0-9]", "", scope.lower())
+    near = [h for h in held if plain and re.fullmatch(
+        rf"([a-z]{{1,4}})?{re.escape(plain)}", re.sub(r"[^a-z0-9]", "", h.lower()))]
+    if len(near) != 1:
         raise Invalid("bad_argument", f"scope={scope!r} is not one this server holds: "
-                      f"{', '.join(base.scopes()) or 'none'}")
+                      f"{', '.join(held) or 'none'}")
+    return near[0], f"scope {scope!r} was read as {near[0]}"
 
 
 def _live_rows(live: Live, kind: str, key: str, device: str) -> list[dict[str, Any]] | None:
     got = live.rows(kind, key, device)
     return None if got is None else [{**r, "live": True} for r in got]
+
+
+def _tag(base: Base, live: Live, kind: str, key: str, device: str) -> str:
+    """The tag of the running machine a question names, with its colon, or empty: `device=":t"`,
+    or a device `key` that is `:t` or is no key of the base and the server's machine has devices."""
+    if device.startswith(":"):
+        return device
+    key = key.strip()
+    if kind != "device" or device or not key:
+        return ""
+    if key.startswith(":"):
+        return key
+    return "" if key in base.device_keys() or "device" not in live.kinds else f":{key}"
+
+
+def _no_machine(base: Base, tag: str) -> Invalid:
+    keys = base.device_keys()
+    shown = ", ".join(keys[:KEYS_SHOWN]) + (f" and {len(keys) - KEYS_SHOWN} more"
+                                            if len(keys) > KEYS_SHOWN else "")
+    return Invalid("no_session", f"the device tag {tag} needs a running machine and no session "
+                   f"is live: call `start`. With none, a device is asked by its key: "
+                   f"{shown or 'none'}")
+
+
+def _with_chip(base: Base, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The one row of a tag, with what the base knows of its chip, when the row names one."""
+    if len(rows) != 1 or not (chip := base.by_id(str(rows[0].get("chip", "")))):
+        return rows
+    return [{**rows[0], "chip_entry": whole(base, chip, base.pins)}]
 
 
 def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key: str = "",
@@ -123,33 +163,36 @@ def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key
     if not len(base):
         raise Invalid("no_channel", "this server's knowledge base holds no entries"
                       + (f": {base.faults()[0]}" if base.faults() else ""))
-    _refuse_scope(base, scope)
+    scope, read = _read_scope(base, scope)
     if id:
         return _by_id(base, id)
     if kind and kind not in base.kinds() and kind not in live.kinds:
         raise Invalid("no_channel", f"this server holds no entries of kind {kind}; it has "
                       f"{', '.join(base.kinds())}", kinds=base.kinds())
-    wanted_device = device and not device.startswith(":")
-    if wanted_device and device not in base.device_keys():
+    tag = _tag(base, live, kind, key, device)
+    if device and not tag and device not in base.device_keys():
         raise Invalid("unknown_ref", f"device {device!r} is not one the base holds; it has "
                       f"{', '.join(base.device_keys())}", nearest=difflib.get_close_matches(
                           device, base.device_keys(), n=5, cutoff=0.0))
     scopes = (scope,) if scope else live.scopes()
     if scopes and not scope:
-        scopes += tuple(k for k in base.device_keys() if k in base.scopes())
+        held = base.scopes()
+        shared = (*(k for k in base.device_keys() if k in held), *base.scopes("device"))
+        scopes += tuple(dict.fromkeys(s for s in shared if s not in scopes))
     live_rows: list[dict[str, Any]] = []
-    if device.startswith(":") or (kind in live.kinds and kind not in base.kinds()):
-        got = _live_rows(live, kind, key, device)
+    if tag or (kind in live.kinds and kind not in base.kinds()):
+        got = _live_rows(live, kind, "" if tag else key, tag)
         if got is None:
-            raise Invalid("no_session", f"{kind or 'the device ' + device} is read from the "
-                          "running machine and no session is live: call `start`")
-        live_rows = got
+            raise _no_machine(base, tag) if tag else Invalid(
+                "no_session", f"{kind} is read from the running machine and no session is "
+                "live: call `start`")
+        live_rows = _with_chip(base, got) if tag else got
     try:
-        found = (base.search(kind, key, text, device, scopes, limit)
-                 if not device.startswith(":") else Found())
+        found = base.search(kind, key, text, device, scopes, limit) if not tag else Found()
     except KeyFault as bad:
         raise Invalid("bad_argument", f"key={key!r} is no key: {bad}") from bad
-    return _answer(base, found, live_rows, kind, key, text, device, scopes, limit)
+    return _answer(base, found, live_rows, kind, tag if tag and not device else key, text, device,
+                   scopes, limit, read, bool(tag))
 
 
 def _by_id(base: Base, id: str) -> dict[str, Any]:
@@ -162,13 +205,14 @@ def _by_id(base: Base, id: str) -> dict[str, Any]:
 
 
 def _answer(base: Base, found: Found, live_rows: list[dict[str, Any]], kind: str, key: str,
-            words: str, device: str, scopes: Sequence[str], limit: int) -> dict[str, Any]:
+            words: str, device: str, scopes: Sequence[str], limit: int,
+            read: str = "", tagged: bool = False) -> dict[str, Any]:
     query: dict[str, Any] = {}
     for name, value in (("kind", kind), ("key", key), ("text", words), ("device", device)):
         if value:
             query[name] = value
     if kind and key:
-        query["key"] = keyspelling.query(kind, key)[0]
+        query["key"] = key if kind == "device" else keyspelling.query(kind, key)[0]
     rows: list[dict[str, Any]] = [e.short() for e in found.entries] + live_rows
     total = found.total + len(live_rows)
     out: dict[str, Any] = {"query": query, "scope": list(scopes) or base.scopes(kind),
@@ -183,7 +227,10 @@ def _answer(base: Base, found: Found, live_rows: list[dict[str, Any]], kind: str
         out["how"] = HOW
     if not total:
         out["nearest"] = [e.short() for e in found.nearest]
-        out["note"] = _stays_a_number(base, found, kind, key, words, scopes)
+        out["note"] = (f"the running machine has no device at {key or device}: it stays a number"
+                       if tagged else _stays_a_number(base, found, kind, key, words, scopes))
+    if read:
+        out["note"] = f"{read}; {out['note']}" if "note" in out else read
     return out
 
 
@@ -213,31 +260,35 @@ class KnowledgeFindReply(ReplyEnvelope, total=False):
 def knowledge_find(id: str = "", kind: Annotated[str, vocab.enum(("", *KINDS))] = "",
                    key: str = "", text: str = "", device: str = "", scope: str = "",
                    limit: int = LIMIT_DEFAULT) -> dict[str, Any]:
-    """What a number is called on this machine, and what the base knows about it: a port, an
-    interrupt vector, a DOS or BIOS call, an IRQ line, a fixed memory address, an input, a device
-    and its registers and commands. Rows first (`id`, `kind`, `key`, `name`); one match, or an
-    `id`, answers the whole entry: `description`, `behaviour` (what reading, writing or calling it
-    does), `aliases`, `device`, and the public `sources` it was checked against, with what the
-    emulator does where they differ. Answers with no session, except the kinds read from the
-    running machine.
+    """What a number is called on this machine, and what the base knows of it: a port, interrupt
+    vector, DOS or BIOS call, IRQ, memory address, input, device, its registers and commands. One
+    match, or an `id`, answers the whole entry (`description`, `behaviour`, `sources`); more,
+    rows. No session is needed except for a device by tag, inputs and memory.
 
-    `id`: an entry's id, as another reply cites it. `kind`: one of `vector`, `call`, `error`,
-    `port`, `irq`, `memory`, `input`, `device`, `register`, `command`; empty searches every kind.
-    `key`: the number as a reply prints it (`0x3C8`, `0x21`, `0x21/0x4C` for a function of an
-    interrupt, `0040:0049`), or a range (`0x3C0..0x3CF`). `text`: words looked for in names,
-    aliases and descriptions; a word ending in `*` matches by prefix. `device`: everything that
-    belongs to that device. Give `id`, `key`, `text`, `device`, or only `kind` to list it.
-    `scope`: the system, cpu or device the answer is for; empty, the live session's. `limit` 1..50.
+    `id`: an entry's id. `kind`: `vector`, `call`, `error`, `port`, `irq`, `memory`, `input`,
+    `device`, `register` or `command`; empty searches all. `key`: the number as a reply prints it,
+    or a range. `text`: words in names, aliases, descriptions; `*` ends a prefix. `device`: all of
+    that device. `scope`: the system, cpu or device; empty, the live session's. `limit` 1..50.
 
-    Refused (INVALID): none of `id`, `kind`, `key`, `text`, `device` (`bad_argument`); a `key`
-    that is no number or range of that kind (`bad_argument`); an `id` or a `device` the base does
-    not hold (`unknown_ref`, naming the nearest); a kind this server holds nothing of
-    (`no_channel`, naming the kinds it has); a kind read from the machine with no session
-    (`no_session`); a `scope` it does not support (`bad_argument`, naming them).
+    Examples: `key=0x3C8`; `kind=port key=0x3C0..0x3CF`; `kind=vector key=0xFFF8 scope=<scope>`;
+    `kind=call key=0x21/0x4C`, and its variant by a register `kind=call key=0x10/0x12/BL=0x36`;
+    a device of the running machine by its tag `kind=device key=:maincpu`; its registers
+    `kind=register device=<device>`; `text=palette*`.
 
-    Reply: `query`, `scope`, `entries_total`, `entries`, `truncated`, `examined`; nothing matched
-    answers with no entry, `nearest` and a `note`: it stays a number."""
+    Refused (INVALID): nothing to look up, a bad `key`, or a `scope` it lacks, naming those it has
+    (`bad_argument`; `6809` is read as `m6809`, and the reply says so); an `id` or `device` it
+    lacks (`unknown_ref`); a kind it holds none of (`no_channel`); a tag or live kind with no
+    session (`no_session`).
+
+    Reply: `query`, `scope`, `entries_total`, `entries`, `truncated`, `examined`; nothing matched:
+    no entry, `nearest` and a `note`: it stays a number."""
     raise NotImplementedError("a server registers `register`'s bound body, not this signature")
+
+
+def scopes_line(scopes: Sequence[str]) -> str:
+    """The scopes a server holds, as its description lists them: the server's own, never typed
+    twice."""
+    return f"Scopes: {', '.join(scopes) or 'none'}."
 
 
 def summary(args: dict[str, Any], reply: dict[str, Any]) -> str:
@@ -264,5 +315,6 @@ def register(wrap: Callable[..., Callable[[Callable[..., Any]], Any]],
     def tool(id: str = "", kind: str = "", key: str = "", text: str = "", device: str = "",
              scope: str = "", limit: int = LIMIT_DEFAULT) -> dict[str, Any]:
         return answer(find(base, live, id, kind, key, text, device, scope, limit))
-    tool.__doc__ = inspect.cleandoc(knowledge_find.__doc__ or "") + f"\n\n{REFERENCE}\n"
+    tool.__doc__ = (inspect.cleandoc(knowledge_find.__doc__ or "") + "\n\n"
+                    + scopes_line(base.scopes()) + f"\n\n{REFERENCE}\n")
     return wrap(TITLE, summary=summary, read_only=True)(tool)

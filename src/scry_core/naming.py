@@ -14,6 +14,7 @@ from typing_extensions import TypedDict
 
 from scry_core import abbreviation
 from scry_core.knowledge import KINDS as BASE_KINDS
+from scry_core.knowledge import Base, calls
 
 #: What a name can be of: a kind of the base, or a symbol of the program.
 KINDS = (*BASE_KINDS, "symbol")
@@ -22,10 +23,10 @@ BLOCK_MAX = 24
 GIVEN = "given."
 
 ARGUMENT = ("Name the numbers a reply shows: a port, interrupt, address or key gets its name in "
-            "the reply's `names` and in its summary. `false` leaves replies bare; the window's "
-            "captions keep their names.")
-ASK = ("`names`: `false` leaves a reply's numbers bare, with no `names` field and no name in its "
-       "summary; the window's captions still name them.")
+            "the reply's `names`, its summary and a disassembled line's note. `false` leaves "
+            "replies bare; the window's captions keep their names.")
+ASK = ("`names`: `false` leaves a reply's numbers bare, with no `names` field, no name in its "
+       "summary and no note on a disassembled line; the window's captions still name them.")
 Switch = Annotated[bool, Described(description=ARGUMENT)]
 
 
@@ -188,6 +189,15 @@ def arguments_of(items: object) -> dict[str, Named]:
             continue
         out.setdefault(each["field"][len(GIVEN):], n)
     return out
+
+
+def named_call(base: Base, scope: str, interrupt: int,
+               registers: Mapping[str, int]) -> Named | None:
+    """What `INT interrupt` is called given a stop's `registers`; the number is the entry's key."""
+    got = calls.resolve(base, scope, interrupt, registers)
+    if got is None:
+        return None
+    return Named("call", got.entry.name, got.entry.key, id=got.entry.id)
 
 
 def _whole(token: str) -> re.Pattern[str]:

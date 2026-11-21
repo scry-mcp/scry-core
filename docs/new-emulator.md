@@ -196,7 +196,16 @@ public source each fact was checked against. A server ships dictionaries and one
   range (`0x20..0x35`, a bank as one entry) and a number inside it finds the entry; two
   registers or two commands of one dictionary may not overlap unless their `access` tells them
   apart. `access` (`read` or `write`) is for a port, a register or a command that differs by
-  direction, and it is part of the id (`ym:register:0x0F:read`).
+  direction, and it is part of the id (`ym:register:0x0F:read`). A `call` key is `INT/AH` or
+  `INT/AH/AL`, and may end in one selector, a register and its value (`0x10/0x12/BL=0x36`, or a
+  range of values `BL=0x31..0x36`), for a call whose variants a register other than AH or AL
+  picks; the registers are `BL BH CL CH DL DH BX CX DX SI DI`, never `AH`, `AL` or `AX`, which
+  the key's own parts already say (`0x21/0x44/0x00`, not `0x21/0x44/AL=0x00`). A variant sorts and
+  ranges with its parent, which may be an entry too: `knowledge_find` for the parent lists the
+  variants, for a key with the selector answers the variant. The variants of one call select on
+  one register and no value picks two, or the second is a load fault. A list section keyed by
+  the parent (`0x10/0x12`) is the source of every variant that cites it, so a variant needs no
+  key of its own in the source index.
 - **Checked entries**: a second session reads an entry against its source and adds `checked`
   with `by`, `writer` and `against` (per source `ref`, the line it compared: the entry's own
   `cites`, or a part of the line the source index holds for it). Then one command seals it:
@@ -254,15 +263,22 @@ public source each fact was checked against. A server ships dictionaries and one
 - **The source index**: a tool of the server captures, from the real sources, the rows its
   dictionaries cite (the line, the key the locator carries, the read and write marks) and the
   lists they must cover (`scry-knowledge-sources/1`, `scry_core.knowledge.sources`), and the
-  result is committed. The tests need no network.
+  result is committed. The tests need no network. A row holds the `line` or, where the index
+  must not copy a third party's text, the `digest` of it (`sources.digest`: the SHA-256 of the
+  line's UTF-8 bytes, in lower-case hex), never both; an entry's `cites` is then held to the
+  digest, and a check's `against` line to the whole `cites`, since a digest cannot say what part
+  of a line it came from.
 - **The tests**: a subclass of `conformance.KnowledgeContract` with a `subject` that gives the
   declaration, the loaded `Base` (`fts5=False` forces the search index of our own), the source
   index, the lock of the checked entries (`scry_core.knowledge.read_lock`) and the scopes the
   code depends on. `tests/null_server.py`'s `NullKnowledge` is the
   model.
 - **The tool**: `knowledge_tool.register(wrap, answer, base, live)`. `live` says what the running
-  machine can answer by itself (MAME's inputs and device tags); a server with none passes
-  nothing. `knowledge_tool.judge` goes in the pre-gate table.
+  machine can answer by itself (MAME's inputs and device tags, which a model may give as
+  `kind=device key=:tag` or `device=:tag`); a server with none passes nothing. The registered
+  description lists the scopes of `base`, so a server types none, and a scope that is a near
+  miss of one (`6809` for `m6809`) is read as it, with a `note` saying so. `knowledge_tool.judge`
+  goes in the pre-gate table.
 
 ## Naming what the replies show
 
@@ -286,8 +302,17 @@ number fields; `scry_core.naming` does the rest.
   captions from those with the function the window's captions use.
 - **The switch**: `start` takes `names: naming.Switch = True`, whose description is
   `naming.ARGUMENT`, and `naming.ASK` is the sentence for `asks.json`. Off, a reply has no
-  `names` and no names in its summary; the window's captions keep theirs.
-- **A disassembled line's note**: `notes.note(base, scope, operands)` returns what the base calls
-  the operands the server parsed (a port, an interrupt, an address). It goes in a row's `note`,
-  never in a person's `comment`. An operand a register holds is named only for the instruction at
-  a stop, and `Note.live` says the line was named that way.
+  `names`, no names in its summary and no note on a disassembled line; the window's captions
+  keep theirs.
+- **A call with variants**: `naming.named_call(base, scope, interrupt, registers)` names `INT
+  interrupt` from the registers a stop holds (upper-case names, `AH`, `BX`; a word or its two
+  bytes serve either way). It answers the variant whose selector's register is known and holds
+  the variant's value, else the call itself, else None; a register the stop does not say never
+  picks a variant, so a caption never names one it cannot know. A namer calls it where it names
+  a call.
+- **A disassembled line's note**: `notes.note(base, scope, operands, names_on=...)` returns what
+  the base calls the operands the server parsed (a port, an interrupt, an address), and None when
+  the session's `names` switch is off. It goes in a row's `note`, never in a person's `comment`. An operand a register holds is named only for the instruction at
+  a stop, and `Note.live` says the line was named that way. An interrupt operand takes the
+  stop's `registers` too: a call's variant is named (`video refresh (BL=0x36)`) only when the
+  selector's register is among them, else the note names the call.

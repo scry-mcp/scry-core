@@ -7,6 +7,7 @@ tool and committed, so the ordinary tests check a quoted line and a key with no 
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from collections.abc import Mapping
@@ -67,14 +68,28 @@ def url(ref: str, pins: Mapping[str, str]) -> str:
             if scheme in pins else "")
 
 
+_DIGEST = re.compile(r"[0-9a-f]{64}")
+
+
+def digest(line: str) -> str:
+    """What an index keeps of a line it must not copy: the SHA-256 of its UTF-8 bytes, in hex."""
+    return hashlib.sha256(line.encode("utf-8")).hexdigest()
+
+
 @dataclass(frozen=True)
 class Row:
-    """What the real source says at a locator: its line, the number the locator itself carries
-    (when it carries one), and its read or write marks (`R`, `W`, `RW`)."""
+    """What the real source says at a locator: its line, or the `digest` of it where the index
+    does not hold the text, the number the locator itself carries (when it carries one), and its
+    read or write marks (`R`, `W`, `RW`)."""
 
     line: str
     key: str = ""
     marks: str = ""
+    digest: str = ""
+
+    def holds(self, line: str) -> bool:
+        """Whether `line` is this row's line, by its text or, for a digest row, by its digest."""
+        return line == self.line if not self.digest else digest(line) == self.digest
 
 
 @dataclass(frozen=True)
@@ -97,14 +112,25 @@ def parse_index(text: str, where: str = "source index") -> SourceIndex:
         raise ValueError(f"{where} is not a `{INDEX_FORMAT}` document")
     rows: dict[str, Row] = {}
     for ref, raw in _mapping(doc, "rows", where).items():
-        if not isinstance(raw, dict) or not isinstance(raw.get("line"), str):
-            raise ValueError(f"{where}: row {ref!r} has no `line` text")
-        rows[ref] = Row(raw["line"], str(raw.get("key", "")), str(raw.get("marks", "")))
+        rows[ref] = _row(ref, raw, where)
     lists = {name: tuple(keys) for name, keys in _mapping(doc, "lists", where).items()
              if isinstance(keys, list) and all(isinstance(k, str) for k in keys)}
     if len(lists) != len(_mapping(doc, "lists", where)):
         raise ValueError(f"{where}: a list is not a list of key texts")
     return SourceIndex(rows, lists, {k: str(v) for k, v in _mapping(doc, "pins", where).items()})
+
+
+def _row(ref: str, raw: object, where: str) -> Row:
+    if not isinstance(raw, dict) or not (isinstance(raw.get("line"), str)
+                                         or "digest" in raw):
+        raise ValueError(f"{where}: row {ref!r} has no `line` text and no `digest`")
+    if "line" in raw and "digest" in raw:
+        raise ValueError(f"{where}: row {ref!r} has both a `line` and a `digest`: a row holds "
+                         "one")
+    held = raw.get("digest", "")
+    if "digest" in raw and not (isinstance(held, str) and _DIGEST.fullmatch(held)):
+        raise ValueError(f"{where}: row {ref!r}: `digest` is 64 hex digits, lower case")
+    return Row(raw.get("line", ""), str(raw.get("key", "")), str(raw.get("marks", "")), held)
 
 
 def _mapping(doc: Mapping[str, Any], name: str, where: str) -> Mapping[str, Any]:

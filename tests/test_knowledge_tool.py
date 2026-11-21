@@ -4,11 +4,13 @@ the description against the client's cap, and the registration."""
 from __future__ import annotations
 
 import inspect
+import re
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Any
 
 import pytest
-from null_server import NullKnowledge
+from null_server import NullKnowledge, an_entry, write_dictionary
 
 from scry_core import client_cap, knowledge_tool, reply_schema
 from scry_core.knowledge import Base
@@ -171,6 +173,167 @@ def test_a_tag_of_the_running_machine_asks_the_machine_and_not_the_base(base: Ba
     with pytest.raises(Invalid) as caught:
         ask(base, Machine(False), device=":ymsnd")
     assert caught.value.code == "no_session"
+
+
+class Tagged:
+    """A machine that names its devices by tag, as MAME does; one of them has a chip in the base."""
+
+    kinds: tuple[str, ...] = ("device",)
+
+    def __init__(self, alive: bool = True, scopes: tuple[str, ...] = ("ibm-pc",)) -> None:
+        self.alive = alive
+        self.held = scopes
+        self.asked: list[tuple[str, str, str]] = []
+
+    def scopes(self) -> tuple[str, ...]:
+        return self.held if self.alive else ()
+
+    def rows(self, kind: str, key: str, device: str) -> Sequence[dict[str, Any]] | None:
+        self.asked.append((kind, key, device))
+        if not self.alive:
+            return None
+        if device != ":seq":
+            return []
+        return [{"kind": "device", "key": ":seq", "name": "sequencer", "type": "vga",
+                 "chip": "ibm-pc:device:vga-seq"}]
+
+
+@pytest.mark.parametrize("tag", [":seq", "seq"])
+def test_a_device_is_asked_by_its_tag_with_or_without_the_colon_and_its_chip_comes_with_it(
+        base: Base, tag: str) -> None:
+    machine = Tagged()
+    got = ask(base, machine, kind="device", key=tag)
+    assert machine.asked == [("device", "", ":seq")]
+    assert got["query"] == {"kind": "device", "key": ":seq"} and got["entries_total"] == 1
+    [row] = got["entries"]
+    assert row["live"] is True and row["name"] == "sequencer"
+    assert row["chip_entry"]["id"] == "ibm-pc:device:vga-seq"
+    assert row["chip_entry"]["name"] and row["chip_entry"]["sources"]
+
+
+def test_a_device_key_of_the_base_never_asks_the_machine(base: Base) -> None:
+    machine = Tagged()
+    got = ask(base, machine, kind="device", key="vga-seq")
+    assert machine.asked == [] and got["entries"][0]["id"] == "ibm-pc:device:vga-seq"
+
+
+def test_a_tag_with_no_machine_says_it_needs_one_and_names_the_keys_that_do_not(
+        base: Base) -> None:
+    with pytest.raises(Invalid) as caught:
+        ask(base, Tagged(False), kind="device", key=":seq")
+    assert caught.value.code == "no_session"
+    assert "needs a running machine" in str(caught.value) and "vga-seq" in str(caught.value)
+    with pytest.raises(Invalid) as caught:
+        ask(base, Tagged(False), device=":seq")
+    assert "vga-seq" in str(caught.value)
+
+
+def test_a_shared_chip_is_asked_by_its_key_with_a_machine_running(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "chips", "device", "chip", [an_entry("ym3812", "OPL2")])
+    write_dictionary(tmp_path, "cpu", "vector", "m6809", [an_entry("0xFFF8", "IRQ")])
+    held = Base.load(tmp_path)
+    machine = Tagged(scopes=("m6809",))
+    got = ask(held, machine, kind="device", key="ym3812")
+    assert machine.asked == [] and [e["id"] for e in got["entries"]] == ["chip:device:ym3812"]
+    assert ask(held, machine, text="OPL2")["entries_total"] == 1
+
+
+def test_a_tag_the_machine_does_not_have_says_so_and_not_what_the_base_holds(base: Base) -> None:
+    got = ask(base, Tagged(), kind="device", key=":nosuch")
+    assert got["entries_total"] == 0
+    assert got["note"] == "the running machine has no device at :nosuch: it stays a number"
+    assert "base holds" not in knowledge_tool.summary({}, got)
+
+
+def test_a_server_with_no_devices_of_its_own_reads_a_tag_shaped_key_as_a_key(base: Base) -> None:
+    got = ask(base, None, kind="device", key="seq")
+    assert got["entries_total"] == 0 and "none at seq" in got["note"]
+
+
+@pytest.fixture
+def cpus(tmp_path: Path) -> Base:
+    """Three cpus and a chip: the scopes a model gets wrong by a letter."""
+    for scope, key in (("m6809", "0xFFF8"), ("m68000", "0x08"), ("v30", "0x00")):
+        write_dictionary(tmp_path, f"{scope}-vectors", "vector", scope,
+                         [an_entry(key, f"{scope} vector")])
+    write_dictionary(tmp_path, "ym2203-regs", "register", "ym2203", [an_entry("0x00", "tone")])
+    got = Base.load(tmp_path)
+    assert got.faults() == []
+    return got
+
+
+@pytest.mark.parametrize(("typed", "read"), [("6809", "m6809"), ("M6809", "m6809"),
+                                             ("m-6809", "m6809"), ("68000", "m68000"),
+                                             ("YM2203", "ym2203"), ("2203", "ym2203"),
+                                             ("m6809", "m6809")])
+def test_a_scope_that_is_a_near_miss_is_answered_as_the_scope_it_plainly_means_and_says_so(
+        cpus: Base, typed: str, read: str) -> None:
+    got = ask(cpus, kind=("vector" if read.startswith(("m", "v")) else "register"), scope=typed)
+    assert got["scope"] == [read] and got["entries_total"] == 1
+    if typed != read:
+        assert got["note"] == f"scope {typed!r} was read as {read}"
+    else:
+        assert "note" not in got
+
+
+def test_a_near_miss_that_could_be_two_scopes_or_none_is_refused_naming_those_that_exist(
+        cpus: Base, tmp_path: Path) -> None:
+    for typed in ("68", "z80", "6", "80", "-", "8000"):
+        caught = refused(cpus, "bad_argument", kind="vector", scope=typed)
+        assert "m68000, m6809, v30, ym2203" in str(caught), typed
+    for scope in ("mc6809", "m6809", "z80", "mz80", "pit"):
+        write_dictionary(tmp_path, f"{scope}-vectors", "vector", scope,
+                         [an_entry("0xFFF8", "irq")])
+    held = Base.load(tmp_path)
+    named = str(refused(held, "bad_argument", kind="vector", scope="6809"))
+    assert ", ".join(held.scopes()) in named
+    assert ask(held, kind="vector", scope="z80")["scope"] == ["z80"]
+    assert "pit" in str(refused(held, "bad_argument", kind="vector", scope="-"))
+
+
+def test_a_near_miss_that_found_nothing_keeps_its_note_beside_the_answer(cpus: Base) -> None:
+    got = ask(cpus, kind="vector", key="0x77", scope="6809")
+    assert got["entries_total"] == 0 and got["note"].startswith("scope '6809' was read as m6809;")
+    assert "stays a number" in got["note"]
+
+
+def test_the_scopes_a_description_lists_are_those_the_server_holds(cpus: Base,
+                                                                  base: Base) -> None:
+    for held, listed in ((cpus, "m68000, m6809, v30, ym2203"), (base, "ibm-pc, vga-seq")):
+        tool = knowledge_tool.register(lambda title, **o: lambda fn: fn, lambda f: f, held)
+        assert f"Scopes: {listed}." in tool.__doc__
+    assert "Scopes:" not in (knowledge_tool.knowledge_find.__doc__ or "")
+
+
+def test_the_registered_description_stays_under_half_the_cap_with_a_long_list_of_scopes() -> None:
+    doc = inspect.cleandoc(knowledge_tool.knowledge_find.__doc__ or "")
+    scopes = [f"chipset{n:02d}" for n in range(45)]
+    line = knowledge_tool.scopes_line(scopes)
+    assert client_cap.utf16_units(f"{doc}\n\n{line}\n\n{knowledge_tool.REFERENCE}") < (
+        client_cap.CLIENT_TEXT_CAP // 2)
+
+
+def _examples(doc: str) -> list[dict[str, str]]:
+    paragraph = next(p for p in doc.split("\n\n") if p.startswith("Examples"))
+    return [dict(word.partition("=")[::2] for word in span.split())
+            for span in re.findall(r"`([^`]*=[^`]*)`", paragraph)]
+
+
+def test_every_example_of_the_description_is_a_question_the_judge_lets_through(base: Base) -> None:
+    doc = inspect.cleandoc(knowledge_tool.knowledge_find.__doc__ or "")
+    assert doc in client_cap.delivered(doc)
+    filled = {"<scope>": "ibm-pc", "<device>": "vga-seq"}
+    examples = [{k: filled.get(v, v) for k, v in one.items()} for one in _examples(doc)]
+    assert len(examples) >= 7
+    for one in examples:
+        knowledge_tool.judge(**one)
+    shapes = {tuple(sorted(one)) for one in examples}
+    assert len(shapes) >= 5, shapes
+    assert {"kind": "call", "key": "0x10/0x12/BL=0x36"} in [
+        {k: v for k, v in one.items() if k in ("kind", "key")} for one in examples] or any(
+            one.get("key") == "0x10/0x12/BL=0x36" for one in examples)
+    assert any(one.get("key", "").startswith(":") and one.get("kind") == "device"
+               for one in examples)
 
 
 def test_the_summary_says_what_was_asked_and_what_answered(base: Base) -> None:
