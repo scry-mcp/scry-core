@@ -246,9 +246,11 @@ class Base:
         whose key is the parent's and a selector."""
         if keys.call_selector("call", parent) is not None:
             return []
-        return [self._of(n) for (n,) in self._db.execute(
-            "SELECT n FROM entry WHERE kind = 'call' AND scope = ? AND lo = ? AND key LIKE ? "
-            "ORDER BY n", (scope, keys.span("call", parent).lo, f"{parent}/%=%"))]
+        parts = keys.span("call", parent).parts
+        return [self._of(n) for n, key in self._db.execute(
+            "SELECT n, key FROM entry WHERE kind = 'call' AND scope = ? AND lo = ? AND key LIKE ? "
+            "ORDER BY n", (scope, parts[0], f"{parent}/%=%"))
+            if keys.span("call", key).parts == parts]
 
     def _variant_clash(self, got: fmt.Entry) -> str:
         """Why a variant cannot join the variants its call already has in its scope, or empty:

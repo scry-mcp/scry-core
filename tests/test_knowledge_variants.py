@@ -143,3 +143,29 @@ def test_knowledge_find_answers_the_parent_with_its_variants_and_a_selector_with
     assert knowledge_tool.find(base, kind="call", key="0x10/0x12/BL=0x99")["nearest"]
     with pytest.raises(Invalid, match="no key of kind call"):
         knowledge_tool.find(base, kind="call", key="0x10/0x12/XX=0x99")
+
+
+def test_the_variants_of_a_call_are_not_those_of_a_function_inside_it(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "int10", "call", "ibm-pc", [
+        an_entry("0x10/0x12", "parent"), an_entry("0x10/0x12/0x00/CL=0x01", "deep"),
+        an_entry("0x10/0x12/BL=0x36", "variant")])
+    base = knowledge.Base.load(tmp_path)
+    assert base.faults() == []
+    assert [e.key for e in base.variants("ibm-pc", "0x10/0x12")] == ["0x10/0x12/BL=0x36"]
+    assert [e.key for e in base.variants("ibm-pc", "0x10/0x12/0x00")] == ["0x10/0x12/0x00/CL=0x01"]
+    assert ids(base.search("call", "0x10/0x12/BL=0x36")) == ["0x10/0x12/BL=0x36"]
+
+
+def test_a_selector_query_is_read_the_same_through_search_with_space_around_it(
+        tmp_path: Path) -> None:
+    base = parent_with_variants(tmp_path)
+    assert ids(base.search("call", " 0x10/0x12/BL=0x36 ")) == ["0x10/0x12/BL=0x36"]
+    assert ids(base.search("call", "0x10/0x12/ BL=0x36")) == ["0x10/0x12/BL=0x36"]
+
+
+@pytest.mark.parametrize("kind", ["call", ""])
+def test_a_selector_never_goes_with_a_range_of_calls(tmp_path: Path, kind: str) -> None:
+    base = parent_with_variants(tmp_path)
+    for typed in ("0x10/0x12..0x10/0x13/BL=0x36", "0x10/0x12/BL=0x36..0x10/0x13"):
+        with pytest.raises(KeyFault, match="one call"):
+            base.search(kind, typed)

@@ -109,7 +109,9 @@ def _peel(key: str) -> tuple[str, Selector | None]:
         return key, None
     if not slash:
         raise KeyFault(f"a selector follows INT/AH, as `0x10/0x12/BL=0x36`; got {key!r}")
-    return head, _selector(last)
+    if ".." in head:
+        raise KeyFault(f"a selector goes with one call, not a range of calls; got {key!r}")
+    return head, _selector(last.strip())
 
 
 def call_selector(kind: str, key: str) -> Selector | None:
@@ -194,8 +196,6 @@ def query(kind: str, text: str) -> tuple[str, Span]:
     if kind in ("input", "device"):
         return text, Span(None, None)
     if kind == "call" and _peel(text)[1] is not None:
-        if ".." in _peel(text)[0]:
-            raise KeyFault(f"a selector goes with one call, not a range of calls; got {text!r}")
         key = canonical(kind, text)
         return key, span(kind, key)
     if kind == "call" and ".." in text:
@@ -220,6 +220,8 @@ def query(kind: str, text: str) -> tuple[str, Span]:
 
 
 def _bounds(text: str) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    if "=" in text:
+        raise KeyFault(f"a selector goes with one call, not a range of calls; got {text!r}")
     low_text, _, high_text = text.partition("..")
     low = query("call", low_text.strip())[1].parts
     high = query("call", high_text.strip())[1].parts if high_text else low
