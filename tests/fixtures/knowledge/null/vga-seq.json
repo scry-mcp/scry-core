@@ -1,0 +1,30 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "vga-seq",
+  "kind": "register",
+  "scope": "vga-seq",
+  "covers": "FIXTURE of the contract's own tests: one register of the VGA sequencer",
+  "reached": {
+    "index": "0x3C4",
+    "data": "0x3C5"
+  },
+  "complete_against": "dosbox-x:src/hardware/vga_seq.cpp write_p3c5",
+  "entries": [
+    {
+      "key": "0x04",
+      "name": "memory mode",
+      "aliases": [
+        "chain 4"
+      ],
+      "description": "How the CPU's addresses in video memory reach the four planes.",
+      "behaviour": "Bit 3 set is chain 4: the low two address bits select the plane.",
+      "sources": [
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_seq.cpp write_p3c5 case 4",
+          "cites": "\tcase 4:\t/* Memory Mode */"
+        }
+      ]
+    }
+  ]
+}

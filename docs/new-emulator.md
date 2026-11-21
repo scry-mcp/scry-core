@@ -8,6 +8,8 @@ Two test servers show the parts this package checks:
   stand-in windows; the opt-in tests that open windows check the real window systems.
 - `tests/null_promoter.py` passes `PromoteContract`, the rules for saving into a repository's
   `.scry/` folder.
+- `tests/null_server.py` also holds `NullKnowledge`, a base of six fixture entries that passes
+  `KnowledgeContract`, the rules for a server's dictionaries (see *The knowledge base*).
 
 The rest is how the two existing servers are wired.
 
@@ -169,3 +171,38 @@ server's own chooses its sections. Two kinds of section say nothing about the em
 
 [The list of checked demos](katas.md) says which servers run each demo and which screen map
 each uses.
+
+## The knowledge base
+
+What a number is called on the machine (a port, an interrupt, a vector, a register), with the
+public source each fact was checked against. A server ships dictionaries and one declaration;
+`scry_core.knowledge` loads, searches and checks them, and `scry_core.knowledge_tool` is the
+`knowledge_find` tool both servers register.
+
+- **Dictionaries**: JSON files `scry-knowledge/1` in `<package>/knowledge/`, one dictionary per
+  file: a header (`kind`, `scope`, what it `covers`, the list it must cover as
+  `complete_against`, `left_out` with a reason per key, `reached` for registers, `both` when the
+  documentation and the emulator both exist) and its `entries`. An entry holds its `key` in the
+  one spelling of its kind (`scry_core.knowledge.keys`), a `name` of at most 24 ASCII
+  characters, a `description`, a `behaviour` that summarises the source without losing
+  precision, and one or two `sources`, each a `ref` of a known scheme and the source's own line
+  in `cites`. An entry with no source is not written.
+- **Checked entries**: a second session reads an entry against its source and adds `checked`
+  (who checked, who wrote, the line compared per `ref`, and the digest of the entry's text, from
+  `scry_core.knowledge.digest`). From then on the text is never reworded: the contract fails when
+  the digest no longer matches, and a correction is a new write and a new check.
+- **The declaration**: `knowledge/support.py` holds one `Support` listing the `Scope`s (a system
+  or a cpu, with the kinds it owes; `support="named"` for a cpu the base names and the server
+  does not claim to run), the `Device`s and the `Chip`s. Adding one there is the only step; the
+  suite is red until its dictionaries exist.
+- **The source index**: a tool of the server captures, from the real sources, the rows its
+  dictionaries cite (the line, the key the locator carries, the read and write marks) and the
+  lists they must cover (`scry-knowledge-sources/1`, `scry_core.knowledge.sources`), and the
+  result is committed. The tests need no network.
+- **The tests**: a subclass of `conformance.KnowledgeContract` with a `subject` that gives the
+  declaration, the loaded `Base` (`fts5=False` forces the search index of our own), the source
+  index and the scopes the code depends on. `tests/null_server.py`'s `NullKnowledge` is the
+  model.
+- **The tool**: `knowledge_tool.register(wrap, answer, base, live)`. `live` says what the running
+  machine can answer by itself (MAME's inputs and device tags); a server with none passes
+  nothing. `knowledge_tool.judge` goes in the pre-gate table.

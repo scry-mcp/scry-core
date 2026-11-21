@@ -1,10 +1,12 @@
 """The contracts a server runs against its own tools: subclass `SessionContract` (`start`,
-`window`, `status`, `close`) or `PromoteContract` (what a `start` keeps and `promote` writes) in a
-test file and provide the `subject` fixture. The rules are those every server's replies are held
-to, so a server that passes them answers a caller as the others do."""
+`window`, `status`, `close`), `PromoteContract` (what a `start` keeps and `promote` writes) or
+`KnowledgeContract` (what its dictionaries owe) in a test file and provide the `subject` fixture.
+The rules are those every server's replies are held to, so a server that passes them answers a
+caller as the others do."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -12,6 +14,7 @@ import pytest
 
 from scry_core import session_block
 from scry_core import window as w
+from scry_core.knowledge import Base, SourceIndex, Support, check
 from scry_core.project_store import STORE
 from scry_core.window_stand_ins import hosts
 
@@ -340,3 +343,82 @@ def _started(subject: Promoter, project: Path, name: str) -> str:
     assert got["status"] == "ok" and "kept" in got, got
     subject.close()
     return str(got["kept"])
+
+
+class KnowledgeSubject(Protocol):
+    """A server's knowledge base: what it declares, its loaded dictionaries (`fts5=False` forces
+    the index of our own), the committed index of the sources they cite, and the scopes its code
+    depends on (the keys of its cpu tables, the cpus its demos run)."""
+
+    def support(self) -> Support: ...
+
+    def base(self, fts5: bool | None = None) -> Base: ...
+
+    def sources(self) -> SourceIndex: ...
+
+    def code_scopes(self) -> Iterable[str]: ...
+
+
+def _none(faults: list[str]) -> None:
+    assert not faults, "\n".join(faults)
+
+
+class KnowledgeContract:
+    """What a server's dictionaries owe, one case per rule, each naming the file to write or the
+    entry to fix. A checked entry's text is held by its digest: it fails when the text changes
+    without a new check."""
+
+    def test_the_check_examined_something(self, subject: KnowledgeSubject) -> None:
+        base, support = subject.base(), subject.support()
+        assert support.scopes, "INVALID: no dictionary was examined: nothing here says what " \
+            "this server supports"
+        assert len(base) and base.dictionaries, "INVALID: the server's base holds no entry"
+        assert subject.sources().rows, "INVALID: the source index holds no row, so no entry " \
+            "was held to a source"
+
+    def test_the_declaration_is_well_formed(self, subject: KnowledgeSubject) -> None:
+        _none(subject.support().faults())
+
+    def test_every_declared_scope_device_and_chip_has_the_dictionaries_it_owes(
+            self, subject: KnowledgeSubject) -> None:
+        _none(check.owed_dictionaries(subject.base(), subject.support()))
+
+    def test_every_dictionary_is_of_a_declared_scope_and_the_code_names_no_other(
+            self, subject: KnowledgeSubject) -> None:
+        _none(check.undeclared(subject.base(), subject.support(), subject.code_scopes()))
+
+    def test_every_dictionary_file_parses(self, subject: KnowledgeSubject) -> None:
+        _none(subject.base().file_faults)
+
+    def test_every_entry_is_whole_and_ids_are_unique(self, subject: KnowledgeSubject) -> None:
+        base = subject.base()
+        _none([*base.entry_faults, *base.load_faults])
+
+    def test_every_entry_agrees_with_the_source_index(self, subject: KnowledgeSubject) -> None:
+        _none(check.against_sources(subject.base(), subject.sources()))
+
+    def test_every_key_of_the_list_a_dictionary_covers_is_named_or_left_out(
+            self, subject: KnowledgeSubject) -> None:
+        _none(check.covered(subject.base(), subject.sources()))
+
+    def test_every_relation_resolves(self, subject: KnowledgeSubject) -> None:
+        _none(check.relations(subject.base()))
+
+    def test_two_sources_agree_or_the_entry_says_how_they_differ(
+            self, subject: KnowledgeSubject) -> None:
+        _none(check.both_sources(subject.base(), subject.sources()))
+
+    def test_no_alias_is_another_entry_s_name(self, subject: KnowledgeSubject) -> None:
+        _none(check.names_unique(subject.base()))
+
+    def test_the_database_holds_what_the_files_hold(self, subject: KnowledgeSubject) -> None:
+        _none(check.held(subject.base()))
+
+    def test_the_fallback_answers_as_fts5_does(self, subject: KnowledgeSubject) -> None:
+        if not subject.base().uses_fts5:
+            pytest.skip("this host's SQLite has no FTS5, so the fallback is the only path")
+        _none(check.fallback_differs(subject.base))
+
+    def test_a_checked_entry_is_never_reworded(self, subject: KnowledgeSubject) -> None:
+        _none(check.reworded(subject.base()))
+

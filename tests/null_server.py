@@ -3,13 +3,18 @@ that break one rule each. `scry_core.conformance` is what tells them apart."""
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterable
+from pathlib import Path
 from typing import Any
 
 from scry_core import session_block
 from scry_core import window as w
+from scry_core.knowledge import Base, Device, Scope, SourceIndex, Support, read_index
 from scry_core.reply_contract import Invalid
 
 PID = 4242
+KNOWLEDGE = Path(__file__).parent / "fixtures" / "knowledge"
 
 
 class NullServer:
@@ -152,3 +157,53 @@ class StatusDeniesASession(NullServer):
     def status(self) -> dict[str, Any]:
         return {"status": "ok", "summary": session_block.NO_SESSION_STATUS,
                 "session": {"alive": False}}
+
+
+class NullKnowledge:
+    """Six fixture entries, each citing a real line of DOSBox-X's source, and the index captured
+    from those lines. `root` and `sources` name copies, for variants that break one rule."""
+
+    def __init__(self, root: Path = KNOWLEDGE / "null",
+                 sources: Path = KNOWLEDGE / "null-sources.json",
+                 declared: Support | None = None,
+                 code: Iterable[str] = ("ibm-pc",)) -> None:
+        self.root, self.index, self.code = root, sources, tuple(code)
+        self.declared = declared or Support(
+            scopes=(Scope("ibm-pc", written=("call", "port", "device")),),
+            devices=(Device("vga-seq", written=("register",)),))
+
+    def support(self) -> Support:
+        return self.declared
+
+    def base(self, fts5: bool | None = None) -> Base:
+        return Base.load(self.root, fts5=fts5)
+
+    def sources(self) -> SourceIndex:
+        return read_index(self.index)
+
+    def code_scopes(self) -> Iterable[str]:
+        return self.code
+
+
+EXIT_REF = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
+
+
+def an_entry(key: str, name: str, **fields: Any) -> dict[str, Any]:
+    """A fixture entry: it cites the one real source line `EXIT_REF` names."""
+    line = read_index(KNOWLEDGE / "null-sources.json").rows[EXIT_REF].line
+    return {"key": key, "name": name, "description": f"Fixture entry {name}.",
+            "behaviour": f"Fixture behaviour of {name}.",
+            "sources": [{"role": "emulator", "ref": EXIT_REF, "cites": line}], **fields}
+
+
+def write_dictionary(folder: Path, dictionary: str, kind: str, scope: str,
+                     entries: list[dict[str, Any]], **header: Any) -> Path:
+    """A dictionary file in `folder`, marked as a fixture in its `covers`."""
+    path = folder / f"{dictionary}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "format": "scry-knowledge/1", "dictionary": dictionary, "kind": kind, "scope": scope,
+        "covers": "FIXTURE of a test", "complete_against": EXIT_REF.rsplit(" case", 1)[0],
+        "entries": entries, **header}), encoding="utf-8")
+    return path
+

@@ -16,6 +16,8 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.instruction` | The fields of the instruction a stopped machine is at (`address`, `bytes`, `text`, `symbol`, `delta`). |
 | `scry_core.tool_replies` | The reply fields that mean the same on both servers for `screen_map_write`, `log_wait`, `comment_write`, `screen_wait` and a refused `profile`. |
 | `scry_core.media_replies` | The reply models of the file tools both servers have. |
+| `scry_core.knowledge` | The knowledge base: the entries of a server's dictionaries (`scry-knowledge/1`), the database that loads them and answers by number, range, words and device, what a server declares it supports, and the checks its dictionaries are held to. |
+| `scry_core.knowledge_tool` | `knowledge_find`, the one tool that asks the base what a number is called: its description, judge, body, summary line and reply model, registered by each server. |
 | `scry_core.prose` | How a count is written in a summary or a refusal, and the one summary line of a refusal. |
 
 ## Calls
@@ -161,7 +163,7 @@ An event is `{"kind": "key", "name", "down", "frame"}`, `{"kind": "button", "nam
 
 | Module | What it holds |
 |---|---|
-| `scry_core.conformance` | The rules every server's `start`, `window`, `status`, `close` and `promote` meet, as test classes. |
+| `scry_core.conformance` | The rules every server's `start`, `window`, `status`, `close`, `promote` and knowledge base meet, as test classes. |
 | `scry_core.reply_shapes` | The pytest plugin that runs `reply_shapes_guard` on every reply a test builds. |
 | `scry_core.reply_shapes_guard` | One name, one shape in every reply, no null anywhere, and each reply checked against its model. |
 | `scry_core.private_run` | The pytest plugin that gives a run a home and a temporary folder of its own. |
