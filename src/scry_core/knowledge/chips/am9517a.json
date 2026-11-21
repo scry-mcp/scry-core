@@ -1,0 +1,502 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "am9517a",
+  "kind": "register",
+  "scope": "am9517a",
+  "covers": "The sixteen registers of the AM9517A (8237A) DMA controller",
+  "complete_against": "mame:src/devices/machine/am9517a.cpp am9517a_device::write",
+  "entries": [
+    {
+      "key": "0x00",
+      "name": "ch0 address",
+      "aliases": [
+        "channel 0 address"
+      ],
+      "description": "Channel 0's address register, a 16-bit value reached a byte at a time.",
+      "behaviour": "A read returns the current address and a write sets the base and the current address, one byte at a time through the byte pointer flip-flop shared by every channel register: low byte first, then high.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "cites": "Base and Current Address        Write"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+          "cites": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+          "cites": "\t\tcase REGISTER_ADDRESS:"
+        }
+      ]
+    },
+    {
+      "key": "0x01",
+      "name": "ch0 count",
+      "aliases": [
+        "channel 0 count"
+      ],
+      "description": "Channel 0's word count register, a 16-bit value reached a byte at a time.",
+      "behaviour": "A read returns the current word count and a write sets the base and the current count, one byte at a time through the byte pointer flip-flop shared by every channel register: low byte first, then high.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "cites": "Base and Current Word Count     Write"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+          "cites": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+          "cites": "\t\tcase REGISTER_WORD_COUNT:"
+        }
+      ]
+    },
+    {
+      "key": "0x02",
+      "name": "ch1 address",
+      "aliases": [
+        "channel 1 address"
+      ],
+      "description": "Channel 1's address register, a 16-bit value reached a byte at a time.",
+      "behaviour": "A read returns the current address and a write sets the base and the current address, one byte at a time through the byte pointer flip-flop shared by every channel register: low byte first, then high.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "cites": "Base and Current Address        Write"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+          "cites": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+          "cites": "\t\tcase REGISTER_ADDRESS:"
+        }
+      ]
+    },
+    {
+      "key": "0x03",
+      "name": "ch1 count",
+      "aliases": [
+        "channel 1 count"
+      ],
+      "description": "Channel 1's word count register, a 16-bit value reached a byte at a time.",
+      "behaviour": "A read returns the current word count and a write sets the base and the current count, one byte at a time through the byte pointer flip-flop shared by every channel register: low byte first, then high.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "cites": "Base and Current Word Count     Write"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+          "cites": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+          "cites": "\t\tcase REGISTER_WORD_COUNT:"
+        }
+      ]
+    },
+    {
+      "key": "0x04",
+      "name": "ch2 address",
+      "aliases": [
+        "channel 2 address"
+      ],
+      "description": "Channel 2's address register, a 16-bit value reached a byte at a time.",
+      "behaviour": "A read returns the current address and a write sets the base and the current address, one byte at a time through the byte pointer flip-flop shared by every channel register: low byte first, then high.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "cites": "Base and Current Address        Write"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+          "cites": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+          "cites": "\t\tcase REGISTER_ADDRESS:"
+        }
+      ]
+    },
+    {
+      "key": "0x05",
+      "name": "ch2 count",
+      "aliases": [
+        "channel 2 count"
+      ],
+      "description": "Channel 2's word count register, a 16-bit value reached a byte at a time.",
+      "behaviour": "A read returns the current word count and a write sets the base and the current count, one byte at a time through the byte pointer flip-flop shared by every channel register: low byte first, then high.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "cites": "Base and Current Word Count     Write"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+          "cites": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+          "cites": "\t\tcase REGISTER_WORD_COUNT:"
+        }
+      ]
+    },
+    {
+      "key": "0x06",
+      "name": "ch3 address",
+      "aliases": [
+        "channel 3 address"
+      ],
+      "description": "Channel 3's address register, a 16-bit value reached a byte at a time.",
+      "behaviour": "A read returns the current address and a write sets the base and the current address, one byte at a time through the byte pointer flip-flop shared by every channel register: low byte first, then high.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "cites": "Base and Current Address        Write"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel address",
+          "cites": "\tcase 0x0:case 0x2:case 0x4:case 0x6:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel address",
+          "cites": "\t\tcase REGISTER_ADDRESS:"
+        }
+      ]
+    },
+    {
+      "key": "0x07",
+      "name": "ch3 count",
+      "aliases": [
+        "channel 3 count"
+      ],
+      "description": "Channel 3's word count register, a 16-bit value reached a byte at a time.",
+      "behaviour": "A read returns the current word count and a write sets the base and the current count, one byte at a time through the byte pointer flip-flop shared by every channel register: low byte first, then high.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Figure 7 register addressing",
+          "cites": "Base and Current Word Count     Write"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg channel count",
+          "cites": "\tcase 0x1:case 0x3:case 0x5:case 0x7:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write channel count",
+          "cites": "\t\tcase REGISTER_WORD_COUNT:"
+        }
+      ]
+    },
+    {
+      "key": "0x08",
+      "name": "status",
+      "aliases": [
+        "DMA status"
+      ],
+      "description": "Status register, read: which channels reached terminal count and which have a request pending.",
+      "behaviour": "Bits 0 to 3 are set when a channel reaches terminal count and are cleared by the read; bits 4 to 7 are set while a channel's request is pending. MAME inverts bits 4 to 7 when the command register makes DREQ active low.",
+      "access": "read",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Status Register",
+          "cites": "Reset and on each Status Read. Bits 4–7 are set"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::ReadControllerReg case 0x8",
+          "cites": "\tcase 0x8:\t\t/* Status Register */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_STATUS",
+          "cites": "\t\tcase REGISTER_STATUS:"
+        }
+      ]
+    },
+    {
+      "key": "0x08",
+      "name": "command",
+      "aliases": [
+        "DMA command"
+      ],
+      "description": "Command register, write: the controller-wide options.",
+      "behaviour": "Bit 0 enables memory-to-memory transfers, bit 1 holds channel 0's address, bit 2 disables the controller, bit 3 selects compressed timing, bit 4 rotating priority, bit 5 extended write, bit 6 makes DREQ active low, bit 7 makes DACK active high.",
+      "differs": "DOSBox-X ignores the command register (\"Command reg not used\"); MAME acts on its bits.",
+      "access": "write",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Command Register",
+          "cites": "Write Command Register"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0x8",
+          "cites": "\tcase 0x8:\t\t/* Command reg not used */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_COMMAND",
+          "cites": "\t\tcase REGISTER_COMMAND:"
+        }
+      ]
+    },
+    {
+      "key": "0x09",
+      "name": "request",
+      "description": "Request register, write: sets or clears a channel's software request.",
+      "behaviour": "Bits 1 and 0 select the channel and bit 2 sets (1) or clears (0) its request bit.",
+      "differs": "DOSBox-X does nothing with a write to it (a TODO); MAME sets or clears the channel's request bit.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Request Register",
+          "cites": "Write Request Register"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0x9",
+          "cites": "\tcase 0x9:\t\t/* Request registers, memory to memory */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_REQUEST",
+          "cites": "\t\tcase REGISTER_REQUEST:"
+        }
+      ]
+    },
+    {
+      "key": "0x0A",
+      "name": "single mask bit",
+      "aliases": [
+        "single mask"
+      ],
+      "description": "Single mask register, write: masks or unmasks one channel.",
+      "behaviour": "Bits 1 and 0 select the channel and bit 2 masks (1) or unmasks (0) it.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Mask Register",
+          "cites": "Write Single Mask Register Bit"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xa",
+          "cites": "\tcase 0xa:\t\t/* Mask Register */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_SINGLE_MASK",
+          "cites": "\t\tcase REGISTER_SINGLE_MASK:"
+        }
+      ]
+    },
+    {
+      "key": "0x0B",
+      "name": "mode",
+      "description": "Mode register, write: the transfer mode of the channel named in bits 1 and 0.",
+      "behaviour": "Bits 3 and 2 give the transfer (00 verify, 01 write, 10 read), bit 4 autoinitialize, bit 5 decrement the address, bits 7 and 6 the mode (00 demand, 01 single, 10 block, 11 cascade). MAME also clears that channel's terminal-count bit.",
+      "differs": "DOSBox-X keeps only autoinitialize, the direction and the transfer type; it takes no demand, single, block or cascade mode.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Mode Register",
+          "cites": "Write Mode Register"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xb",
+          "cites": "\tcase 0xb:\t\t/* Mode Register */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MODE",
+          "cites": "\t\tcase REGISTER_MODE:"
+        }
+      ]
+    },
+    {
+      "key": "0x0C",
+      "name": "clear byte pointer",
+      "aliases": [
+        "clear flip-flop"
+      ],
+      "description": "Software command, write: resets the byte pointer flip-flop so the next channel register access is a low byte.",
+      "behaviour": "Any write resets the flip-flop shared by every channel register. It must precede a new address or count.",
+      "differs": "DOSBox-X also resets the flip-flop on a read of this register; MAME has no read handler for it.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Software Commands",
+          "cites": "Clear First/Last Flip-Flop: This command must be"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xc",
+          "cites": "\tcase 0xc:\t\t/* Clear Flip/Flip */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_BYTE_POINTER",
+          "cites": "\t\tcase REGISTER_BYTE_POINTER:"
+        }
+      ]
+    },
+    {
+      "key": "0x0D",
+      "name": "master clear",
+      "aliases": [
+        "reset"
+      ],
+      "description": "Software command, write: resets the controller as the hardware reset does.",
+      "behaviour": "Any write clears the command, status, request and temporary registers and the flip-flop, and sets the mask register.",
+      "differs": "DOSBox-X's master clear masks every channel and clears the terminal counts and the flip-flop; it leaves requests alone.",
+      "access": "write",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Software Commands",
+          "cites": "Master Clear: This software instruction has the"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xd",
+          "cites": "\tcase 0xd:\t\t/* Master Clear/Reset */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MASTER_CLEAR",
+          "cites": "\t\tcase REGISTER_MASTER_CLEAR:"
+        }
+      ]
+    },
+    {
+      "key": "0x0D",
+      "name": "temporary register",
+      "description": "Temporary register, read: the last byte moved by a memory-to-memory transfer.",
+      "behaviour": "A read returns the byte the last memory-to-memory transfer held.",
+      "differs": "DOSBox-X has no temporary register: a read logs an undefined port and returns all ones.",
+      "access": "read",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Temporary Register",
+          "cites": "Read Temporary Register"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::ReadControllerReg undefined port",
+          "cites": "\t\tLOG(LOG_DMACONTROL,LOG_NORMAL)(\"Trying to read undefined DMA port %x\",(int)reg);"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_TEMPORARY",
+          "cites": "\t\tcase REGISTER_TEMPORARY:"
+        }
+      ]
+    },
+    {
+      "key": "0x0E",
+      "name": "clear mask",
+      "aliases": [
+        "clear mask register"
+      ],
+      "description": "Software command, write: unmasks all four channels.",
+      "behaviour": "Any write clears the mask bits of all four channels so they accept requests.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Software Commands",
+          "cites": "Clear Mask Register: This command clears the"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xe",
+          "cites": "\tcase 0xe:\t\t/* Clear Mask register */\t\t"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_CLEAR_MASK",
+          "cites": "\t\tcase REGISTER_CLEAR_MASK:"
+        }
+      ]
+    },
+    {
+      "key": "0x0F",
+      "name": "write all mask bits",
+      "aliases": [
+        "all mask"
+      ],
+      "description": "Mask register, write: sets the mask bit of every channel at once.",
+      "behaviour": "Bits 0 to 3 are the mask bits of channels 0 to 3; a set bit masks the channel.",
+      "access": "write",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Mask Register",
+          "cites": "Write All Mask Register Bits"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::WriteControllerReg case 0xf",
+          "cites": "\tcase 0xf:\t\t/* Multiple Mask register */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::write high case REGISTER_MASK",
+          "cites": "\t\tcase REGISTER_MASK:"
+        }
+      ]
+    },
+    {
+      "key": "0x0F",
+      "name": "mask readback",
+      "aliases": [
+        "mask read"
+      ],
+      "description": "Mask register, read: the mask bit of every channel.",
+      "behaviour": "A read returns the four mask bits, bit 0 for channel 0. A set bit means the channel is masked.",
+      "access": "read",
+      "sources": [
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dma.cpp DmaController::ReadControllerReg case 0xf",
+          "cites": "\tcase 0xf:\t\t/* Multiple Mask register, undocumented read back */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp am9517a_device::read high case REGISTER_MASK",
+          "cites": "\t\tcase REGISTER_MASK:"
+        }
+      ]
+    }
+  ]
+}

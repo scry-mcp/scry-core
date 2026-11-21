@@ -1,0 +1,60 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "am9517a-device",
+  "kind": "device",
+  "scope": "chip",
+  "covers": "The AM9517A (8237A) DMA controller as a chip",
+  "complete_against": "mame:src/devices/machine/am9517a.cpp DEFINE_DEVICE_TYPE",
+  "left_out": [
+    {
+      "key": "upd71071",
+      "why": "a different chip, the NEC uPD71071, whose overrides were not read"
+    },
+    {
+      "key": "v5x_dmau",
+      "why": "a different chip, the DMA unit of the NEC V5X, whose overrides were not read"
+    },
+    {
+      "key": "pcx_dmac",
+      "why": "a different chip, the PC Transporter DMAC, whose overrides were not read"
+    },
+    {
+      "key": "eisa_dma",
+      "why": "a different chip, the EISA DMA controller, whose overrides were not read"
+    }
+  ],
+  "entries": [
+    {
+      "key": "am9517a",
+      "name": "AM9517A DMA controller",
+      "aliases": [
+        "8237",
+        "8237A",
+        "AM9517A",
+        "DMA controller",
+        "DMAC"
+      ],
+      "description": "Programmable DMA controller with four channels, each with a base and a current address and word count, and a command, mode, request, mask, status and temporary register.",
+      "behaviour": "Sixteen registers selected by the low four address bits. The low eight are the channels' addresses and counts, read and written a byte at a time through one flip-flop; the high eight are command registers, several of them software commands.",
+      "classes": [
+        "am9517a_device"
+      ],
+      "handlers": {
+        "read": "register read",
+        "write": "register write"
+      },
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8237A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf, Register Description",
+          "cites": "REGISTER DESCRIPTION"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/am9517a.cpp DEFINE_DEVICE_TYPE am9517a",
+          "cites": "DEFINE_DEVICE_TYPE(AM9517A,      am9517a_device,      \"am9517a\",  \"AM9517A\")"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "mc6845-device",
+  "kind": "device",
+  "scope": "chip",
+  "covers": "The MC6845 CRT controller as a chip",
+  "complete_against": "mame:src/devices/video/mc6845.cpp DEFINE_DEVICE_TYPE",
+  "left_out": [
+    {
+      "key": "mc6845_1",
+      "why": "a variant of mc6845 whose overrides of the register handlers were not read"
+    },
+    {
+      "key": "r6545_1",
+      "why": "a variant of mc6845 whose overrides of the register handlers were not read"
+    },
+    {
+      "key": "c6545_1",
+      "why": "a variant of mc6845 whose overrides of the register handlers were not read"
+    },
+    {
+      "key": "sy6545_1",
+      "why": "a variant of mc6845 whose overrides of the register handlers were not read"
+    },
+    {
+      "key": "sy6845e",
+      "why": "a variant of mc6845 whose overrides of the register handlers were not read"
+    },
+    {
+      "key": "ams40489",
+      "why": "a variant of mc6845 whose overrides of the register handlers were not read"
+    },
+    {
+      "key": "hd6845s",
+      "why": "a variant of mc6845 whose overrides of the register handlers were not read"
+    },
+    {
+      "key": "hd6345",
+      "why": "a variant of mc6845 whose overrides of the register handlers were not read"
+    }
+  ],
+  "entries": [
+    {
+      "key": "mc6845",
+      "name": "MC6845 CRTC",
+      "aliases": [
+        "6845",
+        "CRTC",
+        "Motorola 6845",
+        "HD46505"
+      ],
+      "description": "CRT controller that generates the timing of a character display: the totals, the sync positions, the cursor and the start address, held in registers reached through an index.",
+      "behaviour": "The address register selects one of the registers and a second port reads or writes it. Most registers are write only.",
+      "classes": [
+        "mc6845_device"
+      ],
+      "handlers": {
+        "address_w": "register select",
+        "register_r": "register data read",
+        "register_w": "register data write",
+        "status_r": "status"
+      },
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B 03B0-03BF MDA",
+          "cites": "PORT 03B0-03BF - MDA  (Monochrome Display Adapter based on 6845)"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp DEFINE_DEVICE_TYPE mc6845",
+          "cites": "DEFINE_DEVICE_TYPE(MC6845,   mc6845_device,   \"mc6845\",   \"Motorola MC6845 CRTC\")"
+        }
+      ]
+    }
+  ]
+}

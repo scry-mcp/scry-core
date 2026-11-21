@@ -1,0 +1,554 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "mc6845",
+  "kind": "register",
+  "scope": "mc6845",
+  "covers": "The registers of the MC6845 CRT controller",
+  "complete_against": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w",
+  "reached": {
+    "index": "address_w",
+    "data": [
+      "register_r",
+      "register_w"
+    ]
+  },
+  "entries": [
+    {
+      "key": "0x00",
+      "name": "R0 horizontal total",
+      "aliases": [
+        "horizontal total"
+      ],
+      "description": "Horizontal total: the length of a scan line in characters.",
+      "behaviour": "Holds the number of character times in a horizontal period, less one, in 8 bits.",
+      "differs": "DOSBox-X reads back the value written; MAME returns 0, as the chip's registers are write only.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 00h horizontal total",
+          "cites": " 00h\thorizontal total\t\t\t  61h\t35h   38h   71h\t  38h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x00",
+          "cites": "\tcase 0x00:\t\t//Horizontal total"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x00",
+          "cites": "\t\tcase 0x00:  m_horiz_char_total =   data & 0xff; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x01",
+      "name": "R1 horizontal displayed",
+      "aliases": [
+        "horizontal displayed"
+      ],
+      "description": "Horizontal displayed: how many characters of a line are shown.",
+      "behaviour": "Holds the number of characters displayed per line, in 8 bits.",
+      "differs": "DOSBox-X reads back the value written; MAME returns 0, as the chip's registers are write only.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 01h horizontal displayed",
+          "cites": " 01h\thorizontal displayed\t\t\t  50h\t2Dh   28h   50h\t  28h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x01",
+          "cites": "\tcase 0x01:\t\t//Horizontal displayed chars"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x01",
+          "cites": "\t\tcase 0x01:  m_horiz_disp       =   data & 0xff; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x02",
+      "name": "R2 horizontal sync pos",
+      "aliases": [
+        "horizontal sync position"
+      ],
+      "description": "Horizontal sync position: the character at which the horizontal sync starts.",
+      "behaviour": "Holds the character position of the horizontal sync pulse, in 8 bits.",
+      "differs": "DOSBox-X reads back the value written; MAME returns 0, as the chip's registers are write only.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 02h horizontal sync position",
+          "cites": " 02h\thorizontal sync position\t\t  52h\t2Eh   2Dh 5Ah/5Ch 2Dh"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x02",
+          "cites": "\tcase 0x02:\t\t//Horizontal sync position"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x02",
+          "cites": "\t\tcase 0x02:  m_horiz_sync_pos   =   data & 0xff; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x03",
+      "name": "R3 sync widths",
+      "aliases": [
+        "sync pulse width"
+      ],
+      "description": "Sync widths: how long the horizontal sync lasts, and on some chips the vertical sync.",
+      "behaviour": "Bits 3 to 0 give the horizontal sync width in characters, 0 meaning 16. Bits 7 to 4 give the vertical sync width in lines on chips that have it; the others use 16.",
+      "differs": "DOSBox-X reads back the horizontal width only (Tandy also the vertical one) and fixes the vertical sync at 16 lines elsewhere; MAME reads back 0.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 03h sync pulse width",
+          "cites": " 03h\tsync pulse width\t\t\t  0Fh 07h/0Fh 0Ah   0Ah\t  0Ah"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x03",
+          "cites": "\tcase 0x03:\t\t//Horizontal sync width"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x03",
+          "cites": "\t\tcase 0x03:  m_sync_width       =   data & 0xff; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x04",
+      "name": "R4 vertical total",
+      "aliases": [
+        "vertical total"
+      ],
+      "description": "Vertical total: the number of character rows in a frame.",
+      "behaviour": "Holds the number of character rows per frame, less one, in 7 bits.",
+      "differs": "DOSBox-X reads back the value written; MAME returns 0, as the chip's registers are write only.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 04h vertical total",
+          "cites": " 04h\tvertical total (vcycle-1)\t\t  19h\t5Bh   1Fh   1Fh\t  7Fh"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x04",
+          "cites": "\tcase 0x04:\t\t//Vertical total"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x04",
+          "cites": "\t\tcase 0x04:  m_vert_char_total  =   data & 0x7f; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x05",
+      "name": "R5 vertical total adjust",
+      "aliases": [
+        "vertical total adjust"
+      ],
+      "description": "Vertical total adjust: extra scan lines added to the frame.",
+      "behaviour": "Holds the number of extra scan lines that complete the frame, in 5 bits.",
+      "differs": "DOSBox-X reads back the value written; MAME returns 0, as the chip's registers are write only.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 05h vertical total adjust",
+          "cites": " 05h\tvertical total adjust\t\t\t  06h\t02h   06h   06h\t  06h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x05",
+          "cites": "\tcase 0x05:\t\t//Vertical display adjust"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x05",
+          "cites": "\t\tcase 0x05:  m_vert_total_adj   =   data & 0x1f; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x06",
+      "name": "R6 vertical displayed",
+      "aliases": [
+        "vertical displayed"
+      ],
+      "description": "Vertical displayed: how many character rows are shown.",
+      "behaviour": "Holds the number of character rows displayed, in 7 bits.",
+      "differs": "DOSBox-X reads back the value written; MAME returns 0, as the chip's registers are write only.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 06h vertical displayed",
+          "cites": " 06h\tvertical displayed\t\t\t  19h\t57h   19h   19h\t  64h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x06",
+          "cites": "\tcase 0x06:\t\t//Vertical rows"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x06",
+          "cites": "\t\tcase 0x06:  m_vert_disp        =   data & 0x7f; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x07",
+      "name": "R7 vertical sync pos",
+      "aliases": [
+        "vertical sync position"
+      ],
+      "description": "Vertical sync position: the character row at which the vertical sync starts.",
+      "behaviour": "Holds the character row of the vertical sync pulse, in 7 bits.",
+      "differs": "DOSBox-X reads back the value written; MAME returns 0, as the chip's registers are write only.",
+      "sources": [
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x07",
+          "cites": "\tcase 0x07:\t\t//Vertical sync position"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x07",
+          "cites": "\t\tcase 0x07:  m_vert_sync_pos    =   data & 0x7f; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x08",
+      "name": "R8 interlace and skew",
+      "aliases": [
+        "mode control"
+      ],
+      "description": "Interlace and skew: the scan mode and the display and cursor skew.",
+      "behaviour": "Bits 1 and 0 select the interlace mode, 3 being interlace and video; bit 2 row and column addressing; bit 4 display enable skew; bit 5 cursor skew. Bits 3, 6 and 7 serve the variants with transparent update, and MAME logs a nonzero value as unsupported on chips without it.",
+      "differs": "DOSBox-X has no handler for it and logs a write as an illegal index; MAME stores the byte.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 08h interlace mode",
+          "cites": " 08h\tinterlace mode (not MCGA)\t\t  02h\t02h   02h   02h\t  02h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+          "cites": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x08",
+          "cites": "\t\tcase 0x08:  m_mode_control     =   data & 0xff; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x09",
+      "name": "R9 maximum raster",
+      "aliases": [
+        "maximum scan line"
+      ],
+      "description": "Maximum raster address: the scan lines of a character row.",
+      "behaviour": "Holds the number of scan lines per character row, less one, in 5 bits.",
+      "differs": "DOSBox-X reads back the value written; MAME returns 0, as the chip's registers are write only.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 09h maximum scan lines",
+          "cites": " 09h\tmaximum scan lines\t\t\t  0Dh\t03h   07h   07h\t  01h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x09",
+          "cites": "\tcase 0x09:\t\t//Max scanline"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x09",
+          "cites": "\t\tcase 0x09:  m_max_ras_addr     =   data & 0x1f; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x0A",
+      "name": "R10 cursor start",
+      "aliases": [
+        "cursor start raster"
+      ],
+      "description": "Cursor start: the first scan line of the cursor and how it blinks.",
+      "behaviour": "Bits 4 to 0 give the first cursor scan line. Bits 6 and 5 select the cursor mode: 00 always on, 01 off, 10 blinking fast, 11 blinking slowly.",
+      "differs": "DOSBox-X reads back the value written; MAME returns 0, as the chip's registers are write only.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 0Ah cursor start",
+          "cites": " 0Ah\tcursor start\t\t\t\t  0Bh\t00h   06h   06h 06h/00h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0a",
+          "cites": "\tcase 0x0A:\t/* Cursor Start Register */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0a",
+          "cites": "\t\tcase 0x0a:  m_cursor_start_ras =   data & 0x7f; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x0B",
+      "name": "R11 cursor end",
+      "aliases": [
+        "cursor end raster"
+      ],
+      "description": "Cursor end: the last scan line of the cursor.",
+      "behaviour": "Holds the last scan line of the cursor, in 5 bits.",
+      "differs": "DOSBox-X reads back the value written; MAME returns 0, as the chip's registers are write only.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 0Bh cursor end",
+          "cites": " 0Bh\tcursor end\t\t\t\t  0Ch\t00h   07h   07h 07h/00h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0b",
+          "cites": "\tcase 0x0B:\t/* Cursor End Register */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0b",
+          "cites": "\t\tcase 0x0b:  m_cursor_end_ras   =   data & 0x1f; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x0C",
+      "name": "R12 start address high",
+      "aliases": [
+        "display start high"
+      ],
+      "description": "Start address high: the high byte of the first display address.",
+      "behaviour": "A write sets the high 6 bits of the address of the first displayed character.",
+      "differs": "DOSBox-X reads back the start address; MAME does so only on variants that allow it and returns 0 on the base chip.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 0Ch start address high",
+          "cites": " 0Ch RW\tstart address high\t\t\t  00h\t00h   00h   00h\t  00h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0c",
+          "cites": "\tcase 0x0C:\t/* Start Address High Register */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0c",
+          "cites": "\t\tcase 0x0c:  ret = m_supports_disp_start_addr_r ? (m_disp_start_addr >> 8) & 0xff : 0; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x0D",
+      "name": "R13 start address low",
+      "aliases": [
+        "display start low"
+      ],
+      "description": "Start address low: the low byte of the first display address.",
+      "behaviour": "A write sets the low 8 bits of the address of the first displayed character.",
+      "differs": "DOSBox-X reads back the start address; MAME does so only on variants that allow it and returns 0 on the base chip.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 0Dh start address low",
+          "cites": " 0Dh RW\tstart address low\t\t\t  00h\t00h   00h   00h\t  00h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0d",
+          "cites": "\tcase 0x0D:\t/* Start Address Low Register */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0d",
+          "cites": "\t\tcase 0x0d:  ret = m_supports_disp_start_addr_r ? (m_disp_start_addr >> 0) & 0xff : 0; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x0E",
+      "name": "R14 cursor high",
+      "aliases": [
+        "cursor location high"
+      ],
+      "description": "Cursor address high: the high byte of the cursor position.",
+      "behaviour": "A write sets the high 6 bits of the cursor address and a read returns them.",
+      "differs": "DOSBox-X keeps all 8 bits of a write to it; MAME keeps 6.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 0Eh cursor location high",
+          "cites": " 0Eh RW\tcursor location high\t\t\t  00h\t00h   00h   00h\t  00h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0e",
+          "cites": "\tcase 0x0E:\t/*Cursor Location High Register */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0e",
+          "cites": "\t\tcase 0x0e:  ret = (m_cursor_addr    >> 8) & 0xff; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x0F",
+      "name": "R15 cursor low",
+      "aliases": [
+        "cursor location low"
+      ],
+      "description": "Cursor address low: the low byte of the cursor position.",
+      "behaviour": "A write sets the low 8 bits of the cursor address and a read returns them.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 0Fh cursor location low",
+          "cites": " 0Fh RW cursor location low\t\t\t  00h\t00h   00h   00h\t  00h"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0f",
+          "cites": "\tcase 0x0F:\t/* Cursor Location Low Register */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x0f",
+          "cites": "\t\tcase 0x0f:  ret = (m_cursor_addr    >> 0) & 0xff; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x10",
+      "name": "R16 light pen high",
+      "aliases": [
+        "light pen address high"
+      ],
+      "description": "Light pen high: the high byte of the address latched by the light pen.",
+      "behaviour": "A read returns the high byte of the latched light pen address and clears the latched flag. The register is read only.",
+      "differs": "DOSBox-X lets a write store the value (6 bits) and keeps no latched flag; MAME ignores a write.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 10h light pen high",
+          "cites": " 10h R-\tlight pen high (MDA/CGA/EGA only, some HGC, few VGA"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x10",
+          "cites": "\tcase 0x10:\t/* Light Pen High */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x10",
+          "cites": "\t\tcase 0x10:  ret = (m_light_pen_addr >> 8) & 0xff; m_light_pen_latched = false; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x11",
+      "name": "R17 light pen low",
+      "aliases": [
+        "light pen address low"
+      ],
+      "description": "Light pen low: the low byte of the address latched by the light pen.",
+      "behaviour": "A read returns the low byte of the latched light pen address and clears the latched flag. The register is read only.",
+      "differs": "DOSBox-X lets a write store the value and keeps no latched flag; MAME ignores a write.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B CRT register 11h light pen low",
+          "cites": " 11h R- light pen low (MDA/CGA/EGA only, some HGC, few VGA"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x11",
+          "cites": "\tcase 0x11:\t/* Light Pen Low */"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_r case 0x11",
+          "cites": "\t\tcase 0x11:  ret = (m_light_pen_addr >> 0) & 0xff; m_light_pen_latched = false; break;"
+        }
+      ]
+    },
+    {
+      "key": "0x12",
+      "name": "R18 update addr high",
+      "description": "Update address high: the high byte of the address a transparent update writes.",
+      "behaviour": "On variants with transparent update, a write sets the high 6 bits of the update address. The base chip ignores it.",
+      "differs": "DOSBox-X has no handler for it and logs an illegal index; MAME handles it on the variants with transparent update.",
+      "sources": [
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+          "cites": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x12",
+          "cites": "\t\tcase 0x12:"
+        }
+      ]
+    },
+    {
+      "key": "0x13",
+      "name": "R19 update addr low",
+      "description": "Update address low: the low byte of the address a transparent update writes.",
+      "behaviour": "On variants with transparent update, a write sets the low 8 bits of the update address. The base chip ignores it.",
+      "differs": "DOSBox-X has no handler for it and logs an illegal index; MAME handles it on the variants with transparent update.",
+      "sources": [
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+          "cites": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x13",
+          "cites": "\t\tcase 0x13:"
+        }
+      ]
+    },
+    {
+      "key": "0x1F",
+      "name": "R31 update strobe",
+      "description": "Update strobe: a read or write of it triggers a transparent update.",
+      "behaviour": "On variants with transparent update, any access performs the update; the other chips ignore it.",
+      "differs": "DOSBox-X has no handler for it and logs an illegal index; MAME handles it on the variants with transparent update.",
+      "sources": [
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other illegal index",
+          "cites": "\t\tLOG(LOG_VGAMISC,LOG_NORMAL)(\"MC6845:Write %X to illegal index %x\",(int)val,(int)vga.other.index);"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x1f",
+          "cites": "\t\tcase 0x1f:  transparent_update(); break;"
+        }
+      ]
+    }
+  ]
+}

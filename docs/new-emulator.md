@@ -223,6 +223,18 @@ public source each fact was checked against. A server ships dictionaries and one
   or a cpu, with the kinds it owes; `support="named"` for a cpu the base names and the server
   does not claim to run), the `Device`s and the `Chip`s. Adding one there is the only step; the
   suite is red until its dictionaries exist.
+- **The shared chips**: a chip both emulators model is written once, in this package.
+  `scry_core.knowledge.shared` holds `CHIPS` (their declarations, so
+  `Support(chips=shared.CHIPS)` is complete by construction), `CPUS` (cpus named for any
+  system built on them, which a server that runs one adds to its `scopes`) and `PINS` (the
+  commit or tag each `dosbox-x:` and `mame:` ref is read at). `knowledge/chips/` is loaded by
+  every server and `knowledge/cpus/` only by a server that declares those cpus, as
+  `Base.load(<own package>, files("scry_core.knowledge") / "chips")`. A register of a shared
+  chip has the id `<chip>:register:<key>` on both servers, and its `reached` names handlers,
+  never a port: the board that places the chip says which port is which handler, in the
+  `handlers` of its own device entry. The rows these dictionaries cite are in
+  `knowledge_index/shared.json`, which a server's subject merges with its own index;
+  `tools/knowledge_sources.py` writes it from the real sources, and `--check` compares it.
 - **The source index**: a tool of the server captures, from the real sources, the rows its
   dictionaries cite (the line, the key the locator carries, the read and write marks) and the
   lists they must cover (`scry-knowledge-sources/1`, `scry_core.knowledge.sources`), and the

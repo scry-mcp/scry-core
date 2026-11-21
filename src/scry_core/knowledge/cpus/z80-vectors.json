@@ -1,0 +1,219 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "z80-vectors",
+  "kind": "vector",
+  "scope": "z80",
+  "covers": "The Z80's fixed vectors: reset, the eight restarts and the non-maskable interrupt. Interrupt mode 2 reads its handler from a table at the I register and the data byte, so it has no fixed address; mode 0 executes an opcode from the bus, covered by the restarts; the NSC800's own interrupt addresses belong to another cpu type",
+  "complete_against": "mame:src/devices/cpu/z80/z80.lst vectors",
+  "entries": [
+    {
+      "key": "0x00",
+      "name": "reset, RST 00h",
+      "aliases": [
+        "RESET",
+        "RST 0"
+      ],
+      "description": "Where execution starts after a reset, and the target of the RST 00h instruction.",
+      "behaviour": "A reset clears the program counter, so execution begins at this address. The one-byte RST 00h instruction (opcode C7) calls it after pushing the return address.",
+      "address": 0,
+      "length": 8,
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "cites": "0000h C7 RST 0"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/cpu/z80/z80.cpp z80_device::device_reset PC",
+          "cites": "\tPC = 0;"
+        }
+      ]
+    },
+    {
+      "key": "0x08",
+      "name": "RST 08h",
+      "aliases": [
+        "RST 8"
+      ],
+      "description": "Target of the one-byte RST 08h instruction.",
+      "behaviour": "The RST 08h instruction (opcode CF) pushes the return address and jumps here. Programs and hardware use these eight page 0 addresses as short calls.",
+      "address": 8,
+      "length": 8,
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "cites": "0008h CF RST 8"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x08",
+          "cites": "\t@rst 0x08"
+        }
+      ]
+    },
+    {
+      "key": "0x10",
+      "name": "RST 10h",
+      "aliases": [
+        "RST 16"
+      ],
+      "description": "Target of the one-byte RST 10h instruction.",
+      "behaviour": "The RST 10h instruction (opcode D7) pushes the return address and jumps here. Programs and hardware use these eight page 0 addresses as short calls.",
+      "address": 16,
+      "length": 8,
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "cites": "0010h D7 RST 16"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x10",
+          "cites": "\t@rst 0x10"
+        }
+      ]
+    },
+    {
+      "key": "0x18",
+      "name": "RST 18h",
+      "aliases": [
+        "RST 24"
+      ],
+      "description": "Target of the one-byte RST 18h instruction.",
+      "behaviour": "The RST 18h instruction (opcode DF) pushes the return address and jumps here. Programs and hardware use these eight page 0 addresses as short calls.",
+      "address": 24,
+      "length": 8,
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "cites": "0018h DF RST 24"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x18",
+          "cites": "\t@rst 0x18"
+        }
+      ]
+    },
+    {
+      "key": "0x20",
+      "name": "RST 20h",
+      "aliases": [
+        "RST 32"
+      ],
+      "description": "Target of the one-byte RST 20h instruction.",
+      "behaviour": "The RST 20h instruction (opcode E7) pushes the return address and jumps here. Programs and hardware use these eight page 0 addresses as short calls.",
+      "address": 32,
+      "length": 8,
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "cites": "0020h E7 RST 32"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x20",
+          "cites": "\t@rst 0x20"
+        }
+      ]
+    },
+    {
+      "key": "0x28",
+      "name": "RST 28h",
+      "aliases": [
+        "RST 40"
+      ],
+      "description": "Target of the one-byte RST 28h instruction.",
+      "behaviour": "The RST 28h instruction (opcode EF) pushes the return address and jumps here. Programs and hardware use these eight page 0 addresses as short calls.",
+      "address": 40,
+      "length": 8,
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "cites": "0028h EF RST 40"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x28",
+          "cites": "\t@rst 0x28"
+        }
+      ]
+    },
+    {
+      "key": "0x30",
+      "name": "RST 30h",
+      "aliases": [
+        "RST 48"
+      ],
+      "description": "Target of the one-byte RST 30h instruction.",
+      "behaviour": "The RST 30h instruction (opcode F7) pushes the return address and jumps here. Programs and hardware use these eight page 0 addresses as short calls.",
+      "address": 48,
+      "length": 8,
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "cites": "0030h F7 RST 48"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/cpu/z80/z80.lst @rst 0x30",
+          "cites": "\t@rst 0x30"
+        }
+      ]
+    },
+    {
+      "key": "0x38",
+      "name": "RST 38h, IM 1 interrupt",
+      "aliases": [
+        "RST 56",
+        "IM 1"
+      ],
+      "description": "Target of the RST 38h instruction and of a maskable interrupt in interrupt mode 1.",
+      "behaviour": "The one-byte RST 38h instruction (opcode FF) calls this address after pushing the return address. In interrupt mode 1 a maskable interrupt clears both interrupt flip-flops, pushes the program counter and jumps here.",
+      "address": 56,
+      "length": 8,
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, Table 17 Restart Group",
+          "cites": "0038h FF RST 56"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/cpu/z80/z80.lst interrupt mode 1",
+          "cites": "\t\tPC = 0x0038;"
+        }
+      ]
+    },
+    {
+      "key": "0x66",
+      "name": "NMI",
+      "aliases": [
+        "non-maskable interrupt"
+      ],
+      "description": "Target of a non-maskable interrupt.",
+      "behaviour": "Always accepted at the end of the current instruction, whatever the interrupt enable flip-flop holds. It clears the first flip-flop, pushes the program counter and jumps here.",
+      "address": 102,
+      "length": 1,
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Zilog Z80 CPU User Manual UM008011-0816, http://www.z80.info/zip/z80cpu_um.pdf, NMI pin",
+          "cites": "restart at location 0066h."
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/cpu/z80/z80.lst NMI",
+          "cites": "\tPC = 0x0066;"
+        }
+      ]
+    }
+  ]
+}

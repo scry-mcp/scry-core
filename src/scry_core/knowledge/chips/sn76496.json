@@ -1,0 +1,227 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "sn76496",
+  "kind": "register",
+  "scope": "sn76496",
+  "covers": "The eight registers of the SN76496 family, named by the register field of a latch byte",
+  "complete_against": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write",
+  "entries": [
+    {
+      "key": "0x00",
+      "name": "tone 0 period",
+      "aliases": [
+        "channel 0 frequency"
+      ],
+      "description": "Channel 0's tone period: the 10-bit count its generator reloads, so a low value is a high pitch.",
+      "behaviour": "A latch byte (1 00 0 dddd) sets the low four bits and a following data byte the high six. Period 0 is taken as 0x400 except on the Sega chips, where it stays 0.",
+      "differs": "DOSBox-X's test is the other way round: it takes period 0 as 0 except on the Sega chips, where it becomes 0x400.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "cites": "Tone registersThese give a counter reset value for the tone generators. Hence, low values give high frequencies and vice versa."
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 0",
+          "cites": "\t\tcase 0: // tone 0: frequency"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 0",
+          "cites": "\t\tcase 0: // tone 0: frequency"
+        }
+      ]
+    },
+    {
+      "key": "0x01",
+      "name": "tone 0 attenuation",
+      "aliases": [
+        "tone 0 volume"
+      ],
+      "description": "Tone 0's attenuation: 0 is full volume and 15 is silence, in 2 dB steps.",
+      "behaviour": "A latch byte (1 00 1 dddd) sets the 4-bit attenuation. Level 15 is off.",
+      "differs": "DOSBox-X's NCR8496 ignores a data byte (bit 7 clear) for this register; MAME has that rule commented out until verified on hardware.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "cites": "Volume registersThe value represents the attenuation of the output. Hence, %0000 is full volume and %1111 is silence."
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 1",
+          "cites": "\t\tcase 1: // tone 0: volume"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 1",
+          "cites": "\t\tcase 1: // tone 0: volume"
+        }
+      ]
+    },
+    {
+      "key": "0x02",
+      "name": "tone 1 period",
+      "aliases": [
+        "channel 1 frequency"
+      ],
+      "description": "Channel 1's tone period: the 10-bit count its generator reloads, so a low value is a high pitch.",
+      "behaviour": "A latch byte (1 01 0 dddd) sets the low four bits and a following data byte the high six. Period 0 is taken as 0x400 except on the Sega chips, where it stays 0.",
+      "differs": "DOSBox-X's test is the other way round: it takes period 0 as 0 except on the Sega chips, where it becomes 0x400.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "cites": "Tone registersThese give a counter reset value for the tone generators. Hence, low values give high frequencies and vice versa."
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 2",
+          "cites": "\t\tcase 2: // tone 1: frequency"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 2",
+          "cites": "\t\tcase 2: // tone 1: frequency"
+        }
+      ]
+    },
+    {
+      "key": "0x03",
+      "name": "tone 1 attenuation",
+      "aliases": [
+        "tone 1 volume"
+      ],
+      "description": "Tone 1's attenuation: 0 is full volume and 15 is silence, in 2 dB steps.",
+      "behaviour": "A latch byte (1 01 1 dddd) sets the 4-bit attenuation. Level 15 is off.",
+      "differs": "DOSBox-X's NCR8496 ignores a data byte (bit 7 clear) for this register; MAME has that rule commented out until verified on hardware.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "cites": "Volume registersThe value represents the attenuation of the output. Hence, %0000 is full volume and %1111 is silence."
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 3",
+          "cites": "\t\tcase 3: // tone 1: volume"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 3",
+          "cites": "\t\tcase 3: // tone 1: volume"
+        }
+      ]
+    },
+    {
+      "key": "0x04",
+      "name": "tone 2 period",
+      "aliases": [
+        "channel 2 frequency"
+      ],
+      "description": "Channel 2's tone period: the 10-bit count its generator reloads, so a low value is a high pitch.",
+      "behaviour": "A latch byte (1 10 0 dddd) sets the low four bits and a following data byte the high six. Period 0 is taken as 0x400 except on the Sega chips, where it stays 0. Noise follows twice this period when its rate bits are 3.",
+      "differs": "DOSBox-X's test is the other way round: it takes period 0 as 0 except on the Sega chips, where it becomes 0x400.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "cites": "Tone registersThese give a counter reset value for the tone generators. Hence, low values give high frequencies and vice versa."
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 4",
+          "cites": "\t\tcase 4: // tone 2: frequency"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 4",
+          "cites": "\t\tcase 4: // tone 2: frequency"
+        }
+      ]
+    },
+    {
+      "key": "0x05",
+      "name": "tone 2 attenuation",
+      "aliases": [
+        "tone 2 volume"
+      ],
+      "description": "Tone 2's attenuation: 0 is full volume and 15 is silence, in 2 dB steps.",
+      "behaviour": "A latch byte (1 10 1 dddd) sets the 4-bit attenuation. Level 15 is off.",
+      "differs": "DOSBox-X's NCR8496 ignores a data byte (bit 7 clear) for this register; MAME has that rule commented out until verified on hardware.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "cites": "Volume registersThe value represents the attenuation of the output. Hence, %0000 is full volume and %1111 is silence."
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 5",
+          "cites": "\t\tcase 5: // tone 2: volume"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 5",
+          "cites": "\t\tcase 5: // tone 2: volume"
+        }
+      ]
+    },
+    {
+      "key": "0x06",
+      "name": "noise control",
+      "aliases": [
+        "noise mode",
+        "noise frequency"
+      ],
+      "description": "The noise channel's mode and shift rate.",
+      "behaviour": "Bits 1 and 0 select the shift rate (N/512, N/1024, N/2048, or tone 2's output) and bit 2 white noise (1) or periodic noise (0). A write resets the noise shift register, on the NCR8496 only when bit 2 changes.",
+      "differs": "DOSBox-X's NCR8496 ignores a data byte (bit 7 clear) for this register; MAME has that rule commented out until verified on hardware.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "cites": "Noise registerOne bit selects the mode (\"periodic\" or \"white\") and the other two select a shift rate."
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 6",
+          "cites": "\t\tcase 6: // noise: frequency, mode"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 6",
+          "cites": "\t\tcase 6: // noise: frequency, mode"
+        }
+      ]
+    },
+    {
+      "key": "0x07",
+      "name": "noise attenuation",
+      "aliases": [
+        "noise volume"
+      ],
+      "description": "Noise's attenuation: 0 is full volume and 15 is silence, in 2 dB steps.",
+      "behaviour": "A latch byte (1 11 1 dddd) sets the 4-bit attenuation. Level 15 is off.",
+      "differs": "DOSBox-X's NCR8496 ignores a data byte (bit 7 clear) for this register; MAME has that rule commented out until verified on hardware.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
+          "cites": "Volume registersThe value represents the attenuation of the output. Hence, %0000 is full volume and %1111 is silence."
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 7",
+          "cites": "\t\tcase 7: // noise: volume"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 7",
+          "cites": "\t\tcase 7: // noise: volume"
+        }
+      ]
+    }
+  ]
+}

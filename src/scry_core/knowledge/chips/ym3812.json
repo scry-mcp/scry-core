@@ -1,0 +1,380 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "ym3812",
+  "kind": "register",
+  "scope": "ym3812",
+  "covers": "The registers of the YM3812 (OPL2) FM synthesizer",
+  "complete_against": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base ym3812",
+  "reached": {
+    "index": "address_w",
+    "data": "data_w"
+  },
+  "entries": [
+    {
+      "key": "0x01",
+      "name": "test, waveform enable",
+      "aliases": [
+        "WSE"
+      ],
+      "description": "Test register. Bit 5 also enables the waveform select registers.",
+      "behaviour": "Bit 5 set enables the waveform select registers 0xE0 to 0xF5; with it clear every operator uses waveform 0. The other bits are test bits.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 01h",
+          "cites": " 01h\tEnable waveform control"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x01",
+          "cites": "\t\tif ( reg == 0x01 ) {"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base waveform_enable",
+          "cites": "\tuint32_t waveform_enable() const                 { return IsOpl2 ? byte(0x01, 5, 1) : (IsOpl3Plus ? 1 : 0); }"
+        }
+      ]
+    },
+    {
+      "key": "0x02",
+      "name": "timer 1 value",
+      "aliases": [
+        "timer A"
+      ],
+      "description": "Timer 1 preset: the 8-bit value timer 1 loads when it starts.",
+      "behaviour": "Holds timer 1's 8-bit preset, which MAME scales by 4. Starting and masking it are bits of the timer control register.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 02h",
+          "cites": " 02h\tTimer #1 data (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x02",
+          "cites": "\tcase 0x02:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 02",
+          "cites": "//           02 xxxxxxxx Timer A value (4 * OPN)"
+        }
+      ]
+    },
+    {
+      "key": "0x03",
+      "name": "timer 2 value",
+      "aliases": [
+        "timer B"
+      ],
+      "description": "Timer 2 preset: the 8-bit value timer 2 loads when it starts.",
+      "behaviour": "Holds timer 2's 8-bit preset. Starting and masking it are bits of the timer control register.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 03h",
+          "cites": " 03h\tTimer #2 data (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x03",
+          "cites": "\tcase 0x03:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 03",
+          "cites": "//           03 xxxxxxxx Timer B value"
+        }
+      ]
+    },
+    {
+      "key": "0x04",
+      "name": "timer control",
+      "aliases": [
+        "timer flags"
+      ],
+      "description": "Timer control: starts, stops and masks the two timers and resets their flags.",
+      "behaviour": "Bit 7 resets the timer flags and the interrupt, bit 6 masks timer 1, bit 5 masks timer 2, bit 1 starts timer 2 and bit 0 starts timer 1.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 04h",
+          "cites": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
+          "cites": "\tcase 0x04:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
+          "cites": "//           04 x------- RST"
+        }
+      ]
+    },
+    {
+      "key": "0x08",
+      "name": "CSM, note select",
+      "aliases": [
+        "NTS"
+      ],
+      "description": "Mode register: the keyboard split point and the CSM mode.",
+      "behaviour": "Bit 7 selects speech synthesis (CSM) mode instead of FM music and bit 6 the keyboard split (note select) point.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 08h",
+          "cites": " 08h\tSpeech synthesis mode"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x08",
+          "cites": "\t\t} else if ( reg == 0x08 ) {"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 08",
+          "cites": "//           08 x------- CSM mode [OPL/OPL2 only]"
+        }
+      ]
+    },
+    {
+      "key": "0xBD",
+      "name": "rhythm and depth",
+      "aliases": [
+        "rhythm"
+      ],
+      "description": "Rhythm register: the tremolo and vibrato depths, the rhythm mode and its five key-on bits.",
+      "behaviour": "Bit 7 selects the deep tremolo, bit 6 the deep vibrato, bit 5 enables rhythm mode, and bits 4 to 0 key on the bass drum, snare, tom, top cymbal and high hat.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index BDh",
+          "cites": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
+          "cites": "\t\tif ( reg == 0xbd ) {"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
+          "cites": "//           BD x------- AM depth"
+        }
+      ]
+    },
+    {
+      "key": "0x20..0x35",
+      "name": "operator mode",
+      "aliases": [
+        "AM VIB EG KSR MULT"
+      ],
+      "description": "Operator mode: tremolo, vibrato, envelope type, key scaling and the frequency multiplier, one register per operator.",
+      "behaviour": "Bit 7 enables tremolo, bit 6 vibrato, bit 5 the sustained envelope, bit 4 key scale rate, bits 3 to 0 the frequency multiple. Each address in the range is one operator's register: operators sit at offsets 0 to 5, 8 to 13 and 16 to 21 from the first address.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 20h-35h",
+          "cites": " 20h-35h Amplitude Modulation / Vibrato"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x20",
+          "cites": "\tcase 0x20 >> 4:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 20-35",
+          "cites": "//        20-35 x------- AM enable"
+        }
+      ]
+    },
+    {
+      "key": "0x40..0x55",
+      "name": "operator level",
+      "aliases": [
+        "KSL TL"
+      ],
+      "description": "Operator level: key scale level and total level, one register per operator.",
+      "behaviour": "Bits 7 and 6 give the key scale level and bits 5 to 0 the total level. Each address in the range is one operator's register: operators sit at offsets 0 to 5, 8 to 13 and 16 to 21 from the first address.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 40h-55h",
+          "cites": " 40h-55h Level key scaling / Total level"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x40",
+          "cites": "\tcase 0x40 >> 4:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 40-55",
+          "cites": "//        40-55 xx------ Key scale level (0-3)"
+        }
+      ]
+    },
+    {
+      "key": "0x60..0x75",
+      "name": "attack, decay",
+      "aliases": [
+        "AR DR"
+      ],
+      "description": "Operator envelope: attack rate and decay rate, one register per operator.",
+      "behaviour": "Bits 7 to 4 give the attack rate and bits 3 to 0 the decay rate. Each address in the range is one operator's register: operators sit at offsets 0 to 5, 8 to 13 and 16 to 21 from the first address.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 60h-75h",
+          "cites": " 60h-75h Attack / Decay rate"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x60",
+          "cites": "\tcase 0x60 >> 4:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 60-75",
+          "cites": "//        60-75 xxxx---- Attack rate (0-15)"
+        }
+      ]
+    },
+    {
+      "key": "0x80..0x95",
+      "name": "sustain, release",
+      "aliases": [
+        "SL RR"
+      ],
+      "description": "Operator envelope: sustain level and release rate, one register per operator.",
+      "behaviour": "Bits 7 to 4 give the sustain level and bits 3 to 0 the release rate. Each address in the range is one operator's register: operators sit at offsets 0 to 5, 8 to 13 and 16 to 21 from the first address.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index 80h-95h",
+          "cites": " 80h-95h Sustain / Release rate"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0x80",
+          "cites": "\tcase 0x80 >> 4:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 80-95",
+          "cites": "//        80-95 xxxx---- Sustain level (0-15)"
+        }
+      ]
+    },
+    {
+      "key": "0xA0..0xA8",
+      "name": "F-number low",
+      "aliases": [
+        "frequency low"
+      ],
+      "description": "Frequency number, low byte: one register per channel.",
+      "behaviour": "Holds the low 8 bits of the channel's frequency number; bits 1 and 0 of the matching 0xB0 register are the high bits. Each address in the range is one channel's register.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index A0h-A8h",
+          "cites": " A0h-A8h Octave / Frequency (LSB)"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xa0",
+          "cites": "\tcase 0xa0 >> 4:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base A0-A8",
+          "cites": "//        A0-A8 xxxxxxxx F-number (low 8 bits)"
+        }
+      ]
+    },
+    {
+      "key": "0xB0..0xB8",
+      "name": "key on, block",
+      "aliases": [
+        "key on",
+        "block"
+      ],
+      "description": "Key on, octave and the frequency number's high bits: one register per channel.",
+      "behaviour": "Bit 5 keys the channel on, bits 4 to 2 give the block (octave) and bits 1 and 0 the high bits of the frequency number. Each address in the range is one channel's register.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index B0h-B8h",
+          "cites": " B0h-B8h Octave / Frequency Number"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xb0",
+          "cites": "\tcase 0xb0 >> 4:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base B0-B8",
+          "cites": "//        B0-B8 --x----- Key on"
+        }
+      ]
+    },
+    {
+      "key": "0xC0..0xC8",
+      "name": "feedback, connection",
+      "aliases": [
+        "feedback",
+        "algorithm"
+      ],
+      "description": "Channel feedback and connection: one register per channel.",
+      "behaviour": "Bits 3 to 1 give the feedback of the first operator and bit 0 selects the connection (algorithm). Each address in the range is one channel's register.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index C0h-C8h",
+          "cites": " C0h-C8h Feedback / Algorithm"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xc0",
+          "cites": "\tcase 0xc0 >> 4:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base ch_feedback",
+          "cites": "\tuint32_t ch_feedback(uint32_t choffs) const      { return byte(0xc0, 1, 3, choffs); }"
+        }
+      ]
+    },
+    {
+      "key": "0xE0..0xF5",
+      "name": "operator waveform",
+      "aliases": [
+        "wave select"
+      ],
+      "description": "Operator waveform select, one register per operator.",
+      "behaviour": "Bits 1 and 0 select one of four waveforms, used only when bit 5 of register 0x01 enables them. Each address in the range is one operator's register: operators sit at offsets 0 to 5, 8 to 13 and 16 to 21 from the first address.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "rbil61:PORTS.B AdLib index E0h-F5h",
+          "cites": " E0h-F5h Waveform Selection"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xe0",
+          "cites": "\tcase 0xe0 >> 4:"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base op_waveform",
+          "cites": "\tuint32_t op_waveform(uint32_t opoffs) const      { return waveform_enable() ? byte(0xe0, 0, newflag() ? 3 : 2, opoffs) : 0; }"
+        }
+      ]
+    }
+  ]
+}

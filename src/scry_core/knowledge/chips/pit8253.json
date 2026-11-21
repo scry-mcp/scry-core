@@ -1,0 +1,117 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "pit8253",
+  "kind": "register",
+  "scope": "pit8253",
+  "covers": "The registers of the 8253 and 8254 interval timer",
+  "complete_against": "mame:src/devices/machine/pit8253.cpp pit8253_device::write mask",
+  "entries": [
+    {
+      "key": "0x00",
+      "name": "counter 0",
+      "aliases": [
+        "channel 0"
+      ],
+      "description": "Counter 0 of the interval timer: a 16-bit down counter loaded by a write and read back by a read.",
+      "behaviour": "A write loads the count and a read returns it, one byte at a time in the order the control word chose: low byte, high byte, or low then high. In mode 3 a read returns an even value.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+          "cites": "Read/Write least significant byte first,"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x40",
+          "cites": "        WriteHandler[0].Install(0x40,write_latch,IO_MB);"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
+          "cites": "\t\tm_counter[offset]->count_w(data);"
+        }
+      ]
+    },
+    {
+      "key": "0x01",
+      "name": "counter 1",
+      "aliases": [
+        "channel 1"
+      ],
+      "description": "Counter 1 of the interval timer: a 16-bit down counter loaded by a write and read back by a read.",
+      "behaviour": "A write loads the count and a read returns it, one byte at a time in the order the control word chose: low byte, high byte, or low then high. In mode 3 a read returns an even value.",
+      "differs": "On the IBM PC DOSBox-X installs no write handler for it (the line is commented out) and only a read handler; MAME handles both.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+          "cites": "Read/Write least significant byte first,"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x41",
+          "cites": "//\t    WriteHandler[1].Install(0x41,write_latch,IO_MB);"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
+          "cites": "\t\tm_counter[offset]->count_w(data);"
+        }
+      ]
+    },
+    {
+      "key": "0x02",
+      "name": "counter 2",
+      "aliases": [
+        "channel 2"
+      ],
+      "description": "Counter 2 of the interval timer: a 16-bit down counter loaded by a write and read back by a read.",
+      "behaviour": "A write loads the count and a read returns it, one byte at a time in the order the control word chose: low byte, high byte, or low then high. In mode 3 a read returns an even value.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+          "cites": "Read/Write least significant byte first,"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x42",
+          "cites": "        WriteHandler[2].Install(0x42,write_latch,IO_MB);"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write count_w",
+          "cites": "\t\tm_counter[offset]->count_w(data);"
+        }
+      ]
+    },
+    {
+      "key": "0x03",
+      "name": "control word",
+      "aliases": [
+        "mode port",
+        "PIT command"
+      ],
+      "description": "The control word register: it sets a counter's mode, access order and counting base, and carries the latch and read-back commands. It can only be written.",
+      "behaviour": "Bits 7-6 select the counter (3 is the 8254 read-back command), bits 5-4 the access (0 latches the count), bits 3-1 the mode (6 and 7 act as 2 and 3) and bit 0 BCD counting. Writing it stops that counter until a count is loaded.",
+      "differs": "DOSBox-X latches the count of every counter a read-back selects but the status of only the first; MAME's 8254 latches both for each, and its 8253 ignores read-back.",
+      "sources": [
+        {
+          "role": "documentation",
+          "ref": "datasheet:Intel 8254 datasheet, https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf, Figure 7 Control Word Format",
+          "cites": "The Control Word Register can only be written to;"
+        },
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/timer.cpp TIMER_OnPowerOn write 0x43",
+          "cites": "        WriteHandler[3].Install(0x43,write_p43,IO_MB);"
+        },
+        {
+          "role": "emulator",
+          "ref": "mame:src/devices/machine/pit8253.cpp pit8253_device::write control_w",
+          "cites": "\t\t\tm_counter[timer]->control_w(data);"
+        }
+      ]
+    }
+  ]
+}
