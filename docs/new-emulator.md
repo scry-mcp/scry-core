@@ -274,8 +274,11 @@ public source each fact was checked against. A server ships dictionaries and one
   code depends on. `tests/null_server.py`'s `NullKnowledge` is the
   model.
 - **The tool**: `knowledge_tool.register(wrap, answer, base, live)`. `live` says what the running
-  machine can answer by itself (MAME's inputs and device tags); a server with none passes
-  nothing. `knowledge_tool.judge` goes in the pre-gate table.
+  machine can answer by itself (MAME's inputs and device tags, which a model may give as
+  `kind=device key=:tag` or `device=:tag`); a server with none passes nothing. The registered
+  description lists the scopes of `base`, so a server types none, and a scope that is a near
+  miss of one (`6809` for `m6809`) is read as it, with a `note` saying so. `knowledge_tool.judge`
+  goes in the pre-gate table.
 
 ## Naming what the replies show
 

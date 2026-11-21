@@ -192,7 +192,7 @@ def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key
     except KeyFault as bad:
         raise Invalid("bad_argument", f"key={key!r} is no key: {bad}") from bad
     return _answer(base, found, live_rows, kind, tag if tag and not device else key, text, device,
-                   scopes, limit, read)
+                   scopes, limit, read, bool(tag))
 
 
 def _by_id(base: Base, id: str) -> dict[str, Any]:
@@ -206,7 +206,7 @@ def _by_id(base: Base, id: str) -> dict[str, Any]:
 
 def _answer(base: Base, found: Found, live_rows: list[dict[str, Any]], kind: str, key: str,
             words: str, device: str, scopes: Sequence[str], limit: int,
-            read: str = "") -> dict[str, Any]:
+            read: str = "", tagged: bool = False) -> dict[str, Any]:
     query: dict[str, Any] = {}
     for name, value in (("kind", kind), ("key", key), ("text", words), ("device", device)):
         if value:
@@ -227,7 +227,8 @@ def _answer(base: Base, found: Found, live_rows: list[dict[str, Any]], kind: str
         out["how"] = HOW
     if not total:
         out["nearest"] = [e.short() for e in found.nearest]
-        out["note"] = _stays_a_number(base, found, kind, key, words, scopes)
+        out["note"] = (f"the running machine has no device at {key or device}: it stays a number"
+                       if tagged else _stays_a_number(base, found, kind, key, words, scopes))
     if read:
         out["note"] = f"{read}; {out['note']}" if "note" in out else read
     return out

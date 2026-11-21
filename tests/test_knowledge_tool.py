@@ -192,6 +192,8 @@ class Tagged:
         self.asked.append((kind, key, device))
         if not self.alive:
             return None
+        if device != ":seq":
+            return []
         return [{"kind": "device", "key": ":seq", "name": "sequencer", "type": "vga",
                  "chip": "ibm-pc:device:vga-seq"}]
 
@@ -236,6 +238,13 @@ def test_a_shared_chip_is_asked_by_its_key_with_a_machine_running(tmp_path: Path
     assert ask(held, machine, text="OPL2")["entries_total"] == 1
 
 
+def test_a_tag_the_machine_does_not_have_says_so_and_not_what_the_base_holds(base: Base) -> None:
+    got = ask(base, Tagged(), kind="device", key=":nosuch")
+    assert got["entries_total"] == 0
+    assert got["note"] == "the running machine has no device at :nosuch: it stays a number"
+    assert "base holds" not in knowledge_tool.summary({}, got)
+
+
 def test_a_server_with_no_devices_of_its_own_reads_a_tag_shaped_key_as_a_key(base: Base) -> None:
     got = ask(base, None, kind="device", key="seq")
     assert got["entries_total"] == 0 and "none at seq" in got["note"]
@@ -255,7 +264,8 @@ def cpus(tmp_path: Path) -> Base:
 
 @pytest.mark.parametrize(("typed", "read"), [("6809", "m6809"), ("M6809", "m6809"),
                                              ("m-6809", "m6809"), ("68000", "m68000"),
-                                             ("YM2203", "ym2203"), ("2203", "ym2203")])
+                                             ("YM2203", "ym2203"), ("2203", "ym2203"),
+                                             ("m6809", "m6809")])
 def test_a_scope_that_is_a_near_miss_is_answered_as_the_scope_it_plainly_means_and_says_so(
         cpus: Base, typed: str, read: str) -> None:
     got = ask(cpus, kind=("vector" if read.startswith(("m", "v")) else "register"), scope=typed)
@@ -309,7 +319,7 @@ def _examples(doc: str) -> list[dict[str, str]]:
             for span in re.findall(r"`([^`]*=[^`]*)`", paragraph)]
 
 
-def test_every_example_of_the_description_is_a_question_the_tool_accepts(base: Base) -> None:
+def test_every_example_of_the_description_is_a_question_the_judge_lets_through(base: Base) -> None:
     doc = inspect.cleandoc(knowledge_tool.knowledge_find.__doc__ or "")
     assert doc in client_cap.delivered(doc)
     filled = {"<scope>": "ibm-pc", "<device>": "vga-seq"}
