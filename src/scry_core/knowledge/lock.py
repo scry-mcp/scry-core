@@ -1,11 +1,5 @@
-"""The lock of a repository's checked entries: the file format, and reading it.
-
-A checked entry holds a seal over its text and its check (`entry.digest`). The lock is the
-repository's own list of every checked entry, by id, with the seal it was locked at: a check that
-is deleted, an entry that is removed, or a text and a seal that were both rewritten by hand all
-show up as a difference from the committed lock. `scry_core.knowledge.seal` is the command that
-writes it.
-"""
+"""The lock of a repository's checked entries, by id with the seal each was locked at; written by
+`scry_core.knowledge.seal`."""
 
 from __future__ import annotations
 
@@ -27,8 +21,7 @@ class Lock:
 
 
 def dumps(doc: Any) -> str:
-    """A document as the files here are written: two-space indent, keys as given, one final
-    newline. The command rewrites only a file that already reads this way."""
+    """A document as the files here are written; the command rewrites only a file that reads so."""
     return json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
 
 

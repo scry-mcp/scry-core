@@ -29,7 +29,6 @@ class Term:
     prefix: bool
 
     def fts(self, fields: tuple[str, ...] = ()) -> str:
-        """The FTS5 query for this word, held by `fields` only when some are given."""
         match = f'"{self.word}"' + ("*" if self.prefix else "")
         return f"{{{' '.join(fields)}}} : {match}" if fields else match
 
@@ -73,9 +72,7 @@ class Fallback:
         return have
 
     def tiers(self, asked: list[Term]) -> dict[int, int]:
-        """The entries that hold every word of `asked`, each with the first field (an index of
-        `FIELDS`) at which the fields so far hold them all: 0 when the name does, 1 with the
-        aliases, and so on. `asked` is not empty."""
+        """The entries holding every word of `asked`, each with its tier (an index of `FIELDS`)."""
         so_far: list[set[int]] = [set() for _ in asked]
         found: dict[int, int] = {}
         for tier, field in enumerate(FIELDS):
