@@ -20,7 +20,8 @@ A demo declared wrongly is no run: `declared` raises `ValueError` before the fir
 last step made it, so no emulator outlives it.
 
 `--update-readme` rewrites the README blocks, the capture, the loop and the `Demo.front` flow
-only after a run whose every step was OK.
+only after a run whose every step was OK. The capture is committed as `screen.png` shown at 4:3
+and cut as the loop is, which `stale` holds it to (`motion.shows_capture`).
 
 The steps that carry an `ask` are the demo's examples, each in the one shape `example` renders:
 they are the README block, and the `Demo.front` flow without their whole replies. The whole
@@ -31,6 +32,9 @@ A demo with a `Lead` opens its repository's README: its loop, large and centred 
 its page, a caption, and one step of the run as an exchange (what was asked, the call, the
 answer, and with `Lead.learns` what the step's check read in it), between the README's
 `lead_begin` and `lead_end` markers.
+
+A run also writes `timeline`'s document beside the transcript: each call with the frames it
+spanned and the input its step's `events` names, which a decorator reads to draw over the clip.
 
 A demo's `Moment`s are what its `loop.webp` shows, cut from the run's own recordings by
 `motion`: the file a `record` step wrote, or the video of a session that records itself
@@ -68,7 +72,7 @@ from mcp.client import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult
 
-from scry_core import example, file_names, fresh, motion, png, prose
+from scry_core import example, file_names, fresh, motion, prose, timeline
 from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 BEGIN = "<!-- demo-transcript:begin -->"
@@ -208,6 +212,9 @@ class Step:
     #: The reply's fields an example's excerpt shows, `EXCERPT` when none is named. A named
     #: field the reply lacks fails the step, so a page never shows a stale shape.
     shown: tuple[str, ...] = ()
+    #: The input the call fired, read from the arguments it was given and its reply, for the
+    #: run's timeline.
+    events: Callable[[Mapping[str, Any], Reply], Sequence[timeline.Event]] | None = None
 
 
 @dataclass(frozen=True)
@@ -551,6 +558,7 @@ class Outcome:
 
     lines: list[str]
     transcripts: Transcripts
+    timeline: timeline.Builder
     code: int = EXIT_PASS
 
 
@@ -558,7 +566,8 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
     root = norm.root
     out = Outcome([], Transcripts(norm, Normaliser(
         root, norm.home, norm.volatile, norm.host,
-        marks={**norm.marks, str(root): placeholder(root)}), demo.lead))
+        marks={**norm.marks, str(root): placeholder(root)}), demo.lead),
+        timeline.Builder(demo.name))
     led = demo.lead.step if demo.lead is not None else None
     params = StdioServerParameters(command=demo.server[0], args=list(demo.server[1:]),
                                    cwd=str(demo.root), env=dict(os.environ))
@@ -570,10 +579,12 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                 started = True
                 closed = False
                 for n, step in enumerate(demo.steps, start=1):
-                    ok, line, args, reply = await _step(
+                    ok, line, args, reply, events = await _step(
                         client, step, run, out.transcripts.answered if step.name == led else None)
                     out.lines.append(norm.text(line))
                     out.transcripts.add(n, step, args, reply, line, ok)
+                    out.timeline.add(step.name, step.tool, norm.arguments(args),
+                                     _status(reply, ok), counted(reply), events)
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
@@ -597,11 +608,13 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
 
 async def _step(client: Client, step: Step, run: Run,
                 answered: Callable[[Step, Reply], str] | None = None
-                ) -> tuple[bool, str, Mapping[str, Any], Reply | None]:
-    """Run one step: ok, its line, the arguments sent and the reply. `answered` gives what a
-    README's exchange shows of it, and refuses a reply that cannot say it on one line."""
+                ) -> tuple[bool, str, Mapping[str, Any], Reply | None, Sequence[timeline.Event]]:
+    """Run one step: ok, its line, the arguments sent, the reply and the input it fired.
+    `answered` gives what a README's exchange shows of it, and refuses a reply that cannot say
+    it on one line."""
     args: Mapping[str, Any] = {}
     reply: Reply | None = None
+    events: Sequence[timeline.Event] = ()
     try:
         built = dict(step.args(run) if callable(step.args) else step.args)
         if step.options:
@@ -624,14 +637,21 @@ async def _step(client: Client, step: Step, run: Run,
                 answered(step, reply)
         except ValueError as e:
             raise StepFailed(str(e)) from e
-        return True, f"OK {step.name}: {_one_line(summary)}", args, reply
+        if step.events is not None:
+            events = tuple(step.events(args, reply))
+        return True, f"OK {step.name}: {_one_line(summary)}", args, reply, events
     except Invalid as e:
-        return False, f"INVALID {step.name}: {_one_line(str(e))}", args, reply
+        return False, f"INVALID {step.name}: {_one_line(str(e))}", args, reply, ()
     except StepFailed as e:
-        return False, f"FAIL {step.name}: {_why(e)}", args, reply
+        return False, f"FAIL {step.name}: {_why(e)}", args, reply, ()
     except Exception as e:
         kind = "INVALID" if step.broken_is_invalid and reply is None else "FAIL"
-        return False, f"{kind} {step.name}: {_why(e)}", args, reply
+        return False, f"{kind} {step.name}: {_why(e)}", args, reply, ()
+
+
+def _status(reply: Reply | None, ok: bool) -> str:
+    """A call's status in the timeline: the reply's own, `ended` when there was none."""
+    return "ended" if reply is None else str(reply.get("status", "ok" if ok else "failed"))
 
 
 async def _cleanup(client: Client, out: Outcome) -> None:
@@ -794,6 +814,16 @@ def recording(name: str, frames: int, said: Callable[[Reply, Run], str] | None =
         return {"frames": frames, "dest": dest, "seconds": RECORD_SECONDS}
 
     return Step(name, RECORD_TOOL, args, recorded(frames, said), volatile=RECORDING_TIMING)
+
+
+def counted(reply: Reply | None) -> tuple[int | None, int | None]:
+    """The frames a reply says its call began and ended at: its own `frame_before` and
+    `frame_after`, else the last `frame` it counts for the end; None for what it does not say."""
+    if reply is None:
+        return None, None
+    begun, ended = reply.get("frame_before"), reply.get("frame_after")
+    return (begun if type(begun) is int else None,
+            ended if type(ended) is int else _last(reply.data, FRAME_KEY))
 
 
 def _last(value: Any, key: str) -> int | None:
@@ -1007,12 +1037,14 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
     norm = Normaliser(demo.root.resolve(), Path.home().resolve(),
                       {**VOLATILE, **demo.volatile}, demo.host_args)
     files = _beside(transcript)
-    for stale_file in (files.flow, files.examples, files.motion, files.lead):
+    for stale_file in (files.flow, files.examples, files.motion, files.lead, files.timeline):
         stale_file.unlink(missing_ok=True)  # only this run's may reach a README
     out = asyncio.run(_drive(demo, run, run.dir / "server.stderr", norm))
     if out.transcripts.whole:
         transcript.write_text("\n\n".join(out.transcripts.whole) + "\n", encoding="utf-8")
         files.normalised.write_text(_whole(out.transcripts.normalised), encoding="utf-8")
+    if out.timeline.calls:
+        files.timeline.write_text(out.timeline.dumps(), encoding="utf-8")
     if out.transcripts.flow:
         files.flow.write_text("\n\n".join(out.transcripts.flow) + "\n", encoding="utf-8")
     if out.transcripts.examples:
@@ -1051,13 +1083,14 @@ def load(demo_file: Path) -> Demo:
 @dataclass(frozen=True)
 class Beside:
     """What a run writes beside its transcript: the normalised run, the front door's flow, the
-    README's examples, its motion block and the front door's lead."""
+    README's examples, its motion block, the front door's lead and the run's timeline."""
 
     normalised: Path
     flow: Path
     examples: Path
     motion: Path
     lead: Path
+    timeline: Path
 
 
 def _beside(transcript: Path) -> Beside:
@@ -1065,7 +1098,7 @@ def _beside(transcript: Path) -> Beside:
     def beside(part: str) -> Path:
         return transcript.with_name(file_names.name(stem, part, extension="md"))
     return Beside(beside("normalised"), beside("flow"), beside("examples"), beside("motion"),
-                  beside("lead"))
+                  beside("lead"), beside("timeline").with_suffix(".json"))
 
 
 def _whole(entries: list[str]) -> str:
@@ -1106,7 +1139,8 @@ def stale(demo: Demo, run_dir: Path) -> list[str]:
         found.append(f"the README's {demo.name} lead: {drift}")
     if demo.readme is not None and demo.capture is not None:
         shot, committed = demo.capture(Run(dir=run_dir)), demo.readme.with_name("screen.png")
-        if not (same_picture(shot, committed) or cut_from(shot, committed)):
+        if not (shot.is_file() and committed.is_file()
+                and motion.shows_capture(shot.read_bytes(), committed.read_bytes())):
             found.append(f"{demo.name}'s screen.png is not this run's capture")
     if demo.readme is not None and demo.moments:
         if drift := first_difference(
@@ -1116,31 +1150,6 @@ def stale(demo: Demo, run_dir: Path) -> list[str]:
         if not demo.readme.with_name(motion.LOOP_NAME).is_file():
             found.append(f"{demo.name}'s {motion.LOOP_NAME} is not committed")
     return found
-
-
-def same_picture(a: Path, b: Path) -> bool:
-    """Whether two files hold the same picture: the same bytes, or the same pixels, because each
-    host's zlib compresses one raster into different bytes."""
-    if not (a.is_file() and b.is_file()):
-        return False
-    x, y = a.read_bytes(), b.read_bytes()
-    if x == y:
-        return True
-    try:
-        return png.decode(x) == png.decode(y)
-    except png.NotAPicture:
-        return False
-
-
-def cut_from(capture: Path, still: Path) -> bool:
-    """Whether `still` is a rectangle of the picture in `capture`, as a loop that cuts its
-    frames cuts the still beside it."""
-    if not (capture.is_file() and still.is_file()):
-        return False
-    try:
-        return png.cut_from(png.decode(capture.read_bytes()), png.decode(still.read_bytes()))
-    except png.NotAPicture:
-        return False
 
 
 def _no_readme(demo: Demo) -> Invalid:
@@ -1176,8 +1185,7 @@ def _update_readmes(demo: Demo, run: Run, readme: Path, capture: Path, files: Be
         opened(demo.lead.front, "lead", files.lead, lead_begin(demo.name), lead_end(demo.name))
     built = motion.build(shown, run.dir / "loop") if shown else None
     picture = capture.read_bytes()
-    if built is not None:
-        picture = motion.still(picture, built.kept)
+    picture = motion.still(picture, built.kept if built is not None else motion.whole(picture))
     readme.with_name("screen.png").write_bytes(picture)
     shutil.copyfile(files.normalised, readme.with_name(FULL_NAME))
     readme.write_text(text, encoding="utf-8")

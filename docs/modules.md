@@ -132,10 +132,30 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.reply_differences` | The reply fields of every tool both servers have, side by side, in [reply-differences.md](reply-differences.md). |
 | `scry_core.demo` | What runs a server's `demos/`: each step over stdio, its check, and the README blocks a run writes. |
 | `scry_core.example` | The one shape of an example: the ask, the call, an excerpt of the reply, how to read it. |
-| `scry_core.motion` | A demo's `loop.webp`: stretches cut from a run's recordings and assembled with ffmpeg and `img2webp`. |
+| `scry_core.motion` | A demo's `loop.webp` and `screen.png`: stretches cut from a run's recordings and assembled with ffmpeg and `img2webp`, both shown at 4:3. |
+| `scry_core.aspect` | The shape a game's picture is shown in: the whole frame at 4:3, one function for the loop and the still. |
+| `scry_core.timeline` | What a demo run did, call by call, in the emulator's frames: the file the demo decorator reads. |
 | `scry_core.install` | The table of MCP clients and the block of a server's README that says how to add it to each. |
 | `scry_core.game_demo` | One game's demo written once for both servers, with a `Binding` for what each emulator does differently. |
 | `scry_core.games` | The scripts of the games both servers run, one module per game. |
+
+### A demo run's timeline
+
+A run writes `<transcript>-timeline.json` beside its transcript: the calls it made, in order, with the emulator frame each began and ended at. `scry_core.timeline.loads` reads it back and refuses a document the writer never writes.
+
+The document is `{"version": 1, "demo": <name>, "calls": [...]}`. Each call holds:
+
+| Field | Holds |
+|---|---|
+| `n`, `step`, `tool` | Its position in the run from 1, the demo's name for it, and the tool called. |
+| `args` | The arguments as the demo gave them: a symbol stays the symbol written, with host paths spelled as in the transcript. |
+| `status` | The reply's `status`, or `ended` when there was no reply. |
+| `before`, `after` | The frame the call began and ended at, or null before any reply counted one. |
+| `events` | The input the call fired, each with its `frame`. |
+
+`before` and `after` come from the reply's `frame_before` and `frame_after`, else its last `frame`; a call that counts none stays where the call before left the machine. Loading a saved state rewinds the machine, so `after` can be smaller than `before`.
+
+An event is `{"kind": "key", "name", "down", "frame"}`, `{"kind": "button", "name", "down", "frame"}` or `{"kind": "pointer", "x", "y", "frame"}`. A pointer's `x` and `y` are the position the reply reports, in the emulator's screen pixels. A step names its events with `Step.events`, and an event's `frame` lies between its call's `before` and `after`.
 
 ## Tests a server runs
 

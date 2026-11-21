@@ -15,12 +15,13 @@ from typing import Any
 from mcp.server import MCPServer
 from mcp.types import CallToolResult, ImageContent, TextContent
 
-# A one-pixel PNG.
-PIXEL = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA"
-                         "60e6kgAAAABJRU5ErkJggg==")
+from scry_core import png
+
+# An 8 x 8 picture: the size of the frames of `screen.avi`, so a loop's still can be cut from it.
+PIXEL = png.encode(png.Raster(8, 8, bytes(range(192))))
 
 server = MCPServer("demo-fixture")
-_held: dict[str, int] = {"value": 0}
+_held: dict[str, int] = {"value": 0, "frame": 0}
 
 
 def _answer(body: dict[str, Any], *extra: Any) -> CallToolResult:
@@ -51,6 +52,25 @@ def read() -> CallToolResult:
     if note := os.environ.get("DEMO_NOTE"):     # a field the server adds only sometimes
         body["note"] = note
     return _answer(body)
+
+
+@server.tool()
+def press(key: str, frames: int = 4) -> CallToolResult:
+    """An input as MAME answers one: the frames the machine ran, and when the key went down and
+    up."""
+    before = _held["frame"]
+    _held["frame"] += frames + 1
+    return _answer({"status": "ok", "summary": f"press {key}", "frame_before": before,
+                    "frame_after": _held["frame"], "frame_set": before,
+                    "frame_released": before + frames, "frame": _held["frame"]})
+
+
+@server.tool()
+def point(x: int, y: int) -> CallToolResult:
+    """An input as DOSBox-X answers one: only the frame the machine stopped at."""
+    _held["frame"] += 3
+    return _answer({"status": "ok", "summary": "point", "pointer": {"x": x, "y": y},
+                    "frame": _held["frame"]})
 
 
 @server.tool()

@@ -13,7 +13,8 @@ and columns at the edges that are one colour, the same in every frame, are cut (
 area left empty in a cutscene), so what moves fills the width; `still` cuts the demo's picture
 the same way. The frames are then written scaled up a whole number of times, each pixel a sharp
 block, as far as `FIT` holds them: a README cannot ask its reader's browser for sharp pixels, so
-the file has them.
+the file has them. Loop and still are shown at the game's display aspect (`aspect`), 4:3, from
+the one function `Box.display`, so no page has to stretch a picture and none squashes it.
 
 Refused, as `Invalid`: more than `CUTS_MAX` cuts, one outside `CUT_SECONDS`, more than
 `LOOP_SECONDS` in all, a cut past the end of its recording, a recording that does not read as an
@@ -32,7 +33,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
 
-from scry_core import avi, png
+from scry_core import aspect, avi, png
 from scry_core.verdict import Invalid
 
 LOOP_NAME = "loop.webp"
@@ -44,8 +45,8 @@ LOOP_SECONDS = 6.0
 SLACK_SECONDS = 0.02
 RATE_MAX = 30
 BUDGET_BYTES = 400_000
-#: The width and height a loop's frames are scaled up towards and never past.
-FIT = (960, 600)
+#: The width and height a loop's frames are scaled up towards and never past, shown at 4:3.
+FIT = (960, 720)
 LOSSY_QUALITY = 80
 PROGRAMS = ("ffmpeg", "img2webp")
 #: The share of a capture's frames that are whole 2x2 blocks when the emulator doubled it: a
@@ -75,6 +76,10 @@ class Box:
     width: int
     height: int
     whole: tuple[int, int]
+
+    def display(self, times: int) -> tuple[list[int], list[int]]:
+        """The shown columns and rows of these frames `times` larger (`aspect.display`)."""
+        return aspect.display(self.whole, (self.x, self.y, self.width, self.height), times)
 
 
 @dataclass(frozen=True)
@@ -198,27 +203,24 @@ def halved(picture: Picture) -> Picture:
     return Picture(w // 2, h // 2, b"".join(lines), picture.ms)
 
 
-def factor(width: int, height: int) -> int:
-    """The whole number of times a frame of this size is scaled up: the most that stays within
-    `FIT`, and 1 for a frame already past half of it."""
-    return max(1, min(FIT[0] // width, FIT[1] // height))
+def factor(box: Box) -> int:
+    """The whole number of times the box's frames, shown at 4:3, scale up within `FIT`, or 1."""
+    across, down = aspect.scale(*box.whole)
+    return max(1, min(math.floor(FIT[0] / (box.width * across)),
+                      math.floor(FIT[1] / (box.height * down))))
 
 
-def scaled(picture: Picture, times: int) -> Picture:
-    """The frame with each pixel a `times` x `times` block of its colour."""
-    if times == 1:
-        return picture
-    w, rgb = picture.width, picture.rgb
-    row = w * 3
-    lines = []
-    for y in range(picture.height):
-        line = rgb[y * row:(y + 1) * row]
-        out = bytearray(row * times)
-        for n in range(times):
-            for c in range(3):
-                out[n * 3 + c::3 * times] = line[c::3]
-        lines.append(bytes(out) * times)
-    return Picture(w * times, picture.height * times, b"".join(lines), picture.ms)
+def displayed(picture: Picture, times: int, columns: Sequence[int],
+              rows: Sequence[int]) -> Picture:
+    """The frame `times` larger, each shown column and row (`Box.display`) a sharp pixel block."""
+    stride = picture.width * 3
+    starts = [column // times * 3 for column in columns]
+    lines: dict[int, bytes] = {}
+    for y in {row // times for row in rows}:
+        line = picture.rgb[y * stride:(y + 1) * stride]
+        lines[y] = b"".join(line[at:at + 3] for at in starts)
+    return Picture(len(columns), len(rows), b"".join(lines[row // times] for row in rows),
+                   picture.ms)
 
 
 def kept(pictures: Sequence[Picture]) -> Box:
@@ -263,23 +265,53 @@ def cropped(picture: Picture, box: Box) -> Picture:
     return Picture(box.width, box.height, rgb, picture.ms)
 
 
-def still(data: bytes, box: Box) -> bytes:
-    """The demo's PNG `data` cut as its loop is, at its own scale; `Invalid` when it is not a
-    whole number of times the loop's frames."""
-    if (box.width, box.height) == box.whole:
-        return data
+def _decoded(data: bytes) -> png.Raster:
     try:
-        raster = png.decode(data)
+        return png.decode(data)
     except png.NotAPicture as e:
         raise Invalid(f"the still does not read as a picture ({e})") from e
+
+
+def whole(data: bytes) -> Box:
+    """The box of a picture with nothing cut."""
+    raster = _decoded(data)
+    return Box(0, 0, raster.width, raster.height, (raster.width, raster.height))
+
+
+def _picked(raster: png.Raster, columns: Sequence[int], rows: Sequence[int]) -> png.Raster:
+    depth, stride = raster.depth, raster.width * raster.depth
+    starts = [column * depth for column in columns]
+    lines = {y: b"".join(raster.pixels[y * stride + at:y * stride + at + depth] for at in starts)
+             for y in set(rows)}
+    return png.Raster(len(columns), len(rows), b"".join(lines[y] for y in rows), raster.palette)
+
+
+def still(data: bytes, box: Box) -> bytes:
+    """The PNG `data` cut as the loop is and shown at 4:3, at its own scale; `Invalid` when it is
+    not a whole number of times the loop's frames."""
+    raster = _decoded(data)
     times = raster.width // box.whole[0]
     if times < 1 or (raster.width, raster.height) != (box.whole[0] * times,
                                                        box.whole[1] * times):
         raise Invalid(f"the still is {raster.width}x{raster.height}, not a whole number of times "
                       f"the loop's {box.whole[0]}x{box.whole[1]} frames, so it cannot be cut as "
                       "the loop is")
-    return png.encode(png.cropped(raster, box.x * times, box.y * times, box.width * times,
-                                  box.height * times))
+    columns, rows = box.display(times)
+    if (columns, rows) == (list(range(raster.width)), list(range(raster.height))):
+        return data
+    part = png.cropped(raster, box.x * times, box.y * times, box.width * times,
+                       box.height * times)
+    return png.encode(_picked(part, columns, rows))
+
+
+def shows_capture(capture: bytes, still_bytes: bytes) -> bool:
+    """Whether `still_bytes` is `capture` shown at 4:3, or a rectangle of it."""
+    try:
+        shown = png.decode(still(capture, whole(capture)))
+        seen = png.decode(still_bytes)
+    except (png.NotAPicture, Invalid):
+        return False
+    return seen == shown or png.cut_from(shown, seen)
 
 
 def merged(pictures: Sequence[Picture]) -> list[Picture]:
@@ -339,15 +371,15 @@ def _frames(ffmpeg: str, cut: Cut, per_second: Fraction, step: int, work: Path) 
 
 
 def _assembled(img2webp: str, pictures: Sequence[Picture], work: Path, lossless: bool,
-               times: int) -> bytes:
-    """`pictures`, each scaled up `times`, as one animated WebP written in `work` and read
-    back."""
+               times: int, shape: tuple[list[int], list[int]]) -> bytes:
+    """`pictures`, each scaled up `times` and shown in the `shape` of `Box.display`, as one
+    animated WebP written in `work` and read back."""
     work.mkdir(parents=True, exist_ok=True)
     out = work / LOOP_NAME
     argv = [img2webp, "-loop", "0", "-min_size"]
     for n, picture in enumerate(pictures):
         file = work / f"frame-{n:05d}.ppm"
-        file.write_bytes(ppm(scaled(picture, times)))
+        file.write_bytes(ppm(displayed(picture, times, *shape)))
         argv += ["-lossless"] if lossless else ["-lossy", "-q", str(LOSSY_QUALITY)]
         argv += ["-d", str(picture.ms), str(file)]
     done = subprocess.run([*argv, "-o", str(out)], capture_output=True, text=True, check=False)
@@ -375,10 +407,11 @@ def build(cuts: Sequence[Cut], work: Path) -> Built:
     pictures = merged(pictures)
     box = kept(pictures)
     pictures = merged([cropped(picture, box) for picture in pictures])
-    times = factor(box.width, box.height)
+    times = factor(box)
+    shape = box.display(times)
     weighed = []
     for lossless in (True, False):
-        data = _assembled(found["img2webp"], pictures, work / "webp", lossless, times)
+        data = _assembled(found["img2webp"], pictures, work / "webp", lossless, times, shape)
         if len(data) <= BUDGET_BYTES:
             return Built(data, cut_ms, lossless, box)
         weighed.append(f"{len(data)} bytes {'lossless' if lossless else 'lossy'}")

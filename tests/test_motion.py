@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from scry_core import motion, png
+from scry_core import aspect, motion, png
 from scry_core.verdict import Invalid
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "demo" / "screen.avi"
@@ -73,27 +73,59 @@ def test_a_capture_the_emulator_doubled_is_told_and_halved_back() -> None:
 
 
 @pytest.mark.parametrize(("size", "times"), [
-    ((320, 200), 3), ((256, 240), 2), ((256, 224), 2), ((320, 240), 2), ((640, 480), 1),
+    ((320, 200), 3), ((256, 240), 3), ((256, 224), 3), ((320, 240), 3), ((640, 480), 1),
     ((800, 600), 1), ((1024, 768), 1), ((160, 100), 6), ((960, 600), 1), ((961, 100), 1),
 ])
-def test_a_frame_is_scaled_up_by_the_most_whole_times_that_fit(size: tuple[int, int],
-                                                               times: int) -> None:
-    assert motion.factor(*size) == times
-    assert size[0] * times <= max(size[0], motion.FIT[0])
-    assert size[1] * times <= max(size[1], motion.FIT[1])
+def test_a_frame_is_scaled_up_by_the_most_whole_times_that_fit_shown_at_4_to_3(
+        size: tuple[int, int], times: int) -> None:
+    box = motion.Box(0, 0, *size, size)
+    assert motion.factor(box) == times
+    wide, high = aspect.shown(size[0] * times, size[1] * times)
+    assert times == 1 or (wide <= motion.FIT[0] and high <= motion.FIT[1])
 
 
-def test_a_frame_scaled_up_keeps_each_pixel_as_one_sharp_block() -> None:
+def test_a_cut_frame_is_scaled_by_its_own_size_and_the_whole_frame_s_shape() -> None:
+    cutscene = motion.Box(0, 28, 320, 144, (320, 200))
+    assert motion.factor(cutscene) == 3, "320 wide shown at 3x is 960; 144 rows stretched, 518"
+    narrow = motion.Box(100, 0, 40, 200, (320, 200))
+    assert motion.factor(narrow) == 3, "the band is 200 rows of a 200-row frame, shown 240 tall"
+    corner = motion.Box(0, 0, 30, 100, (320, 200))
+    assert motion.factor(corner) == 6, "100 rows are shown 120 tall, and 720 holds 6 of those"
+
+
+def test_a_frame_shown_keeps_each_pixel_as_one_sharp_block() -> None:
     red, blue, grey = (200, 0, 0), (0, 0, 200), (9, 9, 9)
     small = motion.Picture(3, 2, bytes(red + blue + grey + grey + red + blue), 70)
-    big = motion.scaled(small, 2)
+    big = motion.displayed(small, 2, range(6), range(4))
     assert (big.width, big.height, big.ms) == (6, 4, 70)
     assert big.rgb == _blocks([[red, blue, grey], [grey, red, blue]]).rgb
     assert motion.halved(big).rgb == small.rgb, "scaled up and halved back is the same frame"
-    assert motion.scaled(small, 1) is small
-    three = motion.scaled(small, 3)
+    three = motion.displayed(small, 3, range(9), range(6))
     row = bytes(red * 3 + blue * 3 + grey * 3)
     assert three.rgb[:len(row) * 3] == row * 3, "three lines of three pixels each"
+
+
+def test_a_frame_shown_repeats_the_rows_and_columns_its_shape_asks_for() -> None:
+    red, blue = (200, 0, 0), (0, 0, 200)
+    small = motion.Picture(2, 2, bytes(red + blue + blue + red), 70)
+    stretched = motion.displayed(small, 1, [0, 1], [0, 0, 1, 1, 1])
+    assert (stretched.width, stretched.height) == (2, 5)
+    assert stretched.rgb == bytes(red + blue) * 2 + bytes(blue + red) * 3
+
+
+def test_a_320_by_200_frame_is_shown_at_4_to_3_with_no_row_dropped() -> None:
+    whole = motion.Box(0, 0, 320, 200, (320, 200))
+    columns, rows = whole.display(4)
+    assert (len(columns), len(rows)) == (1280, 960), "the card's 1280 x 800 shown at 1280 x 960"
+    assert columns == list(range(1280)) and set(r // 4 for r in rows) == set(range(200)), \
+        "every pixel row of the game is shown, each one 4.8 pixels tall"
+    cutscene = motion.Box(0, 28, 320, 144, (320, 200))
+    columns, rows = cutscene.display(2)
+    assert (len(columns), len(rows)) == (640, 345), "the card's 640 x 288 is 640 x 345.6"
+    assert min(rows) == 0 and max(rows) // 2 == 143, "the rows are the cutscene's, no more"
+    shown_whole = whole.display(2)[1]
+    assert rows == [r - 56 for r in shown_whole if 56 <= r < 56 + 288], \
+        "the cut's rows are those of the stretched whole frame that fall within the cut"
 
 
 def _rows(rows: list[list[tuple[int, int, int]]], ms: int = 40) -> motion.Picture:
@@ -141,18 +173,48 @@ def _still(width: int, height: int, k: int) -> bytes:
 
 
 def test_a_still_is_cut_as_its_loop_is_at_the_still_s_own_scale() -> None:
-    data = _still(4, 5, 2)
-    box = motion.Box(1, 0, 3, 3, (4, 5))
+    data = _still(4, 3, 2)
+    box = motion.Box(1, 0, 3, 2, (4, 3))
     cut = png.decode(motion.still(data, box))
-    assert (cut.width, cut.height) == (6, 6)
-    assert cut == png.cropped(png.decode(data), 2, 0, 6, 6)
-    lower = png.decode(motion.still(data, motion.Box(1, 1, 2, 2, (4, 5))))
+    assert (cut.width, cut.height) == (6, 4)
+    assert cut == png.cropped(png.decode(data), 2, 0, 6, 4)
+    lower = png.decode(motion.still(data, motion.Box(1, 1, 2, 2, (4, 3))))
     assert lower == png.cropped(png.decode(data), 2, 2, 4, 4)
-    assert motion.still(data, motion.Box(0, 0, 4, 5, (4, 5))) is data, \
-        "a still whose loop cuts nothing is the capture, byte for byte"
-    with pytest.raises(Invalid, match=r"the still is 8x10, not a whole number of times the "
+    assert motion.still(data, motion.Box(0, 0, 4, 3, (4, 3))) is data, \
+        "a still already at 4:3 whose loop cuts nothing is the capture, byte for byte"
+    with pytest.raises(Invalid, match=r"the still is 8x6, not a whole number of times the "
                                       r"loop's 3x5 frames, so it cannot be cut as the loop is"):
         motion.still(data, motion.Box(0, 0, 3, 4, (3, 5)))
+
+
+def _nearest(raster: png.Raster, rows: list[int]) -> png.Raster:
+    stride = raster.width * 3
+    return png.Raster(raster.width, len(rows),
+                      b"".join(raster.pixels[y * stride:(y + 1) * stride] for y in rows))
+
+
+def test_a_still_is_shown_at_4_to_3_as_the_loop_beside_it_is() -> None:
+    """An 8 x 5 game at 2x: 16 x 10 shown 16 x 12, each of its 10 rows 1.2 shown rows tall."""
+    data = _still(8, 5, 2)
+    raster = png.decode(data)
+    whole = png.decode(motion.still(data, motion.Box(0, 0, 8, 5, (8, 5))))
+    assert whole == _nearest(raster, [y * 10 // 12 for y in range(12)])
+    cut = png.decode(motion.still(data, motion.Box(0, 1, 8, 3, (8, 5))))
+    assert (cut.width, cut.height) == (16, 7)
+    assert cut == _nearest(png.cropped(raster, 0, 2, 16, 6),
+                           [y * 10 // 12 - 2 for y in range(3, 10)]), \
+        "the cut is the rows of the stretched whole frame that fall within it"
+    assert png.decode(motion.still(data, motion.whole(data))) == whole
+
+
+def test_a_capture_with_no_loop_is_shown_whole_and_a_wider_one_is_widened() -> None:
+    wide = png.encode(png.Raster(4, 5, bytes(range(60))))
+    shown = png.decode(motion.still(wide, motion.whole(wide)))
+    assert (shown.width, shown.height) == (7, 5), "a portrait frame grows wider, never shorter"
+    assert motion.shows_capture(wide, png.encode(shown))
+    assert not motion.shows_capture(wide, wide), "the capture as it was is not what is shown"
+    assert not motion.shows_capture(wide, b"not a picture")
+    assert not motion.shows_capture(b"not a picture", wide)
 
 
 def test_equal_frames_in_a_row_become_one_that_lasts_as_long() -> None:
@@ -216,8 +278,8 @@ def test_a_loop_is_built_from_cuts_of_a_real_recording(tmp_path: Path) -> None:
     if webpmux is not None:
         info = subprocess.run([webpmux, "-info", str(out)], capture_output=True, text=True,
                               check=True).stdout
-        assert "Canvas size: 600 x 600" in info and "Loop Count : 0" in info, \
-            f"the fixture's 8 x 8 frames are not scaled up 75 times: {info}"
+        assert "Canvas size: 960 x 720" in info and "Loop Count : 0" in info, \
+            f"the fixture's 8 x 8 frames are not scaled up 90 times, shown at 4:3: {info}"
         lasting = [int(line.split()[6]) for line in info.splitlines() if line.strip()[:1].isdigit()
                    and ":" in line.split()[0]]
         assert sum(lasting) == 2200, info
@@ -258,8 +320,8 @@ def _faked(monkeypatch: pytest.MonkeyPatch, frames: dict[int, list[motion.Pictur
         return frames[cut.first]
 
     def weigh(img2webp: str, pictures: list[motion.Picture], work: Path,
-              lossless: bool, times: int) -> bytes:
-        assembled.append([motion.scaled(picture, times) for picture in pictures])
+              lossless: bool, times: int, shape: tuple[list[int], list[int]]) -> bytes:
+        assembled.append([motion.displayed(picture, times, *shape) for picture in pictures])
         return b"w" * sizes[len(assembled) - 1]
 
     monkeypatch.setattr(motion, "programs", lambda: {"ffmpeg": "f", "img2webp": "i"})
@@ -275,14 +337,16 @@ def test_a_capture_nearly_all_doubled_is_halved_torn_frames_included(
     assembled = _faked(monkeypatch, {0: [whole] * 9 + [torn]}, [1])
     built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
     assert built.lossless and built.cut_ms == (400,)
-    times = motion.factor(2, 2)
-    assert {(p.width, p.height) for p in assembled[0]} == {(2 * times, 2 * times)}, \
-        "the capture was not halved, then scaled up to fit"
+    assert built.kept.whole == (2, 2), "the capture was not halved"
+    times = motion.factor(built.kept)
+    assert {(p.width, p.height) for p in assembled[0]} == {aspect.shown(2 * times, 2 * times)}, \
+        "the halved capture was not scaled up to fit and shown at 4:3"
     assert [p.ms for p in assembled[0]] == [360, 40], "equal frames were not merged"
     assembled = _faked(monkeypatch, {0: [whole] * 8 + [torn] * 2}, [1])
-    motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
-    times = motion.factor(4, 4)
-    assert {(p.width, p.height) for p in assembled[0]} == {(4 * times, 4 * times)}, \
+    built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
+    assert built.kept.whole == (4, 4), "the capture was halved"
+    times = motion.factor(motion.Box(0, 0, 4, 4, (4, 4)))
+    assert {(p.width, p.height) for p in assembled[0]} == {aspect.shown(4 * times, 4 * times)}, \
         "a capture a fifth of whose frames are not doubled is the machine's own size, scaled"
 
 
@@ -319,7 +383,8 @@ def test_an_assembly_that_fails_is_invalid_with_its_own_words(
         a, 2, "", "Error! Frame dimensions mismatched"))
     with pytest.raises(Invalid, match=r"img2webp refused to assemble the loop \(exit 2\): Error! "
                                       "Frame dimensions mismatched"):
-        motion._assembled("img2webp", [_picture(2, 2)], tmp_path, True, 1)
+        motion._assembled("img2webp", [_picture(2, 2)], tmp_path, True, 1,
+                          ([0, 1], [0, 1]))
 
 
 def test_a_cut_longer_than_a_moment_is_invalid_with_half_a_frame_of_slack(
@@ -352,15 +417,18 @@ def test_a_cut_decodes_the_frames_it_names_and_no_others(tmp_path: Path) -> None
 
 def test_a_loop_shows_only_what_moves_its_band_cut_before_it_is_scaled_up(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """A 160 x 200 scene whose last 100 rows are black in every frame: whole it scales 3 times;
-    cut to 160 x 100 it scales 6 times and fills the width, and the loop says what it kept."""
+    """A 320 x 200 scene that moves only in its top left 160 x 100, black elsewhere in every
+    frame: whole it scales 3 times; cut to the quarter it scales 6 times, shown at 960 x 720,
+    and the loop says what it kept."""
     def scene(seed: int) -> motion.Picture:
-        moving = bytes((n * 7 + seed) % 256 for n in range(3 * 160 * 100))
-        return motion.Picture(160, 200, moving + bytes(3 * 160 * 100), 40)
+        row = bytes((n * 7 + seed) % 256 for n in range(3 * 160)) + bytes(3 * 160)
+        return motion.Picture(320, 200, row * 100 + bytes(3 * 320 * 100), 40)
 
     assembled = _faked(monkeypatch, {0: [scene(0), scene(1)]}, [1])
     built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
-    assert built.kept == motion.Box(0, 0, 160, 100, (160, 200))
-    assert (motion.factor(160, 200), motion.factor(160, 100)) == (3, 6), "the case needs both"
-    assert {(p.width, p.height) for p in assembled[0]} == {(960, 600)}, \
-        "the band was scaled up with the scene"
+    kept = motion.Box(0, 0, 160, 100, (320, 200))
+    assert built.kept == kept
+    assert (motion.factor(motion.Box(0, 0, 320, 200, (320, 200))), motion.factor(kept)) == (3, 6), \
+        "the case needs both"
+    assert {(p.width, p.height) for p in assembled[0]} == {(960, 720)}, \
+        "the quarter was scaled up with the scene"

@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +17,7 @@ import pytest
 from mcp.client import Client
 
 from scry_core import demo as d
-from scry_core import example, motion, png, verdict
+from scry_core import example, motion, png, timeline, verdict
 from scry_core.verdict import EXIT_INVALID
 
 SERVER = Path(__file__).resolve().parent / "fixtures" / "demo" / "server.py"
@@ -314,10 +315,99 @@ def test_update_readme_rewrites_the_block_and_the_capture(
     assert d.block_of(text) == examples.read_text().strip("\n")
     assert text.startswith("# A demo\n\n") and text.endswith("\n\nAfter.\n")
     assert "old motion" in text, "a demo with no moment had its motion block rewritten"
-    assert (_readme(demo).parent / "screen.png").read_bytes() == _shot(tmp_path).read_bytes()
+    capture = png.decode(_shot(tmp_path).read_bytes())
+    still = png.decode((_readme(demo).parent / "screen.png").read_bytes())
+    assert (still.width, still.height) == (11, 8), "an 8 x 8 capture is shown at 4:3"
+    stride = capture.width * 3
+    assert still.pixels == b"".join(
+        capture.pixels[y * stride + c * 8 // 11 * 3:y * stride + c * 8 // 11 * 3 + 3]
+        for y in range(8) for c in range(11))
     assert d.readme_drift(_readme(demo), examples) == ""
     examples.write_text(examples.read_text().replace("Start it", "Stop it", 1))
     assert d.readme_drift(_readme(demo), examples).startswith("line 1: the README has ")
+
+
+def _pressed(args: Mapping[str, Any], reply: d.Reply) -> list[timeline.Event]:
+    return [timeline.key(args["key"], True, reply["frame_set"]),
+            timeline.key(args["key"], False, reply["frame_released"])]
+
+
+def _pointed(args: Mapping[str, Any], reply: d.Reply) -> list[timeline.Event]:
+    return [timeline.pointer(reply["pointer"]["x"], reply["pointer"]["y"])]
+
+
+def test_a_run_writes_its_timeline_beside_the_transcript_with_the_frames_each_call_spanned(
+        tmp_path: Path, log: Path) -> None:
+    """The arguments are as the demo gave them: `Fire 1` is the name the agent wrote, and the
+    run's own directory is spelled as the transcript spells it."""
+    steps = [
+        d.Step("boot", "start", {"value": 7}, _said("value")),
+        d.Step("fire", "press", {"key": "Fire 1", "frames": 4}, _said("summary"),
+               events=_pressed),
+        d.Step("aim", "point", {"x": 12, "y": 34}, _said("summary"), events=_pointed),
+        d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
+               lambda reply, run: "a picture"),
+        d.Step("end", "close", {}, lambda reply, run: "closed"),
+    ]
+    assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_PASS
+    written = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())
+    calls = written["calls"]
+    assert [(c["tool"], c["before"], c["after"]) for c in calls] == [
+        ("start", None, None), ("press", 0, 5), ("point", 5, 8), ("picture", 8, 8),
+        ("close", 8, 8)]
+    assert calls[1]["args"] == {"key": "Fire 1", "frames": 4}
+    assert calls[1]["events"] == [
+        {"kind": "key", "name": "Fire 1", "down": True, "frame": 0},
+        {"kind": "key", "name": "Fire 1", "down": False, "frame": 4}]
+    assert calls[2]["events"] == [{"kind": "pointer", "x": 12, "y": 34, "frame": 8}], \
+        "a reply that counts no `frame_after` ends at the frame it stopped at"
+    assert str(tmp_path) not in json.dumps(calls[3]["args"]), "a path is spelled as the transcript"
+
+
+def test_a_failed_step_is_in_the_timeline_with_its_status_and_no_events(
+        tmp_path: Path, log: Path) -> None:
+    def refused(reply: d.Reply, run: d.Run) -> str:
+        raise d.StepFailed("the check says no")
+
+    steps = [d.Step("boot", "start", {}, _said("value")),
+             d.Step("fire", "press", {"key": "A"}, refused, events=_pressed)]
+    assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_FAIL
+    calls = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
+    assert [(c["step"], c["status"], c["events"]) for c in calls] == [
+        ("boot", "ok", []), ("fire", "ok", [])], "the failed step fired input the run never saw"
+
+
+def test_a_pointer_in_the_first_call_that_counts_a_frame_does_not_end_the_run_invalid(
+        tmp_path: Path, log: Path) -> None:
+    steps = [d.Step("boot", "start", {}, _said("value")),
+             d.Step("aim", "point", {"x": 1, "y": 2}, _said("summary"), events=_pointed)]
+    assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_PASS
+    calls = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
+    assert (calls[1]["before"], calls[1]["after"]) == (None, 3)
+    assert calls[1]["events"] == [{"kind": "pointer", "x": 1, "y": 2, "frame": 3}]
+
+
+def test_an_event_outside_the_frames_of_its_call_makes_the_run_invalid(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def early(args: Mapping[str, Any], reply: d.Reply) -> list[timeline.Event]:
+        return [timeline.key("A", True, reply["frame_after"] + 1)]
+
+    steps = [d.Step("boot", "start", {}, _said("value")),
+             d.Step("fire", "press", {"key": "A"}, _said("summary"), events=early)]
+    assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_INVALID
+    assert "outside the call's 0 to 5" in capsys.readouterr().out
+
+
+def test_a_run_replaces_the_timeline_an_earlier_one_left_and_a_run_that_never_started_leaves_none(
+        tmp_path: Path, log: Path) -> None:
+    left = tmp_path / "out" / "transcript-timeline.json"
+    left.parent.mkdir(parents=True)
+    left.write_text("old")
+    assert _run(_demo(tmp_path, [d.Step("boot", "start", {}, _said("value"))]), tmp_path) == 0
+    assert timeline.loads(left.read_text())["calls"][0]["tool"] == "start"
+    broken = _demo(tmp_path, server=[sys.executable, "-c", "raise SystemExit(1)"])
+    assert _run(broken, tmp_path) == verdict.EXIT_INVALID
+    assert not left.exists(), "a timeline from an earlier run would read as this run's"
 
 
 def _film(name: str = "film") -> d.Step:
@@ -501,7 +591,7 @@ def test_stale_ignores_a_loop_s_bytes_and_names_what_departs_from_the_run(
 def test_a_loop_that_cuts_its_frames_cuts_the_still_beside_it_and_stale_holds_it(
         tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A capture twice the size of 2 x 1 frames whose loop keeps the right pixel: the still is
-    that pixel's 2 x 2 block, and it stays this run's capture for `stale`."""
+    that pixel's block shown at 4:3, and it stays this run's capture for `stale`."""
     big = png.encode(png.enlarged(png.Raster(2, 1, bytes((1, 2, 3, 4, 5, 6))), 2))
 
     def drawn(run: d.Run) -> dict[str, Any]:
@@ -516,9 +606,10 @@ def test_a_loop_that_cuts_its_frames_cuts_the_still_beside_it_and_stale_holds_it
         built(cuts, work), kept=motion.Box(1, 0, 1, 1, (2, 1))))
     assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
     still = _readme(demo).with_name("screen.png")
-    assert png.decode(still.read_bytes()) == png.Raster(2, 2, bytes((4, 5, 6)) * 4)
+    assert png.decode(still.read_bytes()) == png.Raster(2, 3, bytes((4, 5, 6)) * 6), \
+        "the pixel's 2 x 2 block, its rows stretched to show the 4 x 2 capture at 4:3"
     assert d.stale(demo, tmp_path / "out") == []
-    still.write_bytes(png.encode(png.Raster(2, 2, bytes((7, 7, 7)) * 4)))
+    still.write_bytes(png.encode(png.Raster(2, 3, bytes((7, 7, 7)) * 6)))
     assert d.stale(demo, tmp_path / "out") == ["x's screen.png is not this run's capture"]
 
 

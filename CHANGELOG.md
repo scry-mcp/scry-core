@@ -19,6 +19,15 @@ What a server author notices. A client's view of each server is in that server's
 - A caption is written by `abbreviation.caption`: a path shows its last name only and a home
   folder shows as `~`. `placement` decides `place="auto"`, and `placement_vectors.txt` holds the
   cases a drawer in another language replays.
+- A demo's `loop.webp` and `screen.png` are written at the game's display aspect, 4:3, from one
+  function (`aspect`, `motion.Box.display`): a 320x200 game comes out 4:3 and no page has to
+  stretch it. `motion.FIT` is 960 by 720, `motion.factor` takes a `Box`, `motion.scaled` is
+  `motion.displayed`, and `demo.same_picture` and `demo.cut_from` are `motion.shows_capture`.
+  A demo's capture must be a picture `scry_core.png` reads, as a demo with a loop already needed.
+- A demo run writes `<transcript>-timeline.json` beside its transcript: each call with its
+  arguments as given and the emulator frame it began and ended at, and the input it fired where
+  its step says (`Step.events`, `timeline.key`, `button`, `pointer`). The format is in
+  `docs/modules.md`; `timeline.loads` reads it.
 
 ## 0.120.1
 
