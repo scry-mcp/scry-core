@@ -152,7 +152,7 @@
         "timer flags"
       ],
       "description": "Timer control: starts, stops and masks the two timers and resets their flags.",
-      "behaviour": "Bit 7 resets the timer flags and the interrupt, bit 6 masks timer 1, bit 5 masks timer 2, bit 1 starts timer 2 and bit 0 starts timer 1.",
+      "behaviour": "Bit 7 resets the timer flags and the interrupt, and while it is set the write ignores all the other bits, so 0x81 does not start timer 1. With bit 7 clear, bit 6 masks timer 1, bit 5 masks timer 2, bit 1 starts timer 2 and bit 0 starts timer 1.",
       "sources": [
         {
           "role": "documentation",
@@ -171,8 +171,8 @@
         }
       ],
       "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
+        "by": "phase Kcc3",
+        "writer": "phase Kcf2",
         "against": [
           {
             "ref": "rbil61:PORTS.B AdLib index 04h",
@@ -187,7 +187,7 @@
             "line": "//           04 x------- RST"
           }
         ],
-        "digest": "f5a23f26afffba1911a15884ed4c1627ab8f936ba1d54f15c8c94805984df75f"
+        "digest": "7549ab30351b12e7208db96e4fab6fc0aa1d52cc447e5aea145abaae48466038"
       }
     },
     {
@@ -242,7 +242,7 @@
         "rhythm"
       ],
       "description": "Rhythm register: the tremolo and vibrato depths, the rhythm mode and its five key-on bits.",
-      "behaviour": "Bit 7 selects the deep tremolo, bit 6 the deep vibrato, bit 5 enables rhythm mode, and bits 4 to 0 key on the bass drum, snare, tom, top cymbal and high hat.",
+      "behaviour": "Bit 7 selects the deep tremolo, bit 6 the deep vibrato, bit 5 enables rhythm mode, and bits 4 to 0 key on the bass drum, snare, tom, top cymbal and high hat, which they do only while bit 5 is set: with rhythm mode off those five bits are ignored, and clearing bit 5 keys the drums off.",
       "sources": [
         {
           "role": "documentation",
@@ -261,8 +261,8 @@
         }
       ],
       "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
+        "by": "phase Kcc3",
+        "writer": "phase Kcf2",
         "against": [
           {
             "ref": "rbil61:PORTS.B AdLib index BDh",
@@ -277,7 +277,7 @@
             "line": "//           BD x------- AM depth"
           }
         ],
-        "digest": "b66d5b86dbf1558bc016df2293d1d31b1e00514f3a5cf2f594bf1c6f049195db"
+        "digest": "a5b3459637b1ee8bfc6a05e87fa53b72298ced27d3ae7b1adb3a43d8e56ca32d"
       }
     },
     {

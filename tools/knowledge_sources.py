@@ -310,6 +310,7 @@ SNM = "mame:src/devices/sound/sn76496.cpp"
 SND = "dosbox-x:src/hardware/mame/sn76496.cpp"
 SNW = "sn76496_base_device::write"
 OPLH = "mame:3rdparty/ymfm/src/ymfm_opl.h"
+YMFOPL = "mame:3rdparty/ymfm/src/ymfm_opl.cpp"
 DBOPL = "dosbox-x:src/hardware/dbopl.cpp"
 ADLIB = "dosbox-x:src/hardware/adlib.cpp"
 M68 = "mame:src/devices/video/mc6845.cpp"
@@ -876,6 +877,21 @@ def rules() -> list[Spec]:
         Line(f"{DBOPL} Chip::WriteReg reg 0x104", r"reg == 0x104\b", "Chip::WriteReg"),
         Line(f"{DBOPL} Chip::WriteReg reg 0x105", r"reg == 0x105\b", "Chip::WriteReg"),
         Line(f"{DBOPL} Chip::WriteReg reg 0xbd", r"reg == 0xbd\b", "Chip::WriteReg"),
+        Line(
+            f"{DBOPL} Chip::WriteAddr opl3Active",
+            r"opl3Active \|\| \(val == 0x05u\)",
+            "Chip::WriteAddr",
+        ),
+        Line(
+            f"{YMFOPL} ymf262::write_address_hi newflag",
+            r"newflag\(\) == 0 && m_address != 0x105",
+            "ymf262::write_address_hi",
+        ),
+        Line(
+            f"{YMFOPL} ymf262::write_address_hi address",
+            r"^\s*m_address = data \| 0x100;",
+            "ymf262::write_address_hi",
+        ),
     ]
     for _n in (0x20, 0x40, 0x60, 0x80, 0xA0, 0xB0, 0xC0, 0xE0):
         specs.append(

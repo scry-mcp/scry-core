@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable
 from scry_core.knowledge import keys, sources, text
 from scry_core.knowledge.database import Base
 from scry_core.knowledge.entry import Entry
-from scry_core.knowledge.lock import COMMAND, Lock
+from scry_core.knowledge.lock import COMMAND, REOPEN_COMMAND, Lock
 from scry_core.knowledge.sources import SourceIndex
 from scry_core.knowledge.support import Support
 
@@ -233,7 +233,8 @@ def reworded(base: Base) -> list[str]:
 
 def locked(base: Base, lock: Lock) -> list[str]:
     """The lock and the base agree: each locked entry is still an entry, still checked and at the
-    seal it was locked at, and each checked entry is locked."""
+    seal it was locked at, each checked entry is locked, and no reopening is recorded for an
+    entry sealed again as it was."""
     out: list[str] = []
     for id_, sealed in lock.checked.items():
         e = base.by_id(id_)
@@ -247,8 +248,16 @@ def locked(base: Base, lock: Lock) -> list[str]:
             out.append(f"{id_} is locked at {sealed.digest[:12]} and now seals as "
                        f"{e.digest[:12]}: a checked entry is never touched; a correction is "
                        f"checked anew by another session and sealed with {COMMAND}")
-    out += [f"{e.id} is checked and is not in the lock: seal it with {COMMAND}"
+    out += [f"{e.id} is checked and is not in the lock: seal it with {COMMAND}; a seal is lifted "
+            f"only with {REOPEN_COMMAND}, which removes the `checked` record too"
             for e in base.entries() if e.checked is not None and e.id not in lock.checked]
+    for r in lock.reopened:
+        e, held = base.by_id(r.id), lock.checked.get(r.id)
+        if (held is not None and held.digest == r.digest) or (
+                e is not None and e.checked is not None and e.digest == r.digest):
+            out.append(f"{r.id} was reopened by {r.by!r} and is sealed at the digest it had "
+                       f"({r.digest[:12]}): a reopened entry is rewritten and checked anew, "
+                       "never sealed as it was")
     return out
 
 

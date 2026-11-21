@@ -219,6 +219,22 @@ public source each fact was checked against. A server ships dictionaries and one
   changed: the check has to be by another session or against other lines. An
   entry retired for good has its line deleted from the lock by hand, in the commit that removes
   it.
+- **Reopening a sealed entry**: an entry a check or a reading finds wrong or incomplete is
+  reopened with its own command, never by editing the lock or the dictionary by hand:
+
+  ```sh
+  python -m scry_core.knowledge.reopen <dictionary.json> <entry id>... --lock <lock.json> \
+      --by <who reopens> --why <what is wrong>
+  ```
+
+  It removes the entry's `checked` record and its lock row and adds to the lock's `reopened`
+  list the id, the digest the entry had, who reopened it and why, and who had checked it against
+  which lines, so the lock tells the history and `seal` still refuses a re-check by that checker
+  against those lines. It refuses
+  an entry that is not locked, and writes both files or neither. The entry is then rewritten,
+  checked by another session and sealed again with `seal`. The contract fails when a
+  reopening is recorded for an entry that is sealed at the digest it had, and when a checked
+  entry has no lock row.
 - **The declaration**: `knowledge/support.py` holds one `Support` listing the `Scope`s (a system
   or a cpu, with the kinds it owes; `support="named"` for a cpu the base names and the server
   does not claim to run), the `Device`s and the `Chip`s. Adding one there is the only step; the

@@ -489,7 +489,26 @@
           "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0a",
           "cites": "\t\tcase 0x0a:  m_cursor_start_ras =   data & 0x7f; break;"
         }
-      ]
+      ],
+      "checked": {
+        "by": "phase Kcc2",
+        "writer": "phase Kcf",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B CRT register 0Ah cursor start",
+            "line": " 0Ah\tcursor start\t\t\t\t  0Bh\t00h   06h   06h 06h/00h"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/vga_other.cpp write_crtc_data_other case 0x0a",
+            "line": "\tcase 0x0A:\t/* Cursor Start Register */"
+          },
+          {
+            "ref": "mame:src/devices/video/mc6845.cpp mc6845_device::register_w case 0x0a",
+            "line": "\t\tcase 0x0a:  m_cursor_start_ras =   data & 0x7f; break;"
+          }
+        ],
+        "digest": "734b415558144e1517cb64821cc608cae8e330ebc8e2336490a9307a64754309"
+      }
     },
     {
       "key": "0x0B",

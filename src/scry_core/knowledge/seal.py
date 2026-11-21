@@ -19,7 +19,7 @@ from scry_core.knowledge import keys
 from scry_core.knowledge.lock import COMMAND, Lock, Locked, dumps, read_lock
 
 
-def _find(doc: Mapping[str, Any], header: fmt.Header, wanted: str) -> dict[str, Any] | None:
+def find(doc: Mapping[str, Any], header: fmt.Header, wanted: str) -> dict[str, Any] | None:
     for raw in doc["entries"]:
         if not (isinstance(raw, dict) and isinstance(raw.get("key"), str)):
             continue
@@ -35,8 +35,9 @@ def _find(doc: Mapping[str, Any], header: fmt.Header, wanted: str) -> dict[str, 
 
 
 def _again(locked: Locked | None, now: fmt.Check, seal_: str) -> str:
-    """Why `now` is no new check of an entry already locked, or nothing: its seal moved (the text
-    or the record changed) and the checker and the lines compared are the locked ones."""
+    """Why `now` is no new check of an entry already locked, or last locked before it was
+    reopened, or nothing: its seal moved (the text or the record changed) and the checker and the
+    lines compared are those."""
     if locked is None or locked.digest == seal_ or locked.by != now.by or (
             sorted(locked.against) != sorted(now.against)):
         return ""
@@ -45,10 +46,10 @@ def _again(locked: Locked | None, now: fmt.Check, seal_: str) -> str:
             "that check is what `checked` records")
 
 
-def seal(file: Path, ids: Sequence[str], lock_file: Path) -> list[str]:
-    """Stamps the seal of each entry `ids` into `file` and writes them to the lock at
-    `lock_file`. Both files are written, or neither and the faults come back. Each entry already
-    carries its `checked` record (`by`, `writer`, `against`; any `digest` is replaced)."""
+def read_both(file: Path, lock_file: Path) -> tuple[dict[str, Any], fmt.Header, Lock] | list[str]:
+    """A dictionary and the lock beside it as the commands read them, or the faults that refuse
+    both: the lock's folder is missing, a file does not read, or the dictionary is not written the
+    way the commands write it."""
     if not lock_file.parent.is_dir():
         return [f"the lock goes in {lock_file.parent}, which is no directory"]
     try:
@@ -59,14 +60,36 @@ def seal(file: Path, ids: Sequence[str], lock_file: Path) -> list[str]:
         return [f"{file.name}: {bad}"]
     if text != dumps(doc):
         return [f"{file.name} is not written the way this command writes it (`json.dumps` with "
-                "`indent=2`, `ensure_ascii=False` and a final newline), and sealing would "
+                "`indent=2`, `ensure_ascii=False` and a final newline), and writing it would "
                 "reformat it: rewrite it that way in its own commit first"]
     header, faults = fmt.parse_header(doc, file.name)
-    if header is None:
-        return faults
+    return faults if header is None else (doc, header, lock)
+
+
+def write_both(file: Path, doc: Mapping[str, Any], lock_file: Path, lock: Lock) -> list[str]:
+    """Writes the dictionary and the lock, or says the pair may be half written."""
+    try:
+        with file.open("w", encoding="utf-8", newline="\n") as out:
+            out.write(dumps(doc))
+        with lock_file.open("w", encoding="utf-8", newline="\n") as out:
+            out.write(dumps(lock.document()))
+    except OSError as bad:
+        return [f"{bad}: the dictionary or the lock may be half written; run the command again"]
+    return []
+
+
+def seal(file: Path, ids: Sequence[str], lock_file: Path) -> list[str]:
+    """Stamps the seal of each entry `ids` into `file` and writes them to the lock at
+    `lock_file`. Both files are written, or neither and the faults come back. Each entry already
+    carries its `checked` record (`by`, `writer`, `against`; any `digest` is replaced)."""
+    read = read_both(file, lock_file)
+    if isinstance(read, list):
+        return read
+    doc, header, lock = read
+    faults: list[str] = []
     sealed = dict(lock.checked)
     for wanted in ids:
-        raw = _find(doc, header, wanted)
+        raw = find(doc, header, wanted)
         if raw is None:
             faults.append(f"{wanted} is no entry of {file.name}")
             continue
@@ -82,21 +105,16 @@ def seal(file: Path, ids: Sequence[str], lock_file: Path) -> list[str]:
             faults.extend(f"{wanted}: {f}" for f in problems)
             continue
         assert got.checked is not None
-        again = _again(sealed.get(got.id), got.checked, record["digest"])
+        before = sealed.get(got.id) or next(
+            (r.was() for r in reversed(lock.reopened) if r.id == got.id), None)
+        again = _again(before, got.checked, record["digest"])
         if again:
             faults.append(f"{wanted}: {again}")
             continue
         sealed[got.id] = Locked(record["digest"], got.checked.by, got.checked.against)
     if faults:
         return faults
-    try:
-        with file.open("w", encoding="utf-8", newline="\n") as out:
-            out.write(dumps(doc))
-        with lock_file.open("w", encoding="utf-8", newline="\n") as out:
-            out.write(dumps(Lock(sealed).document()))
-    except OSError as bad:
-        return [f"{bad}: the dictionary or the lock may be half written; run the command again"]
-    return []
+    return write_both(file, doc, lock_file, Lock(sealed, lock.reopened))
 
 
 def main(argv: Sequence[str] | None = None) -> int:

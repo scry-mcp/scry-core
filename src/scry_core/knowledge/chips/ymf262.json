@@ -80,7 +80,26 @@
           "cites": "//           02 xxxxxxxx Timer A value (4 * OPN)"
         }
       ],
-      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds."
+      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds.",
+      "checked": {
+        "by": "phase Kcc2",
+        "writer": "phase Kcf",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 02h",
+            "line": " 02h\tTimer #1 data (OPL2 and OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x02",
+            "line": "\tcase 0x02:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 02",
+            "line": "//           02 xxxxxxxx Timer A value (4 * OPN)"
+          }
+        ],
+        "digest": "29bd321a6c3b5a44da0b72eb44c3c72810b8d0cf589159e97a821145cd98e14e"
+      }
     },
     {
       "key": "0x03",
@@ -107,7 +126,26 @@
           "cites": "//           03 xxxxxxxx Timer B value"
         }
       ],
-      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds."
+      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds.",
+      "checked": {
+        "by": "phase Kcc2",
+        "writer": "phase Kcf",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 03h",
+            "line": " 03h\tTimer #2 data (OPL2 and OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x03",
+            "line": "\tcase 0x03:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 03",
+            "line": "//           03 xxxxxxxx Timer B value"
+          }
+        ],
+        "digest": "fd6a4cb93cee10634be8103c29376453d5563ebcbcd4b284c08705297069ab32"
+      }
     },
     {
       "key": "0x04",
@@ -116,7 +154,7 @@
         "timer flags"
       ],
       "description": "Timer control: starts, stops and masks the two timers and resets their flags.",
-      "behaviour": "Bit 7 resets the timer flags and the interrupt, bit 6 masks timer 1, bit 5 masks timer 2, bit 1 starts timer 2 and bit 0 starts timer 1.",
+      "behaviour": "Bit 7 resets the timer flags and the interrupt, and while it is set the write ignores all the other bits, so 0x81 does not start timer 1. With bit 7 clear, bit 6 masks timer 1, bit 5 masks timer 2, bit 1 starts timer 2 and bit 0 starts timer 1.",
       "sources": [
         {
           "role": "documentation",
@@ -134,7 +172,26 @@
           "cites": "//           04 x------- RST"
         }
       ],
-      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds."
+      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds.",
+      "checked": {
+        "by": "phase Kcc3",
+        "writer": "phase Kcf2",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index 04h",
+            "line": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
+            "line": "\tcase 0x04:"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
+            "line": "//           04 x------- RST"
+          }
+        ],
+        "digest": "9bcc8e4ffc6732d0e07a80328a03a5326385aefa4e2dd8102ac426717f4fccaf"
+      }
     },
     {
       "key": "0x08",
@@ -188,7 +245,7 @@
         "rhythm"
       ],
       "description": "Rhythm register: the tremolo and vibrato depths, the rhythm mode and its five key-on bits.",
-      "behaviour": "Bit 7 selects the deep tremolo, bit 6 the deep vibrato, bit 5 enables rhythm mode, and bits 4 to 0 key on the bass drum, snare, tom, top cymbal and high hat.",
+      "behaviour": "Bit 7 selects the deep tremolo, bit 6 the deep vibrato, bit 5 enables rhythm mode, and bits 4 to 0 key on the bass drum, snare, tom, top cymbal and high hat, which they do only while bit 5 is set: with rhythm mode off those five bits are ignored, and clearing bit 5 keys the drums off.",
       "sources": [
         {
           "role": "documentation",
@@ -206,7 +263,26 @@
           "cites": "//           BD x------- AM depth"
         }
       ],
-      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds."
+      "differs": "RBIL lists it for the OPL3 in OPL2 mode only; DOSBox-X and ymfm accept a write to it whatever the OPL3 mode bit holds.",
+      "checked": {
+        "by": "phase Kcc3",
+        "writer": "phase Kcf2",
+        "against": [
+          {
+            "ref": "rbil61:PORTS.B AdLib index BDh",
+            "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
+          },
+          {
+            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
+            "line": "\t\tif ( reg == 0xbd ) {"
+          },
+          {
+            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
+            "line": "//           BD x------- AM depth"
+          }
+        ],
+        "digest": "1310918a928d60e7f5066b32869a4dccb607f5de67503fa05470358dc6606a89"
+      }
     },
     {
       "key": "0x20..0x35",
