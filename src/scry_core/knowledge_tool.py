@@ -176,7 +176,9 @@ def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key
                           device, base.device_keys(), n=5, cutoff=0.0))
     scopes = (scope,) if scope else live.scopes()
     if scopes and not scope:
-        scopes += tuple(k for k in base.device_keys() if k in base.scopes())
+        held = base.scopes()
+        shared = (*(k for k in base.device_keys() if k in held), *base.scopes("device"))
+        scopes += tuple(dict.fromkeys(s for s in shared if s not in scopes))
     live_rows: list[dict[str, Any]] = []
     if tag or (kind in live.kinds and kind not in base.kinds()):
         got = _live_rows(live, kind, "" if tag else key, tag)

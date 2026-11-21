@@ -180,12 +180,13 @@ class Tagged:
 
     kinds: tuple[str, ...] = ("device",)
 
-    def __init__(self, alive: bool = True) -> None:
+    def __init__(self, alive: bool = True, scopes: tuple[str, ...] = ("ibm-pc",)) -> None:
         self.alive = alive
+        self.held = scopes
         self.asked: list[tuple[str, str, str]] = []
 
     def scopes(self) -> tuple[str, ...]:
-        return ("ibm-pc",) if self.alive else ()
+        return self.held if self.alive else ()
 
     def rows(self, kind: str, key: str, device: str) -> Sequence[dict[str, Any]] | None:
         self.asked.append((kind, key, device))
@@ -223,6 +224,16 @@ def test_a_tag_with_no_machine_says_it_needs_one_and_names_the_keys_that_do_not(
     with pytest.raises(Invalid) as caught:
         ask(base, Tagged(False), device=":seq")
     assert "vga-seq" in str(caught.value)
+
+
+def test_a_shared_chip_is_asked_by_its_key_with_a_machine_running(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "chips", "device", "chip", [an_entry("ym3812", "OPL2")])
+    write_dictionary(tmp_path, "cpu", "vector", "m6809", [an_entry("0xFFF8", "IRQ")])
+    held = Base.load(tmp_path)
+    machine = Tagged(scopes=("m6809",))
+    got = ask(held, machine, kind="device", key="ym3812")
+    assert machine.asked == [] and [e["id"] for e in got["entries"]] == ["chip:device:ym3812"]
+    assert ask(held, machine, text="OPL2")["entries_total"] == 1
 
 
 def test_a_server_with_no_devices_of_its_own_reads_a_tag_shaped_key_as_a_key(base: Base) -> None:
