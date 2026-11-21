@@ -39,9 +39,11 @@ class Note:
     live: bool
 
 
-def note(base: Base, scope: str, operands: Sequence[Operand]) -> Note | None:
-    """The note for `operands` in `scope`, or None when the base names none. A piece is live only
-    when no operand states it outright."""
+def note(base: Base, scope: str, operands: Sequence[Operand], *, names_on: bool) -> Note | None:
+    """The note for `operands` in `scope`, or None when the base names none or the session's
+    `names` switch is off. A piece is live only when no operand states it outright."""
+    if not names_on:
+        return None
     parts: dict[str, bool] = {}
     for operand in operands:
         for text, live in _named(base, scope, operand):

@@ -247,6 +247,10 @@ def test_the_switch_is_one_strict_boolean_that_describes_itself() -> None:
         TypeAdapter(naming.Switch).validate_python("false", strict=True)
 
 
+def test_the_switchs_words_say_it_also_drops_the_note_of_a_disassembled_line() -> None:
+    assert "disassembled line" in naming.ARGUMENT and "disassembled line" in naming.ASK
+
+
 def test_the_switchs_words_fit_a_line_of_a_servers_asks_file() -> None:
     assert asks.words(naming.ASK) <= asks.LINE_WORDS
     assert asks.words(naming.ARGUMENT) <= 40

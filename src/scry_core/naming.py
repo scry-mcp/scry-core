@@ -23,10 +23,10 @@ BLOCK_MAX = 24
 GIVEN = "given."
 
 ARGUMENT = ("Name the numbers a reply shows: a port, interrupt, address or key gets its name in "
-            "the reply's `names` and in its summary. `false` leaves replies bare; the window's "
-            "captions keep their names.")
-ASK = ("`names`: `false` leaves a reply's numbers bare, with no `names` field and no name in its "
-       "summary; the window's captions still name them.")
+            "the reply's `names`, its summary and a disassembled line's note. `false` leaves "
+            "replies bare; the window's captions keep their names.")
+ASK = ("`names`: `false` leaves a reply's numbers bare, with no `names` field, no name in its "
+       "summary and no note on a disassembled line; the window's captions still name them.")
 Switch = Annotated[bool, Described(description=ARGUMENT)]
 
 

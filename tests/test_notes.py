@@ -30,7 +30,15 @@ def base(tmp_path: Path) -> Base:
 
 
 def _note(base: Base, *operands: Operand) -> Note | None:
-    return notes.note(base, "ibm-pc", operands)
+    return notes.note(base, "ibm-pc", operands, names_on=True)
+
+
+def test_with_the_names_off_no_operand_has_a_note(base: Base) -> None:
+    for operand in (Operand("port", 0x3C8, "write"), Operand("interrupt", 0x21),
+                    Operand("address", 0x449), Operand("interrupt", 0x21, function=(0x4C,),
+                                                       live=True)):
+        assert notes.note(base, "ibm-pc", [operand], names_on=True) is not None
+        assert notes.note(base, "ibm-pc", [operand], names_on=False) is None
 
 
 def test_a_port_the_instruction_states_is_named_for_the_access_it_makes(base: Base) -> None:
