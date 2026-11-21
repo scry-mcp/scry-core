@@ -56,11 +56,11 @@ class Shared:
         return read_index(INDEX)
 
     def lock(self) -> Lock:
-        return Lock({
-            id_: held
-            for directory in self.directories
-            for id_, held in read_lock(LOCKS[directory]).checked.items()
-        })
+        locks = [read_lock(LOCKS[directory]) for directory in self.directories]
+        return Lock(
+            {id_: held for got in locks for id_, held in got.checked.items()},
+            tuple(r for got in locks for r in got.reopened),
+        )
 
     def code_scopes(self) -> Iterable[str]:
         return ()
@@ -100,6 +100,12 @@ class TestWhereEachFileLoads:
 
     def test_the_index_carries_the_pins_the_dictionaries_cite_at(self) -> None:
         assert dict(read_index(INDEX).pins) == shared.PINS
+
+    def test_the_lock_the_contract_judges_carries_the_reopenings_the_files_record(self) -> None:
+        both = Shared((CHIPS, CPUS), shared.CPUS).lock()
+        recorded = [r for lock_file in LOCKS.values() for r in read_lock(lock_file).reopened]
+        assert recorded, "the control: the shared locks record a reopening"
+        assert list(both.reopened) == recorded
 
     def test_the_vectors_are_declared_named_and_not_supported(self) -> None:
         z80 = next(scope for scope in shared.CPUS if scope.name == "z80")

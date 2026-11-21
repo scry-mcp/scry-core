@@ -154,6 +154,14 @@ def lock_names_an_entry_that_was_never_checked(c: Copy) -> None:
         "digest": "0" * 64, "by": "nobody", "against": []}}))
 
 
+def reopening_recorded_for_an_entry_still_sealed(c: Copy) -> None:
+    held = json.loads(c.lock_path.read_text(encoding="utf-8"))["checked"][EXIT_ID]["digest"]
+    was = json.loads(c.lock_path.read_text(encoding="utf-8"))["checked"][EXIT_ID]
+    c.relock(lambda d: d.update(reopened=[{
+        "id": EXIT_ID, "digest": held, "by": "a checker", "why": "it leaves a bit out",
+        "checked_by": was["by"], "against": was["against"]}]))
+
+
 def checked_against_free_text(c: Copy) -> None:
     c.edit("calls", lambda d: entry(d, "0x21/0x4C")["checked"]["against"][0].update(
         line="I read it and it looked right"))
@@ -209,6 +217,7 @@ def reached_port_unknown(c: Copy) -> None:
     (left_out_forgotten, {COVERED}),
     (left_out_wrongly, {COVERED}),
     (checked_entry_reworded, {REWORDED, LOCKED}),
+    (reopening_recorded_for_an_entry_still_sealed, {LOCKED}),
     (checked_against_free_text, {AGAINST}),
     (checked_record_edited, {REWORDED, LOCKED}),
     (checked_record_deleted, {LOCKED}),

@@ -14,11 +14,13 @@ from null_server import an_entry, write_dictionary
 from test_knowledge_contract import LOCKED, REWORDED, Copy, entry, run
 
 from scry_core import knowledge
-from scry_core.knowledge import check, lock, seal
+from scry_core.knowledge import check, lock, reopen, seal
 
 EXIT = "ibm-pc:call:0x21/0x4C"
 GET_CODE = "ibm-pc:call:0x21/0x4D"
 GET_CODE_REF = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4d"
+EXIT_REF = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
+EXIT_LINE = "        case 0x4c:                  /* EXIT Terminate with return code */"
 GET_CODE_LINE = "        case 0x4d:                  /* Get Return code */"
 
 
@@ -297,3 +299,90 @@ def test_the_command_exits_zero_sealed_and_two_refused_and_knows_its_options(
     with pytest.raises(SystemExit) as unknown:
         seal.main([str(calls(copy)), GET_CODE, "--lock", str(copy.lock_path), "--nope"])
     assert unknown.value.code == 2
+
+
+def test_reopening_removes_the_check_and_the_lock_row_and_records_who_and_why(
+        tmp_path: Path) -> None:
+    copy = Copy(tmp_path)
+    held = knowledge.read_lock(copy.lock_path).checked[EXIT]
+    assert reopen.reopen(calls(copy), [EXIT], copy.lock_path, "second checker",
+                         "it leaves a bit out") == []
+    assert "checked" not in entry(json.loads(calls(copy).read_text(encoding="utf-8")),
+                                  "0x21/0x4C")
+    got = knowledge.read_lock(copy.lock_path)
+    assert EXIT not in got.checked
+    assert got.reopened == (lock.Reopened(EXIT, held.digest, "second checker",
+                                          "it leaves a bit out", held.by, held.against),)
+    assert run(copy.subject()) == set()
+
+
+def test_a_reopened_entry_is_sealed_again_and_the_lock_keeps_the_history(tmp_path: Path) -> None:
+    copy = Copy(tmp_path)
+    assert reopen.reopen(calls(copy), [EXIT], copy.lock_path, "coordinator", "wrong") == []
+
+    def rewrite(d: dict[str, Any]) -> None:
+        raw = entry(d, "0x21/0x4C")
+        raw["behaviour"] = "AL is the return code, and the program ends."
+        raw["checked"] = checked("third checker") | {"against": [
+            {"ref": EXIT_REF, "line": EXIT_LINE}]}
+    write(copy, rewrite)
+    assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
+    got = knowledge.read_lock(copy.lock_path)
+    assert got.checked[EXIT].by == "third checker" and len(got.reopened) == 1
+    assert run(copy.subject()) == set()
+
+
+def test_a_reopened_entry_is_not_re_checked_by_the_checker_and_against_the_lines_it_had(
+        tmp_path: Path) -> None:
+    copy = Copy(tmp_path)
+    held = knowledge.read_lock(copy.lock_path).checked[EXIT]
+    assert reopen.reopen(calls(copy), [EXIT], copy.lock_path, "coordinator", "wrong") == []
+
+    def rewrite(d: dict[str, Any]) -> None:
+        raw = entry(d, "0x21/0x4C")
+        raw["behaviour"] = "AL is the return code, and the program ends."
+        raw["checked"] = {"by": held.by, "writer": "fixture writer", "against": [
+            {"ref": r, "line": line} for r, line in held.against]}
+    write(copy, rewrite)
+    wrote, locked = calls(copy).read_bytes(), copy.lock_path.read_bytes()
+    [fault] = seal.seal(calls(copy), [EXIT], copy.lock_path)
+    assert EXIT in fault and "'fixture checker'" in fault and "another session" in fault
+    assert calls(copy).read_bytes() == wrote and copy.lock_path.read_bytes() == locked
+
+
+def test_reopening_is_refused_untouched_when_it_cannot_be_the_record_it_promises(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    copy = Copy(tmp_path)
+    wrote, locked = calls(copy).read_bytes(), copy.lock_path.read_bytes()
+    where = str(copy.lock_path)
+    for ids, by, why, says in (([GET_CODE], "who", "why", "is not locked"),
+                               (["ibm-pc:call:0x21/0x99"], "who", "why", "is no entry"),
+                               ([EXIT], "", "why", "who reopens"),
+                               ([EXIT], "who", "  ", "why")):
+        assert any(says in f for f in reopen.reopen(calls(copy), ids, copy.lock_path, by, why))
+        assert calls(copy).read_bytes() == wrote and copy.lock_path.read_bytes() == locked
+    assert reopen.main([str(calls(copy)), EXIT, "--lock", where, "--by", "who",
+                        "--why", "because"]) == 0
+    assert "reopened 1 in calls.json and lock.json" in capsys.readouterr().out
+    assert reopen.main([str(calls(copy)), EXIT, "--lock", where, "--by", "who",
+                        "--why", "because"]) == 2
+    assert "is not locked" in capsys.readouterr().err
+    with pytest.raises(SystemExit) as unknown:
+        reopen.main([str(calls(copy)), EXIT, "--lock", where, "--by", "w", "--nope"])
+    assert unknown.value.code == 2
+
+
+def test_a_lock_with_reopenings_parses_and_one_without_is_still_a_lock() -> None:
+    held = {"digest": "d", "by": "b", "against": [{"ref": "r", "line": "l"}]}
+    said = {"id": "a", "digest": "d", "by": "w", "why": "y", "checked_by": "b",
+            "against": [{"ref": "r", "line": "l"}]}
+    got = lock.parse_lock(json.dumps({"format": "scry-knowledge-lock/2", "checked": {"a": held},
+                                      "reopened": [said]}))
+    assert got.reopened == (lock.Reopened("a", "d", "w", "y", "b", (("r", "l"),)),)
+    assert "reopened" not in lock.Lock({}).document()
+    assert lock.parse_lock(lock.dumps(got.document())) == got
+    for bad in ([{**said, "why": 1}], [{"id": "a"}], [{**said, "extra": 1}], "x",
+                [{**said, "against": [{"ref": "r"}]}]):
+        with pytest.raises(ValueError, match="lock"):
+            lock.parse_lock(json.dumps({"format": "scry-knowledge-lock/2", "checked": {},
+                                        "reopened": bad}))
