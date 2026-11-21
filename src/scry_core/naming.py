@@ -193,9 +193,7 @@ def arguments_of(items: object) -> dict[str, Named]:
 
 def named_call(base: Base, scope: str, interrupt: int,
                registers: Mapping[str, int]) -> Named | None:
-    """What `INT interrupt` is called with the `registers` a stop holds (upper-case names, `AH`,
-    `BX`): the variant a register selects when its register is known, else the call; None when
-    the base names none. The number is the entry's key."""
+    """What `INT interrupt` is called given a stop's `registers`; the number is the entry's key."""
     got = calls.resolve(base, scope, interrupt, registers)
     if got is None:
         return None

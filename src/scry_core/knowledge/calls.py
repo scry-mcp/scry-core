@@ -1,6 +1,4 @@
-"""Which entry of the base a stop's registers pick for an interrupt call: the variant a register
-selects when that register is known, else the call itself. A server's namer, a caption and a
-disassembly note all ask here, so a variant is named the same way everywhere."""
+"""The entry a stop's registers pick for an interrupt call, asked by every namer and note."""
 
 from __future__ import annotations
 
@@ -17,15 +15,14 @@ _HALVES = {"AX": ("AH", "AL"), "BX": ("BH", "BL"), "CX": ("CH", "CL"), "DX": ("D
 
 @dataclass(frozen=True)
 class Resolved:
-    """The entry a call resolved to, and whether a register's value picked it (a variant)."""
+    """The entry, and whether a register's value picked it (a variant)."""
 
     entry: Entry
     selected: bool
 
 
 def register_value(registers: Mapping[str, int], name: str) -> int | None:
-    """The value of register `name` (`AH`, `BX`), from itself or from the word that holds it or
-    the two bytes that make it, and None when the registers do not say."""
+    """Register `name` from itself, its word or its two bytes; None when they do not say."""
     if name in registers:
         return registers[name]
     for word, (high, low) in _HALVES.items():
@@ -48,10 +45,8 @@ def _variant(base: Base, scope: str, key: str, registers: Mapping[str, int]) -> 
 
 def resolve(base: Base, scope: str, interrupt: int,
             registers: Mapping[str, int]) -> Resolved | None:
-    """The entry for `INT interrupt` with `registers` (names upper-case: `AH`, `AX`, `BL`...): the
-    most specific one they reach, a variant first where its selector's register is known and
-    its value is the variant's, then the function's own entry, then the function's shorter key
-    (`INT/AH` after `INT/AH/AL`). None when the base names none, or the registers say no AH."""
+    """The entry for `INT interrupt` and `registers` (upper-case names): the most specific one they
+    reach, a variant before the entry it varies; None when the base names none or AH is unknown."""
     ah = register_value(registers, "AH")
     if ah is None:
         return None
