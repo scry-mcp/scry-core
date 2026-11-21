@@ -1,0 +1,56 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "calls",
+  "kind": "call",
+  "scope": "ibm-pc",
+  "covers": "FIXTURE of the contract's own tests: three adjacent cases of INT 21h",
+  "complete_against": "dosbox-x:src/dos/dos.cpp DOS_21Handler",
+  "left_out": [
+    {
+      "key": "0x21/0x4B",
+      "why": "fixture: left out to show a reason"
+    }
+  ],
+  "entries": [
+    {
+      "key": "0x21/0x4C",
+      "name": "exit",
+      "aliases": [
+        "terminate with return code"
+      ],
+      "description": "Ends the program with a return code.",
+      "behaviour": "AL is the return code. It does not return: the program ends and its parent resumes.",
+      "sources": [
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c",
+          "cites": "        case 0x4c:                  /* EXIT Terminate with return code */"
+        }
+      ],
+      "checked": {
+        "by": "fixture checker",
+        "writer": "fixture writer",
+        "against": [
+          {
+            "ref": "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c",
+            "line": "        case 0x4c:                  /* EXIT Terminate with return code */"
+          }
+        ],
+        "digest": "7d85d4ab481dc4389e229da6b8474374abe1bce833839c88ba59e3be17dbf35c"
+      }
+    },
+    {
+      "key": "0x21/0x4D",
+      "name": "get return code",
+      "description": "Gives the return code of the program that ended last.",
+      "behaviour": "AL returns the code and AH how the program ended.",
+      "sources": [
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4d",
+          "cites": "        case 0x4d:                  /* Get Return code */"
+        }
+      ]
+    }
+  ]
+}

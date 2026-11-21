@@ -1,0 +1,41 @@
+{
+  "format": "scry-knowledge/1",
+  "dictionary": "ports",
+  "kind": "port",
+  "scope": "ibm-pc",
+  "covers": "FIXTURE of the contract's own tests: the VGA sequencer's two ports",
+  "complete_against": "dosbox-x:src/hardware/vga_seq.cpp IO_Register*",
+  "entries": [
+    {
+      "key": "0x3C4",
+      "name": "sequencer index",
+      "aliases": [
+        "SEQ index"
+      ],
+      "description": "Selects the sequencer register the next data write reaches.",
+      "behaviour": "A write selects a register of the sequencer; a read gives the selection back.",
+      "device": "vga-seq",
+      "sources": [
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ 0x3c4",
+          "cites": "\t\tIO_RegisterWriteHandler(0x3c4,write_p3c4,IO_MB);"
+        }
+      ]
+    },
+    {
+      "key": "0x3C5",
+      "name": "sequencer data",
+      "description": "Carries the value of the sequencer register the index selected.",
+      "behaviour": "A write sets the selected register; a read gives it.",
+      "device": "vga-seq",
+      "sources": [
+        {
+          "role": "emulator",
+          "ref": "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ 0x3c5",
+          "cites": "\t\tIO_RegisterWriteHandler(0x3c5,write_p3c5,IO_MB);"
+        }
+      ]
+    }
+  ]
+}

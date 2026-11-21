@@ -1,0 +1,46 @@
+{
+  "format": "scry-knowledge-sources/1",
+  "pins": {},
+  "rows": {
+    "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c": {
+      "line": "        case 0x4c:                  /* EXIT Terminate with return code */",
+      "key": "0x21/0x4C"
+    },
+    "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4d": {
+      "line": "        case 0x4d:                  /* Get Return code */",
+      "key": "0x21/0x4D"
+    },
+    "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ 0x3c4": {
+      "line": "\t\tIO_RegisterWriteHandler(0x3c4,write_p3c4,IO_MB);",
+      "key": "0x3C4"
+    },
+    "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ 0x3c5": {
+      "line": "\t\tIO_RegisterWriteHandler(0x3c5,write_p3c5,IO_MB);",
+      "key": "0x3C5"
+    },
+    "dosbox-x:src/hardware/vga_seq.cpp write_p3c5 case 4": {
+      "line": "\tcase 4:\t/* Memory Mode */",
+      "key": "0x04"
+    },
+    "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ": {
+      "line": "void VGA_SetupSEQ(void) {"
+    }
+  },
+  "lists": {
+    "dosbox-x:src/dos/dos.cpp DOS_21Handler": [
+      "0x21/0x4B",
+      "0x21/0x4C",
+      "0x21/0x4D"
+    ],
+    "dosbox-x:src/hardware/vga_seq.cpp IO_Register*": [
+      "0x3C4",
+      "0x3C5"
+    ],
+    "dosbox-x:src/hardware/vga_seq.cpp write_p3c5": [
+      "0x04"
+    ],
+    "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ": [
+      "vga-seq"
+    ]
+  }
+}
