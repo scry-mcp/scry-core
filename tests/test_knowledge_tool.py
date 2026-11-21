@@ -173,6 +173,61 @@ def test_a_tag_of_the_running_machine_asks_the_machine_and_not_the_base(base: Ba
     assert caught.value.code == "no_session"
 
 
+class Tagged:
+    """A machine that names its devices by tag, as MAME does; one of them has a chip in the base."""
+
+    kinds: tuple[str, ...] = ("device",)
+
+    def __init__(self, alive: bool = True) -> None:
+        self.alive = alive
+        self.asked: list[tuple[str, str, str]] = []
+
+    def scopes(self) -> tuple[str, ...]:
+        return ("ibm-pc",) if self.alive else ()
+
+    def rows(self, kind: str, key: str, device: str) -> Sequence[dict[str, Any]] | None:
+        self.asked.append((kind, key, device))
+        if not self.alive:
+            return None
+        return [{"kind": "device", "key": ":seq", "name": "sequencer", "type": "vga",
+                 "chip": "ibm-pc:device:vga-seq"}]
+
+
+@pytest.mark.parametrize("tag", [":seq", "seq"])
+def test_a_device_is_asked_by_its_tag_with_or_without_the_colon_and_its_chip_comes_with_it(
+        base: Base, tag: str) -> None:
+    machine = Tagged()
+    got = ask(base, machine, kind="device", key=tag)
+    assert machine.asked == [("device", "", ":seq")]
+    assert got["query"] == {"kind": "device", "key": ":seq"} and got["entries_total"] == 1
+    [row] = got["entries"]
+    assert row["live"] is True and row["name"] == "sequencer"
+    assert row["chip_entry"]["id"] == "ibm-pc:device:vga-seq"
+    assert row["chip_entry"]["name"] and row["chip_entry"]["sources"]
+
+
+def test_a_device_key_of_the_base_never_asks_the_machine(base: Base) -> None:
+    machine = Tagged()
+    got = ask(base, machine, kind="device", key="vga-seq")
+    assert machine.asked == [] and got["entries"][0]["id"] == "ibm-pc:device:vga-seq"
+
+
+def test_a_tag_with_no_machine_says_it_needs_one_and_names_the_keys_that_do_not(
+        base: Base) -> None:
+    with pytest.raises(Invalid) as caught:
+        ask(base, Tagged(False), kind="device", key=":seq")
+    assert caught.value.code == "no_session"
+    assert "needs a running machine" in str(caught.value) and "vga-seq" in str(caught.value)
+    with pytest.raises(Invalid) as caught:
+        ask(base, Tagged(False), device=":seq")
+    assert "vga-seq" in str(caught.value)
+
+
+def test_a_server_with_no_devices_of_its_own_reads_a_tag_shaped_key_as_a_key(base: Base) -> None:
+    got = ask(base, None, kind="device", key="seq")
+    assert got["entries_total"] == 0 and "none at seq" in got["note"]
+
+
 def test_the_summary_says_what_was_asked_and_what_answered(base: Base) -> None:
     def line(**arguments: Any) -> str:
         return knowledge_tool.summary(arguments, ask(base, **arguments))

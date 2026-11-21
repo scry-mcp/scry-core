@@ -21,6 +21,7 @@ from scry_core.reply_schema import ReplyEnvelope
 
 TITLE = "What a number is called"
 LIMIT_DEFAULT, LIMIT_MAX = 10, 50
+KEYS_SHOWN = 12
 HOW = "give `id` for the whole entry"
 REFERENCE = "Reference: REFERENCE.md, Names for numbers."
 
@@ -114,6 +115,34 @@ def _live_rows(live: Live, kind: str, key: str, device: str) -> list[dict[str, A
     return None if got is None else [{**r, "live": True} for r in got]
 
 
+def _tag(base: Base, live: Live, kind: str, key: str, device: str) -> str:
+    """The tag of the running machine a question names, with its colon, or empty: `device=":t"`,
+    or a device `key` that is `:t` or is no key of the base and the server's machine has devices."""
+    if device.startswith(":"):
+        return device
+    key = key.strip()
+    if kind != "device" or device or not key:
+        return ""
+    if key.startswith(":"):
+        return key
+    return "" if key in base.device_keys() or "device" not in live.kinds else f":{key}"
+
+
+def _no_machine(base: Base, tag: str) -> Invalid:
+    keys = base.device_keys()
+    shown = ", ".join(keys[:KEYS_SHOWN]) + (f" and {len(keys) - KEYS_SHOWN} more"
+                                            if len(keys) > KEYS_SHOWN else "")
+    return Invalid("no_session", f"the device tag {tag} needs a running machine and no session is "
+                   f"live: call `start`. With none, a device is asked by its key: {shown or 'none'}")
+
+
+def _with_chip(base: Base, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The one row of a tag, with what the base knows of its chip, when the row names one."""
+    if len(rows) != 1 or not (chip := base.by_id(str(rows[0].get("chip", "")))):
+        return rows
+    return [{**rows[0], "chip_entry": whole(base, chip, base.pins)}]
+
+
 def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key: str = "",
          text: str = "", device: str = "", scope: str = "",
          limit: int = LIMIT_DEFAULT) -> dict[str, Any]:
@@ -129,8 +158,8 @@ def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key
     if kind and kind not in base.kinds() and kind not in live.kinds:
         raise Invalid("no_channel", f"this server holds no entries of kind {kind}; it has "
                       f"{', '.join(base.kinds())}", kinds=base.kinds())
-    wanted_device = device and not device.startswith(":")
-    if wanted_device and device not in base.device_keys():
+    tag = _tag(base, live, kind, key, device)
+    if device and not tag and device not in base.device_keys():
         raise Invalid("unknown_ref", f"device {device!r} is not one the base holds; it has "
                       f"{', '.join(base.device_keys())}", nearest=difflib.get_close_matches(
                           device, base.device_keys(), n=5, cutoff=0.0))
@@ -138,18 +167,19 @@ def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key
     if scopes and not scope:
         scopes += tuple(k for k in base.device_keys() if k in base.scopes())
     live_rows: list[dict[str, Any]] = []
-    if device.startswith(":") or (kind in live.kinds and kind not in base.kinds()):
-        got = _live_rows(live, kind, key, device)
+    if tag or (kind in live.kinds and kind not in base.kinds()):
+        got = _live_rows(live, kind, "" if tag else key, tag)
         if got is None:
-            raise Invalid("no_session", f"{kind or 'the device ' + device} is read from the "
-                          "running machine and no session is live: call `start`")
-        live_rows = got
+            raise _no_machine(base, tag) if tag else Invalid(
+                "no_session", f"{kind} is read from the running machine and no session is "
+                "live: call `start`")
+        live_rows = _with_chip(base, got) if tag else got
     try:
-        found = (base.search(kind, key, text, device, scopes, limit)
-                 if not device.startswith(":") else Found())
+        found = base.search(kind, key, text, device, scopes, limit) if not tag else Found()
     except KeyFault as bad:
         raise Invalid("bad_argument", f"key={key!r} is no key: {bad}") from bad
-    return _answer(base, found, live_rows, kind, key, text, device, scopes, limit)
+    return _answer(base, found, live_rows, kind, tag if tag and not device else key, text, device,
+                   scopes, limit)
 
 
 def _by_id(base: Base, id: str) -> dict[str, Any]:
@@ -168,7 +198,7 @@ def _answer(base: Base, found: Found, live_rows: list[dict[str, Any]], kind: str
         if value:
             query[name] = value
     if kind and key:
-        query["key"] = keyspelling.query(kind, key)[0]
+        query["key"] = key if kind == "device" else keyspelling.query(kind, key)[0]
     rows: list[dict[str, Any]] = [e.short() for e in found.entries] + live_rows
     total = found.total + len(live_rows)
     out: dict[str, Any] = {"query": query, "scope": list(scopes) or base.scopes(kind),
