@@ -143,9 +143,36 @@ def _canonical_loose(key: str) -> str:
     return key
 
 
+def _handlers(base: Base, e: Entry, where: str) -> list[str]:
+    """The ports a placed device maps to handlers lie in its `ports`, and each handler is one of a
+    chip it holds (or one that has its own key): a port with no handler is left to the namer, so
+    a mistake here would silence it."""
+    chips = [c for k in e.contains if (c := base.device_entry(e.scope, k)) is not None]
+    own = base.device_entry("chip", e.key)
+    if own is not None and own.id != e.id:
+        chips.append(own)
+    known = {name for c in chips for name in c.handlers or {}}
+    out: list[str] = []
+    for typed, name in (e.handlers or {}).items():
+        if not typed.lower().startswith("0x"):
+            continue
+        try:
+            number = keys.span("port", keys.canonical("port", typed.partition(":")[0])).lo or 0
+        except keys.KeyFault:
+            out.append(f"{where}: handlers key `{typed}` is no port")
+            continue
+        if not any(base_ <= number < base_ + length for base_, length in e.ports):
+            out.append(f"{where}: handler {typed} lies in none of the device's `ports`")
+        if name not in known:
+            out.append(f"{where}: handler {typed} names `{name}`, which is no handler of a "
+                       "chip it holds")
+    return out
+
+
 def relations(base: Base) -> list[str]:
     """Every relation resolves: a `device` names a device entry, `contains` and a register's
-    `reached` port name entries that exist, and a register dictionary's scope is a device."""
+    `reached` port name entries that exist, a register dictionary's scope is a device, and a
+    placed device's port-to-handler map lands in its ports and in its chips' handlers."""
     out: list[str] = []
     for e in base.entries():
         where = f"{e.kind}s {e.key}" if e.kind != "device" else f"device {e.key}"
@@ -154,6 +181,7 @@ def relations(base: Base) -> list[str]:
         for inner in e.contains:
             if base.device_entry(e.scope, inner) is None:
                 out.append(f"{where}: contains {inner!r}, which is no device entry")
+        out += _handlers(base, e, where) if e.kind == "device" else []
         if e.kind in ("register", "command") and base.device_entry("", e.scope) is None:
             out.append(f"{e.dictionary} is a dictionary of {e.kind}s of {e.scope!r}, which is "
                        "no device entry")

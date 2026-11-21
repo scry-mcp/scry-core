@@ -189,7 +189,10 @@ public source each fact was checked against. A server ships dictionaries and one
   in `cites`: at most one `documentation`, and two `emulator` sources only when one is
   `dosbox-x:` and the other `mame:` (a chip both emulators model); `differs` says how the
   sources disagree, and is required when the index's read and write marks of two sources
-  differ. An entry with no source is not written. A `register` or `command` key may be a
+  differ. An entry with no source is not written. A placed device may map its ports to
+  handlers in `handlers` (`"0x388:write": "data_w"`): each port must lie in its `ports` and each
+  value must be a handler of a chip it `contains` (or of the chip that has its own key), which
+  the relations case checks. A `register` or `command` key may be a
   range (`0x20..0x35`, a bank as one entry) and a number inside it finds the entry; two
   registers or two commands of one dictionary may not overlap unless their `access` tells them
   apart. `access` (`read` or `write`) is for a port, a register or a command that differs by

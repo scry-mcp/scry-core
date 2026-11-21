@@ -788,6 +788,54 @@ def test_a_contains_that_names_no_device_fails_the_relations(tmp_path: Path) -> 
         "device a: contains 'zz', which is no device entry"]
 
 
+def placed(tmp_path: Path, handlers: dict[str, str], ports: list[dict[str, Any]] | None = None,
+           **device: Any) -> knowledge.Base:
+    """An OPL chip with its two handlers and a board function that holds it at 0x388, with
+    `handlers` mapping its ports to them."""
+    write_dictionary(tmp_path, "chips", "device", "chip", [
+        an_entry("ym3812", "YM3812 OPL2", handlers={"address_w": "register select",
+                                                    "data_w": "register data"})])
+    write_dictionary(tmp_path, "boards", "device", "ibm-pc", [
+        an_entry("adlib", "AdLib", contains=["ym3812"], handlers=handlers, **device,
+                 ports=ports if ports is not None else [{"base": "0x388", "length": 2}])])
+    return knowledge.Base.load(tmp_path)
+
+
+def test_a_placed_device_whose_handlers_resolve_passes_the_relations(tmp_path: Path) -> None:
+    base = placed(tmp_path, {"0x388": "address_w", "0x389:write": "data_w",
+                             "0x388:read": "address_w"})
+    assert base.faults() == [] and check.relations(base) == []
+
+
+@pytest.mark.parametrize(("handlers", "ports", "says"), [
+    ({"0x38A": "address_w"}, None, "0x38A lies in none of the device's `ports`"),
+    ({"0x388": "address_w"}, [], "0x388 lies in none of the device's `ports`"),
+    ({"0x389:write": "status_r"}, None, "`status_r`, which is no handler of a chip it holds"),
+    ({"0x3": "address_w"}, None, "0x3 lies in none"),
+    ({"0xZZ": "address_w"}, None, "`0xZZ` is no port"),
+])
+def test_a_handler_outside_the_ports_or_of_no_chip_it_holds_fails_the_relations(
+        tmp_path: Path, handlers: dict[str, str], ports: list[dict[str, Any]] | None,
+        says: str) -> None:
+    got = check.relations(placed(tmp_path, handlers, ports))
+    assert len(got) == 1 and says in got[0] and got[0].startswith("device adlib: "), got
+
+
+def test_a_device_that_shares_a_chips_key_is_held_to_that_chips_handlers(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "chips", "device", "chip", [
+        an_entry("pit8253", "8253 timer", handlers={"read": "counter read", "write": "write"})])
+    write_dictionary(tmp_path, "boards", "device", "ibm-pc", [
+        an_entry("pit8253", "PIT", ports=[{"base": "0x40", "length": 4}],
+                 handlers={"0x40": "read", "0x43:write": "write", "0x41": "nope"})])
+    assert check.relations(knowledge.Base.load(tmp_path)) == [
+        "device pit8253: handler 0x41 names `nope`, which is no handler of a chip it holds"]
+
+
+def test_handlers_that_are_not_ports_are_not_checked(tmp_path: Path) -> None:
+    base = placed(tmp_path, {"write+0": "anything"})
+    assert check.relations(base) == []
+
+
 @pytest.mark.parametrize(("broken", "says"), [
     ("by_id", "did not load by id"), ("get", "is not found by its kind, key and scope"),
     ("by_alias", "is not found by its name"), ("search", "is not found by the words of its name")])
