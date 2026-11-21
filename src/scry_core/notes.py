@@ -4,12 +4,12 @@ the instruction states outright is named for any line; one a register holds (`ou
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from typing import Literal
 
 from scry_core import abbreviation
-from scry_core.knowledge import Base, KeyFault
+from scry_core.knowledge import Base, KeyFault, calls
 from scry_core.knowledge import keys as keyspelling
 from scry_core.naming import Named
 
@@ -18,14 +18,17 @@ Access = Literal["read", "write", ""]
 
 @dataclass(frozen=True)
 class Operand:
-    """What an instruction refers to. `function`: `AH`, then `AL`, when known; `live`: the value
-    came from a stop's registers, not the instruction's bytes."""
+    """What an instruction refers to. `function`: `AH`, then `AL`, when known; `registers`: the
+    stop's registers by upper-case name (`BL`, `BX`), which pick a call's variant, and which only
+    the instruction at a stop has; `live`: the value came from a stop's registers, not the
+    instruction's bytes."""
 
     kind: Literal["port", "interrupt", "address"]
     value: int
     access: Access = ""
     function: tuple[int, ...] = ()
     live: bool = False
+    registers: Mapping[str, int] = field(default_factory=dict, hash=False)
 
 
 @dataclass(frozen=True)
@@ -52,7 +55,7 @@ def _named(base: Base, scope: str, o: Operand) -> list[tuple[str, bool]]:
             return [(t, o.live) for t in _entry(base, "port", o.value, scope, o.access)]
         if o.kind == "interrupt":
             return [*((t, False) for t in _entry(base, "vector", o.value, scope)),
-                    *((t, o.live) for t in _call(base, scope, o))]
+                    *_call(base, scope, o)]
         found = base.at(o.value, scope) if keyspelling.fits(o.value) else None
         return [(_text(e.name, o.value, delta), o.live) for e, delta in [found]] if found else []
     except KeyFault:
@@ -66,15 +69,23 @@ def _entry(base: Base, kind: str, value: int, scope: str, access: Access = "") -
     return [_text(found.name, value)] if found else []
 
 
-def _call(base: Base, scope: str, o: Operand) -> list[str]:
-    if not o.function:
+def _call(base: Base, scope: str, o: Operand) -> list[tuple[str, bool]]:
+    known = dict(o.registers)
+    for name, byte in zip(("AH", "AL"), o.function, strict=False):
+        known.setdefault(name, byte)
+    got = calls.resolve(base, scope, o.value, known)
+    if got is None:
         return []
-    for parts in (o.function[:2], o.function[:1]):
-        key = keyspelling.canonical("call", "/".join(f"0x{p:X}" for p in (o.value, *parts)))
-        if found := base.get("call", key, scope):
-            return [_text(found.name, o.function[0])]
-    return []
+    picked = keyspelling.span("call", got.entry.key).selector
+    if not got.selected or picked is None:
+        function = calls.register_value(known, "AH")
+        assert function is not None
+        return [(_text(got.entry.name, function), o.live)]
+    value = calls.register_value(known, picked.register)
+    assert value is not None
+    return [(_text(got.entry.name, f"{picked.register}=0x{value:02X}"), True)]
 
 
-def _text(name: str, number: int, delta: int = 0) -> str:
-    return f"{abbreviation.name_text(Named('symbol', name, '', delta))} (0x{number:02X})"
+def _text(name: str, number: int | str, delta: int = 0) -> str:
+    shown = number if isinstance(number, str) else f"0x{number:02X}"
+    return f"{abbreviation.name_text(Named('symbol', name, '', delta))} ({shown})"

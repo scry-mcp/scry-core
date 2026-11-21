@@ -293,7 +293,15 @@ number fields; `scry_core.naming` does the rest.
 - **The switch**: `start` takes `names: naming.Switch = True`, whose description is
   `naming.ARGUMENT`, and `naming.ASK` is the sentence for `asks.json`. Off, a reply has no
   `names` and no names in its summary; the window's captions keep theirs.
+- **A call with variants**: `naming.named_call(base, scope, interrupt, registers)` names `INT
+  interrupt` from the registers a stop holds (upper-case names, `AH`, `BX`; a word or its two
+  bytes serve either way). It answers the variant whose selector's register is known and holds
+  the variant's value, else the call itself, else None; a register the stop does not say never
+  picks a variant, so a caption never names one it cannot know. A namer calls it where it names
+  a call.
 - **A disassembled line's note**: `notes.note(base, scope, operands)` returns what the base calls
   the operands the server parsed (a port, an interrupt, an address). It goes in a row's `note`,
   never in a person's `comment`. An operand a register holds is named only for the instruction at
-  a stop, and `Note.live` says the line was named that way.
+  a stop, and `Note.live` says the line was named that way. An interrupt operand takes the
+  stop's `registers` too: a call's variant is named (`video refresh (BL=0x36)`) only when the
+  selector's register is among them, else the note names the call.

@@ -5,12 +5,15 @@ its order, the names inside a summary, the namer that never fails the call it na
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 import pytest
+from null_server import an_entry, write_dictionary
 from pydantic import TypeAdapter
 
 from scry_core import asks, naming
+from scry_core.knowledge import Base
 from scry_core.naming import Field, Guarded, Named
 
 PORT = Named("port", "DAC write address", "0x03C8", id="ibm-pc:port:0x3C8", device="vga-dac")
@@ -247,3 +250,15 @@ def test_the_switch_is_one_strict_boolean_that_describes_itself() -> None:
 def test_the_switchs_words_fit_a_line_of_a_servers_asks_file() -> None:
     assert asks.words(naming.ASK) <= asks.LINE_WORDS
     assert asks.words(naming.ARGUMENT) <= 40
+
+
+def test_a_call_is_named_from_the_registers_the_variant_included(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "calls", "call", "ibm-pc", [
+        an_entry("0x10/0x12", "alternate select"), an_entry("0x10/0x12/BL=0x36", "video refresh")])
+    base = Base.load(tmp_path)
+    assert naming.named_call(base, "ibm-pc", 0x10, {"AH": 0x12, "BL": 0x36}) == Named(
+        "call", "video refresh", "0x10/0x12/BL=0x36", id="ibm-pc:call:0x10/0x12/BL=0x36")
+    assert naming.named_call(base, "ibm-pc", 0x10, {"AH": 0x12}) == Named(
+        "call", "alternate select", "0x10/0x12", id="ibm-pc:call:0x10/0x12")
+    assert naming.named_call(base, "ibm-pc", 0x10, {"AH": 0x14}) is None
+    assert naming.named_call(base, "other", 0x10, {"AH": 0x12}) is None

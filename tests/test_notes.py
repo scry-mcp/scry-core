@@ -95,3 +95,29 @@ def test_a_value_no_key_can_spell_names_nothing_and_raises_nothing(
         base: Base, operand: Operand) -> None:
     assert _note(base, operand) is None
 
+
+
+def test_a_variant_is_named_in_a_note_only_when_the_instruction_at_a_stop_holds_its_register(
+        tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "vectors", "vector", "ibm-pc", [
+        an_entry("0x10", "video BIOS", address=0x40, length=4)])
+    write_dictionary(tmp_path, "calls", "call", "ibm-pc", [
+        an_entry("0x10/0x12", "alternate select"), an_entry("0x10/0x12/BL=0x36", "video refresh")])
+    base = Base.load(tmp_path)
+    assert base.faults() == []
+    at_stop = Operand("interrupt", 0x10, function=(0x12,), live=True,
+                      registers={"BL": 0x36})
+    assert _note(base, at_stop) == Note("video BIOS (0x10); video refresh (BL=0x36)", True)
+    assert _note(base, Operand("interrupt", 0x10, function=(0x12,), live=True)) == \
+        Note("video BIOS (0x10); alternate select (0x12)", True)
+    assert _note(base, Operand("interrupt", 0x10, function=(0x12,),
+                               registers={"BL": 0x99})) == \
+        Note("video BIOS (0x10); alternate select (0x12)", False)
+    assert _note(base, Operand("interrupt", 0x10, registers={"AX": 0x1200})) == \
+        Note("video BIOS (0x10); alternate select (0x12)", False)
+    assert _note(base, Operand("interrupt", 0x10, registers={"AH": 0x12, "BL": 0x36})) == \
+        Note("video BIOS (0x10); video refresh (BL=0x36)", True), \
+        "a variant a register picked is live even when the operand does not say so"
+    assert _note(base, Operand("interrupt", 0x10, function=(0x13,),
+                               registers={"AH": 0x12, "BL": 0x36})) == \
+        Note("video BIOS (0x10); video refresh (BL=0x36)", True), "the stop's registers win"
