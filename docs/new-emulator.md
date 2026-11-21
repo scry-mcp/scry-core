@@ -188,9 +188,24 @@ public source each fact was checked against. A server ships dictionaries and one
   precision, and one or two `sources`, each a `ref` of a known scheme and the source's own line
   in `cites`. An entry with no source is not written.
 - **Checked entries**: a second session reads an entry against its source and adds `checked`
-  (who checked, who wrote, the line compared per `ref`, and the digest of the entry's text, from
-  `scry_core.knowledge.digest`). From then on the text is never reworded: the contract fails when
-  the digest no longer matches, and a correction is a new write and a new check.
+  with `by`, `writer` and `against` (per source `ref`, the line it compared: the entry's own
+  `cites`, or a part of the line the source index holds for it). Then one command seals it:
+
+  ```sh
+  python -m scry_core.knowledge.seal <dictionary.json> <entry id>... --lock <lock.json>
+  ```
+
+  It stamps the seal into `checked.digest` (a hash of the entry's text, of the check itself and, for a register, of the ports its
+  dictionary header says it is reached by)
+  and writes the entry's id and seal to the repository's lock. The dictionary file must already
+  be written the way the command writes it (two-space JSON, a final newline); a file that is
+  not is refused untouched. From then on the entry is never touched: the contract fails when a
+  checked entry no longer gives its seal, when a locked entry is gone or has lost its `checked`
+  record, and when a checked entry is not in the lock. The lock sits beside the package's
+  `knowledge/` directory, never inside it: every `.json` there is read as a dictionary. A correction is a new write and a new
+  check by another session, sealed with the same command, which replaces the lock's row; an
+  entry retired for good has its line deleted from the lock by hand, in the commit that removes
+  it.
 - **The declaration**: `knowledge/support.py` holds one `Support` listing the `Scope`s (a system
   or a cpu, with the kinds it owes; `support="named"` for a cpu the base names and the server
   does not claim to run), the `Device`s and the `Chip`s. Adding one there is the only step; the
@@ -201,7 +216,8 @@ public source each fact was checked against. A server ships dictionaries and one
   result is committed. The tests need no network.
 - **The tests**: a subclass of `conformance.KnowledgeContract` with a `subject` that gives the
   declaration, the loaded `Base` (`fts5=False` forces the search index of our own), the source
-  index and the scopes the code depends on. `tests/null_server.py`'s `NullKnowledge` is the
+  index, the lock of the checked entries (`scry_core.knowledge.read_lock`) and the scopes the
+  code depends on. `tests/null_server.py`'s `NullKnowledge` is the
   model.
 - **The tool**: `knowledge_tool.register(wrap, answer, base, live)`. `live` says what the running
   machine can answer by itself (MAME's inputs and device tags); a server with none passes

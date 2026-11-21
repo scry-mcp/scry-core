@@ -11,6 +11,7 @@ from collections.abc import Callable, Iterable
 from scry_core.knowledge import keys, sources, text
 from scry_core.knowledge.database import Base
 from scry_core.knowledge.entry import Entry
+from scry_core.knowledge.lock import COMMAND, Lock
 from scry_core.knowledge.sources import SourceIndex
 from scry_core.knowledge.support import Support
 
@@ -178,12 +179,33 @@ def names_unique(base: Base) -> list[str]:
 
 
 def reworded(base: Base) -> list[str]:
-    """A checked entry's text is the text that was checked: its digest equals the one its
-    `checked` record holds. A correction is a new write and a new check."""
-    return [f"{e.id} is checked and its text changed (digest {e.digest[:12]}, checked "
+    """A checked entry is as it was checked: its seal, over its text and its check, equals the one
+    its `checked` record holds. A correction is a new write and a new check."""
+    return [f"{e.id} is checked and it changed (seal {e.digest[:12]}, checked "
             f"{e.checked.digest[:12]}): a checked entry is never reworded; a correction is a "
-            "new write and a new check by another session, which stamps the new digest"
+            f"new write and a new check by another session, sealed with {COMMAND}"
             for e in base.entries() if e.checked is not None and e.checked.digest != e.digest]
+
+
+def locked(base: Base, lock: Lock) -> list[str]:
+    """The lock and the base agree: each locked entry is still an entry, still checked and at the
+    seal it was locked at, and each checked entry is locked."""
+    out: list[str] = []
+    for id_, sealed in lock.checked.items():
+        e = base.by_id(id_)
+        if e is None:
+            out.append(f"{id_} is locked and is no entry any more: a checked entry is never "
+                       "removed; if it is retired for good, delete its line from the lock")
+        elif e.checked is None:
+            out.append(f"{id_} is locked and is no longer checked: its `checked` record is "
+                       f"gone; put it back, or check the entry again with {COMMAND}")
+        elif e.digest != sealed:
+            out.append(f"{id_} is locked at {sealed[:12]} and now seals as {e.digest[:12]}: a "
+                       f"checked entry is never touched; a correction is checked anew by "
+                       f"another session and sealed with {COMMAND}")
+    out += [f"{e.id} is checked and is not in the lock: seal it with {COMMAND}"
+            for e in base.entries() if e.checked is not None and e.id not in lock.checked]
+    return out
 
 
 def held(base: Base) -> list[str]:

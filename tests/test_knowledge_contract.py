@@ -13,7 +13,7 @@ import pytest
 from null_server import KNOWLEDGE, NullKnowledge
 
 from scry_core import conformance
-from scry_core.knowledge import Device, Scope, Support, text
+from scry_core.knowledge import Device, Scope, Support, digest, text
 
 CASES = sorted(n for n in dir(conformance.KnowledgeContract) if n.startswith("test_"))
 OWED = "test_every_declared_scope_device_and_chip_has_the_dictionaries_it_owes"
@@ -27,6 +27,7 @@ BOTH = "test_two_sources_agree_or_the_entry_says_how_they_differ"
 ALIASES = "test_no_alias_is_another_entry_s_name"
 FALLBACK = "test_the_fallback_answers_as_fts5_does"
 REWORDED = "test_a_checked_entry_is_never_reworded"
+LOCKED = "test_every_checked_entry_is_locked_and_stays_as_it_was_locked"
 EXAMINED = "test_the_check_examined_something"
 EXIT = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
 SEQ_PORT = "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ 0x3c4"
@@ -46,6 +47,8 @@ class Copy:
         shutil.copytree(KNOWLEDGE / "null", self.root)
         self.index_path = tmp_path / "sources.json"
         shutil.copy(KNOWLEDGE / "null-sources.json", self.index_path)
+        self.lock_path = tmp_path / "lock.json"
+        shutil.copy(KNOWLEDGE / "null-lock.json", self.lock_path)
         self.declared: Support | None = None
         self.code: tuple[str, ...] = ("ibm-pc",)
 
@@ -60,8 +63,13 @@ class Copy:
         change(doc)
         self.index_path.write_text(json.dumps(doc), encoding="utf-8")
 
+    def relock(self, change: Callable[[dict[str, Any]], None]) -> None:
+        doc = json.loads(self.lock_path.read_text(encoding="utf-8"))
+        change(doc)
+        self.lock_path.write_text(json.dumps(doc), encoding="utf-8")
+
     def subject(self) -> NullKnowledge:
-        return NullKnowledge(self.root, self.index_path, self.declared, self.code)
+        return NullKnowledge(self.root, self.index_path, self.lock_path, self.declared, self.code)
 
 
 def run(subject: NullKnowledge) -> set[str]:
@@ -83,7 +91,7 @@ def entry(doc: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def test_the_fixture_base_passes_every_case_and_the_runner_can_tell_a_failure() -> None:
-    assert len(CASES) == 14 and run(NullKnowledge()) == set()
+    assert len(CASES) == 15 and run(NullKnowledge()) == set()
     assert run(NullKnowledge(declared=Support())) == {EXAMINED, UNDECLARED}
 
 
@@ -114,6 +122,34 @@ def left_out_wrongly(c: Copy) -> None:
 def checked_entry_reworded(c: Copy) -> None:
     c.edit("calls", lambda d: entry(d, "0x21/0x4C").update(
         behaviour="AL is the return code, and the program ends."))
+
+
+def checked_record_edited(c: Copy) -> None:
+    c.edit("calls", lambda d: entry(d, "0x21/0x4C")["checked"].update(by="another checker"))
+
+
+def checked_record_deleted(c: Copy) -> None:
+    c.edit("calls", lambda d: entry(d, "0x21/0x4C").pop("checked"))
+
+
+def checked_entry_removed(c: Copy) -> None:
+    c.edit("calls", lambda d: d["entries"].remove(entry(d, "0x21/0x4C")))
+
+
+def checked_entry_reworded_and_resealed(c: Copy) -> None:
+    def reword(d: dict[str, Any]) -> None:
+        raw = entry(d, "0x21/0x4C")
+        raw["behaviour"] = "AL is the return code, and the program ends."
+        raw["checked"]["digest"] = digest("ibm-pc", "call", raw)
+    c.edit("calls", reword)
+
+
+def checked_entry_left_out_of_the_lock(c: Copy) -> None:
+    c.relock(lambda d: d["checked"].clear())
+
+
+def lock_names_an_entry_that_was_never_checked(c: Copy) -> None:
+    c.relock(lambda d: d["checked"].update({"ibm-pc:call:0x21/0x4D": "0" * 64}))
 
 
 def checked_by_its_writer(c: Copy) -> None:
@@ -164,8 +200,14 @@ def reached_port_unknown(c: Copy) -> None:
     (row_missing, {AGAINST}),
     (left_out_forgotten, {COVERED}),
     (left_out_wrongly, {COVERED}),
-    (checked_entry_reworded, {REWORDED}),
-    (checked_by_its_writer, {WHOLE, COVERED}),
+    (checked_entry_reworded, {REWORDED, LOCKED}),
+    (checked_record_edited, {REWORDED, LOCKED}),
+    (checked_record_deleted, {LOCKED}),
+    (checked_entry_removed, {COVERED, LOCKED}),
+    (checked_entry_reworded_and_resealed, {LOCKED}),
+    (checked_entry_left_out_of_the_lock, {LOCKED}),
+    (lock_names_an_entry_that_was_never_checked, {LOCKED}),
+    (checked_by_its_writer, {WHOLE, COVERED, LOCKED}),
     (scope_without_dictionary, {OWED}),
     (dictionary_of_an_undeclared_scope, {UNDECLARED}),
     (device_entry_gone, {OWED, RELATIONS, COVERED}),

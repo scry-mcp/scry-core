@@ -127,8 +127,9 @@ def test_two_sources_of_one_role_are_refused() -> None:
 
 def stamp(raw: dict[str, Any], by: str = "checker", writer: str = "writer") -> dict[str, Any]:
     raw = copy.deepcopy(raw)
-    raw["checked"] = {"by": by, "writer": writer, "digest": fmt.digest("ibm-pc", "port", raw),
+    raw["checked"] = {"by": by, "writer": writer, "digest": "",
                       "against": [{"ref": s["ref"], "line": s["cites"]} for s in raw["sources"]]}
+    raw["checked"]["digest"] = fmt.digest("ibm-pc", "port", raw)
     return raw
 
 
@@ -138,13 +139,21 @@ def test_a_checked_entry_holds_the_digest_of_its_text() -> None:
     assert got.checked.digest == got.digest
 
 
-def test_the_digest_changes_with_any_word_of_the_text_and_ignores_the_record() -> None:
+def test_the_digest_covers_the_text_and_the_check_and_ignores_only_its_own_stamp() -> None:
     raw = valid()
     base = fmt.digest("ibm-pc", "port", raw)
-    assert fmt.digest("ibm-pc", "port", stamp(raw)) == base
     assert fmt.digest("ibm-pc", "port", {**raw, "behaviour": raw["behaviour"] + " "}) != base
     assert fmt.digest("ibm-pc", "port", {**raw, "name": "DAC"}) != base
     assert fmt.digest("m68000", "port", raw) != base and fmt.digest("ibm-pc", "call", raw) != base
+    checked = stamp(raw)
+    assert fmt.digest("ibm-pc", "port", checked) != base
+    sealed = checked["checked"]["digest"]
+    for change in ({"by": "another checker"}, {"writer": "another writer"},
+                   {"against": [{"ref": checked["sources"][0]["ref"], "line": "another line"}]}):
+        record = {**checked["checked"], **change}
+        assert fmt.digest("ibm-pc", "port", {**checked, "checked": record}) != sealed
+    record = {**checked["checked"], "digest": "x"}
+    assert fmt.digest("ibm-pc", "port", {**checked, "checked": record}) == sealed
 
 
 @pytest.mark.parametrize(("change", "says"), [

@@ -1,5 +1,5 @@
-"""The format `scry-knowledge/1`: a dictionary file's header, an entry, and the digest that keeps a
-checked entry from being reworded.
+"""The format `scry-knowledge/1`: a dictionary file's header, an entry, and the seal that keeps a
+checked entry, and the check it carries, from being touched.
 
 A file holds one dictionary: a header (what it covers, the list it must cover, how a program
 reaches its registers) and its entries, each one thing with its sources. `parse_entry` judges one
@@ -60,7 +60,7 @@ class Source:
 @dataclass(frozen=True)
 class Check:
     """The record of a check (decision 37): who checked, who wrote (another session), the lines
-    compared per source `ref`, and the digest of the text that was checked."""
+    compared per source `ref`, and the seal over the text and over this record."""
 
     by: str
     writer: str
@@ -114,13 +114,21 @@ def entry_id(scope: str, kind: str, key: str, access: str = "") -> str:
     return f"{scope}:{kind}:{key}" + (f":{access}" if access else "")
 
 
-def digest(scope: str, kind: str, raw: Mapping[str, Any]) -> str:
-    """The digest of an entry's text: its scope, its kind and every field but `checked`, as JSON
-    in one canonical spelling. A checked entry holds it; the contract fails when the text no
-    longer gives it."""
-    body = {k: v for k, v in raw.items() if k != "checked"}
-    text = json.dumps({"scope": scope, "kind": kind, "entry": body}, sort_keys=True,
-                      ensure_ascii=False, separators=(",", ":"))
+def digest(scope: str, kind: str, raw: Mapping[str, Any],
+           reached: Mapping[str, Any] | None = None) -> str:
+    """The seal of an entry: its scope, its kind, every field of its text, `reached` (the ports
+    its dictionary's header says a register goes by) and, when it is checked, the record of the
+    check (`by`, `writer`, `against`), as JSON in one canonical spelling. Only the record's own
+    `digest` is left out, being what this computes. A checked entry holds it; the contract fails
+    when the entry no longer gives it."""
+    body = dict(raw)
+    record = body.get("checked")
+    if isinstance(record, Mapping):
+        body["checked"] = {k: v for k, v in record.items() if k != "digest"}
+    sealed: dict[str, Any] = {"scope": scope, "kind": kind, "entry": body}
+    if reached is not None:
+        sealed["reached"] = reached
+    text = json.dumps(sealed, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
@@ -273,7 +281,7 @@ def parse_entry(raw: object, header: Header) -> tuple[Entry | None, list[str]]:
     differs = _text(raw, "differs", faults, required=False)
     _words(differs, DIFFERS_WORDS, "differs", faults)
     listed = _sources(raw, faults)
-    now = digest(header.scope, header.kind, raw)
+    now = digest(header.scope, header.kind, raw, header.reached)
     checked = _checked(raw, listed, faults)
     address, length = _numbers(raw, header, faults)
     access, device = raw.get("access", ""), raw.get("device", "")

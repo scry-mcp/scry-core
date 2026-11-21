@@ -16,7 +16,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.instruction` | The fields of the instruction a stopped machine is at (`address`, `bytes`, `text`, `symbol`, `delta`). |
 | `scry_core.tool_replies` | The reply fields that mean the same on both servers for `screen_map_write`, `log_wait`, `comment_write`, `screen_wait` and a refused `profile`. |
 | `scry_core.media_replies` | The reply models of the file tools both servers have. |
-| `scry_core.knowledge` | The knowledge base: the entries of a server's dictionaries (`scry-knowledge/1`), the database that loads them and answers by number, range, words and device, what a server declares it supports, and the checks its dictionaries are held to. |
+| `scry_core.knowledge` | The knowledge base: the entries of a server's dictionaries (`scry-knowledge/1`), the database that loads them and answers by number, range, words and device, what a server declares it supports, the checks its dictionaries are held to, and the lock and command (`scry_core.knowledge.seal`) that seal a checked entry. |
 | `scry_core.knowledge_tool` | `knowledge_find`, the one tool that asks the base what a number is called: its description, judge, body, summary line and reply model, registered by each server. |
 | `scry_core.prose` | How a count is written in a summary or a refusal, and the one summary line of a refusal. |
 

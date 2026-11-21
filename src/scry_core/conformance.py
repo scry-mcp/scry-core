@@ -14,7 +14,7 @@ import pytest
 
 from scry_core import session_block
 from scry_core import window as w
-from scry_core.knowledge import Base, SourceIndex, Support, check
+from scry_core.knowledge import Base, Lock, SourceIndex, Support, check
 from scry_core.project_store import STORE
 from scry_core.window_stand_ins import hosts
 
@@ -347,14 +347,17 @@ def _started(subject: Promoter, project: Path, name: str) -> str:
 
 class KnowledgeSubject(Protocol):
     """A server's knowledge base: what it declares, its loaded dictionaries (`fts5=False` forces
-    the index of our own), the committed index of the sources they cite, and the scopes its code
-    depends on (the keys of its cpu tables, the cpus its demos run)."""
+    the index of our own), the committed index of the sources they cite, the committed lock of its
+    checked entries, and the scopes its code depends on (the keys of its cpu tables, the cpus its
+    demos run)."""
 
     def support(self) -> Support: ...
 
     def base(self, fts5: bool | None = None) -> Base: ...
 
     def sources(self) -> SourceIndex: ...
+
+    def lock(self) -> Lock: ...
 
     def code_scopes(self) -> Iterable[str]: ...
 
@@ -421,4 +424,8 @@ class KnowledgeContract:
 
     def test_a_checked_entry_is_never_reworded(self, subject: KnowledgeSubject) -> None:
         _none(check.reworded(subject.base()))
+
+    def test_every_checked_entry_is_locked_and_stays_as_it_was_locked(
+            self, subject: KnowledgeSubject) -> None:
+        _none(check.locked(subject.base(), subject.lock()))
 

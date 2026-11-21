@@ -10,7 +10,16 @@ from typing import Any
 
 from scry_core import session_block
 from scry_core import window as w
-from scry_core.knowledge import Base, Device, Scope, SourceIndex, Support, read_index
+from scry_core.knowledge import (
+    Base,
+    Device,
+    Lock,
+    Scope,
+    SourceIndex,
+    Support,
+    read_index,
+    read_lock,
+)
 from scry_core.reply_contract import Invalid
 
 PID = 4242
@@ -160,14 +169,16 @@ class StatusDeniesASession(NullServer):
 
 
 class NullKnowledge:
-    """Six fixture entries, each citing a real line of DOSBox-X's source, and the index captured
-    from those lines. `root` and `sources` name copies, for variants that break one rule."""
+    """Six fixture entries, each citing a real line of DOSBox-X's source, the index captured from
+    those lines and the lock of the one checked entry. `root`, `sources` and `lock` name copies,
+    for variants that break one rule."""
 
     def __init__(self, root: Path = KNOWLEDGE / "null",
                  sources: Path = KNOWLEDGE / "null-sources.json",
+                 lock: Path = KNOWLEDGE / "null-lock.json",
                  declared: Support | None = None,
                  code: Iterable[str] = ("ibm-pc",)) -> None:
-        self.root, self.index, self.code = root, sources, tuple(code)
+        self.root, self.index, self.locked, self.code = root, sources, lock, tuple(code)
         self.declared = declared or Support(
             scopes=(Scope("ibm-pc", written=("call", "port", "device")),),
             devices=(Device("vga-seq", written=("register",)),))
@@ -180,6 +191,9 @@ class NullKnowledge:
 
     def sources(self) -> SourceIndex:
         return read_index(self.index)
+
+    def lock(self) -> Lock:
+        return read_lock(self.locked)
 
     def code_scopes(self) -> Iterable[str]:
         return self.code
