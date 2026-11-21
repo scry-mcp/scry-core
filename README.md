@@ -174,8 +174,7 @@ shows it took nobody's focus, and how independent jobs run in parallel.
 ## Platforms
 
 macOS and Windows. Every module imports on both, and what only one of them has is chosen by
-`sys.platform`. Linux runs the unit tests (`.github/workflows/ci.yml`); the servers support
-macOS and Windows only.
+`sys.platform`.
 
 Licence: MIT.
 
