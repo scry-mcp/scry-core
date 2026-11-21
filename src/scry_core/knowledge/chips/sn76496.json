@@ -31,26 +31,7 @@
           "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 0",
           "cites": "\t\tcase 0: // tone 0: frequency"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
-            "line": "Tone registersThese give a counter reset value for the tone generators. Hence, low values give high frequencies and vice versa."
-          },
-          {
-            "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 0",
-            "line": "\t\tcase 0: // tone 0: frequency"
-          },
-          {
-            "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 0",
-            "line": "\t\tcase 0: // tone 0: frequency"
-          }
-        ],
-        "digest": "d18b2572b0d19d5e89122939d9f7163c9718283410c1726e554efb783282b3cb"
-      }
+      ]
     },
     {
       "key": "0x01",
@@ -123,26 +104,7 @@
           "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 2",
           "cites": "\t\tcase 2: // tone 1: frequency"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
-            "line": "Tone registersThese give a counter reset value for the tone generators. Hence, low values give high frequencies and vice versa."
-          },
-          {
-            "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 2",
-            "line": "\t\tcase 2: // tone 1: frequency"
-          },
-          {
-            "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 2",
-            "line": "\t\tcase 2: // tone 1: frequency"
-          }
-        ],
-        "digest": "8eb4fb5c6ac9ae8498e597d2f494744a7d317e0a03d993c2b177f0c0c162a140"
-      }
+      ]
     },
     {
       "key": "0x03",
@@ -215,26 +177,7 @@
           "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 4",
           "cites": "\t\tcase 4: // tone 2: frequency"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
-            "line": "Tone registersThese give a counter reset value for the tone generators. Hence, low values give high frequencies and vice versa."
-          },
-          {
-            "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 4",
-            "line": "\t\tcase 4: // tone 2: frequency"
-          },
-          {
-            "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 4",
-            "line": "\t\tcase 4: // tone 2: frequency"
-          }
-        ],
-        "digest": "2ec891e6a14e88ea13543824965e722c89bb22eadfbba1270de014b6c81da083"
-      }
+      ]
     },
     {
       "key": "0x05",
@@ -308,26 +251,7 @@
           "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 6",
           "cites": "\t\tcase 6: // noise: frequency, mode"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:SMS Power! SN76489 development page, https://www.smspower.org/Development/SN76489, SN76489 registers",
-            "line": "Noise registerOne bit selects the mode (\"periodic\" or \"white\") and the other two select a shift rate."
-          },
-          {
-            "ref": "dosbox-x:src/hardware/mame/sn76496.cpp sn76496_base_device::write case 6",
-            "line": "\t\tcase 6: // noise: frequency, mode"
-          },
-          {
-            "ref": "mame:src/devices/sound/sn76496.cpp sn76496_base_device::write case 6",
-            "line": "\t\tcase 6: // noise: frequency, mode"
-          }
-        ],
-        "digest": "53c383c5253052511ca039f01b336bc9edd9aaca2ac2b21accd113fef45947c7"
-      }
+      ]
     },
     {
       "key": "0x07",

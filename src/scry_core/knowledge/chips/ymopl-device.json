@@ -67,22 +67,7 @@
           "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ym3812",
           "cites": "DEFINE_DEVICE_TYPE(YM3812, ym3812_device, \"ym3812\", \"YM3812 OPL2\")"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B AdLib index 01h",
-            "line": " 01h\tEnable waveform control"
-          },
-          {
-            "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ym3812",
-            "line": "DEFINE_DEVICE_TYPE(YM3812, ym3812_device, \"ym3812\", \"YM3812 OPL2\")"
-          }
-        ],
-        "digest": "d1be568620c7f16810b035b0e7fb70c9891d00927f8b94486d57126b682abd7c"
-      }
+      ]
     },
     {
       "key": "ymf262",
@@ -122,26 +107,7 @@
           "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteAddr opl3Active",
           "cites": "\t\tif ( opl3Active || (val == 0x05u) )"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc3",
-        "writer": "phase Kcf2",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B AdLib index 05h",
-            "line": " 05h\t(OPL3) compatibility register"
-          },
-          {
-            "ref": "mame:src/devices/sound/ymopl.cpp DEFINE_DEVICE_TYPE ymf262",
-            "line": "DEFINE_DEVICE_TYPE(YMF262, ymf262_device, \"ymf262\", \"YMF262 OPL3\")"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteAddr opl3Active",
-            "line": "\t\tif ( opl3Active || (val == 0x05u) )"
-          }
-        ],
-        "digest": "27faf408baa32092febe197f51d82342fe2095fb991de8d9840b2593adf3af9c"
-      }
+      ]
     }
   ]
 }

@@ -45,22 +45,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp DEFINE_DEVICE_TYPE pic8259",
           "cites": "DEFINE_DEVICE_TYPE(PIC8259, pic8259_device, \"pic8259\", \"Intel 8259 PIC\")"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW1",
-            "line": "OCW1 sets and clears the mask bits in the interrupt"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp DEFINE_DEVICE_TYPE pic8259",
-            "line": "DEFINE_DEVICE_TYPE(PIC8259, pic8259_device, \"pic8259\", \"Intel 8259 PIC\")"
-          }
-        ],
-        "digest": "ee70f9e5b84bd3caa4e55bcdc50ec74ef8d5cf1c46416089a524516008711bc9"
-      }
+      ]
     }
   ]
 }

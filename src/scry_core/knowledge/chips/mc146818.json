@@ -207,26 +207,7 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_HOURS",
           "cites": "\t\tREG_HOURS = 4,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc2",
-        "writer": "phase Kcf",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 04h HOURS",
-            "line": "CMOS 04h - RTC - HOURS"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x04",
-            "line": "        case 0x04:      /* Hours */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_HOURS",
-            "line": "\t\tREG_HOURS = 4,"
-          }
-        ],
-        "digest": "6a346406441fa1a543f3b7c108bc7f711a7622095083972ba27e0dfa88fa2201"
-      }
+      ]
     },
     {
       "key": "0x05",
@@ -250,26 +231,7 @@
           "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_HOURS",
           "cites": "\t\tREG_ALARM_HOURS = 5,"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc2",
-        "writer": "phase Kcf",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 05h HOUR ALARM",
-            "line": "CMOS 05h - RTC - HOUR ALARM"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x05",
-            "line": "        case 0x05:      /* Hours, alarm */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.h REG REG_ALARM_HOURS",
-            "line": "\t\tREG_ALARM_HOURS = 5,"
-          }
-        ],
-        "digest": "6c2c2b0cccbb8614a115656d40803d967407671927dfa98ffc84e019a544e9b4"
-      }
+      ]
     },
     {
       "key": "0x06",
@@ -467,26 +429,7 @@
           "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_A",
           "cites": "\tcase REG_A:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 0Ah STATUS REGISTER A",
-            "line": "CMOS 0Ah - RTC - STATUS REGISTER A (read/write) (usu 26h)"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x0a",
-            "line": "        case 0x0a:      /* Status reg A */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_A",
-            "line": "\tcase REG_A:"
-          }
-        ],
-        "digest": "132eece214decee284fec17a5f73c71a37035914a5ce99728f70369fc310d8c9"
-      }
+      ]
     },
     {
       "key": "0x0B",
@@ -512,26 +455,7 @@
           "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_B",
           "cites": "\tcase REG_B:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 0Bh STATUS REGISTER B",
-            "line": "CMOS 0Bh - RTC - STATUS REGISTER B (read/write) "
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_writereg case 0x0b",
-            "line": "        case 0x0b:      /* Status reg B */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_write case REG_B",
-            "line": "\tcase REG_B:"
-          }
-        ],
-        "digest": "1c879c383fa3c9c8842e1158064cc68129622cc1ce361649fec0b970608614f7"
-      }
+      ]
     },
     {
       "key": "0x0C",
@@ -557,26 +481,7 @@
           "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_read case REG_C",
           "cites": "\tcase REG_C:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:CMOS.LST CMOS 0Ch STATUS REGISTER C",
-            "line": "CMOS 0Ch - RTC - STATUS REGISTER C (Read only)"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/cmos.cpp cmos_readreg case 0x0c",
-            "line": "    case 0x0c:      /* Status register C */"
-          },
-          {
-            "ref": "mame:src/devices/machine/mc146818.cpp mc146818_device::internal_read case REG_C",
-            "line": "\tcase REG_C:"
-          }
-        ],
-        "digest": "052c52a6c6d175604f1b845fdaf640e6b8c7554e48a6424568692b6537151dc5"
-      }
+      ]
     },
     {
       "key": "0x0D",
