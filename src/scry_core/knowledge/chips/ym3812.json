@@ -34,26 +34,7 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base waveform_enable",
           "cites": "\tuint32_t waveform_enable() const                 { return IsOpl2 ? byte(0x01, 5, 1) : (IsOpl3Plus ? 1 : 0); }"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B AdLib index 01h",
-            "line": " 01h\tEnable waveform control"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x01",
-            "line": "\t\tif ( reg == 0x01 ) {"
-          },
-          {
-            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base waveform_enable",
-            "line": "\tuint32_t waveform_enable() const                 { return IsOpl2 ? byte(0x01, 5, 1) : (IsOpl3Plus ? 1 : 0); }"
-          }
-        ],
-        "digest": "898285fa18f723d92bc39148ca9abd2174481d744a2b1863a1419f32451b7164"
-      }
+      ]
     },
     {
       "key": "0x02",
@@ -214,26 +195,7 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 08",
           "cites": "//           08 x------- CSM mode [OPL/OPL2 only]"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B AdLib index 08h",
-            "line": " 08h\tSpeech synthesis mode"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0x08",
-            "line": "\t\t} else if ( reg == 0x08 ) {"
-          },
-          {
-            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 08",
-            "line": "//           08 x------- CSM mode [OPL/OPL2 only]"
-          }
-        ],
-        "digest": "429e2888b921a391fd54dc9c704724431defcfcebbe10c4f975cfc25a511b562"
-      }
+      ]
     },
     {
       "key": "0xBD",
@@ -259,26 +221,7 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
           "cites": "//           BD x------- AM depth"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc3",
-        "writer": "phase Kcf2",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B AdLib index BDh",
-            "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
-            "line": "\t\tif ( reg == 0xbd ) {"
-          },
-          {
-            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
-            "line": "//           BD x------- AM depth"
-          }
-        ],
-        "digest": "a5b3459637b1ee8bfc6a05e87fa53b72298ced27d3ae7b1adb3a43d8e56ca32d"
-      }
+      ]
     },
     {
       "key": "0x20..0x35",
@@ -621,26 +564,7 @@
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base op_waveform",
           "cites": "\tuint32_t op_waveform(uint32_t opoffs) const      { return waveform_enable() ? byte(0xe0, 0, newflag() ? 3 : 2, opoffs) : 0; }"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B AdLib index E0h-F5h",
-            "line": " E0h-F5h Waveform Selection"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg case 0xe0",
-            "line": "\tcase 0xe0 >> 4:"
-          },
-          {
-            "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base op_waveform",
-            "line": "\tuint32_t op_waveform(uint32_t opoffs) const      { return waveform_enable() ? byte(0xe0, 0, newflag() ? 3 : 2, opoffs) : 0; }"
-          }
-        ],
-        "digest": "1a426a62bbd4101dd79a51eca8d25b09cdfe28e91711613e74f6107a0d9c2e35"
-      }
+      ]
     }
   ]
 }

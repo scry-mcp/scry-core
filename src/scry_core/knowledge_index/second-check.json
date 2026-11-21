@@ -1,0 +1,380 @@
+{
+  "format": "scry-knowledge-second-check/1",
+  "confirmed": [
+    {
+      "id": "am9517a:register:0x00",
+      "by": "phase Ksc2",
+      "digest": "707e8504559f509853d0c27455126a984fcfc4d773812d2e2915817f0435ee5e"
+    },
+    {
+      "id": "am9517a:register:0x02",
+      "by": "phase Ksc2",
+      "digest": "ba4640b3221453c40529294d3781188a3941f723837b0db3fee616804ccfb721"
+    },
+    {
+      "id": "am9517a:register:0x04",
+      "by": "phase Ksc2",
+      "digest": "530f65141d790cc08c26af55b3bae91d3fa5a482463daabb0715976f469536d9"
+    },
+    {
+      "id": "am9517a:register:0x06",
+      "by": "phase Ksc2",
+      "digest": "c951cb4e7cc41dbc7f5159444248acec3c90f72f48eb9c6e123875087c4343f0"
+    },
+    {
+      "id": "am9517a:register:0x0A",
+      "by": "phase Ksc2",
+      "digest": "b84ba3465beae1f0b3ba81e3f625d037dea645481604dec991079a19d49c3f3c"
+    },
+    {
+      "id": "am9517a:register:0x0B",
+      "by": "phase Ksc2",
+      "digest": "876c5c27dfdfa3bb259185cf8c1676b007e421e344087bdb1f7239119f2d2038"
+    },
+    {
+      "id": "am9517a:register:0x0C",
+      "by": "phase Ksc2",
+      "digest": "f715a5a4e57d6c6973ad63ee370cf095d56d1befdf44415a2ccc31ca6c22aed2"
+    },
+    {
+      "id": "am9517a:register:0x0D:write",
+      "by": "phase Ksc2",
+      "digest": "d10741326af11c81355d0997b7fe934c95aa3972f4a2de421dca58c433b47c09"
+    },
+    {
+      "id": "am9517a:register:0x0E",
+      "by": "phase Ksc2",
+      "digest": "50a4bf0d131aea9cbaf8cdd770524ad609cb0b2057a83738b858bb0ea4c43c56"
+    },
+    {
+      "id": "am9517a:register:0x0F:write",
+      "by": "phase Ksc2",
+      "digest": "2fa3204fa1e781068f36fc33941ee098e4428a973fad2c7b25fae2105230b604"
+    },
+    {
+      "id": "chip:device:am9517a",
+      "by": "phase Ksc2",
+      "digest": "64bd6a64babc89d1649375e06894853f2299eda22e1e0d92a6e33f0c84ad3491"
+    },
+    {
+      "id": "chip:device:ins8250",
+      "by": "phase Ksc2",
+      "digest": "90558abd48a0c67f369a4640e5b6e6bab66a0e204f56aeabb47dd67a192c8203"
+    },
+    {
+      "id": "chip:device:mc146818",
+      "by": "phase Ksc2",
+      "digest": "a1e22de248f135026e839f3fde5d0e07fc57a923a5ebee46022a6c651af6124e"
+    },
+    {
+      "id": "chip:device:mc6845",
+      "by": "phase Ksc2",
+      "digest": "24b406c13bb2c5a83f2b9bec105a379499ba22a7e63e20f74e1a97bfbe811806"
+    },
+    {
+      "id": "chip:device:pit8253",
+      "by": "phase Ksc2",
+      "digest": "3fd2af0db3b4265cabf2f1192e14c5a4c5a6f72168d638e95cd4446dd9e1a2fc"
+    },
+    {
+      "id": "ins8250:register:0x00",
+      "by": "phase Ksc2",
+      "digest": "28655f9a2af1764893d8a6c36d292fbf22378347af07d519e168aeecbbb37444"
+    },
+    {
+      "id": "ins8250:register:0x01",
+      "by": "phase Ksc2",
+      "digest": "58cba2f7e895b45986fde4c5140977ce8a2f756e0ec443cd1d56598059356a56"
+    },
+    {
+      "id": "ins8250:register:0x03",
+      "by": "phase Ksc2",
+      "digest": "ff0b7546a0498e587e7041db79effa2eae338b0c20af5e9df894c49695b3458b"
+    },
+    {
+      "id": "ins8250:register:0x05",
+      "by": "phase Ksc2",
+      "digest": "59679b26a171696ee92783bd3cf46a0d9ea51eb3089e3a165a8e2fe24bb43fdf"
+    },
+    {
+      "id": "mc146818:register:0x00",
+      "by": "phase Ksc2",
+      "digest": "bf2d663296cf6bccee03690e06f75a373d8dff36745e377a0f3baec5125ab2ea"
+    },
+    {
+      "id": "mc146818:register:0x01",
+      "by": "phase Ksc2",
+      "digest": "3f023459ae233dc22626e25fdc0072df6506ea8012b77af2b55a124d6b98472b"
+    },
+    {
+      "id": "mc146818:register:0x02",
+      "by": "phase Ksc2",
+      "digest": "6080cc7c50d649b46c582253568274da896210553ca4d0417c7914fe3fcc8f2f"
+    },
+    {
+      "id": "mc146818:register:0x03",
+      "by": "phase Ksc2",
+      "digest": "3e0a0b5d61d6c47a8bb585854f85b3d7563f818f0331ef5f2390bfbde1cf2f67"
+    },
+    {
+      "id": "mc146818:register:0x06",
+      "by": "phase Ksc2",
+      "digest": "4c74c21f216fcb8a3823e9527d23aec31474cd2dce06b3aeb316cb2d04e7cc4e"
+    },
+    {
+      "id": "mc146818:register:0x07",
+      "by": "phase Ksc2",
+      "digest": "dfba9618c8d6ec5aa5e19fbdb25db042b454579e39359bb13eb5abc40aa185ea"
+    },
+    {
+      "id": "mc146818:register:0x08",
+      "by": "phase Ksc2",
+      "digest": "563533b031081eadfea025adb28abaa3f187d1cde67784b5022e61a04b043cd2"
+    },
+    {
+      "id": "mc146818:register:0x09",
+      "by": "phase Ksc2",
+      "digest": "84c80e672d84486d3cf0912003b01283e9dbcc17aa50b8a1c29258dde8303382"
+    },
+    {
+      "id": "mc146818:register:0x0D",
+      "by": "phase Ksc2",
+      "digest": "47efec8373b885000b8fe54887c22ed3397ee0e5323fcf47cdf48751fe65e849"
+    },
+    {
+      "id": "mc146818:register:0x0E..0x3F",
+      "by": "phase Ksc2",
+      "digest": "e777d81552413d37b970438f4c5c6ce8b66ef3c045b4ccc33aaeb4a54e158052"
+    },
+    {
+      "id": "mc6845:register:0x0B",
+      "by": "phase Ksc2",
+      "digest": "f399b87429633df3ee35c7085b4d72ee252220c162316f943254e349caec60d3"
+    },
+    {
+      "id": "mc6845:register:0x0D",
+      "by": "phase Ksc2",
+      "digest": "89ce5a9bbd31fa95f372c3438f3584ec7f42fc25469ed1b0555ad5b9c7db9f8e"
+    },
+    {
+      "id": "mc6845:register:0x0F",
+      "by": "phase Ksc2",
+      "digest": "afee38ef15c58731c066bdd9002f8b6a5cd532f5bb989d3c42522d6d3bb606ac"
+    },
+    {
+      "id": "pic8259:command:0x40..0x47",
+      "by": "phase Ksc2",
+      "digest": "562a3a953354cc8db4a704d1141ada2f2285f9f447545d37415b05770b79e8ec"
+    },
+    {
+      "id": "pic8259:register:0x01:read",
+      "by": "phase Ksc2",
+      "digest": "1f5f8efa89fb30608b0947aab0a542fb4f7761ee3e1a8813120a9b3e18e6e36b"
+    },
+    {
+      "id": "saa1099:register:0x00..0x05",
+      "by": "phase Ksc2",
+      "digest": "3b315a5214856d255482c7e48575b02e08cc021ec0275530ff4c1106c6bb649b"
+    },
+    {
+      "id": "saa1099:register:0x08..0x0D",
+      "by": "phase Ksc2",
+      "digest": "e84cadc1df6661c671fe3c1e600fa51420b9b3293566cc6e0d696cde259cf223"
+    },
+    {
+      "id": "saa1099:register:0x10..0x12",
+      "by": "phase Ksc2",
+      "digest": "2dc96600ea0a198f07a5ca4436c3c7e7a3d6a74bf05e6583d436a97ccc1fc3f4"
+    },
+    {
+      "id": "saa1099:register:0x14",
+      "by": "phase Ksc2",
+      "digest": "ef2d15c5cc1b85e170f579f38fde07a33a07e7b60b7414ec255fceddbe76e78b"
+    },
+    {
+      "id": "saa1099:register:0x15",
+      "by": "phase Ksc2",
+      "digest": "7754c5016239a1d3d6c380fd3d7e757c3e84c81a0c810dd4e0795161e01c6ba9"
+    },
+    {
+      "id": "saa1099:register:0x16",
+      "by": "phase Ksc2",
+      "digest": "b3d706feed2e1455ddbfc8f04680b3f1242abb582070eb626e8e78084cc88d43"
+    },
+    {
+      "id": "saa1099:register:0x1C",
+      "by": "phase Ksc2",
+      "digest": "987cc51bbc9fc0e250c4462bd31d79e167ee405ba6f423f35806e7b0d378d2ea"
+    },
+    {
+      "id": "sn76496:register:0x01",
+      "by": "phase Ksc2",
+      "digest": "16d2712bff439a0b36df8d5a0e39e35f1b94fbc6630d268112613f2e76bd1ae2"
+    },
+    {
+      "id": "sn76496:register:0x03",
+      "by": "phase Ksc2",
+      "digest": "e77df785b9bbbaf064b6b13abce2541fb1882cdb5419afcd65e77e894ea48f1a"
+    },
+    {
+      "id": "sn76496:register:0x05",
+      "by": "phase Ksc2",
+      "digest": "22e324b0581340d9f958a94a59a52a03b0de5712fc3e19ad0572383d43d78e6b"
+    },
+    {
+      "id": "sn76496:register:0x07",
+      "by": "phase Ksc2",
+      "digest": "ab211fb767cd334dc65cf9ebfe14cbf55c9b708518ba16d67e585c109e64e18f"
+    },
+    {
+      "id": "ym3812:register:0x02",
+      "by": "phase Ksc2",
+      "digest": "0ff6008337a2c8c8f862123838eca9840d10969436cf4e963a5665257d882786"
+    },
+    {
+      "id": "ym3812:register:0x03",
+      "by": "phase Ksc2",
+      "digest": "af4483fd8b4113192660daf59dcfec76f7383927721f0ccbcbe48f880d85dbea"
+    },
+    {
+      "id": "ym3812:register:0x04",
+      "by": "phase Ksc2",
+      "digest": "7549ab30351b12e7208db96e4fab6fc0aa1d52cc447e5aea145abaae48466038"
+    },
+    {
+      "id": "ym3812:register:0x20..0x35",
+      "by": "phase Ksc2",
+      "digest": "4d8d32f6484632abd1e4ff031942dc72f545f5e492d43eed1bd80b5118cee3fc"
+    },
+    {
+      "id": "ym3812:register:0x40..0x55",
+      "by": "phase Ksc2",
+      "digest": "7f45a34e1baef1db2ab60a7ca72b00f033927d1d45eb536b6b490ad971300e27"
+    },
+    {
+      "id": "ym3812:register:0x60..0x75",
+      "by": "phase Ksc2",
+      "digest": "fe7ce3de31eed3eda59d8d275d4ae24d4baecfc52464c12231c508787c5a4a4d"
+    },
+    {
+      "id": "ym3812:register:0x80..0x95",
+      "by": "phase Ksc2",
+      "digest": "87ee3d8ca4926594f4305a17d73415338955d98df26d752c7469abbf190d2984"
+    },
+    {
+      "id": "ym3812:register:0xA0..0xA8",
+      "by": "phase Ksc2",
+      "digest": "e472a3705bdb2a56f5333088d1ee9d1ec1e4a2125501efc102d31b159b30987c"
+    },
+    {
+      "id": "ym3812:register:0xB0..0xB8",
+      "by": "phase Ksc2",
+      "digest": "c1213e1707c84b43ebd3b5a3b2c7b5827cc5f3623b60620b56f75c9a59d01474"
+    },
+    {
+      "id": "ym3812:register:0xC0..0xC8",
+      "by": "phase Ksc2",
+      "digest": "8a66f33cc94e340e14ec429982c1d5fff4eaac7423f9696207ecbecc4aed4af1"
+    },
+    {
+      "id": "ymf262:register:0x01",
+      "by": "phase Ksc2",
+      "digest": "d6b9d3a6ed09073bdce504e41c6cf1573cad6617323a817b7000a31df56cc46c"
+    },
+    {
+      "id": "ymf262:register:0x02",
+      "by": "phase Ksc2",
+      "digest": "29bd321a6c3b5a44da0b72eb44c3c72810b8d0cf589159e97a821145cd98e14e"
+    },
+    {
+      "id": "ymf262:register:0x03",
+      "by": "phase Ksc2",
+      "digest": "fd6a4cb93cee10634be8103c29376453d5563ebcbcd4b284c08705297069ab32"
+    },
+    {
+      "id": "ymf262:register:0x04",
+      "by": "phase Ksc2",
+      "digest": "9bcc8e4ffc6732d0e07a80328a03a5326385aefa4e2dd8102ac426717f4fccaf"
+    },
+    {
+      "id": "ymf262:register:0x08",
+      "by": "phase Ksc2",
+      "digest": "2b7f634dd897bc80c21bf506ff3e8a97a5a4f05ec81bb3c26f7b7d6b318b9b28"
+    },
+    {
+      "id": "ymf262:register:0x105",
+      "by": "phase Ksc2",
+      "digest": "5192c9a02e7867624c2acab1577067085902f0e97beff9261f6113597a4f34d6"
+    },
+    {
+      "id": "ymf262:register:0x20..0x35",
+      "by": "phase Ksc2",
+      "digest": "a306d2cd0c0f80a5d2f5550a2a8fa7dc8377ab759ac20d1313ae3c6b2ea3a0dd"
+    },
+    {
+      "id": "ymf262:register:0x40..0x55",
+      "by": "phase Ksc2",
+      "digest": "1ff57e738ffc9b85fcc09d2158685f7d7f952d76fe274ffcb83d6f4bf4a0337c"
+    },
+    {
+      "id": "ymf262:register:0x60..0x75",
+      "by": "phase Ksc2",
+      "digest": "33a46632a36758541ee1c945cc5f030528c3504da03744136d26c72162c49ffd"
+    },
+    {
+      "id": "ymf262:register:0x80..0x95",
+      "by": "phase Ksc2",
+      "digest": "b3c63b5d8f65acfcdbf20e1153e8aa45ce3809dcb6800503f1e7d1f233aff48f"
+    },
+    {
+      "id": "ymf262:register:0xBD",
+      "by": "phase Ksc2",
+      "digest": "1310918a928d60e7f5066b32869a4dccb607f5de67503fa05470358dc6606a89"
+    },
+    {
+      "id": "z80:vector:0x00",
+      "by": "phase Ksc2",
+      "digest": "80185d98347b9ee7ecff8c91f193694c077ab948db7e58e29632d8988576421e"
+    },
+    {
+      "id": "z80:vector:0x08",
+      "by": "phase Ksc2",
+      "digest": "191ce7382371ab8cbd2ec0824ba8909cd7ec3166e746709c574f65750ee2f99c"
+    },
+    {
+      "id": "z80:vector:0x10",
+      "by": "phase Ksc2",
+      "digest": "318680ec0147a01fc01c75478bbecca12a7ab7661a7fbc7d729f6409b12a7eb3"
+    },
+    {
+      "id": "z80:vector:0x18",
+      "by": "phase Ksc2",
+      "digest": "a6e5dcc571d88042a56e6d619dfb58292990d3a356216da9f0ceb612dcb2a40e"
+    },
+    {
+      "id": "z80:vector:0x20",
+      "by": "phase Ksc2",
+      "digest": "dcd691a8d7821a263eff313bb3ee8633e0452b8ff88e0c7b800a69ae0c793840"
+    },
+    {
+      "id": "z80:vector:0x28",
+      "by": "phase Ksc2",
+      "digest": "79f2cdbdd2585241a4249cfebe88b733fb6094aa89aafbdcc1e438ede3a4b74f"
+    },
+    {
+      "id": "z80:vector:0x30",
+      "by": "phase Ksc2",
+      "digest": "0a6ab66ff6e8ea89e7cc45619c34608e9b3642830170d0c5a7fccbbcc7db21e2"
+    },
+    {
+      "id": "z80:vector:0x38",
+      "by": "phase Ksc2",
+      "digest": "b65321f8865ecc01230660e97a7fe8bf417ae8d5b777595d29965a47175e638a"
+    },
+    {
+      "id": "z80:vector:0x66",
+      "by": "phase Ksc2",
+      "digest": "3bc4df6e8a12266d48f12230cc97de4f7511432c655f192316ea0242cc3518d1"
+    }
+  ]
+}

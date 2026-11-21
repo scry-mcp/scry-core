@@ -245,22 +245,7 @@
           "ref": "mame:src/devices/sound/saa1099.cpp saa1099_device::data_w case 0x18",
           "cites": "\tcase 0x18:  case 0x19:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "dosbox-x:src/hardware/mame/saa1099.cpp saa1099_device::data_w case 0x18",
-            "line": "\tcase 0x18:  case 0x19:"
-          },
-          {
-            "ref": "mame:src/devices/sound/saa1099.cpp saa1099_device::data_w case 0x18",
-            "line": "\tcase 0x18:  case 0x19:"
-          }
-        ],
-        "digest": "2db196191afeee98c591b2e7385aeff25ce8fb305b2ac92e648c29f4c0ed7e5a"
-      }
+      ]
     },
     {
       "key": "0x1C",

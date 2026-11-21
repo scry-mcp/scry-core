@@ -35,22 +35,7 @@
           "ref": "mame:src/devices/sound/saa1099.cpp DEFINE_DEVICE_TYPE saa1099",
           "cites": "DEFINE_DEVICE_TYPE(SAA1099, saa1099_device, \"saa1099\", \"Philips SAA1099\")"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "rbil61:PORTS.B 0210-0211 Game Blaster",
-            "line": "PORT 0210-0211 - Game Blaster"
-          },
-          {
-            "ref": "mame:src/devices/sound/saa1099.cpp DEFINE_DEVICE_TYPE saa1099",
-            "line": "DEFINE_DEVICE_TYPE(SAA1099, saa1099_device, \"saa1099\", \"Philips SAA1099\")"
-          }
-        ],
-        "digest": "4dab520dd3f137e38a80ef77f627972604cd12786a84d807d68898b6b93449c0"
-      }
+      ]
     }
   ]
 }

@@ -62,26 +62,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x00..0x07",
           "cites": "\t\t\t\t\t\tcase 0x00:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Automatic Rotation",
-            "line": "tion using OCW2, the Rotation on Non-Specific EOI"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command rotate in auto EOI mode",
-            "line": "            if ((val&0x40)==0) {        // rotate in auto EOI mode"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x00..0x07",
-            "line": "\t\t\t\t\t\tcase 0x00:"
-          }
-        ],
-        "digest": "1ef90ae3cb5fa3cfc137a3b8acf3436984d6e2d010678b42a41bf3096596731c"
-      }
+      ]
     },
     {
       "key": "0x08..0x0F",
@@ -108,26 +89,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x08..0x0F",
           "cites": "\t\t\t\tif ((data & 0x98) == 0x08)"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW3",
-            "line": "Operation Control Word 3 (OCW3)"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command OCW3",
-            "line": "    } else if (GCC_UNLIKELY(val&0x08)) {    // OCW3 issued"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x08..0x0F",
-            "line": "\t\t\t\tif ((data & 0x98) == 0x08)"
-          }
-        ],
-        "digest": "e2870d90c3b2ef76c0953fe3b036a75381774bc59fd73af6f320285a4e0aa38c"
-      }
+      ]
     },
     {
       "key": "0x48..0x4F",
@@ -154,26 +116,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x48..0x4F",
           "cites": "\t\t\t\tif ((data & 0x98) == 0x08)"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW3",
-            "line": "Operation Control Word 3 (OCW3)"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command OCW3",
-            "line": "    } else if (GCC_UNLIKELY(val&0x08)) {    // OCW3 issued"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x48..0x4F",
-            "line": "\t\t\t\tif ((data & 0x98) == 0x08)"
-          }
-        ],
-        "digest": "bcbb53d42678f025a2873ee5ccfa41d95ab9e6675494fd8b6807a4f15a2d274e"
-      }
+      ]
     },
     {
       "key": "0x68..0x6F",
@@ -200,26 +143,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x68..0x6F",
           "cites": "\t\t\t\tif ((data & 0x98) == 0x08)"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, OCW3",
-            "line": "Operation Control Word 3 (OCW3)"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command OCW3",
-            "line": "    } else if (GCC_UNLIKELY(val&0x08)) {    // OCW3 issued"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x68..0x6F",
-            "line": "\t\t\t\tif ((data & 0x98) == 0x08)"
-          }
-        ],
-        "digest": "95735f0f346137119557f877a508c5e704a934f20a62ca3e5982c6f2d689ab30"
-      }
+      ]
     },
     {
       "key": "0x10..0x1F",
@@ -246,26 +170,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x10..0x1F",
           "cites": "\t\t\tif (data & 0x10)"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc2",
-        "writer": "phase Kcf",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, ICW1",
-            "line": "b. The Interrupt Mask Register is cleared."
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command ICW1",
-            "line": "    if (GCC_UNLIKELY(val&0x10)) {       // ICW1 issued"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x10..0x1F",
-            "line": "\t\t\tif (data & 0x10)"
-          }
-        ],
-        "digest": "a62dd94019a359f2bbd59a76dc2932ebc1301ec3a93e856088edd3fede249a7b"
-      }
+      ]
     },
     {
       "key": "0x20..0x27",
@@ -293,26 +198,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x20..0x27",
           "cites": "\t\t\t\t\t\tcase 0x20:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, End of Interrupt",
-            "line": "and serviced. A non-specific EOI can be issued with"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command nonspecific EOI",
-            "line": "            } else {        // nonspecific EOI"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x20..0x27",
-            "line": "\t\t\t\t\t\tcase 0x20:"
-          }
-        ],
-        "digest": "d7f9811d3f76066ef217bc1f956640a79fe379af602ed63fead9cd30d8896ff2"
-      }
+      ]
     },
     {
       "key": "0x40..0x47",
@@ -374,26 +260,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x60..0x67",
           "cites": "\t\t\t\t\t\tcase 0x60:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, End of Interrupt",
-            "line": "to be reset. A specific EOI can be issued with OCW2"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command specific EOI",
-            "line": "            if (val&0x40) {     // specific EOI"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x60..0x67",
-            "line": "\t\t\t\t\t\tcase 0x60:"
-          }
-        ],
-        "digest": "d62dfd655dd2d46bf9c296c5f9c3a8c0a52cf2acdbdee0570d3011523d886653"
-      }
+      ]
     },
     {
       "key": "0x80..0x87",
@@ -417,26 +284,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x80..0x87",
           "cites": "\t\t\t\t\t\tcase 0x80:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Automatic Rotation",
-            "line": "in Automatic EOI Mode which is set by"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command rotate in auto EOI mode",
-            "line": "            if ((val&0x40)==0) {        // rotate in auto EOI mode"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0x80..0x87",
-            "line": "\t\t\t\t\t\tcase 0x80:"
-          }
-        ],
-        "digest": "55329ea2eb11c80a2c83e4d82b6702e1c3891be4b81faedd3d961a2a78277e00"
-      }
+      ]
     },
     {
       "key": "0xA0..0xA7",
@@ -460,26 +308,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xA0..0xA7",
           "cites": "\t\t\t\t\t\tcase 0xa0:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc2",
-        "writer": "phase Kcf",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Automatic Rotation",
-            "line": "tion using OCW2, the Rotation on Non-Specific EOI"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command rotate mode",
-            "line": "            if (GCC_UNLIKELY(val&0x80)) LOG_MSG(\"rotate mode not supported\");"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xA0..0xA7",
-            "line": "\t\t\t\t\t\tcase 0xa0:"
-          }
-        ],
-        "digest": "a375d878afda1711445043d09bfaee1928d1d9c0046c8272ad4a9478f3b8d934"
-      }
+      ]
     },
     {
       "key": "0xC0..0xC7",
@@ -503,26 +332,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xC0..0xC7",
           "cites": "\t\t\t\t\t\tcase 0xc0:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Specific Rotation",
-            "line": "The Set Priority command is issued in OCW2 where:"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command set priority",
-            "line": "                LOG(LOG_PIC,LOG_NORMAL)(\"set priority command not handled\");"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xC0..0xC7",
-            "line": "\t\t\t\t\t\tcase 0xc0:"
-          }
-        ],
-        "digest": "56bbfad42e5ed60ad3f3834d6a24b2764059ca14e677dd6d7b4e146ce0bcdb10"
-      }
+      ]
     },
     {
       "key": "0xE0..0xE7",
@@ -546,26 +356,7 @@
           "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xE0..0xE7",
           "cites": "\t\t\t\t\t\tcase 0xe0:"
         }
-      ],
-      "checked": {
-        "by": "phase Kcc",
-        "writer": "phase Kc",
-        "against": [
-          {
-            "ref": "datasheet:Intel 8259A datasheet, https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf, Specific Rotation",
-            "line": "executed during an EOI command by using the Ro-"
-          },
-          {
-            "ref": "dosbox-x:src/hardware/pic.cpp write_command rotate mode",
-            "line": "            if (GCC_UNLIKELY(val&0x80)) LOG_MSG(\"rotate mode not supported\");"
-          },
-          {
-            "ref": "mame:src/devices/machine/pic8259.cpp pic8259_device::write command 0xE0..0xE7",
-            "line": "\t\t\t\t\t\tcase 0xe0:"
-          }
-        ],
-        "digest": "af2867c8c72653478f15a1a7d05a276d05347a9822cfd458dfafa698ea96447e"
-      }
+      ]
     }
   ]
 }
