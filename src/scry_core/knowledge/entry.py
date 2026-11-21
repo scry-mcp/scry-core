@@ -21,6 +21,8 @@ FORMAT = "scry-knowledge/1"
 NAME_MAX, ALIAS_MAX, ALIASES_MAX = 24, 32, 6
 DESCRIPTION_WORDS, BEHAVIOUR_WORDS, BEHAVIOUR_SENTENCES, DIFFERS_WORDS = 30, 60, 3, 40
 ACCESS = ("read", "write")
+#: The kinds that can hold a read and a write of one number, each its own entry.
+WITH_ACCESS = ("port", "register", "command")
 #: What decides that two sources both exist for a dictionary (`both` in its header).
 BOTH = ("documentation", "emulator")
 
@@ -285,9 +287,10 @@ def parse_entry(raw: object, header: Header) -> tuple[Entry | None, list[str]]:
     checked = _checked(raw, listed, faults)
     address, length = _numbers(raw, header, faults)
     access, device = raw.get("access", ""), raw.get("device", "")
-    if not isinstance(access, str) or (access and (header.kind != "port"
+    if not isinstance(access, str) or (access and (header.kind not in WITH_ACCESS
                                                    or access not in ACCESS)):
-        faults.append("`access` is `read` or `write`, and only for a port")
+        faults.append("`access` is `read` or `write`, and only for a port, a register or a "
+                      "command")
         access = ""
     if "device" in raw:
         try:

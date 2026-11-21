@@ -611,6 +611,46 @@ def test_two_registers_of_one_dictionary_may_not_overlap(
     assert "overlaps" in base.faults()[0] and "ym:register:" in base.faults()[0]
 
 
+def test_a_register_or_a_command_has_a_read_and_a_write_of_one_number(tmp_path: Path) -> None:
+    for kind in ("register", "command"):
+        base = bank(tmp_path / kind, an_entry("0x0F", "status", access="read"),
+                    an_entry("0x0F", "reset", access="write"),
+                    an_entry("0x10..0x13", "bank", access="write"), kind=kind)
+        assert base.faults() == [] and len(base) == 3
+        got = base.by_id(f"ym:{kind}:0x0F:read")
+        assert got is not None and got.access == "read" and got.name == "status"
+        assert base.get(kind, "0x0F", "ym", "write") is not None
+        assert base.get(kind, "0x0F", "ym") is None
+        assert ids(base.search(kind, "0x0f")) == [f"ym:{kind}:0x0F:read",
+                                                  f"ym:{kind}:0x0F:write"]
+        assert ids(base.search(kind, "0x11")) == [f"ym:{kind}:0x10..0x13:write"]
+
+
+def test_access_is_for_a_port_a_register_or_a_command_and_no_other_kind() -> None:
+    for kind in ("call", "vector", "memory", "irq", "error", "input", "device"):
+        key = {"call": "0x21/0x4C", "vector": "2", "memory": "0x9000", "irq": "1",
+               "error": "2", "input": "a", "device": "a"}[kind]
+        got, faults = parsed(an_entry(key, "x", access="read"), kind)
+        assert got is None and any("only for a port, a register or a command" in f
+                                   for f in faults), (kind, faults)
+
+
+def test_two_registers_that_overlap_are_both_kept_when_access_tells_them_apart(
+        tmp_path: Path) -> None:
+    base = bank(tmp_path, an_entry("0x20..0x35", "written", access="write"),
+                an_entry("0x28", "read back", access="read"),
+                an_entry("0x28", "written again", access="write"))
+    assert [f for f in base.faults()] == [
+        "regs 0x28: ym:register:0x28:write overlaps ym:register:0x20..0x35:write in its "
+        "dictionary and access does not tell them apart; the second is skipped"]
+    assert len(base) == 2
+    assert ids(base.search("register", "0x28")) == [
+        "ym:register:0x20..0x35:write", "ym:register:0x28:read"]
+    both = bank(tmp_path / "x", an_entry("0x20..0x35", "any direction"),
+                an_entry("0x28", "read back", access="read"))
+    assert len(both) == 1 and len(both.faults()) == 1
+
+
 def test_two_dictionaries_may_share_a_range_of_registers(
         tmp_path: Path) -> None:
     write_dictionary(tmp_path, "one", "register", "ym", [an_entry("0x20..0x35", "a")])

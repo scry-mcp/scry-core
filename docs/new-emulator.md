@@ -188,7 +188,9 @@ public source each fact was checked against. A server ships dictionaries and one
   precision, and one or two `sources`, each a `ref` of a known scheme and the source's own line
   in `cites`. An entry with no source is not written. A `register` or `command` key may be a
   range (`0x20..0x35`, a bank as one entry) and a number inside it finds the entry; two
-  registers or two commands of one dictionary may not overlap.
+  registers or two commands of one dictionary may not overlap unless their `access` tells them
+  apart. `access` (`read` or `write`) is for a port, a register or a command that differs by
+  direction, and it is part of the id (`ym:register:0x0F:read`).
 - **Checked entries**: a second session reads an entry against its source and adds `checked`
   with `by`, `writer` and `against` (per source `ref`, the line it compared: the entry's own
   `cites`, or a part of the line the source index holds for it). Then one command seals it:
