@@ -15,6 +15,7 @@ import pytest
 
 from scry_core import boundary, overlay, presence
 from scry_core.envelope import Envelope
+from scry_core.naming import Named
 
 #: Long enough for an idle writer to have sent anything it was going to.
 QUIET_S = 0.2
@@ -401,6 +402,16 @@ def test_a_call_s_caption_is_delivered_with_its_state_and_leaves_on_its_own() ->
     p.ended(_call("run_for", seconds=2.0), "ok")
     gone = _until(a, lambda pl: pl.caption is None, after=1)
     assert gone.layers == overlay.OVERLAY.asked(), "no call came: the writer woke on its own"
+    p.close()
+
+
+def test_a_caption_is_delivered_with_the_names_the_boundary_gave_the_call() -> None:
+    a = _Adapter()
+    p = _open(a)
+    p.began(boundary.Call("read_memory", {"ref": "score", "length": 2}, False, True,
+                          {"ref": Named("symbol", "score", "0x9405")}))
+    caption = _until(a, lambda pl: pl.caption is not None).caption
+    assert caption is not None and caption.text == "read_memory score (0x9405) 2"
     p.close()
 
 

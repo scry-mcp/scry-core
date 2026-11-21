@@ -28,6 +28,13 @@ def test_a_comment_beside_an_instruction_is_its_own_key() -> None:
     TypeAdapter(StopInstruction).validate_python({**_PLACED, "comment": "the loop's top"})
 
 
+def test_a_note_from_the_base_is_its_own_key_beside_the_comment() -> None:
+    both = {**_PLACED, "comment": "the loop's top", "note": "DAC write address (0x3C8)"}
+    TypeAdapter(StopInstruction).validate_python(both)
+    with pytest.raises(ValidationError):
+        TypeAdapter(StopInstruction).validate_python({**_PLACED, "note": 5})
+
+
 def test_a_platform_adds_its_own_keys_beside_the_common_ones() -> None:
     class Extended(StopInstruction):  # a platform's own subclass
         flow: str

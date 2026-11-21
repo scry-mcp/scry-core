@@ -48,6 +48,20 @@ def test_note_is_an_envelope_field_every_reply_may_carry() -> None:
     assert "note" not in reply_schema.own_fields(StatusReply)
 
 
+def test_names_and_their_count_are_envelope_fields_every_reply_may_carry() -> None:
+    assert {"names", "names_cut"} <= set(reply_schema.ReplyEnvelope.__annotations__)
+    reply_schema.declare(_server(), {"status": StatusReply})
+    item = {"field": "port", "number": "0x03C8", "kind": "port", "name": "DAC write address",
+            "id": "ibm-pc:port:0x3C8", "device": "vga-dac"}
+    reply_schema.check("status", {"status": "ok", "names": [item, {**item, "delta": 2}],
+                                  "names_cut": 3})
+    for bad in ({"names": [{**item, "extra": 1}]}, {"names": [{"field": "port"}]},
+                {"names": item}, {"names_cut": "3"}):
+        with pytest.raises(Exception, match="names"):
+            reply_schema.check("status", {"status": "ok", **bad})
+    assert not {"names", "names_cut"} & set(reply_schema.own_fields(StatusReply))
+
+
 def test_a_published_field_is_its_value_or_unavailable() -> None:
     server = _server()
     reply_schema.declare(server, {"status": StatusReply})

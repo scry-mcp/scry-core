@@ -7,21 +7,24 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import Callable
-from typing import Annotated, Any
+from collections.abc import Callable, Mapping, Sequence
+from typing import Annotated, Any, cast
 
 import pytest
 from mcp.server.mcpserver import Context
 
-from scry_core import boundary, cancel, given, reply_schema
+from scry_core import boundary, cancel, given, naming, reply_schema
 from scry_core.envelope import Envelope
+from scry_core.naming import Field, Guarded, Named
 from scry_core.reply_contract import OmitEmpty
 
 
 class _Server:
     """A server of doubles: every hook appends what it was asked to `log`."""
 
-    def __init__(self, listener: boundary.CallListener | None = None) -> None:
+    def __init__(self, listener: boundary.CallListener | None = None,
+                 namer: naming.Guarded | None = None,
+                 names_on: Callable[[], bool] = lambda: True) -> None:
         self.log: list[tuple[Any, ...]] = []
         self.pending: cancel.Cancelled | None = None
         self.given_back: list[dict[str, Any]] = []
@@ -33,7 +36,7 @@ class _Server:
             refusal_line=lambda name, reply: f"{name} refused",
             session_block=self.block, take_cancelled=self.take,
             keep_cancelled=self.keep, doc=lambda name, text: f"{name}: {text}",
-            give_back=self.given_back.append, listener=listener)
+            give_back=self.given_back.append, listener=listener, namer=namer, names_on=names_on)
         self.after_raises = False
 
     def tool(self, title: str, **kw: Any) -> Callable[[Callable[..., Any]], Any]:
@@ -826,3 +829,229 @@ def test_a_tool_names_a_file_only_by_an_argument_it_takes() -> None:
         @s.tool("Read", names_file="dest")
         def read(path: str) -> dict[str, Any]:
             return {"status": "ok"}
+
+
+class _Names:
+    """A server's namer over its own tables: a port is named by number, an argument `ref` by the
+    symbol table, and the reply's `port` and `hits[]` by the fields the server declares."""
+
+    FIELDS = (Field("port", "port"), Field("hits[]", "symbol"))
+
+    def __init__(self) -> None:
+        self.symbols = {"score": 0x9405}
+        self.ports = {0x3C8: "DAC write address"}
+        self.raises = False
+
+    def arguments(self, tool: str, given: Mapping[str, Any]) -> Mapping[str, Named]:
+        if self.raises:
+            raise RuntimeError("the symbol table moved")
+        out: dict[str, Named] = {}
+        if (ref := given.get("ref")) in self.symbols:
+            out["ref"] = Named("symbol", ref, f"0x{self.symbols[ref]:04X}")
+        if given.get("port") in self.ports:
+            out["port"] = Named("port", self.ports[given["port"]], f"0x{given['port']:04X}",
+                                id="ibm-pc:port:0x3C8")
+        return out
+
+    def reply(self, tool: str, reply: Mapping[str, Any]) -> Sequence[tuple[str, Named]]:
+        if self.raises:
+            raise RuntimeError("the symbol table moved")
+        names = {a: n for n, a in self.symbols.items()}
+        return [(s.path, Named("symbol", names[s.value], f"0x{s.value:04X}"))
+                for s in naming.walk(reply, self.FIELDS) if s.value in names]
+
+
+def _named_server(listener: boundary.CallListener | None = None,
+                  names_on: Callable[[], bool] = lambda: True
+                  ) -> tuple[_Server, _Names, Guarded]:
+    namer = _Names()
+    guard = Guarded(namer)
+    return _Server(listener=listener, namer=guard, names_on=names_on), namer, guard
+
+
+def test_a_call_is_named_once_before_the_listener_hears_it_and_the_listener_sees_the_names(
+        ) -> None:
+    heard = _Heard()
+    s, namer, _ = _named_server(listener=heard)
+    heard.server = s
+    asked: list[str] = []
+    original = namer.arguments
+
+    def counted(tool: str, given: Mapping[str, Any]) -> Mapping[str, Named]:
+        asked.append(tool)
+        return original(tool, given)
+
+    namer.arguments = counted        # type: ignore[method-assign]
+
+    @s.tool("Read")
+    def read(ref: str, port: int = 0) -> dict[str, Any]:
+        return {"status": "ok"}
+
+    read("score", port=0x3C8)
+    assert asked == ["read"]
+    assert heard.calls[0].named == {
+        "ref": Named("symbol", "score", "0x9405"),
+        "port": Named("port", "DAC write address", "0x03C8", id="ibm-pc:port:0x3C8")}
+
+
+def test_a_reply_names_the_calls_arguments_and_the_numbers_it_shows_beside_its_fields() -> None:
+    s, _, _ = _named_server()
+
+    @s.tool("Find")
+    def find(ref: str) -> dict[str, Any]:
+        return {"status": "ok", "hits": [0x9405, 0x1234]}
+
+    got = find("score")
+    assert list(got) == ["summary", "status", "hits", "names", "session"]
+    assert got["names"] == [
+        {"field": "given.ref", "number": "0x9405", "kind": "symbol", "name": "score"}]
+    assert "names_cut" not in got
+    assert got["summary"] == "find [('ref', 'score')]"
+
+
+def test_the_summary_names_the_numbers_it_prints() -> None:
+    s, _, _ = _named_server()
+
+    @s.tool("Port")
+    def port(port: int) -> dict[str, Any]:
+        return {"status": "ok"}
+
+    s.b.summaries["port"] = lambda args, reply: f"port 0x{args['port']:04X} read"
+    got = port(0x3C8)
+    assert got["summary"] == "port 0x03C8 (DAC write address) read"
+    assert [i["field"] for i in got["names"]] == ["given.port"]
+
+
+def test_the_ceiling_of_the_block_shows_in_names_cut() -> None:
+    s, namer, _ = _named_server()
+    namer.symbols = {f"s{n}": 0x1000 + n for n in range(30)}
+
+    @s.tool("Find")
+    def find() -> dict[str, Any]:
+        return {"status": "ok", "hits": [0x1000 + n for n in range(30)]}
+
+    got = find()
+    assert len(got["names"]) == 24 and got["names_cut"] == 6
+    assert list(got)[-3:] == ["names", "names_cut", "session"]
+
+
+def test_a_namer_that_raises_leaves_the_reply_exactly_as_it_is_with_no_namer() -> None:
+    """The control: the same call on a server with no namer gives the same bytes."""
+    s, namer, guard = _named_server()
+    bare = _Server()
+    namer.raises = True
+
+    def make(server: _Server) -> Callable[..., Any]:
+        @server.tool("Find")
+        def find(ref: str) -> dict[str, Any]:
+            return {"status": "ok", "hits": [0x9405]}
+        return cast(Callable[..., Any], find)
+
+    mine, theirs = make(s), make(bare)
+    assert mine("score") == theirs("score")
+    failed = guard.failed()
+    assert failed is not None and failed["count"] == 2 and "symbol table moved" in failed["last"]
+
+
+def test_the_names_are_off_for_a_session_that_asked_for_none_and_the_caption_still_has_them(
+        ) -> None:
+    heard = _Heard()
+    on = [True]
+    s, _, guard = _named_server(listener=heard, names_on=lambda: on[0])
+    heard.server = s
+
+    @s.tool("Find")
+    def find(ref: str) -> dict[str, Any]:
+        return {"status": "ok", "hits": [0x9405]}
+
+    on[0] = False
+    got = find("score")
+    assert list(got) == ["summary", "status", "hits", "session"]
+    assert got["summary"] == "find [('ref', 'score')]"
+    assert heard.calls[0].named == {"ref": Named("symbol", "score", "0x9405")}, \
+        "a caption is not a reply: the switch leaves it alone"
+    on[0] = True
+    assert "names" in find("score")
+    assert guard.failed() is None
+
+
+def test_a_summary_names_no_number_while_the_names_are_off() -> None:
+    on = [False]
+    s, _, _ = _named_server(names_on=lambda: on[0])
+
+    @s.tool("Port")
+    def port(port: int) -> dict[str, Any]:
+        return {"status": "ok"}
+
+    s.b.summaries["port"] = lambda args, reply: f"port 0x{args['port']:04X} read"
+    assert port(0x3C8)["summary"] == "port 0x03C8 read"
+    on[0] = True
+    assert port(0x3C8)["summary"] == "port 0x03C8 (DAC write address) read"
+
+
+def test_a_namer_that_is_interrupted_leaves_the_boundary_with_no_call_in_flight() -> None:
+    s, namer, _ = _named_server()
+
+    def interrupted(tool: str, given: Mapping[str, Any]) -> Mapping[str, Named]:
+        raise KeyboardInterrupt
+
+    namer.arguments = interrupted        # type: ignore[method-assign]
+
+    @s.tool("Find")
+    def find(ref: str) -> dict[str, Any]:
+        return {"status": "ok"}
+
+    with pytest.raises(KeyboardInterrupt):
+        find("score")
+    assert s.b.nested == 0
+
+
+def test_a_refusal_the_schema_made_carries_no_names_and_a_refused_body_carries_the_arguments(
+        ) -> None:
+    s, _, _ = _named_server()
+
+    @s.tool("Find")
+    def find(ref: str) -> dict[str, Any]:
+        raise LookupError("no such place")
+
+    got = find("score")
+    assert got["status"] == "INVALID"
+    assert got["names"][0]["field"] == "given.ref"
+    schema = s.refusal("find", {"ref": "score"}, None)
+    assert "names" not in schema
+
+
+def test_a_step_is_named_too_so_a_sequence_row_can_carry_its_names() -> None:
+    s, _, _ = _named_server()
+
+    @s.tool("Find")
+    def find(ref: str) -> dict[str, Any]:
+        return {"status": "ok"}
+
+    @s.tool("Run")
+    def run() -> dict[str, Any]:
+        inner = find("score")
+        return {"status": "ok", "ran": [inner]}
+
+    got = run()
+    assert got["ran"][0]["names"][0]["name"] == "score" and "names" not in got
+
+
+def test_the_live_caption_and_the_demos_caption_read_the_same_names() -> None:
+    """The caption of the overlay is made from `Call.named`; the demo runner makes its own from
+    the reply's block with the same function. Both give the same text."""
+    from scry_core import abbreviation
+
+    heard = _Heard()
+    s, _, _ = _named_server(listener=heard)
+    heard.server = s
+
+    @s.tool("Read")
+    def read(ref: str, port: int = 0) -> dict[str, Any]:
+        return {"status": "ok"}
+
+    got = read("score", port=0x3C8)
+    live = abbreviation.caption("read", heard.calls[0].given, heard.calls[0].named)
+    shown = abbreviation.caption("read", {"ref": "score", "port": 0x3C8},
+                                 naming.arguments_of(got["names"]))
+    assert live == shown == "read score (0x9405) DAC write address (0x03C8)"

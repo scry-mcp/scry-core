@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from scry_core import abbreviation as ab
+from scry_core.naming import Named
 
 
 @pytest.mark.parametrize(("given", "said"), [
@@ -96,3 +97,96 @@ def test_a_value_that_cannot_be_written_is_a_question_mark_never_a_failure() -> 
         "x ? ? " + ab.value(deep)
     wide = {f"k{i}": i for i in range(1000)}
     assert ab.value(wide).startswith("{k0=0 k1=1")
+
+
+def _n(name: str, number: str, **fields: Any) -> Named:
+    return Named("port", name, number, **fields)
+
+
+def test_a_named_value_reads_its_name_then_its_number() -> None:
+    assert ab.caption("port", {"port": 968, "method": "write"},
+                      {"port": _n("DAC write address", "0x3C8")}) == \
+        "port DAC write address (0x3C8) write"
+
+
+def test_two_values_that_select_one_thing_are_named_each() -> None:
+    assert ab.caption("log", {"number": "0x21", "ah": "0x4C"},
+                      {"number": Named("vector", "DOS", "0x21"),
+                       "ah": Named("call", "exit", "0x4C")}) == "log DOS (0x21) exit (0x4C)"
+
+
+def test_a_symbol_the_agent_typed_is_kept_as_typed_with_its_address_beside_it() -> None:
+    assert ab.caption("read_memory", {"ref": "score", "length": 2},
+                      {"ref": Named("symbol", "score", "0x9405")}) == \
+        "read_memory score (0x9405) 2"
+
+
+def test_an_address_inside_a_symbol_says_how_far_in() -> None:
+    assert ab.caption("find", {"ref": "0xb58c"},
+                      {"ref": Named("symbol", "count_coin", "0xb58c", delta=9)}) == \
+        "find count_coin+0x9 (0xb58c)"
+
+
+def test_a_name_is_cut_at_24_and_its_number_never() -> None:
+    long = "a_function_name_that_is_far_too_long_for_a_caption"
+    text = ab.caption("run_to", {"ref": "0x123456789ABCDEF0123456"},
+                      {"ref": Named("symbol", long, "0x123456789ABCDEF0123456")})
+    assert text == f"run_to {long[:22]}.. (0x123456789ABCDEF0123456)"
+    assert len(text.split(" (")[0].split()[1]) == ab.NAME_WIDTH
+
+
+def test_a_name_with_no_printable_ascii_is_written_as_a_caption_writes_text() -> None:
+    assert ab.caption("t", {"a": 1}, {"a": Named("symbol", "café\tx", "1")}) == "t caf? x (1)"
+
+
+def test_a_name_for_an_argument_not_given_or_empty_shows_nothing() -> None:
+    assert ab.caption("t", {"a": None, "b": ""}, {"a": _n("x", "1"), "b": _n("y", "2")}) == "t"
+
+
+def test_a_caption_with_no_names_is_the_caption_it_always_was() -> None:
+    given = {"port": 968, "dest": "/Users/someone/x/y.png", "data_hex": "3E00C921"}
+    assert ab.caption("t", given, {}) == ab.caption("t", given, None) == \
+        "t 968 y.png 3E 00 C9 21"
+
+
+def _wide(n: int, name: str = "n" * 24) -> tuple[dict[str, Any], dict[str, Named]]:
+    given = {f"a{i}": i for i in range(n)}
+    return given, {k: Named("port", name, f"0x{v:04X}") for k, v in given.items()}
+
+
+def _line(names_kept: int, n: int) -> str:
+    """The caption of `_wide(n)` in which only the first `names_kept` values keep their name."""
+    return " ".join(["t", *(f"{'n' * 24} (0x{v:04X})" if v < names_kept else str(v)
+                            for v in range(n))])
+
+
+def test_a_caption_within_160_bytes_keeps_every_name() -> None:
+    given, named = _wide(4)
+    assert ab.caption("t", given, named) == _line(4, 4) and len(_line(4, 4)) <= ab.MAX_BYTES
+
+
+def test_over_160_bytes_the_names_fall_back_to_their_bare_values_last_first() -> None:
+    given, named = _wide(6)
+    assert len(_line(6, 6)) > ab.MAX_BYTES
+    fits = [k for k in range(7) if len(_line(k, 6)) <= ab.MAX_BYTES]
+    assert fits and max(fits) < 6
+    assert ab.caption("t", given, named) == _line(max(fits), 6), \
+        "the first value keeps its name longest, and no name is dropped that still fitted"
+
+
+def test_when_the_bare_values_do_not_fit_either_the_tail_is_cut() -> None:
+    given = {f"a{i}": "v" * 20 for i in range(12)}
+    text = ab.caption("t", given, {"a0": _n("x", "1")})
+    assert len(text) == ab.MAX_BYTES and text.endswith("v..")
+
+
+def test_a_number_is_never_cut_even_when_it_alone_is_wide() -> None:
+    number = "0x" + "AB" * 30
+    text = ab.caption("t", {"ref": 1}, {"ref": Named("symbol", "x", number)})
+    assert text == f"t x ({number})" and number in text
+
+
+def test_a_caption_is_cut_to_the_room_a_suffix_leaves() -> None:
+    assert ab.fit("x" * 100, 160) == "x" * 100
+    assert ab.fit("x" * 100, 10) == "x" * 8 + ".."
+    assert ab.fit("x" * 100, 1) == ".."

@@ -60,6 +60,28 @@ def test_the_reply_names_the_layers_drawn_and_why_the_others_are_not() -> None:
         "lacking": {"pointer": "MAME has no pointer"}}
 
 
+def test_a_layer_drawn_with_a_limit_says_so_in_its_note() -> None:
+    notes: dict[ov.Layer, str] = {"pause": "kept still while stopped", "calls": "cut, not scrolled"}
+    assert ov.reply(ov.Overlay(keys=False), {"pointer": "MAME has no pointer"}, "bottom",
+                    notes) == {
+        "layers": ["edge", "calls", "pause", "record"], "place": "bottom",
+        "lacking": {"pointer": "MAME has no pointer"},
+        "notes": {"calls": "cut, not scrolled", "pause": "kept still while stopped"}}
+    assert "notes" not in ov.reply(ov.OVERLAY, {}, None, {})
+
+
+@pytest.mark.parametrize(("lacking", "notes", "message"), [
+    ({"keys": "x"}, {}, "a layer not asked: keys"),
+    ({}, {"keys": "x"}, "a note is given for a layer not drawn: keys"),
+    ({"pointer": "no pointer"}, {"pointer": "x"}, "a note is given for a layer not drawn: pointer"),
+    ({}, {"calls": " "}, "says why"),
+])
+def test_a_note_for_a_layer_not_drawn_or_an_empty_one_is_refused(
+        lacking: dict[ov.Layer, str], notes: dict[ov.Layer, str], message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        ov.reply(ov.Overlay(keys=False, pointer=True), lacking, None, notes)
+
+
 @pytest.mark.parametrize(("lacking", "message"), [
     ({"keys": "x"}, "a layer not asked: keys"),
     ({"calls": " "}, "says why"),

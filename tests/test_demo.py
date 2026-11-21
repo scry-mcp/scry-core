@@ -17,8 +17,9 @@ import anyio
 import pytest
 from mcp.client import Client
 
+from scry_core import abbreviation, example, motion, png, timeline, verdict
 from scry_core import demo as d
-from scry_core import example, motion, png, timeline, verdict
+from scry_core.naming import Named
 from scry_core.verdict import EXIT_INVALID
 
 SERVER = Path(__file__).resolve().parent / "fixtures" / "demo" / "server.py"
@@ -366,6 +367,22 @@ def test_a_run_writes_its_timeline_beside_the_transcript_with_the_frames_each_ca
     assert calls[2]["events"] == [{"kind": "pointer", "x": 12, "y": 34, "frame": 8}], \
         "a reply that counts no `frame_after` ends at the frame it stopped at"
     assert str(tmp_path) not in json.dumps(calls[3]["args"]), "a path is spelled as the transcript"
+
+
+def test_a_calls_caption_in_the_timeline_carries_the_names_its_reply_gave_its_arguments(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    steps = [d.Step("look", "peek", {"ref": "score"}, _said("summary")),
+             d.Step("again", "peek", {"ref": "score"}, _said("summary"))]
+    assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_PASS
+    calls = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
+    assert [c["caption"]["text"] for c in calls[:2]] == ["peek score (0x9405)"] * 2
+    live = abbreviation.caption("peek", {"ref": "score"},
+                                {"ref": Named("symbol", "score", "0x9405")})
+    assert calls[0]["caption"]["text"] == live, "the overlay and the demo write one text"
+    monkeypatch.setenv("DEMO_NO_NAMES", "1")
+    assert _run(_demo(tmp_path, steps[:1]), tmp_path) == verdict.EXIT_PASS
+    bare = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
+    assert bare[0]["caption"]["text"] == "peek score", "a session with the names off has none"
 
 
 def test_the_read_only_tools_are_read_across_every_page_the_server_lists() -> None:

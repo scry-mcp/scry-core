@@ -235,3 +235,31 @@ public source each fact was checked against. A server ships dictionaries and one
 - **The tool**: `knowledge_tool.register(wrap, answer, base, live)`. `live` says what the running
   machine can answer by itself (MAME's inputs and device tags); a server with none passes
   nothing. `knowledge_tool.judge` goes in the pre-gate table.
+
+## Naming what the replies show
+
+A reply and a caption call a number by its name where the server knows one (`DAC write address
+(0x3C8)`), so a reader does not look it up. The server writes one namer and a table of its replies'
+number fields; `scry_core.naming` does the rest.
+
+- **The namer** answers `arguments(tool, given)`, a `Named` per argument whose value it can name,
+  and `reply(tool, reply)`, a `Named` per number field of a reply, by the path of its `Field`
+  (`naming.walk` reads `a.b` and `a[].b`). It reads only what the server already holds in memory
+  and never asks the emulator: it runs under the call's lock, before the call is heard. The
+  server's test builds it over a session that fails on any call to the emulator and runs it over
+  every example, and expects zero calls.
+- **The wiring**: `naming.Guarded(namer)` goes to `Boundary(namer=..., names_on=...)`. A failure
+  of the namer gives no names and is counted: `Guarded.failed()` is what `status` says as
+  `names_failed`, and never a call's own reply. `Boundary` puts the names on `Call.named`, which
+  the caption uses, and, while `names_on()` holds, adds `names` and `names_cut` to every reply and
+  names the numbers its summary prints, at the first whole occurrence: a short number such as `1`
+  is ambiguous in a line, so a tool gives its field a `shown` spelling (`irq {}`) that is not. The
+  block also names the call's own arguments, under `given.<argument>`; the demo runner builds its
+  captions from those with the function the window's captions use.
+- **The switch**: `start` takes `names: naming.Switch = True`, whose description is
+  `naming.ARGUMENT`, and `naming.ASK` is the sentence for `asks.json`. Off, a reply has no
+  `names` and no names in its summary; the window's captions keep theirs.
+- **A disassembled line's note**: `notes.note(base, scope, operands)` returns what the base calls
+  the operands the server parsed (a port, an interrupt, an address). It goes in a row's `note`,
+  never in a person's `comment`. An operand a register holds is named only for the instruction at
+  a stop, and `Note.live` says the line was named that way.

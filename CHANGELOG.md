@@ -34,6 +34,17 @@ What a server author notices. A client's view of each server is in that server's
   `recording` is `none`, `video`, `audio` or `both`. `Look.record_rgb` and `record_blink_s`
   give the mark's colour and period. A demo's decorated clip never draws it.
 
+- A reply and a caption name what they show. A server writes a namer (`naming.Namer`) and a table
+  of its replies' number fields (`naming.Field`); `Boundary(namer=naming.Guarded(namer),
+  names_on=...)` then puts `Call.named` on every call, so a caption reads `name (number)`
+  (`abbreviation.caption(tool, given, named)`, at most `abbreviation.MAX_BYTES`), and adds `names`
+  and `names_cut` to every reply, with the numbers its summary prints named. A namer that fails
+  gives no names and is counted (`Guarded.failed`), never raised. `start` takes the shared
+  `names` switch (`naming.Switch`, `naming.ASK`).
+- `notes.note` gives a disassembled line the note the base has for its operands, kept apart from a
+  person's comments (`instruction.StopInstruction.note`). `overlay.reply` takes `notes`, a word per
+  layer drawn with a limit, and a demo's timeline captions carry the names the replies gave.
+
 ## 0.120.1
 
 - A demo step whose example, or whose lead's answer, shows a written picture's `bytes` or

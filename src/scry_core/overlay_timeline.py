@@ -15,6 +15,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Literal
 
 from scry_core import abbreviation
+from scry_core.naming import Named
 
 Kind = Literal["write", "read", "refused"]
 
@@ -54,8 +55,9 @@ class _Entry:
     serial: int = 0
 
     def caption(self, tints: Tints) -> Caption:
-        text = self.text + (f" x{self.repeats}" if self.repeats > 1 else "")
-        text += f" ({self.steps} steps)" if self.steps > 1 else ""
+        suffix = (f" x{self.repeats}" if self.repeats > 1 else "") \
+            + (f" ({self.steps} steps)" if self.steps > 1 else "")
+        text = abbreviation.fit(self.text, abbreviation.MAX_BYTES - len(suffix)) + suffix
         return Caption(text, self.kind, tints.of(self.kind), self.serial)
 
 
@@ -73,14 +75,16 @@ class Captions:
         self._serial = 0
 
     def began(self, tool: str, given: Mapping[str, Any], read_only: bool, nested: bool,
-              now: float, text: str | None = None) -> None:
-        """`text` is the caption already made, as a demo's timeline holds it; else `given`'s."""
+              now: float, text: str | None = None,
+              named: Mapping[str, Named] | None = None) -> None:
+        """`text` is the caption already made, as a demo's timeline holds it; else `given`'s,
+        with what the call's values are `named`."""
         if nested:
             if self._open is not None:
                 self._open.steps += 1
             return
         self._advance(now)
-        text = abbreviation.caption(tool, given) if text is None else text
+        text = abbreviation.caption(tool, given, named) if text is None else text
         kind: Kind = "read" if read_only else "write"
         young = self._shown is not None and now - self._shown.up < self._min_s
         for joined in (self._waiting, self._shown if young and self._waiting is None else None):

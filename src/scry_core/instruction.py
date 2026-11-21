@@ -18,3 +18,4 @@ class StopInstruction(TypedDict):
     symbol: str | Unavailable
     delta: int | Unavailable
     comment: NotRequired[str]
+    note: NotRequired[str]

@@ -179,7 +179,7 @@ class Presence:
                 self._pulse = True
             if "calls" in self._asked:
                 self._captions.began(call.tool, call.given, call.read_only, call.nested,
-                                     time.monotonic())
+                                     time.monotonic(), named=call.named)
             self._cv.notify()
 
     def ended(self, call: boundary.Call, outcome: boundary.Outcome) -> None:

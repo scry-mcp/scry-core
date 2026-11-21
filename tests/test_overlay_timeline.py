@@ -6,7 +6,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from scry_core import abbreviation as ab
 from scry_core import overlay_timeline as tl
+from scry_core.naming import Named
 
 TINTS = tl.Tints(write=0xFF8C00, read=0x5AC8FA, refused=0xFF453A)
 MIN_S, HOLD_S = 1.0, 3.0
@@ -142,3 +144,23 @@ def test_a_key_pressed_again_goes_to_the_end_and_its_time_starts_again() -> None
     assert k.next_change(0.5) == 0.7
     k.up("missing", 0.5)
     assert k.shown(0.5) == ("B", "A")
+
+
+def test_a_call_s_names_reach_its_caption() -> None:
+    c = _captions()
+    c.began("read_memory", {"ref": "score"}, True, False, 0.0,
+            named={"ref": Named("symbol", "score", "0x9405")})
+    assert _text(c, 0.0) == "read_memory score (0x9405)"
+
+
+def test_the_count_a_burst_and_its_steps_add_never_pushes_a_caption_past_the_wire_s_limit(
+        ) -> None:
+    c = _captions()
+    long = {f"a{i}": "v" * 20 for i in range(12)}
+    c.began("perform", long, False, False, 0.0)
+    for _ in range(12):
+        c.began("step", {}, False, True, 0.0)
+    c.began("perform", long, False, False, 0.5)
+    text = _text(c, 0.5)
+    assert text is not None and text.endswith(" x2 (12 steps)") and \
+        len(text) == ab.MAX_BYTES and "v.. x2" in text

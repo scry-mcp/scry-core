@@ -72,7 +72,7 @@ from mcp.client import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult
 
-from scry_core import example, file_names, fresh, motion, prose, timeline
+from scry_core import example, file_names, fresh, motion, naming, prose, timeline
 from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 BEGIN = "<!-- demo-transcript:begin -->"
@@ -586,7 +586,9 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                     out.transcripts.add(n, step, args, reply, line, ok)
                     out.timeline.add(step.name, step.tool, norm.arguments(args),
                                      _status(reply, ok), counted(reply), events,
-                                     step.tool in readers)
+                                     step.tool in readers,
+                                     naming.arguments_of(reply.get("names") if reply is not None
+                                                         else None))
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL

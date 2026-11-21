@@ -46,26 +46,36 @@ OVERLAY = Overlay()
 
 class OverlayReply(TypedDict):
     """`layers`: drawn, in `LAYERS` order. `place`: in effect, `auto` resolved where a server
-    cannot sample. `lacking`: per layer asked, why it cannot be drawn; absent when none."""
+    cannot sample. `lacking`: per layer asked, why it cannot be drawn; absent when none.
+    `notes`: per layer drawn, what it is drawn without; absent when none."""
 
     layers: list[Layer]
     place: Place
     lacking: NotRequired[dict[Layer, str]]
+    notes: NotRequired[dict[Layer, str]]
 
 
-def reply(asked: Overlay, lacking: Mapping[Layer, str], place: Place | None = None
-          ) -> OverlayReply:
-    """The reply's `overlay`: what `asked` asked, less what `lacking` says cannot be drawn.
+def reply(asked: Overlay, lacking: Mapping[Layer, str], place: Place | None = None,
+          notes: Mapping[Layer, str] | None = None) -> OverlayReply:
+    """The reply's `overlay`: what `asked` asked, less what `lacking` says cannot be drawn, and
+    what a layer drawn is drawn without (`notes`).
 
-    A reason for a layer not asked, or an empty reason, is a programmer's error."""
+    A reason for a layer not asked, a note for one not drawn, or an empty text is a
+    programmer's error."""
     wanted = asked.asked()
+    notes = notes or {}
     stray = sorted(set(lacking) - set(wanted))
     if stray:
         raise ValueError(f"a reason is given for a layer not asked: {', '.join(stray)}")
-    if any(not isinstance(why, str) or not why.strip() for why in lacking.values()):
-        raise ValueError("a layer that cannot be drawn says why")
+    if undrawn := sorted(set(notes) - {layer for layer in wanted if layer not in lacking}):
+        raise ValueError(f"a note is given for a layer not drawn: {', '.join(undrawn)}")
+    if any(not isinstance(why, str) or not why.strip() for why in (*lacking.values(),
+                                                                    *notes.values())):
+        raise ValueError("a layer that cannot be drawn, or is drawn with a note, says why")
     out: OverlayReply = {"layers": [layer for layer in wanted if layer not in lacking],
                          "place": asked.place if place is None else place}
     if lacking:
         out["lacking"] = {layer: lacking[layer] for layer in wanted if layer in lacking}
+    if notes:
+        out["notes"] = {layer: notes[layer] for layer in LAYERS if layer in notes}
     return out

@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
 from scry_core import abbreviation
+from scry_core.naming import Named
 from scry_core.verdict import Invalid
 
 VERSION = 2
@@ -63,9 +64,10 @@ class Builder:
 
     def add(self, step: str, tool: str, args: Mapping[str, Any], status: str,
             counted: tuple[int | None, int | None], events: Sequence[Event] = (),
-            read_only: bool = False) -> None:
+            read_only: bool = False, named: Mapping[str, Named] | None = None) -> None:
         """A call made: `counted` is the frames its reply said it began and ended at, or None;
-        `read_only` is the tool's `readOnlyHint`, which tints its caption."""
+        `read_only` is the tool's `readOnlyHint`, which tints its caption; `named` is what its
+        arguments are called, as its reply's `names` says (`naming.arguments_of`)."""
         before = counted[0] if counted[0] is not None else self._frame
         after = counted[1] if counted[1] is not None else before
         if after is not None:
@@ -73,7 +75,8 @@ class Builder:
         tint: Tint = "refused" if status != "ok" else "read" if read_only else "write"
         self.calls.append({"n": len(self.calls) + 1, "step": step, "tool": tool,
                            "args": dict(args), "status": status,
-                           "caption": {"text": abbreviation.caption(tool, args), "tint": tint},
+                           "caption": {"text": abbreviation.caption(tool, args, named),
+                                       "tint": tint},
                            "before": before, "after": after,
                            "events": [e.fields(after) for e in events]})
 

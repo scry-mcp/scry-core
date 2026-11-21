@@ -73,6 +73,17 @@ def point(x: int, y: int) -> CallToolResult:
                     "frame": _held["frame"]})
 
 
+@server.tool(annotations=ToolAnnotations(read_only_hint=True))
+def peek(ref: str) -> CallToolResult:
+    """A reader whose reply names its own argument, as a Scry server's `names` block does, unless
+    `DEMO_NO_NAMES` says the session asked for no names."""
+    body: dict[str, Any] = {"status": "ok", "summary": f"peek {ref}", "value": _held["value"]}
+    if not os.environ.get("DEMO_NO_NAMES"):
+        body["names"] = [{"field": "given.ref", "number": "0x9405", "kind": "symbol",
+                          "name": ref}]
+    return _answer(body)
+
+
 @server.tool()
 def refuse() -> CallToolResult:
     return _answer({"status": "INVALID", "code": "bad_argument", "message": "refused on purpose"})

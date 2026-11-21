@@ -16,14 +16,14 @@ import inspect
 import threading
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Literal, Protocol
 
 from mcp.types import ToolAnnotations
 
-from scry_core import cancel, file_names, given, picture
+from scry_core import cancel, file_names, given, naming, picture
 from scry_core import reply_schema as schema
 from scry_core import session_block as blocks
 from scry_core import strict_arguments as strict
@@ -55,6 +55,8 @@ class Call:
     given: Mapping[str, Any]
     nested: bool
     read_only: bool
+    #: What each argument's value is called, per argument; empty with no namer.
+    named: Mapping[str, naming.Named] = field(default_factory=dict)
 
 
 class CallListener(Protocol):
@@ -89,6 +91,11 @@ def _nothing_to_give_back(reply: Reply) -> None:
     """Default `GiveBack`."""
 
 
+def _always() -> bool:
+    """Default `names_on`."""
+    return True
+
+
 def _summary(name: str, args: dict[str, Any], reply: Reply,
              line: Callable[[str, dict[str, Any], Reply], str] | None = None) -> str:
     """The reply's one line; looked up per call so `reply_shapes_guard` can wrap it."""
@@ -109,7 +116,9 @@ class Boundary:
                  doc: Callable[[str, str], str], after: After = _nothing_after,
                  give_back: GiveBack = _nothing_to_give_back,
                  recorder: Recorded | None = None,
-                 listener: CallListener | None = None) -> None:
+                 listener: CallListener | None = None,
+                 namer: naming.Guarded | None = None,
+                 names_on: Callable[[], bool] = _always) -> None:
         self.mcp = mcp
         self._lock = lock
         self._invoke = invoke
@@ -118,6 +127,8 @@ class Boundary:
         self._give_back = give_back
         self.recorder: Recorded = recorder if recorder is not None else Unrecorded()
         self._listener = listener
+        self._namer = namer
+        self._names_on = names_on
         # Calls in flight, outermost first; read and written under the lock.
         self._calls: list[str] = []
         # Step replies inside the outermost call; their accounts go back if it is cancelled.
@@ -158,20 +169,31 @@ class Boundary:
         return self.summaries[name](args, reply)
 
     def finished(self, name: str, args: dict[str, Any], reply: Reply,
-                 body_session: bool = False, outer: bool = True) -> Reply:
+                 body_session: bool = False, outer: bool = True,
+                 named: Mapping[str, naming.Named] | None = None) -> Reply:
         """Close a reply for every path: `summary` first, the tool's fields, `session` last.
 
         The `session` block is composed after the body; `body_session` keeps the one the body
-        wrote (`close` composes its own, after it ended the session)."""
+        wrote (`close` composes its own, after it ended the session).
+
+        With a namer, and the names on, the reply gains `names` (and `names_cut`) beside the
+        tool's fields and its summary names the numbers it prints; `named` is what the call's own
+        arguments are called."""
         body = {k: v for k, v in schema.omit_empty(name, reply).items() if k != "session"}
         kept = reply.get("session") if body_session else None
         session = (kept if kept is not None
                    else self._session_block(blocks.whole_for(name)))
         summary = _summary(name, args, reply, self.line)
+        names: Reply = {}
+        if self._namer is not None and self._names_on():
+            closed = self._namer.close(name, body, named or {}, summary)
+            summary = closed.summary
+            if closed.names:
+                names = {"names": closed.names, **({"names_cut": closed.cut} if closed.cut else {})}
         if outer and (record := self._take_cancelled()) is not None:
-            return {"summary": record.summary(summary), **body, "cancelled": record.note(),
-                    "session": session}
-        return {"summary": summary, **body, "session": session}
+            return {"summary": record.summary(summary), **body, **names,
+                    "cancelled": record.note(), "session": session}
+        return {"summary": summary, **body, **names, "session": session}
 
     def refused(self, name: str, arguments: dict[str, Any], build: Callable[[], Reply]) -> Reply:
         """The schema's refusal, closed under the lock because closing hands over one-time
@@ -213,6 +235,8 @@ class Boundary:
                     parent = self._calls[-1] if self._calls else None
                     bound = signature.bind_partial(*a, **k)
                     given = {n: v for n, v in bound.arguments.items() if n != "ctx"}
+                    named = self._namer.arguments(fn.__name__, given) \
+                        if self._namer is not None else {}
                     # Before the push, so nothing between can leave the stack high.
                     taken = self.recorder.begin(fn.__name__, parent, given)
                     self._calls.append(fn.__name__)
@@ -221,7 +245,7 @@ class Boundary:
                     reply: Reply | None = None
                     back: list[Reply] = []
                     heard = Call(fn.__name__, MappingProxyType(given), parent is not None,
-                                 read_only)
+                                 read_only, named)
                     raised = True
                     try:
                         if self._listener is not None:
@@ -273,7 +297,7 @@ class Boundary:
                     bound.apply_defaults()
                     args = {n: v for n, v in bound.arguments.items() if n != "ctx"}
                     return self.finished(fn.__name__, args, reply, body_session,
-                                         outer=self.nested == 0)
+                                         outer=self.nested == 0, named=named)
 
             setattr(wrapped, ON_CANCEL_ATTR, on_cancel or "none")
 

@@ -16,6 +16,7 @@ from pydantic import ConfigDict, TypeAdapter
 from typing_extensions import TypedDict
 
 from scry_core import reply_contract as contract
+from scry_core.naming import NameItem
 from scry_core.prose import counted
 from scry_core.strict_arguments import registered
 
@@ -31,6 +32,8 @@ class ReplyEnvelope(TypedDict, total=False):
     omitted: list[str]
     how: str
     note: str
+    names: list[NameItem]
+    names_cut: int
     cancelled: dict[str, Any]
     session: dict[str, Any]
 

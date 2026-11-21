@@ -10,6 +10,7 @@ import pytest
 
 from scry_core import demo as d
 from scry_core import timeline, transcript
+from scry_core.naming import Named
 from scry_core.verdict import Invalid
 
 #: Calls 1, 3, 9 and 11 of scry-mame's LineUp demo's committed `TRANSCRIPT.md`, verbatim.
@@ -148,3 +149,13 @@ def test_the_first_call_that_counts_a_frame_may_fire_input_with_no_frame_before_
                   ("b", "point", {}, "ok", (None, 3), [timeline.pointer(1, 2)]))
     event = timeline.loads(made.dumps())["calls"][1]["events"][0]
     assert event["frame"] == 3
+
+
+def test_a_caption_names_what_the_calls_reply_called_its_arguments() -> None:
+    made = timeline.Builder("x")
+    made.add("look", "read_memory", {"ref": "score", "length": 2}, "ok", (1, 2), read_only=True,
+             named={"ref": Named("symbol", "score", "0x9405")})
+    made.add("bare", "read_memory", {"ref": "score"}, "ok", (2, 3))
+    first, second = timeline.loads(made.dumps())["calls"]
+    assert first["caption"] == {"text": "read_memory score (0x9405) 2", "tint": "read"}
+    assert second["caption"]["text"] == "read_memory score"

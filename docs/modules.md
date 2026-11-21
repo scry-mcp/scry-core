@@ -13,10 +13,12 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.session_block` | The `session` block that closes every reply, and what `close` and `status` answer with no session. |
 | `scry_core.envelope` | The MCP server object: its `instructions`, a tool's picture attached to its reply, and a reply JSON cannot carry refused by name. |
 | `scry_core.narrowing` | A reply that answers less than everything and says so: `omitted`, `how`, and the `sections` a caller asks for. |
-| `scry_core.instruction` | The fields of the instruction a stopped machine is at (`address`, `bytes`, `text`, `symbol`, `delta`). |
+| `scry_core.instruction` | The fields of the instruction a stopped machine is at (`address`, `bytes`, `text`, `symbol`, `delta`, and a `note` from the base apart from a person's `comment`). |
 | `scry_core.tool_replies` | The reply fields that mean the same on both servers for `screen_map_write`, `log_wait`, `comment_write`, `screen_wait` and a refused `profile`. |
 | `scry_core.media_replies` | The reply models of the file tools both servers have. |
 | `scry_core.knowledge` | The knowledge base: the entries of a server's dictionaries (`scry-knowledge/1`), the database that loads them and answers by number, range, words and device, what a server declares it supports, the checks its dictionaries are held to, and the lock and command (`scry_core.knowledge.seal`) that seal a checked entry. |
+| `scry_core.naming` | What a number is called in a reply: a server's namer, the `names` block and the names in a summary, the namer that never fails the call it names, and the `names` argument of `start` that turns them off. |
+| `scry_core.notes` | The note a disassembled line carries from the base, for the operands a server parsed, apart from a person's comments. |
 | `scry_core.knowledge_tool` | `knowledge_find`, the one tool that asks the base what a number is called: its description, judge, body, summary line and reply model, registered by each server. |
 | `scry_core.prose` | How a count is written in a summary or a refusal, and the one summary line of a refusal. |
 
@@ -103,7 +105,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.presence` | The coloured border both emulators draw while a session holds the window, the layers drawn over it (`Payload`), the keys, pointer and recordings a server reports, and the tints and timings (`Look`). |
 | `scry_core.overlay` | `start`'s `overlay` argument, which layers presence draws, and the `overlay` field of `start`'s and `status`'s replies. |
 | `scry_core.overlay_timeline` | What the overlay shows at a moment: a caption's minimum time, a burst joined with a count, its tint, its exit, and a keycap kept long enough to be seen. |
-| `scry_core.abbreviation` | A call as its caption reads: the tool and its values, each cut short, a path by its last name and never a home folder's. |
+| `scry_core.abbreviation` | A call as its caption reads: the tool and its values, each cut short, a path by its last name and never a home folder's, a named value as `name (number)`, the whole at most 160 bytes. |
 | `scry_core.placement` | Whether captions go to the top or the bottom of the picture, and `placement_vectors.txt`, the cases each emulator's drawer replays. |
 | `scry_core.app_launch` | An emulator launched as a macOS `.app` through `open`, and the process id found for it. |
 | `scry_core.binaries` | Which emulator a session runs: the caller's `binary`, else the server's variable, else the one on `PATH`. |
@@ -153,7 +155,7 @@ The document is `{"version": 2, "demo": <name>, "calls": [...]}`. Each call hold
 | `n`, `step`, `tool` | Its position in the run from 1, the demo's name for it, and the tool called. |
 | `args` | The arguments as the demo gave them: a symbol stays the symbol written, with host paths spelled as in the transcript. |
 | `status` | The reply's `status`, or `ended` when there was no reply. |
-| `caption` | What the overlay's caption reads for the call: `text`, made by `abbreviation.caption` from `args`, and `tint`: `refused` when `status` is not `ok`, else `read` for a tool its server marks `readOnlyHint`, else `write`. The decorator draws this text and never makes its own. |
+| `caption` | What the overlay's caption reads for the call: `text`, made by `abbreviation.caption` from `args` and the names the reply gave them (`naming.arguments_of`), and `tint`: `refused` when `status` is not `ok`, else `read` for a tool its server marks `readOnlyHint`, else `write`. The decorator draws this text and never makes its own. |
 | `before`, `after` | The frame the call began and ended at, or null before any reply counted one. |
 | `events` | The input the call fired, each with its `frame`. |
 
