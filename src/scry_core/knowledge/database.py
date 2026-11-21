@@ -381,7 +381,8 @@ class Base:
             if (not asked or n in tiers) and (
                 number is None or self._prefix_of(kind, key, k, row_key))]
         if asked:
-            rows.sort(key=lambda r: tiers[r[0]])
+            rows.sort(key=lambda r: (not (device and r[1] == "device" and r[2] == device),
+                                     tiers[r[0]]))
         found = Found(self._many([n for n, _, _ in rows[:limit]]), len(rows), examined)
         if not rows:
             found.nearest = self._nearest(where, args, number, asked,
@@ -529,6 +530,8 @@ def _loose(text_: str) -> keys.Span | None:
             return keys.query("memory", text_)[1]
         if ".." in text_:
             first, _, last = text_.partition("..")
+            if ".." in last:
+                return None
             lo = _loose(first)
             hi = _loose(last)
             if lo is None or hi is None or lo.lo is None or hi.lo is None or hi.lo < lo.lo:

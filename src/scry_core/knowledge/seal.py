@@ -38,7 +38,7 @@ def _again(locked: Locked | None, now: fmt.Check, seal_: str) -> str:
     """Why `now` is no new check of an entry already locked, or nothing: its seal moved (the text
     or the record changed) and the checker and the lines compared are the locked ones."""
     if locked is None or locked.digest == seal_ or locked.by != now.by or (
-            locked.against != now.against):
+            sorted(locked.against) != sorted(now.against)):
         return ""
     return (f"checked by {now.by!r} against the lines already locked, and the entry changed since: "
             "a correction is checked again by another session, or against other lines, and "

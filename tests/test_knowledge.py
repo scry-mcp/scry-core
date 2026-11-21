@@ -65,7 +65,9 @@ def test_a_key_covers_the_numbers_it_stands_for() -> None:
     assert keys.span("vector", "2").lo == 2 and keys.span("vector", "0x02").lo == 2
 
 
-@pytest.mark.parametrize(("kind", "typed"), [("call", "0x121"), ("port", " "), ("port", "")])
+@pytest.mark.parametrize(("kind", "typed"), [
+    ("call", "0x121"), ("port", " "), ("port", ""), ("register", "0x20..0x30..0x40"),
+    ("command", "0x20..0x30..0x40"), ("register", "0x20..0x30..")])
 def test_a_query_that_is_no_key_is_refused(kind: str, typed: str) -> None:
     with pytest.raises(KeyFault):
         keys.query(kind, typed)
@@ -359,6 +361,24 @@ def test_a_devices_own_entry_leads_what_is_found_of_it_and_only_its_own(
     assert ids(found) == ["ibm-pc:device:vga-seq"] and found.total == 4
     assert "ibm-pc:device:sb-dsp" not in ids(base.search(device="sb"))
     assert ids(base.search(device="vga-seq", words="sequencer"))[0] == "ibm-pc:device:vga-seq"
+
+
+def test_a_range_of_a_range_is_no_number_with_or_without_a_kind(tmp_path: Path) -> None:
+    base = bank(tmp_path, an_entry("0x20..0x35", "bank"))
+    with pytest.raises(KeyFault):
+        base.search("register", "0x20..0x30..0x40")
+    assert base.search(key="0x20..0x30..0x40").total == 0
+    assert base.search(key="0x20..0x30").total == 1
+
+
+def test_a_devices_own_entry_leads_a_words_search_too(tmp_path: Path) -> None:
+    write_dictionary(tmp_path, "devices", "device", "ibm-pc", [
+        an_entry("sb", "Card", description="A sound card.")])
+    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
+        an_entry("0x10", "sound port", device="sb")])
+    for fts5 in (None, False):
+        found = knowledge.Base.load(tmp_path, fts5=fts5).search(device="sb", words="sound")
+        assert ids(found) == ["ibm-pc:device:sb", "ibm-pc:port:0x10"]
 
 
 def test_a_devices_own_entry_leads_even_where_its_scope_sorts_last(tmp_path: Path) -> None:

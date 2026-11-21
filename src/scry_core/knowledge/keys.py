@@ -145,6 +145,8 @@ def query(kind: str, text: str) -> tuple[str, Span]:
         return _shown(number), Span(number, number, (number,))
     if ".." in text and kind != "memory":
         first, _, last = text.partition("..")
+        if ".." in last:
+            raise KeyFault(f"a range has two ends; got {text!r}")
         low = span(kind, canonical(kind, first.strip())).lo
         high = span(kind, canonical(kind, last.strip())).lo
         if low is None or high is None or high < low:

@@ -95,6 +95,24 @@ def test_a_re_check_by_the_same_checker_against_the_same_lines_of_a_changed_text
     assert calls(copy).read_bytes() == wrote and copy.lock_path.read_bytes() == locked
 
 
+def test_the_order_of_the_lines_compared_is_no_new_check(tmp_path: Path) -> None:
+    ref = "datasheet:Fixture sheet 1, table 2"
+    two = [{"role": "documentation", "ref": ref, "cites": "Bit 7 selects the bank."},
+           {"role": "emulator", "ref": GET_CODE_REF, "cites": GET_CODE_LINE}]
+    raw = an_entry("0x10", "bank", sources=two)
+    raw["checked"] = {"by": "second checker", "writer": "fixture writer", "digest": "",
+                      "against": [{"ref": s["ref"], "line": s["cites"]} for s in two]}
+    path = write_dictionary(tmp_path / "d", "ports", "port", "ibm-pc", [raw])
+    path.write_text(lock.dumps(json.loads(path.read_text(encoding="utf-8"))), encoding="utf-8")
+    where = tmp_path / "lock.json"
+    assert seal.seal(path, ["ibm-pc:port:0x10"], where) == []
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["entries"][0]["behaviour"] = "Reworded."
+    doc["entries"][0]["checked"]["against"].reverse()
+    path.write_text(lock.dumps(doc), encoding="utf-8")
+    assert len(seal.seal(path, ["ibm-pc:port:0x10"], where)) == 1
+
+
 def test_a_re_check_is_accepted_when_the_checker_or_the_lines_are_not_the_locked_ones(
         tmp_path: Path) -> None:
     for by, line in (("second checker", ""), ("fixture checker", "case 0x4c:")):
