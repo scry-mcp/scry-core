@@ -1907,24 +1907,6 @@
         }
       ]
     },
-    "ym3812:register:0x04": {
-      "digest": "f5a23f26afffba1911a15884ed4c1627ab8f936ba1d54f15c8c94805984df75f",
-      "by": "phase Kcc",
-      "against": [
-        {
-          "ref": "rbil61:PORTS.B AdLib index 04h",
-          "line": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
-        },
-        {
-          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
-          "line": "\tcase 0x04:"
-        },
-        {
-          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
-          "line": "//           04 x------- RST"
-        }
-      ]
-    },
     "ym3812:register:0x08": {
       "digest": "429e2888b921a391fd54dc9c704724431defcfcebbe10c4f975cfc25a511b562",
       "by": "phase Kcc",
@@ -2048,24 +2030,6 @@
         {
           "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base B0-B8",
           "line": "//        B0-B8 --x----- Key on"
-        }
-      ]
-    },
-    "ym3812:register:0xBD": {
-      "digest": "b66d5b86dbf1558bc016df2293d1d31b1e00514f3a5cf2f594bf1c6f049195db",
-      "by": "phase Kcc",
-      "against": [
-        {
-          "ref": "rbil61:PORTS.B AdLib index BDh",
-          "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
-        },
-        {
-          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
-          "line": "\t\tif ( reg == 0xbd ) {"
-        },
-        {
-          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
-          "line": "//           BD x------- AM depth"
         }
       ]
     },
@@ -2479,5 +2443,49 @@
         }
       ]
     }
-  }
+  },
+  "reopened": [
+    {
+      "id": "ym3812:register:0x04",
+      "digest": "f5a23f26afffba1911a15884ed4c1627ab8f936ba1d54f15c8c94805984df75f",
+      "by": "phase Kcf2",
+      "why": "it leaves out that the other bits of a write are ignored while bit 7 is set, found when the OPL3 twin was checked",
+      "checked_by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index 04h",
+          "line": " 04h\tTimer control flags (OPL2 and OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x04",
+          "line": "\tcase 0x04:"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base 04",
+          "line": "//           04 x------- RST"
+        }
+      ]
+    },
+    {
+      "id": "ym3812:register:0xBD",
+      "digest": "b66d5b86dbf1558bc016df2293d1d31b1e00514f3a5cf2f594bf1c6f049195db",
+      "by": "phase Kcf2",
+      "why": "it leaves out that the key-on bits act only while bit 5 is set, found when the OPL3 twin was checked",
+      "checked_by": "phase Kcc",
+      "against": [
+        {
+          "ref": "rbil61:PORTS.B AdLib index BDh",
+          "line": " BDh\tpercussion, vibrato, AM\t(OPL2, OPL3 in OPL2 mode only)"
+        },
+        {
+          "ref": "dosbox-x:src/hardware/dbopl.cpp Chip::WriteReg reg 0xbd",
+          "line": "\t\tif ( reg == 0xbd ) {"
+        },
+        {
+          "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h opl_registers_base BD",
+          "line": "//           BD x------- AM depth"
+        }
+      ]
+    }
+  ]
 }

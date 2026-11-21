@@ -154,7 +154,7 @@
         "timer flags"
       ],
       "description": "Timer control: starts, stops and masks the two timers and resets their flags.",
-      "behaviour": "Bit 7 resets the timer flags and the interrupt, bit 6 masks timer 1, bit 5 masks timer 2, bit 1 starts timer 2 and bit 0 starts timer 1.",
+      "behaviour": "Bit 7 resets the timer flags and the interrupt, and while it is set the write ignores all the other bits, so 0x81 does not start timer 1. With bit 7 clear, bit 6 masks timer 1, bit 5 masks timer 2, bit 1 starts timer 2 and bit 0 starts timer 1.",
       "sources": [
         {
           "role": "documentation",
@@ -226,7 +226,7 @@
         "rhythm"
       ],
       "description": "Rhythm register: the tremolo and vibrato depths, the rhythm mode and its five key-on bits.",
-      "behaviour": "Bit 7 selects the deep tremolo, bit 6 the deep vibrato, bit 5 enables rhythm mode, and bits 4 to 0 key on the bass drum, snare, tom, top cymbal and high hat.",
+      "behaviour": "Bit 7 selects the deep tremolo, bit 6 the deep vibrato, bit 5 enables rhythm mode, and bits 4 to 0 key on the bass drum, snare, tom, top cymbal and high hat, which they do only while bit 5 is set: with rhythm mode off those five bits are ignored, and clearing bit 5 keys the drums off.",
       "sources": [
         {
           "role": "documentation",
