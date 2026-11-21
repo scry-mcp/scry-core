@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from scry_core import boundary, presence
+from scry_core import boundary, overlay, presence
 from scry_core.envelope import Envelope
 
 #: Long enough for an idle writer to have sent anything it was going to.
@@ -25,6 +25,7 @@ class _Adapter:
 
     def __init__(self) -> None:
         self.shown: list[presence.State] = []
+        self.payloads: list[presence.Payload] = []
         self.gate = threading.Event()
         self.gate.set()
         self.fail: BaseException | None = None
@@ -34,12 +35,13 @@ class _Adapter:
         self.repaint_fails = False
         self.wakes = 0
 
-    def show(self, state: presence.State) -> None:
+    def show(self, state: presence.State, payload: presence.Payload) -> None:
         self.entered.set()
         self.gate.wait(5)
         if self.fail is not None:
             raise self.fail
         self.shown.append(state)
+        self.payloads.append(payload)
 
     def wake(self) -> None:
         self.wakes += 1
@@ -50,6 +52,11 @@ class _Adapter:
             raise RuntimeError("the console is gone")
 
 
+def _call(tool: str, nested: bool = False, read_only: bool = False,
+          **given: Any) -> boundary.Call:
+    return boundary.Call(tool, given, nested, read_only)
+
+
 def _settle(adapter: _Adapter, n: int) -> None:
     """Until `n` states were shown, then quiet: the assertion after it sees the whole run."""
     deadline = time.monotonic() + 5
@@ -58,8 +65,10 @@ def _settle(adapter: _Adapter, n: int) -> None:
     time.sleep(QUIET_S)
 
 
-def _open(adapter: _Adapter, driving: tuple[str, ...] = ("run_for",)) -> presence.Presence:
-    shown = presence.Presence.open(adapter, driving)
+def _open(adapter: _Adapter, driving: tuple[str, ...] = ("run_for",),
+          asked: overlay.Overlay = overlay.OVERLAY,
+          look: presence.Look = presence.LOOK) -> presence.Presence:
+    shown = presence.Presence.open(adapter, driving, asked, look)
     assert shown.held is not None and shown.reply() is True and shown.adapter is adapter
     return shown.held
 
@@ -95,23 +104,35 @@ def test_open_that_cannot_draw_says_why_in_place_of_true(raised: BaseException, 
 def test_a_driving_call_turns_it_acting_and_its_end_back_to_held() -> None:
     a = _Adapter()
     p = _open(a)
-    p.began("run_for")
+    p.began(_call("run_for"))
     _settle(a, 2)
-    p.ended("run_for")
+    p.ended(_call("run_for"), "ok")
     _settle(a, 3)
     assert a.shown == ["held", "acting", "held"]
     p.close()
 
 
-def test_a_still_call_changes_nothing() -> None:
+def test_a_still_call_leaves_the_state_held_and_only_captions_itself() -> None:
     a = _Adapter()
     p = _open(a)
-    p.began("registers")
+    p.began(_call("registers", read_only=True))
     with p._cv:
-        assert (p._want, p._pulse) == ("held", False), "a still call set nothing"
-    p.ended("registers")
+        assert (p._want, p._pulse) == ("held", False), "a still call set no state"
+    p.ended(_call("registers", read_only=True), "ok")
+    _settle(a, 2)
+    assert a.shown == ["held", "held"]
+    caption = a.payloads[-1].caption
+    assert caption is not None and (caption.text, caption.kind) == ("registers", "read")
+    p.close()
+
+
+def test_a_still_call_changes_nothing_with_the_calls_layer_off() -> None:
+    a = _Adapter()
+    p = _open(a, asked=overlay.Overlay(calls=False))
+    p.began(_call("registers", read_only=True))
+    p.ended(_call("registers", read_only=True), "ok")
     time.sleep(QUIET_S)
-    assert a.shown == ["held"]
+    assert a.shown == ["held"] and a.payloads[0].layers == ("edge", "pointer", "keys", "pause")
     p.close()
 
 
@@ -120,11 +141,11 @@ def test_the_writer_sends_only_the_latest_state_once_a_slow_delivery_returns() -
     p = _open(a)
     a.gate.clear()
     a.entered.clear()
-    p.began("run_for")                      # in flight, held at the gate
+    p.began(_call("run_for"))                      # in flight, held at the gate
     assert a.entered.wait(5)
-    p.ended("run_for")
-    p.began("run_for")
-    p.ended("run_for")                      # three changes while the first is in flight
+    p.ended(_call("run_for"), "ok")
+    p.began(_call("run_for"))
+    p.ended(_call("run_for"), "ok")         # three changes while the first is in flight
     a.gate.set()
     _settle(a, 3)
     # the one in flight lands, then the latest; the two between are skipped, never reordered
@@ -137,11 +158,11 @@ def test_a_call_never_waits_on_a_delivery_in_flight() -> None:
     p = _open(a)
     a.gate.clear()
     a.entered.clear()
-    p.began("run_for")
+    p.began(_call("run_for"))
     assert a.entered.wait(5)                # the writer is stuck in the adapter
     t = time.monotonic()
-    p.ended("run_for")
-    p.began("run_for")
+    p.ended(_call("run_for"), "ok")
+    p.began(_call("run_for"))
     assert time.monotonic() - t < 0.1
     a.gate.set()
     p.close()
@@ -151,8 +172,8 @@ def test_a_driving_call_over_before_the_writer_woke_is_still_shown_acting() -> N
     a = _Adapter()
     p = _open(a)
     with p._cv:                             # the writer cannot wake between the two
-        p.began("run_for")
-        p.ended("run_for")
+        p.began(_call("run_for"))
+        p.ended(_call("run_for"), "ok")
     _settle(a, 3)
     assert a.shown == ["held", "acting", "held"]
     p.close()
@@ -165,8 +186,8 @@ def test_a_delivery_that_fails_is_said_by_reply_and_sent_again_until_it_lands(
     a = _Adapter()
     p = _open(a)
     a.fail = ConnectionError("the channel dropped")
-    p.began("run_for")
-    p.ended("run_for")
+    p.began(_call("run_for"))
+    p.ended(_call("run_for"), "ok")
     deadline = time.monotonic() + 5
     while p.reply() is True and time.monotonic() < deadline:
         time.sleep(0.01)
@@ -192,9 +213,9 @@ def test_close_lets_a_stuck_delivery_land_and_sends_nothing_after_it() -> None:
     p = _open(a)
     a.gate.clear()
     a.entered.clear()
-    p.began("run_for")
+    p.began(_call("run_for"))
     assert a.entered.wait(5)                # the writer is inside `acting`
-    p.ended("run_for")                      # a change that must never be sent
+    p.ended(_call("run_for"), "ok")                      # a change that must never be sent
     t = time.monotonic()
     p.close()
     assert time.monotonic() - t < presence.CLOSE_WAIT_S + 0.5
@@ -222,15 +243,15 @@ def test_a_slot_routes_to_the_session_s_presence_and_to_nothing_without_one() ->
     a = _Adapter()
     current: list[presence.Presence | None] = [None]
     slot = presence.Slot(lambda: current[0])
-    slot.began("run_for")                   # no session: nothing happens
+    slot.began(_call("run_for"))                   # no session: nothing happens
     held = _open(a)
     current[0] = held
-    slot.began("run_for")
+    slot.began(_call("run_for"))
     _settle(a, 2)
-    slot.ended("run_for")
+    slot.ended(_call("run_for"), "ok")
     _settle(a, 3)
     current[0] = None
-    slot.ended("run_for")
+    slot.ended(_call("run_for"), "ok")
     assert a.shown == ["held", "acting", "held"]
     held.close()
 
@@ -294,9 +315,9 @@ def test_the_held_after_a_driving_call_is_repainted_once_and_never_at_open() -> 
     p = _open(a)
     time.sleep(QUIET_S)
     assert a.repaints == []                  # `open` shows held itself, before any call
-    p.began("run_for")
+    p.began(_call("run_for"))
     _settle(a, 2)
-    p.ended("run_for")
+    p.ended(_call("run_for"), "ok")
     _settle(a, 3)
     assert a.shown == ["held", "acting", "held"] and a.repaints == [True]
     p.close()
@@ -305,13 +326,13 @@ def test_the_held_after_a_driving_call_is_repainted_once_and_never_at_open() -> 
 def test_a_call_that_begins_before_the_repaint_makes_it_moot() -> None:
     a = _Adapter()
     p = _open(a)
-    p.began("run_for")
+    p.began(_call("run_for"))
     _settle(a, 2)
     a.gate.clear()                           # the held after the call is held in delivery...
     a.entered.clear()
-    p.ended("run_for")
+    p.ended(_call("run_for"), "ok")
     assert a.entered.wait(5)
-    p.began("run_for")                       # ...while the next call begins
+    p.began(_call("run_for"))                       # ...while the next call begins
     a.gate.set()
     _settle(a, 4)
     assert a.shown == ["held", "acting", "held", "acting"] and a.repaints == []
@@ -322,15 +343,15 @@ def test_a_repaint_that_fails_is_said_by_reply_until_a_delivery_lands() -> None:
     a = _Adapter()
     a.repaint_fails = True
     p = _open(a)
-    p.began("run_for")
-    p.ended("run_for")
+    p.began(_call("run_for"))
+    p.ended(_call("run_for"), "ok")
     _settle(a, 2)
     deadline = time.monotonic() + 5
     while p.reply() is True and time.monotonic() < deadline:
         time.sleep(0.01)
     assert p.reply() == {"available": False,
                          "why": "a repaint failed: RuntimeError: the console is gone"}
-    p.began("run_for")
+    p.began(_call("run_for"))
     _settle(a, 4)
     assert a.shown[-1] == "acting" and p.reply() is True
     p.close()
@@ -342,13 +363,111 @@ def test_a_repaint_reads_still_false_once_a_call_began_while_it_ran() -> None:
     class Slow(_Adapter):
         def repaint(self, still: Callable[[], bool]) -> None:
             seen.append(still())
-            p.began("run_for")              # a call begins while the repaint runs
+            p.began(_call("run_for"))              # a call begins while the repaint runs
             seen.append(still())
 
     a = Slow()
     p = _open(a)
-    p.began("run_for")
-    p.ended("run_for")
+    p.began(_call("run_for"))
+    p.ended(_call("run_for"), "ok")
     _settle(a, 3)
     assert seen[:2] == [True, False]
     p.close()
+
+
+def _until(a: _Adapter, ok: Callable[[presence.Payload], bool], after: int = 0
+           ) -> presence.Payload:
+    """The first payload delivered past the first `after` for which `ok` holds, waiting."""
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        for payload in list(a.payloads)[after:]:
+            if ok(payload):
+                return payload
+        time.sleep(0.01)
+    raise AssertionError(f"never delivered; delivered {a.payloads}")
+
+
+def test_a_call_s_caption_is_delivered_with_its_state_and_leaves_on_its_own() -> None:
+    a = _Adapter()
+    look = presence.Look(caption_min_s=0.05, caption_hold_s=0.1)
+    p = _open(a, look=look)
+    assert a.payloads[0] == presence.Payload(layers=overlay.OVERLAY.asked())
+    p.began(_call("run_for", seconds=2.0))
+    _settle(a, 2)
+    assert a.shown[-1] == "acting"
+    caption = a.payloads[-1].caption
+    assert caption is not None and (caption.text, caption.rgb) == ("run_for 2", look.write_rgb)
+    p.ended(_call("run_for", seconds=2.0), "ok")
+    gone = _until(a, lambda pl: pl.caption is None, after=1)
+    assert gone.layers == overlay.OVERLAY.asked(), "no call came: the writer woke on its own"
+    p.close()
+
+
+def test_a_call_that_ends_refused_is_delivered_in_the_refused_tint() -> None:
+    a = _Adapter()
+    p = _open(a)
+    p.began(_call("run_for"))
+    p.ended(_call("run_for"), "refused")
+    refused = _until(a, lambda pl: pl.caption is not None and pl.caption.kind == "refused")
+    assert refused.caption is not None and refused.caption.rgb == presence.LOOK.refused_rgb
+    p.close()
+
+
+def test_the_keys_pointer_and_pause_reported_reach_the_payload() -> None:
+    a = _Adapter()
+    p = _open(a)
+    p.key("Enter", True)
+    p.key("Enter", False)
+    _until(a, lambda pl: pl.keys == ("Enter",))
+    p.button("left", True)                       # no pointer yet: nothing to press
+    p.moved(10, 20)
+    p.button("left", True)
+    p.button("right", True)
+    p.button("left", False)
+    p.moved(11, 21)
+    _until(a, lambda pl: pl.pointer == presence.Pointer(11, 21, ("right",)))
+    p.paused(True)
+    _until(a, lambda pl: pl.paused)
+    before = len(a.payloads)
+    p.paused(False)
+    _until(a, lambda pl: not pl.paused, after=before)
+    p.close()
+
+
+def test_a_key_tapped_on_an_idle_session_leaves_on_its_own() -> None:
+    a = _Adapter()
+    p = _open(a, look=presence.Look(keycap_min_s=0.05))
+    p.key("Enter", True)
+    p.key("Enter", False)
+    _until(a, lambda pl: pl.keys == ("Enter",))
+    shown = _until(a, lambda pl: pl.keys == (), after=1)
+    assert shown.layers == overlay.OVERLAY.asked(), "nothing came: the writer woke on its own"
+    p.close()
+
+
+def test_a_layer_not_asked_is_never_delivered() -> None:
+    a = _Adapter()
+    p = _open(a, asked=overlay.Overlay(calls=False, keys=False, pointer=False, pause=False,
+                                       place="top"))
+    p.key("Enter", True)
+    p.moved(1, 2)
+    p.paused(True)
+    p.began(_call("run_for"))
+    p.ended(_call("run_for"), "ok")
+    _settle(a, 3)
+    assert all(pl == presence.Payload(layers=("edge",), place="top") for pl in a.payloads)
+    p.close()
+
+
+def test_a_session_without_presence_takes_input_reports_and_does_nothing() -> None:
+    shown = presence.Shown()
+    shown.key("A", True)
+    shown.moved(1, 1)
+    shown.button("left", True)
+    shown.paused(True)
+    a = _Adapter()
+    held = presence.Presence.open(a, ())
+    held.key("A", True)
+    held.paused(True)
+    _until(a, lambda pl: pl.keys == ("A",) and pl.paused)
+    held.close()

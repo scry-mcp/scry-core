@@ -16,8 +16,10 @@ import inspect
 import threading
 import time
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from types import MappingProxyType
+from typing import Any, Literal, Protocol
 
 from mcp.types import ToolAnnotations
 
@@ -42,12 +44,27 @@ RefusalLine = Callable[[str, Reply], str]
 GiveBack = Callable[[Reply], None]
 
 
+Outcome = Literal["ok", "refused"]
+
+
+@dataclass(frozen=True)
+class Call:
+    """A call as a `CallListener` hears it; `given` is what the caller passed, read-only."""
+
+    tool: str
+    given: Mapping[str, Any]
+    nested: bool
+    read_only: bool
+
+
 class CallListener(Protocol):
-    """Hears outermost calls begin and end, under the lock: must not block."""
+    """Hears every call begin and end, steps included, under the lock: must not block. A call
+    ends `ok` when it answered `status: ok`, and `refused` otherwise, raised or cancelled
+    included."""
 
-    def began(self, tool: str) -> None: ...
+    def began(self, call: Call) -> None: ...
 
-    def ended(self, tool: str) -> None: ...
+    def ended(self, call: Call, outcome: Outcome) -> None: ...
 
 
 class Recorded(Protocol):
@@ -203,14 +220,18 @@ class Boundary:
                         self._answered = []
                     reply: Reply | None = None
                     back: list[Reply] = []
+                    heard = Call(fn.__name__, MappingProxyType(given), parent is not None,
+                                 read_only)
+                    raised = True
                     try:
-                        if parent is None and self._listener is not None:
-                            self._listener.began(fn.__name__)
+                        if self._listener is not None:
+                            self._listener.began(heard)
                         reply = self._invoked(fn, bound)
                         if parent is not None:
                             reply = picture.unattached_below(reply, top=False)
                         if self.nested == 1:
                             cancel.check()           # a cancel that came as the body returned
+                        raised = False
                     except BaseException as e:
                         if reply is not None:
                             self.recorder.end(fn.__name__, parent, given, reply, taken)
@@ -227,6 +248,9 @@ class Boundary:
                         # step.
                         try:
                             self._after()
+                        except BaseException:
+                            raised = True
+                            raise
                         finally:
                             self._calls.pop()
                             if parent is None:
@@ -237,8 +261,10 @@ class Boundary:
                                     self._give_back(account)
                             finally:
                                 # The listener never hears of a call still in flight.
-                                if parent is None and self._listener is not None:
-                                    self._listener.ended(fn.__name__)
+                                if self._listener is not None:
+                                    ok = not raised and reply is not None \
+                                        and reply.get("status") == "ok"
+                                    self._listener.ended(heard, "ok" if ok else "refused")
                     self.recorder.end(fn.__name__, parent, given, reply, taken)
                     if names_file is not None:
                         _say_written_as(reply, names_file, given.get(names_file))

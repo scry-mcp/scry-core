@@ -2,6 +2,24 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- A `boundary.CallListener` hears every call, a step of `perform` or `drive` included, as a
+  `boundary.Call` (the tool, what it was given, whether it is a step, whether it only reads),
+  and hears how it ended: `ok`, or `refused` for anything else. Its methods are now
+  `began(call)` and `ended(call, outcome)`.
+- `presence.Adapter.show(state, payload)` takes a `presence.Payload`: whether the machine is
+  held stopped, the caption of the latest call, the keys held, the pointer, the layers asked and
+  where the captions go. A server reports input with `Shown.key`, `moved`, `button` and
+  `paused`, which do nothing without presence.
+- `Presence.open` takes the session's `overlay.Overlay`, `start`'s new `overlay` argument with
+  its description (`overlay.ARGUMENT`); `overlay.reply` builds the `overlay` field of `start`'s
+  and `status`'s replies. `Look` carries the caption tints (write, read, refused), the keycap and
+  caption styles, a caption's minimum and hold times and the scroll speed.
+- A caption is written by `abbreviation.caption`: a path shows its last name only and a home
+  folder shows as `~`. `placement` decides `place="auto"`, and `placement_vectors.txt` holds the
+  cases a drawer in another language replays.
+
 ## 0.120.1
 
 - A demo step whose example, or whose lead's answer, shows a written picture's `bytes` or

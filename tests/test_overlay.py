@@ -1,0 +1,68 @@
+"""`scry_core.overlay`: the `overlay` argument's defaults and its strict schema, and the reply's
+`overlay`: the layers drawn, the place in effect, why each layer asked cannot be drawn."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from scry_core import overlay as ov
+from scry_core import strict_arguments as strict
+from scry_core.envelope import Envelope
+
+
+def _start_tool() -> Any:
+    mcp = Envelope("t", instructions="i", refusal=lambda *a: {})
+
+    @mcp.tool(title="Start")
+    def start(overlay: ov.Overlay = ov.OVERLAY) -> dict[str, Any]:
+        return {"status": "ok"}
+
+    strict.strict_arguments(mcp)
+    return strict.registered(mcp)[0]
+
+
+def test_every_layer_is_on_and_auto_placed_by_default() -> None:
+    assert ov.OVERLAY.asked() == ("edge", "pointer", "keys", "calls", "pause")
+    assert ov.OVERLAY.place == "auto"
+    assert ov.Overlay(calls=False, pause=False).asked() == ("edge", "pointer", "keys")
+
+
+@pytest.mark.parametrize(("given", "refusal"), [
+    ({}, None),
+    ({"overlay": {"calls": False, "place": "top"}}, None),
+    ({"overlay": {"calls": "no"}}, "overlay.calls: Input should be a valid boolean"),
+    ({"overlay": {"edge": False}}, "overlay.edge: Extra inputs are not permitted"),
+    ({"overlay": {"place": "left"}}, "overlay.place: Input should be 'top', 'bottom' or 'auto'"),
+    ({"overlay": '{"calls": false}'}, "overlay: Input should be a valid dictionary"),
+])
+def test_the_argument_takes_only_its_own_fields_strictly(
+        given: dict[str, Any], refusal: str | None) -> None:
+    said = strict.refused(_start_tool(), given)
+    assert (said is None) if refusal is None else (said is not None and said.startswith(refusal))
+
+
+def test_the_argument_is_one_object_with_its_defaults_in_the_schema() -> None:
+    schema = _start_tool().parameters
+    props = schema["$defs"]["Overlay"]["properties"]
+    assert {k: v["default"] for k, v in props.items()} == {
+        "calls": True, "keys": True, "pointer": True, "pause": True, "place": "auto"}
+
+
+def test_the_reply_names_the_layers_drawn_and_why_the_others_are_not() -> None:
+    assert ov.reply(ov.OVERLAY, {}) == {
+        "layers": ["edge", "pointer", "keys", "calls", "pause"], "place": "auto"}
+    assert ov.reply(ov.Overlay(keys=False), {"pointer": "MAME has no pointer"}, "bottom") == {
+        "layers": ["edge", "calls", "pause"], "place": "bottom",
+        "lacking": {"pointer": "MAME has no pointer"}}
+
+
+@pytest.mark.parametrize(("lacking", "message"), [
+    ({"keys": "x"}, "a layer not asked: keys"),
+    ({"calls": " "}, "says why"),
+])
+def test_a_reason_for_a_layer_not_asked_or_an_empty_one_is_refused(
+        lacking: dict[ov.Layer, str], message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        ov.reply(ov.Overlay(keys=False), lacking)

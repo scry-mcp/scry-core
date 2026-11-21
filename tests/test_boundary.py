@@ -568,39 +568,51 @@ def test_a_steps_picture_is_marked_unattached_before_its_line_and_its_record_rea
 
 
 class _Heard:
-    """A `CallListener` that records what it heard, and whether the lock was held when it did."""
+    """A `CallListener` that records what it heard, and whether the lock was held when it did;
+    `calls` keeps each call as heard, `outcomes` each end's outcome."""
 
     def __init__(self) -> None:
         self.log: list[tuple[str, str, bool]] = []
+        self.calls: list[boundary.Call] = []
+        self.outcomes: list[boundary.Outcome] = []
         self.server: _Server | None = None
 
-    def began(self, tool: str) -> None:
+    def began(self, call: boundary.Call) -> None:
         assert self.server is not None
-        self.log.append(("began", tool, self.server.held()))
+        self.log.append(("began", call.tool, self.server.held()))
+        self.calls.append(call)
 
-    def ended(self, tool: str) -> None:
+    def ended(self, call: boundary.Call, outcome: boundary.Outcome) -> None:
         assert self.server is not None
-        self.log.append(("ended", tool, self.server.held()))
+        self.log.append(("ended", call.tool, self.server.held()))
+        self.outcomes.append(outcome)
 
 
-def test_the_outermost_call_is_heard_beginning_and_ending_under_the_lock_and_its_steps_are_not(
-) -> None:
+def test_every_call_is_heard_beginning_and_ending_under_the_lock_its_steps_as_nested() -> None:
     heard = _Heard()
     s = _Server(listener=heard)
     heard.server = s
 
-    @s.tool("Step")
-    def step() -> dict[str, Any]:
+    @s.tool("Step", read_only=True)
+    def step(n: int, label: str = "") -> dict[str, Any]:
         return {"status": "ok"}
 
     @s.tool("Sequence")
     def sequence() -> dict[str, Any]:
-        step()
-        step()
+        step(1)
+        step(2, label="b")
         return {"status": "ok"}
 
     sequence()
-    assert heard.log == [("began", "sequence", True), ("ended", "sequence", True)]
+    assert heard.log == [("began", "sequence", True), ("began", "step", True),
+                         ("ended", "step", True), ("began", "step", True),
+                         ("ended", "step", True), ("ended", "sequence", True)]
+    assert [(c.tool, dict(c.given), c.nested, c.read_only) for c in heard.calls] == [
+        ("sequence", {}, False, False), ("step", {"n": 1}, True, True),
+        ("step", {"n": 2, "label": "b"}, True, True)]
+    assert heard.outcomes == ["ok", "ok", "ok"]
+    with pytest.raises(TypeError):
+        heard.calls[1].given["n"] = 3      # type: ignore[index]
 
 
 def test_a_call_that_raised_or_answered_a_refusal_is_heard_ending_too() -> None:
@@ -621,6 +633,7 @@ def test_a_call_that_raised_or_answered_a_refusal_is_heard_ending_too() -> None:
         broken()
     assert [e[:2] for e in heard.log] == [("began", "lookup"), ("ended", "lookup"),
                                           ("began", "broken"), ("ended", "broken")]
+    assert heard.outcomes == ["refused", "refused"]
 
 
 def test_a_cancelled_call_is_heard_ending_so_presence_never_stays_lit() -> None:
@@ -636,14 +649,54 @@ def test_a_cancelled_call_is_heard_ending_so_presence_never_stays_lit() -> None:
     with pytest.raises(asyncio.CancelledError):
         wait()
     assert [e[:2] for e in heard.log] == [("began", "wait"), ("ended", "wait")]
+    assert heard.outcomes == ["refused"]
+
+
+def test_a_call_whose_after_hook_or_give_back_raised_is_heard_ending_refused() -> None:
+    heard = _Heard()
+    s = _Server(listener=heard)
+    heard.server = s
+    s.after_raises = True
+
+    @s.tool("Answer")
+    def answer() -> dict[str, Any]:
+        return {"status": "ok"}
+
+    with pytest.raises(OSError, match="hook broke"):
+        answer()
+    assert heard.outcomes == ["refused"]
+
+
+def test_a_call_cancelled_with_an_ok_reply_in_hand_is_heard_ending_refused(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    heard = _Heard()
+    s = _Server(listener=heard)
+    heard.server = s
+    calls = [0]
+    real = cancel.check
+
+    def as_it_returns() -> None:
+        calls[0] += 1
+        if calls[0] == 2:
+            raise asyncio.CancelledError
+        real()
+    monkeypatch.setattr(cancel, "check", as_it_returns)
+
+    @s.tool("Answer")
+    def answer() -> dict[str, Any]:
+        return {"status": "ok"}
+
+    with pytest.raises(asyncio.CancelledError):
+        answer()
+    assert heard.outcomes == ["refused"]
 
 
 def test_a_listener_that_raises_fails_its_call_and_leaves_the_boundary_whole() -> None:
     class Broken:
-        def began(self, tool: str) -> None:
+        def began(self, call: boundary.Call) -> None:
             raise OSError("the listener broke")
 
-        def ended(self, tool: str) -> None:
+        def ended(self, call: boundary.Call, outcome: boundary.Outcome) -> None:
             pass
 
     s = _Server(listener=Broken())
@@ -674,6 +727,7 @@ def test_a_give_back_that_raises_still_lets_the_listener_hear_the_end() -> None:
     with pytest.raises(OSError, match="give-back broke"):
         wait()
     assert [e[:2] for e in heard.log] == [("began", "wait"), ("ended", "wait")]
+    assert heard.outcomes == ["refused"]
 
 
 def test_the_block_is_asked_whole_for_start_and_status_and_short_for_every_other_tool() -> None:

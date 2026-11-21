@@ -22,7 +22,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 
 | Module | What it holds |
 |---|---|
-| `scry_core.boundary` | The wrapper every tool call goes through: the lock, a call inside a call, how a cancelled call ends, and the reply each path closes with. |
+| `scry_core.boundary` | The wrapper every tool call goes through: the lock, a call inside a call, how a cancelled call ends, the reply each path closes with, and the listener that hears every call begin and end. |
 | `scry_core.cancel` | A cancelled call: the check every wait makes, how each tool says it ends, and the record the next reply carries. |
 | `scry_core.progress` | The progress line of a wait: one a second, never backwards, none after a cancel. |
 | `scry_core.strict_arguments` | An argument the schema does not name is refused. |
@@ -98,7 +98,11 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.window_host` | The window system behind `window`: CoreGraphics on macOS, user32 on Windows. |
 | `scry_core.window_cli` | `python -m scry_core.window_cli`: the same display index, words and window check from a shell. |
 | `scry_core.window_capture` | What the host shows of an emulator's window: captured, and two captures compared. |
-| `scry_core.presence` | The coloured border both emulators draw while a session holds the window. |
+| `scry_core.presence` | The coloured border both emulators draw while a session holds the window, the layers drawn over it (`Payload`), the keys and pointer a server reports, and the tints and timings (`Look`). |
+| `scry_core.overlay` | `start`'s `overlay` argument, which layers presence draws, and the `overlay` field of `start`'s and `status`'s replies. |
+| `scry_core.overlay_timeline` | What the overlay shows at a moment: a caption's minimum time, a burst joined with a count, its tint, its exit, and a keycap kept long enough to be seen. |
+| `scry_core.abbreviation` | A call as its caption reads: the tool and its values, each cut short, a path by its last name and never a home folder's. |
+| `scry_core.placement` | Whether captions go to the top or the bottom of the picture, and `placement_vectors.txt`, the cases each emulator's drawer replays. |
 | `scry_core.app_launch` | An emulator launched as a macOS `.app` through `open`, and the process id found for it. |
 | `scry_core.binaries` | Which emulator a session runs: the caller's `binary`, else the server's variable, else the one on `PATH`. |
 | `scry_core.guardian` | What ends an emulator when its server ends: a watcher process on POSIX, a job object on Windows. |
