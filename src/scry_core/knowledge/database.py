@@ -185,6 +185,10 @@ class Base:
         if got is None:
             return
         clash = self._overlap(got, h)
+        variant = self._variant_clash(got)
+        if variant:
+            self.load_faults.append(f"{where}: {got.id} {variant}; the second is skipped")
+            return
         if clash:
             self.load_faults.append(f"{where}: {got.id} overlaps {clash} in its dictionary and "
                                     "access does not tell them apart; the second is skipped")
@@ -235,6 +239,33 @@ class Base:
                 "AND lo <= ? AND hi >= ? ORDER BY n", (got.kind, got.scope, h, got.hi, got.lo)):
             if id_ != got.id and not (access and got.access and access != got.access):
                 return str(id_)
+        return ""
+
+    def variants(self, scope: str, parent: str) -> list[fmt.Entry]:
+        """The variants of the call `parent` (`0x10/0x12`) in `scope`, in load order: the entries
+        whose key is the parent's and a selector."""
+        if keys.call_selector("call", parent) is not None:
+            return []
+        return [self._of(n) for (n,) in self._db.execute(
+            "SELECT n FROM entry WHERE kind = 'call' AND scope = ? AND lo = ? AND key LIKE ? "
+            "ORDER BY n", (scope, keys.span("call", parent).lo, f"{parent}/%=%"))]
+
+    def _variant_clash(self, got: fmt.Entry) -> str:
+        """Why a variant cannot join the variants its call already has in its scope, or empty:
+        they select on one register, and no value picks two."""
+        if got.kind != "call" or (mine := keys.span("call", got.key).selector) is None:
+            return ""
+        parent = got.key.rpartition("/")[0]
+        for other in self.variants(got.scope, parent):
+            theirs = keys.span("call", other.key).selector
+            assert theirs is not None
+            if other.id == got.id:
+                continue
+            if theirs.register != mine.register:
+                return (f"selects on {mine.register}, and the other variants of {parent} select "
+                        f"on {theirs.register}")
+            if mine.overlaps(theirs):
+                return f"overlaps {other.id}, which a register value cannot tell apart"
         return ""
 
     def _entry(self, row: Sequence[Any]) -> fmt.Entry:
@@ -386,7 +417,8 @@ class Base:
         found = Found(self._many([n for n, _, _ in rows[:limit]]), len(rows), examined)
         if not rows:
             found.nearest = self._nearest(where, args, number, asked,
-                                          keys.call_bounds(kind, key) if key else None)
+                                          keys.call_bounds(kind, key) if key else None,
+                                          keys.call_selector(kind, key) is not None)
         return found
 
     def _base_filters(self, kind: str, scopes: tuple[str, ...]) -> tuple[str, list[object]]:
@@ -434,8 +466,13 @@ class Base:
         if row_kind != "call" or bounds is None:
             return True
         first, last = bounds
-        mine = keys.span("call", row_key).parts
-        return first <= mine[:len(first)] and mine[:len(last)] <= last
+        row_span = keys.span("call", row_key)
+        mine = row_span.parts
+        if not (first <= mine[:len(first)] and mine[:len(last)] <= last):
+            return False
+        picked = keys.call_selector(kind, key)
+        return picked is None or (row_span.selector is not None and mine == first
+                                  and row_span.selector.overlaps(picked))
 
     def _tiers(self, asked: list[text.Term]) -> dict[int, int]:
         """The entries that hold every word asked, each with the tier of its best field: the
@@ -451,12 +488,14 @@ class Base:
         return found
 
     def _nearest(self, where: str, args: list[object], number: keys.Span | None,
-                 asked: list[text.Term], bounds: tuple[tuple[int, ...], tuple[int, ...]] | None
-                 ) -> list[fmt.Entry]:
+                 asked: list[text.Term], bounds: tuple[tuple[int, ...], tuple[int, ...]] | None,
+                 selected: bool) -> list[fmt.Entry]:
         if bounds is not None:
             first, last = bounds
             calls = [(keys.span("call", row_key).parts, n) for n, row_key in self._db.execute(
                 f"SELECT n, key FROM entry WHERE {where} AND kind = 'call' ORDER BY n", args)]
+            if selected and (of_it := [self._of(n) for parts, n in calls if parts == first]):
+                return sorted(of_it, key=_order)[:5]
             below = [c for c in calls if c[0][:len(first)] < first]
             above = [c for c in calls if c[0][:len(last)] > last]
             return [self._of(x[1]) for x in (max(below, key=lambda c: c[0], default=None),

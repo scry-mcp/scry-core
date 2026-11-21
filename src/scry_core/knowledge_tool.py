@@ -224,7 +224,8 @@ def knowledge_find(id: str = "", kind: Annotated[str, vocab.enum(("", *KINDS))] 
     `id`: an entry's id, as another reply cites it. `kind`: one of `vector`, `call`, `error`,
     `port`, `irq`, `memory`, `input`, `device`, `register`, `command`; empty searches every kind.
     `key`: the number as a reply prints it (`0x3C8`, `0x21`, `0x21/0x4C` for a function of an
-    interrupt, `0040:0049`), or a range (`0x3C0..0x3CF`). `text`: words looked for in names,
+    interrupt, `0x10/0x12/BL=0x36` for its variant by a register, `0040:0049`), or a range
+    (`0x3C0..0x3CF`). `text`: words looked for in names,
     aliases and descriptions; a word ending in `*` matches by prefix. `device`: everything that
     belongs to that device. Give `id`, `key`, `text`, `device`, or only `kind` to list it.
     `scope`: the system, cpu or device the answer is for; empty, the live session's. `limit` 1..50.

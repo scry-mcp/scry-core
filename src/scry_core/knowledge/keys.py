@@ -23,6 +23,9 @@ _SEG_OFF = re.compile(r"([0-9a-fA-F]{4}):([0-9a-fA-F]{4})")
 _DEVICE = re.compile(r"[a-z0-9][a-z0-9_-]*")
 #: The widest a number is held: a 32-bit address space and a little more.
 _BITS = 48
+#: The registers a call's selector may read, and how wide each is in bits.
+REGISTERS = {"AL": 8, "AH": 8, "BL": 8, "BH": 8, "CL": 8, "CH": 8, "DL": 8, "DH": 8,
+             "AX": 16, "BX": 16, "CX": 16, "DX": 16, "SI": 16, "DI": 16}
 
 
 def fits(value: int) -> bool:
@@ -42,12 +45,31 @@ class KeyFault(ValueError):
 
 
 @dataclass(frozen=True)
+class Selector:
+    """The tail of a call key that picks one variant of a call by a register: `BL=0x36`, or a
+    range of values `BL=0x31..0x36`."""
+
+    register: str
+    lo: int
+    hi: int
+
+    def text(self) -> str:
+        value = _shown(self.lo) if self.lo == self.hi else f"{_shown(self.lo)}..{_shown(self.hi)}"
+        return f"{self.register}={value}"
+
+    def overlaps(self, other: Selector) -> bool:
+        return self.register == other.register and self.lo <= other.hi and other.lo <= self.hi
+
+
+@dataclass(frozen=True)
 class Span:
-    """The numbers a key covers, inclusive, and the parts of a key of several (`0x21/0x4C`)."""
+    """The numbers a key covers, inclusive, and the parts of a key of several (`0x21/0x4C`); a
+    call key's selector rides beside its parts, which never include it."""
 
     lo: int | None
     hi: int | None
     parts: tuple[int, ...] = ()
+    selector: Selector | None = None
 
 
 def _hex(text: str, what: str) -> int:
@@ -64,11 +86,44 @@ def _shown(value: int) -> str:
     return f"0x{value:02X}"
 
 
+def _selector(text: str) -> Selector:
+    register, eq, value = text.partition("=")
+    register = register.upper()
+    if not eq or register not in REGISTERS:
+        raise KeyFault(f"a call selector is a register and its value, `BL=0x36`; the registers "
+                       f"are {', '.join(REGISTERS)}; got {text!r}")
+    first, dots, last = value.partition("..")
+    low = _hex(first, "a selector value")
+    high = _hex(last, "a selector value") if dots else low
+    if high < low:
+        raise KeyFault(f"a selector range runs upward; got {text!r}")
+    if high.bit_length() > REGISTERS[register]:
+        raise KeyFault(f"{register} holds {REGISTERS[register]} bits; got {text!r}")
+    return Selector(register, low, high)
+
+
+def _peel(key: str) -> tuple[str, Selector | None]:
+    """A call key without its selector, and the selector (None when it has none)."""
+    head, slash, last = key.rpartition("/")
+    if "=" not in last:
+        return key, None
+    if not slash:
+        raise KeyFault(f"a selector follows INT/AH, as `0x10/0x12/BL=0x36`; got {key!r}")
+    return head, _selector(last)
+
+
+def call_selector(kind: str, key: str) -> Selector | None:
+    """The selector a call query ends in, or None: no selector, or not a call query."""
+    if not key or (kind != "call" and not (not kind and "/" in key)):
+        return None
+    return _peel(key)[1]
+
+
 def canonical(kind: str, key: str) -> str:
     """`key` in the one spelling of `kind`, or `KeyFault`: hex as `0x` and upper-case digits, at
-    least two; `error` and `irq` decimal; a `vector` either; a `call` its parts by `/`; a `memory`
-    key `SSSS:OOOO`, an address or a range `A..B`; a `register` or `command` an address or a
-    range."""
+    least two; `error` and `irq` decimal; a `vector` either; a `call` its parts by `/`, and last
+    maybe a selector, `BL=0x36`; a `memory` key `SSSS:OOOO`, an address or a range `A..B`; a
+    `register` or `command` an address or a range."""
     if not isinstance(key, str) or not key or key != key.strip():
         raise KeyFault(f"a key is text with no space around it; got {key!r}")
     if kind not in KINDS:
@@ -86,13 +141,15 @@ def canonical(kind: str, key: str) -> str:
     if kind == "vector":
         return _shown(_hex(key, "a vector key"))
     if kind == "call":
-        parts = key.split("/")
+        body, selector = _peel(key)
+        parts = body.split("/")
         if not 2 <= len(parts) <= 3:
-            raise KeyFault(f"a call key is INT/AH or INT/AH/AL, hex; got {key!r}")
+            raise KeyFault(f"a call key is INT/AH or INT/AH/AL, hex, then maybe a selector; "
+                           f"got {key!r}")
         values = [_hex(p, "a call part") for p in parts]
         if any(v > 0xFF for v in values):
             raise KeyFault(f"a call part is a byte; got {key!r}")
-        return "/".join(_shown(v) for v in values)
+        return "/".join([*(_shown(v) for v in values), *([selector.text()] if selector else [])])
     seg = _SEG_OFF.fullmatch(key) if kind == "memory" else None
     if seg:
         return f"{seg.group(1).upper()}:{seg.group(2).upper()}"
@@ -114,8 +171,9 @@ def span(kind: str, key: str) -> Span:
         n = int(key)
         return Span(n, n, (n,))
     if kind == "call":
-        parts = tuple(int(p, 16) for p in key.split("/"))
-        return Span(parts[0], parts[0], parts)
+        body, selector = _peel(key)
+        parts = tuple(int(p, 16) for p in body.split("/"))
+        return Span(parts[0], parts[0], parts, selector)
     seg = _SEG_OFF.fullmatch(key) if kind == "memory" else None
     if seg:
         n = int(seg.group(1), 16) * 16 + int(seg.group(2), 16)
@@ -135,6 +193,11 @@ def query(kind: str, text: str) -> tuple[str, Span]:
     text = text.strip()
     if kind in ("input", "device"):
         return text, Span(None, None)
+    if kind == "call" and _peel(text)[1] is not None:
+        if ".." in _peel(text)[0]:
+            raise KeyFault(f"a selector goes with one call, not a range of calls; got {text!r}")
+        key = canonical(kind, text)
+        return key, span(kind, key)
     if kind == "call" and ".." in text:
         starts, ends = _bounds(text)
         return text, Span(starts[0], ends[0])
@@ -170,4 +233,4 @@ def call_bounds(kind: str, key: str) -> tuple[tuple[int, ...], tuple[int, ...]] 
     when `key` does not ask for calls: no kind, and no `/` in the key."""
     if not key or (kind != "call" and not (not kind and "/" in key)):
         return None
-    return _bounds(key)
+    return _bounds(_peel(key)[0])
