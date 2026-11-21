@@ -207,13 +207,16 @@ public source each fact was checked against. A server ships dictionaries and one
 
   It stamps the seal into `checked.digest` (a hash of the entry's text, of the check itself and, for a register, of the ports its
   dictionary header says it is reached by)
-  and writes the entry's id and seal to the repository's lock. The dictionary file must already
+  and writes the entry's id, its seal, who checked it and the lines compared to the
+  repository's lock (`scry-knowledge-lock/2`). The dictionary file must already
   be written the way the command writes it (two-space JSON, a final newline); a file that is
   not is refused untouched. From then on the entry is never touched: the contract fails when a
   checked entry no longer gives its seal, when a locked entry is gone or has lost its `checked`
   record, and when a checked entry is not in the lock. The lock sits beside the package's
   `knowledge/` directory, never inside it: every `.json` there is read as a dictionary. A correction is a new write and a new
-  check by another session, sealed with the same command, which replaces the lock's row; an
+  check by another session, sealed with the same command, which replaces the lock's row and
+  refuses a re-check whose `by` and `against` are the ones already locked while the entry
+  changed: the check has to be by another session or against other lines. An
   entry retired for good has its line deleted from the lock by hand, in the commit that removes
   it.
 - **The declaration**: `knowledge/support.py` holds one `Support` listing the `Scope`s (a system

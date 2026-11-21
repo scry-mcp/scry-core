@@ -243,10 +243,10 @@ def locked(base: Base, lock: Lock) -> list[str]:
         elif e.checked is None:
             out.append(f"{id_} is locked and is no longer checked: its `checked` record is "
                        f"gone; put it back, or check the entry again with {COMMAND}")
-        elif e.digest != sealed:
-            out.append(f"{id_} is locked at {sealed[:12]} and now seals as {e.digest[:12]}: a "
-                       f"checked entry is never touched; a correction is checked anew by "
-                       f"another session and sealed with {COMMAND}")
+        elif e.digest != sealed.digest:
+            out.append(f"{id_} is locked at {sealed.digest[:12]} and now seals as "
+                       f"{e.digest[:12]}: a checked entry is never touched; a correction is "
+                       f"checked anew by another session and sealed with {COMMAND}")
     out += [f"{e.id} is checked and is not in the lock: seal it with {COMMAND}"
             for e in base.entries() if e.checked is not None and e.id not in lock.checked]
     return out

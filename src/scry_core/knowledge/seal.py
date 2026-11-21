@@ -16,7 +16,7 @@ from typing import Any
 
 from scry_core.knowledge import entry as fmt
 from scry_core.knowledge import keys
-from scry_core.knowledge.lock import COMMAND, LOCK_FORMAT, Lock, dumps, read_lock
+from scry_core.knowledge.lock import COMMAND, Lock, Locked, dumps, read_lock
 
 
 def _find(doc: Mapping[str, Any], header: fmt.Header, wanted: str) -> dict[str, Any] | None:
@@ -32,6 +32,17 @@ def _find(doc: Mapping[str, Any], header: fmt.Header, wanted: str) -> dict[str, 
                                                     access) == wanted:
             return raw
     return None
+
+
+def _again(locked: Locked | None, now: fmt.Check, seal_: str) -> str:
+    """Why `now` is no new check of an entry already locked, or nothing: its seal moved (the text
+    or the record changed) and the checker and the lines compared are the locked ones."""
+    if locked is None or locked.digest == seal_ or locked.by != now.by or (
+            locked.against != now.against):
+        return ""
+    return (f"checked by {now.by!r} against the lines already locked, and the entry changed since: "
+            "a correction is checked again by another session, or against other lines, and "
+            "that check is what `checked` records")
 
 
 def seal(file: Path, ids: Sequence[str], lock_file: Path) -> list[str]:
@@ -70,14 +81,19 @@ def seal(file: Path, ids: Sequence[str], lock_file: Path) -> list[str]:
         if got is None:
             faults.extend(f"{wanted}: {f}" for f in problems)
             continue
-        sealed[got.id] = record["digest"]
+        assert got.checked is not None
+        again = _again(sealed.get(got.id), got.checked, record["digest"])
+        if again:
+            faults.append(f"{wanted}: {again}")
+            continue
+        sealed[got.id] = Locked(record["digest"], got.checked.by, got.checked.against)
     if faults:
         return faults
     try:
         with file.open("w", encoding="utf-8", newline="\n") as out:
             out.write(dumps(doc))
         with lock_file.open("w", encoding="utf-8", newline="\n") as out:
-            out.write(dumps({"format": LOCK_FORMAT, "checked": dict(sorted(sealed.items()))}))
+            out.write(dumps(Lock(sealed).document()))
     except OSError as bad:
         return [f"{bad}: the dictionary or the lock may be half written; run the command again"]
     return []

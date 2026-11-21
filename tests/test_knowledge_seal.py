@@ -49,13 +49,16 @@ def test_a_check_is_sealed_into_its_file_and_the_lock_and_the_contract_passes(
     assert set(sealed) == {EXIT, GET_CODE}
     got = copy.subject().base().by_id(GET_CODE)
     assert got is not None and got.checked is not None
-    assert got.checked.digest == got.digest == sealed[GET_CODE]
+    assert got.checked.digest == got.digest == sealed[GET_CODE].digest
+    assert sealed[GET_CODE] == lock.Locked(got.digest, "second checker",
+                                           ((GET_CODE_REF, GET_CODE_LINE),))
 
 
 def test_a_correction_checked_anew_updates_the_entry_and_its_lock_with_one_command(
         tmp_path: Path) -> None:
     copy = Copy(tmp_path)
     before = knowledge.read_lock(copy.lock_path).checked[EXIT]
+    assert before.by == "fixture checker" and before.against[0][0].endswith("case 0x4c")
 
     def reword(d: dict[str, Any]) -> None:
         raw = entry(d, "0x21/0x4C")
@@ -65,7 +68,63 @@ def test_a_correction_checked_anew_updates_the_entry_and_its_lock_with_one_comma
     assert {REWORDED, LOCKED} <= run(copy.subject())
     assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
     assert run(copy.subject()) == set()
-    assert knowledge.read_lock(copy.lock_path).checked[EXIT] != before
+    after = knowledge.read_lock(copy.lock_path).checked[EXIT]
+    assert after.digest != before.digest and after.by == "second checker"
+    assert after.against == before.against
+
+
+def reworded(copy: Copy, by: str = "fixture checker", line: str = "") -> None:
+    """The locked call reworded, checked by `by`, against `line` of its source when given."""
+    def change(d: dict[str, Any]) -> None:
+        raw = entry(d, "0x21/0x4C")
+        raw["behaviour"] = "AL is the return code, and the program ends."
+        raw["checked"]["by"] = by
+        if line:
+            raw["checked"]["against"][0]["line"] = line
+    write(copy, change)
+
+
+def test_a_re_check_by_the_same_checker_against_the_same_lines_of_a_changed_text_is_refused(
+        tmp_path: Path) -> None:
+    copy = Copy(tmp_path)
+    reworded(copy)
+    wrote, locked = calls(copy).read_bytes(), copy.lock_path.read_bytes()
+    [fault] = seal.seal(calls(copy), [EXIT], copy.lock_path)
+    assert EXIT in fault and "'fixture checker'" in fault and "changed" in fault
+    assert "another session" in fault and "other lines" in fault
+    assert calls(copy).read_bytes() == wrote and copy.lock_path.read_bytes() == locked
+
+
+def test_a_re_check_is_accepted_when_the_checker_or_the_lines_are_not_the_locked_ones(
+        tmp_path: Path) -> None:
+    for by, line in (("second checker", ""), ("fixture checker", "case 0x4c:")):
+        copy = Copy(tmp_path / by.split()[0] / (line or "none"))
+        reworded(copy, by, line)
+        assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
+        assert run(copy.subject()) == set()
+
+
+def test_sealing_an_entry_that_has_not_changed_is_not_a_re_check(tmp_path: Path) -> None:
+    copy = Copy(tmp_path)
+    locked = copy.lock_path.read_bytes()
+    assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
+    assert copy.lock_path.read_bytes() == locked
+
+
+def test_a_register_that_differs_by_direction_is_locked_under_its_own_id(
+        tmp_path: Path) -> None:
+    def raw(access: str) -> dict[str, Any]:
+        one = an_entry("0x0F", f"{access} side", access=access)
+        one["checked"] = {"by": "second checker", "writer": "fixture writer", "digest": "",
+                          "against": [{"ref": s["ref"], "line": s["cites"]}
+                                      for s in one["sources"]]}
+        return one
+    path = write_dictionary(tmp_path / "d", "vga-seq", "register", "vga-seq",
+                            [raw("read"), raw("write")])
+    path.write_text(lock.dumps(json.loads(path.read_text(encoding="utf-8"))), encoding="utf-8")
+    where = tmp_path / "lock.json"
+    assert seal.seal(path, ["vga-seq:register:0x0F:write"], where) == []
+    assert set(knowledge.read_lock(where).checked) == {"vga-seq:register:0x0F:write"}
 
 
 def test_what_is_refused_writes_nothing(tmp_path: Path) -> None:
@@ -101,11 +160,21 @@ def test_a_lock_that_is_no_lock_is_refused_by_name(tmp_path: Path) -> None:
     copy = Copy(tmp_path)
     write(copy, lambda d: entry(d, "0x21/0x4D").update(checked=checked()))
     copy.lock_path.write_text('{"format": "other"}', encoding="utf-8")
-    assert any("is not a `scry-knowledge-lock/1` document" in f
+    assert any("is not a `scry-knowledge-lock/2` document" in f
                for f in seal.seal(calls(copy), [GET_CODE], copy.lock_path))
-    for text in ("{", "[]", '{"format": "scry-knowledge-lock/1", "checked": {"a": 1}}'):
+    held = {"digest": "d", "by": "b", "against": [{"ref": "r", "line": "l"}]}
+    for text in ("{", "[]", '{"format": "scry-knowledge-lock/1", "checked": {}}',
+                 '{"format": "scry-knowledge-lock/2", "checked": {"a": "1"}}',
+                 json.dumps({"format": "scry-knowledge-lock/2",
+                             "checked": {"a": {**held, "by": 1}}}),
+                 json.dumps({"format": "scry-knowledge-lock/2",
+                             "checked": {"a": {**held, "against": [{"ref": "r"}]}}}),
+                 json.dumps({"format": "scry-knowledge-lock/2",
+                             "checked": {"a": {**held, "extra": 1}}})):
         with pytest.raises(ValueError, match="lock"):
             lock.parse_lock(text)
+    got = lock.parse_lock(json.dumps({"format": "scry-knowledge-lock/2", "checked": {"a": held}}))
+    assert got.checked == {"a": lock.Locked("d", "b", (("r", "l"),))}
 
 
 def test_a_check_may_quote_a_part_of_the_indexed_line_and_nothing_else(tmp_path: Path) -> None:

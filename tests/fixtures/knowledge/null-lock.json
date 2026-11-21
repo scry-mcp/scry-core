@@ -1,6 +1,15 @@
 {
-  "format": "scry-knowledge-lock/1",
+  "format": "scry-knowledge-lock/2",
   "checked": {
-    "ibm-pc:call:0x21/0x4C": "7d85d4ab481dc4389e229da6b8474374abe1bce833839c88ba59e3be17dbf35c"
+    "ibm-pc:call:0x21/0x4C": {
+      "digest": "7d85d4ab481dc4389e229da6b8474374abe1bce833839c88ba59e3be17dbf35c",
+      "by": "fixture checker",
+      "against": [
+        {
+          "ref": "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c",
+          "line": "        case 0x4c:                  /* EXIT Terminate with return code */"
+        }
+      ]
+    }
   }
 }

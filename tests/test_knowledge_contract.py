@@ -150,7 +150,8 @@ def checked_entry_left_out_of_the_lock(c: Copy) -> None:
 
 
 def lock_names_an_entry_that_was_never_checked(c: Copy) -> None:
-    c.relock(lambda d: d["checked"].update({"ibm-pc:call:0x21/0x4D": "0" * 64}))
+    c.relock(lambda d: d["checked"].update({"ibm-pc:call:0x21/0x4D": {
+        "digest": "0" * 64, "by": "nobody", "against": []}}))
 
 
 def checked_against_free_text(c: Copy) -> None:
