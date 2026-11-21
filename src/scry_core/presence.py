@@ -1,7 +1,7 @@
 """The emulator's window marked while a session holds it: `held` (dim), `acting` (bright) during
 a driving call, fading back over `Look.fade_s`; and over that edge the layers of `overlay`,
 carried by each delivery's `Payload`: a caption per call, the keys held, the pointer, a mark
-while the machine is held stopped.
+while the machine is held stopped, a blinking mark while it records.
 
 One writer per session sends only the latest state and payload, off the call's path, and wakes
 on its own when a caption or a keycap is due to change. A driving call that ended before the
@@ -24,12 +24,16 @@ from scry_core import overlay_timeline as tl
 from scry_core.reply_contract import unavailable
 
 State = Literal["held", "acting"]
+Kind = Literal["video", "audio"]
+Recording = Literal["none", "video", "audio", "both"]
+
 
 @dataclass(frozen=True)
 class Look:
     """Colours are 0xRRGGBB; alphas 0 to 1. A caption is tinted by its call: a call that can
     change the machine `write_rgb`, a reader `read_rgb`, one that did not answer `ok`
-    `refused_rgb`. A caption wider than its band scrolls at `scroll_cps` characters a second."""
+    `refused_rgb`. A caption wider than its band scrolls at `scroll_cps` characters a second.
+    The recording mark is `record_rgb` and blinks once every `record_blink_s` seconds."""
 
     rgb: int = 0xFF8C00
     edge: float = 0.025
@@ -48,6 +52,8 @@ class Look:
     keycap_text_rgb: int = 0xFFFFFF
     keycap_alpha: float = 0.8
     keycap_min_s: float = 0.4
+    record_rgb: int = 0xFF3B30
+    record_blink_s: float = 1.0
 
     @property
     def held_alpha(self) -> float:
@@ -86,7 +92,8 @@ class Pointer:
 @dataclass(frozen=True)
 class Payload:
     """What a delivery draws over the edge. `layers` are the ones asked (`overlay.Overlay`);
-    `caption`, `keys` and `pointer` are empty when their layer is not, or nothing is due;
+    `caption`, `keys` and `pointer` are empty, and `recording` is `none`, when their layer is
+    not asked or nothing is due;
     `place` is `auto` for the renderer to resolve (`placement`)."""
 
     paused: bool = False
@@ -95,6 +102,7 @@ class Payload:
     pointer: Pointer | None = None
     layers: tuple[ov.Layer, ...] = ("edge",)
     place: ov.Place = "auto"
+    recording: Recording = "none"
 
 
 class Adapter(Protocol):
@@ -135,6 +143,7 @@ class Presence:
         self._keys = tl.Keycaps(look.keycap_min_s)
         self._pointer: Pointer | None = None
         self._paused = False
+        self._recording: frozenset[Kind] = frozenset()
         self._cv = threading.Condition()
         self._want: State = "held"
         # None when nothing was sent or the last delivery failed.
@@ -213,6 +222,12 @@ class Presence:
             self._paused = stopped
             self._cv.notify()
 
+    def recording(self, kind: Kind, on: bool) -> None:
+        """The session started (`on`) or ended a recording of `kind`; the other kind goes on."""
+        with self._cv:
+            self._recording = self._recording | {kind} if on else self._recording - {kind}
+            self._cv.notify()
+
     @contextmanager
     def driving(self) -> Iterator[None]:
         """`acting` for the block (driving that is no call, e.g. a plan in `start`)."""
@@ -256,7 +271,14 @@ class Presence:
             caption=self._captions.shown(now),
             keys=self._keys.shown(now) if "keys" in asked else (),
             pointer=self._pointer if "pointer" in asked else None,
+            recording=self._recording_word() if "record" in asked else "none",
             layers=asked, place=self._place)
+
+    def _recording_word(self) -> Recording:
+        """Under the condition."""
+        if self._recording == {"video", "audio"}:
+            return "both"
+        return next(iter(self._recording), "none")
 
     def _wait_s(self, now: float) -> float | None:
         """Until a caption or a keycap changes on its own, or None while none will."""
@@ -358,6 +380,10 @@ class Shown:
     def paused(self, stopped: bool) -> None:
         if self.held is not None:
             self.held.paused(stopped)
+
+    def recording(self, kind: Kind, on: bool) -> None:
+        if self.held is not None:
+            self.held.recording(kind, on)
 
     def close(self) -> None:
         if self.held is not None:

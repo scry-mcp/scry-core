@@ -311,3 +311,12 @@ def test_scry_core_and_its_demo_runner_import_without_the_decorate_extra() -> No
                               + "import scry_core.decorate\n"], capture_output=True, text=True,
                              check=False)
     assert blocked.returncode != 0 and "halted" in blocked.stderr, "the block blocks nothing"
+
+
+def test_the_record_layer_is_not_drawn_into_a_demo() -> None:
+    """Live only: a clip carries no recording mark, whatever its style asks."""
+    asked = dc.Style.of(ov.OVERLAY)
+    assert "record" in asked.layers
+    with_record = dc.decorate(_run(), _clip(), asked)
+    without = dc.decorate(_run(), _clip(), dc.Style.of(ov.Overlay(record=False)))
+    assert [p.rgb for p in with_record] == [p.rgb for p in without]

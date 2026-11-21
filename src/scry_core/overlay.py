@@ -10,16 +10,16 @@ from pydantic import BaseModel, ConfigDict
 from typing_extensions import TypedDict
 
 Place = Literal["top", "bottom", "auto"]
-Layer = Literal["edge", "calls", "keys", "pointer", "pause"]
+Layer = Literal["edge", "calls", "keys", "pointer", "pause", "record"]
 #: Drawing order, bottom first; `edge` is drawn whenever presence is.
-LAYERS: tuple[Layer, ...] = ("edge", "pointer", "keys", "calls", "pause")
+LAYERS: tuple[Layer, ...] = ("edge", "pointer", "keys", "calls", "pause", "record")
 
 ARGUMENT = ("Layers drawn over the presence edge, each on by default: `calls` a caption "
             "naming each call and its arguments, abbreviated (paths by their last name); "
             "`keys` the keys or fields held down; `pointer` the guest's mouse pointer; `pause` "
-            "a mark while the session holds the machine stopped. `place`: where the captions go, "
-            "`top`, `bottom`, or `auto`, the band of the picture that shows less. Ignored with "
-            "`presence=false`.")
+            "a mark while the session holds the machine stopped; `record` a blinking mark while it "
+            "records video or audio. `place`: where the captions go, `top`, `bottom`, or `auto`, "
+            "the band of the picture that shows less. Ignored with `presence=false`.")
 
 
 class Overlay(BaseModel):
@@ -31,12 +31,13 @@ class Overlay(BaseModel):
     keys: bool = True
     pointer: bool = True
     pause: bool = True
+    record: bool = True
     place: Place = "auto"
 
     def asked(self) -> tuple[Layer, ...]:
         """The layers this asks to draw, in `LAYERS` order."""
         on = {"edge": True, "calls": self.calls, "keys": self.keys, "pointer": self.pointer,
-              "pause": self.pause}
+              "pause": self.pause, "record": self.record}
         return tuple(layer for layer in LAYERS if on[layer])
 
 

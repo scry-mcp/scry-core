@@ -24,9 +24,10 @@ def _start_tool() -> Any:
 
 
 def test_every_layer_is_on_and_auto_placed_by_default() -> None:
-    assert ov.OVERLAY.asked() == ("edge", "pointer", "keys", "calls", "pause")
+    assert ov.OVERLAY.asked() == ("edge", "pointer", "keys", "calls", "pause", "record")
     assert ov.OVERLAY.place == "auto"
-    assert ov.Overlay(calls=False, pause=False).asked() == ("edge", "pointer", "keys")
+    assert ov.Overlay(calls=False, pause=False).asked() == ("edge", "pointer", "keys", "record")
+    assert ov.Overlay(record=False).asked() == ("edge", "pointer", "keys", "calls", "pause")
 
 
 @pytest.mark.parametrize(("given", "refusal"), [
@@ -47,14 +48,15 @@ def test_the_argument_is_one_object_with_its_defaults_in_the_schema() -> None:
     schema = _start_tool().parameters
     props = schema["$defs"]["Overlay"]["properties"]
     assert {k: v["default"] for k, v in props.items()} == {
-        "calls": True, "keys": True, "pointer": True, "pause": True, "place": "auto"}
+        "calls": True, "keys": True, "pointer": True, "pause": True, "record": True,
+        "place": "auto"}
 
 
 def test_the_reply_names_the_layers_drawn_and_why_the_others_are_not() -> None:
     assert ov.reply(ov.OVERLAY, {}) == {
-        "layers": ["edge", "pointer", "keys", "calls", "pause"], "place": "auto"}
+        "layers": ["edge", "pointer", "keys", "calls", "pause", "record"], "place": "auto"}
     assert ov.reply(ov.Overlay(keys=False), {"pointer": "MAME has no pointer"}, "bottom") == {
-        "layers": ["edge", "calls", "pause"], "place": "bottom",
+        "layers": ["edge", "calls", "pause", "record"], "place": "bottom",
         "lacking": {"pointer": "MAME has no pointer"}}
 
 

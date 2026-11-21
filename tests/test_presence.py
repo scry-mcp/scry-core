@@ -132,7 +132,8 @@ def test_a_still_call_changes_nothing_with_the_calls_layer_off() -> None:
     p.began(_call("registers", read_only=True))
     p.ended(_call("registers", read_only=True), "ok")
     time.sleep(QUIET_S)
-    assert a.shown == ["held"] and a.payloads[0].layers == ("edge", "pointer", "keys", "pause")
+    assert a.shown == ["held"] and a.payloads[0].layers == (
+        "edge", "pointer", "keys", "pause", "record")
     p.close()
 
 
@@ -434,6 +435,57 @@ def test_the_keys_pointer_and_pause_reported_reach_the_payload() -> None:
     p.close()
 
 
+def test_the_recording_reported_reaches_the_payload_and_two_kinds_make_both() -> None:
+    a = _Adapter()
+    p = _open(a)
+    assert a.payloads[0].recording == "none"
+    p.recording("video", True)
+    _until(a, lambda pl: pl.recording == "video")
+    p.recording("audio", True)
+    _until(a, lambda pl: pl.recording == "both")
+    p.recording("video", False)
+    _until(a, lambda pl: pl.recording == "audio")
+    p.recording("audio", False)
+    _until(a, lambda pl: pl.recording == "none", after=3)
+    p.close()
+
+
+def test_a_shown_session_forwards_the_recording_to_its_presence() -> None:
+    a = _Adapter()
+    p = _open(a)
+    shown = presence.Shown(held=p, adapter=a)
+    shown.recording("audio", True)
+    _until(a, lambda pl: pl.recording == "audio")
+    shown.recording("audio", False)
+    _until(a, lambda pl: pl.recording == "none", after=1)
+    shown.close()
+
+
+def test_a_kind_started_twice_ends_with_one_end() -> None:
+    a = _Adapter()
+    p = _open(a)
+    p.recording("audio", True)
+    p.recording("audio", True)
+    _until(a, lambda pl: pl.recording == "audio")
+    p.recording("audio", False)
+    _until(a, lambda pl: pl.recording == "none", after=1)
+    p.close()
+
+
+def test_a_recording_is_not_delivered_with_the_record_layer_off() -> None:
+    a = _Adapter()
+    p = _open(a, asked=overlay.Overlay(record=False))
+    p.recording("video", True)
+    p.began(_call("run_for"))
+    _settle(a, 2)
+    assert {pl.recording for pl in a.payloads} == {"none"}
+    p.close()
+
+
+def test_the_record_mark_is_red_and_blinks_once_a_second() -> None:
+    assert (presence.LOOK.record_rgb, presence.LOOK.record_blink_s) == (0xFF3B30, 1.0)
+
+
 def test_a_key_tapped_on_an_idle_session_leaves_on_its_own() -> None:
     a = _Adapter()
     p = _open(a, look=presence.Look(keycap_min_s=0.05))
@@ -448,10 +500,11 @@ def test_a_key_tapped_on_an_idle_session_leaves_on_its_own() -> None:
 def test_a_layer_not_asked_is_never_delivered() -> None:
     a = _Adapter()
     p = _open(a, asked=overlay.Overlay(calls=False, keys=False, pointer=False, pause=False,
-                                       place="top"))
+                                       record=False, place="top"))
     p.key("Enter", True)
     p.moved(1, 2)
     p.paused(True)
+    p.recording("video", True)
     p.began(_call("run_for"))
     p.ended(_call("run_for"), "ok")
     _settle(a, 3)
@@ -465,6 +518,7 @@ def test_a_session_without_presence_takes_input_reports_and_does_nothing() -> No
     shown.moved(1, 1)
     shown.button("left", True)
     shown.paused(True)
+    shown.recording("video", True)
     a = _Adapter()
     held = presence.Presence.open(a, ())
     held.key("A", True)

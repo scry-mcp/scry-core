@@ -28,6 +28,11 @@ What a server author notices. A client's view of each server is in that server's
   arguments as given and the emulator frame it began and ended at, and the input it fired where
   its step says (`Step.events`, `timeline.key`, `button`, `pointer`). The format is in
   `docs/modules.md`; `timeline.loads` reads it.
+- A sixth overlay layer, `record`: a blinking mark while the session records video or audio,
+  on by default (`overlay.Overlay.record`, after `pause` in `overlay.LAYERS`). A server tells the
+  presence with `Shown.recording(kind, on)`, `kind` being `video` or `audio`; the payload's
+  `recording` is `none`, `video`, `audio` or `both`. `Look.record_rgb` and `record_blink_s`
+  give the mark's colour and period. A demo's decorated clip never draws it.
 
 ## 0.120.1
 

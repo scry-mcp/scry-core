@@ -98,7 +98,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.window_host` | The window system behind `window`: CoreGraphics on macOS, user32 on Windows. |
 | `scry_core.window_cli` | `python -m scry_core.window_cli`: the same display index, words and window check from a shell. |
 | `scry_core.window_capture` | What the host shows of an emulator's window: captured, and two captures compared. |
-| `scry_core.presence` | The coloured border both emulators draw while a session holds the window, the layers drawn over it (`Payload`), the keys and pointer a server reports, and the tints and timings (`Look`). |
+| `scry_core.presence` | The coloured border both emulators draw while a session holds the window, the layers drawn over it (`Payload`), the keys, pointer and recordings a server reports, and the tints and timings (`Look`). |
 | `scry_core.overlay` | `start`'s `overlay` argument, which layers presence draws, and the `overlay` field of `start`'s and `status`'s replies. |
 | `scry_core.overlay_timeline` | What the overlay shows at a moment: a caption's minimum time, a burst joined with a count, its tint, its exit, and a keycap kept long enough to be seen. |
 | `scry_core.abbreviation` | A call as its caption reads: the tool and its values, each cut short, a path by its last name and never a home folder's. |
