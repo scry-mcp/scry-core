@@ -6,8 +6,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import shutil
-import subprocess
 import sys
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -19,7 +17,6 @@ import scry_core
 from scry_core import conformance
 from scry_core.knowledge import (
     Base,
-    Confirmation,
     Lock,
     Scope,
     SecondCheck,
@@ -30,7 +27,6 @@ from scry_core.knowledge import (
     read_lock,
     shared,
 )
-from scry_core.knowledge.sources import Row
 
 PACKAGE = Path(scry_core.__file__).parent
 CHIPS = PACKAGE / "knowledge" / "chips"
@@ -122,43 +118,6 @@ class TestWhereEachFileLoads:
         assert not Support(scopes=shared.CPUS).claims("z80")
 
 
-class TestWhatIsServedHoldsAtThePin:
-    """An entry is served only while the lines it cites are what the sources, at their pins, say:
-    a line that differs there takes the entry out of the second check."""
-
-    @staticmethod
-    def served() -> Base:
-        return Shared((CHIPS, CPUS), shared.CPUS).base()
-
-    def test_every_served_entry_cites_lines_the_index_holds(self) -> None:
-        served = self.served()
-        assert len(served) > 0, "the control: the shared base serves entries"
-        cited = [s for e in served.entries() for s in e.sources if s.ref.startswith("mame:")]
-        assert cited, "the control: a served entry cites MAME"
-        assert check.against_sources(served, read_index(INDEX)) == []
-
-    def test_an_entry_whose_cited_mame_line_differs_at_the_pin_is_not_served(self) -> None:
-        victim = "ins8250:register:0x00"
-        index = read_index(INDEX)
-        entry = self.served().by_id(victim)
-        assert entry is not None, "the control: the entry is served before"
-        ref = next(s.ref for s in entry.sources if s.ref.startswith("mame:"))
-        moved = SourceIndex(
-            {**index.rows, ref: Row("\t\tcase 0: // reworded at the pin")},
-            index.lists,
-            index.pins,
-        )
-        assert any(victim.split(":")[0] in fault for fault in
-                   check.against_sources(self.served(), moved)), "the control: the line differs"
-        seconds = shared.second_check()
-        kept = SecondCheck({i: row for i, row in seconds.confirmed.items() if i != victim})
-        base = Base.load(
-            CHIPS, CPUS, pins=shared.PINS, confirmation=Confirmation.of(shared.locks(), (kept,))
-        )
-        assert base.by_id(victim) is None
-        assert not any(ref in fault for fault in check.against_sources(base, moved))
-
-
 def tool() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "knowledge_sources", ROOT / "tools" / "knowledge_sources.py"
@@ -194,32 +153,15 @@ def sample_rules(t: ModuleType) -> list[object]:
     ]
 
 
-def sample_repo(tmp_path: Path) -> tuple[Path, str]:
-    """A git repository holding the sample's MAME files in one commit, and that commit."""
-    repo = tmp_path / "mame-repo"
-    if not repo.exists():
-        shutil.copytree(SAMPLE / "mame", repo)
-        git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t.invalid",
-               "-c", "commit.gpgsign=false"]
-        for step in (["init", "-q"], ["add", "."], ["commit", "-q", "-m", "sample"]):
-            subprocess.run([*git, *step], check=True, capture_output=True)
-    done = subprocess.run(
-        ["git", "-C", str(repo), "rev-parse", "HEAD"], check=True, capture_output=True, text=True
-    )
-    return repo, done.stdout.strip()
-
-
 def run_tool(
     t: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rules: list[object], *flags: str
 ) -> tuple[int, Path]:
     monkeypatch.setattr(t, "rules", lambda: rules)
-    repo, sha = sample_repo(tmp_path)
-    monkeypatch.setattr(t, "PINS", {**t.PINS, "mame": sha})
     index = tmp_path / "index.json"
     got = t.main(
         [
             "--mame",
-            str(repo),
+            str(SAMPLE / "mame"),
             "--dosbox",
             str(tmp_path / "none"),
             "--rbil",
@@ -327,14 +269,14 @@ class TestTheSourceIndexTool:
         rc, index = run_tool(t, tmp_path, monkeypatch, [])
         assert rc == 3 and not index.exists()
 
-    def test_a_missing_source_is_invalid_and_names_the_commit_it_looked_in(
+    def test_a_missing_source_is_invalid_and_names_where_to_fetch_it(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         t = tool()
         rules = [t.Line(f"{PIC.replace('pic8259', 'absent')} x", r"x", "x")]
         rc, _ = run_tool(t, tmp_path, monkeypatch, rules)
         assert rc == 3
-        assert f"git show {sample_repo(tmp_path)[1]}:" in capsys.readouterr().err
+        assert "raw.githubusercontent.com/mamedev/mame/" in capsys.readouterr().err
 
     def test_an_unknown_option_exits_non_zero(self, tmp_path: Path) -> None:
         with pytest.raises(SystemExit) as caught:

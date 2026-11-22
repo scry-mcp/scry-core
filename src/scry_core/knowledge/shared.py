@@ -14,7 +14,7 @@ _INDEX = "knowledge_index"
 #: `rbil61` has no pin: its archives are checked by hash.
 PINS = {
     "dosbox-x": "2a43c7335efd91f87bf5582245abdd5b3f18d5d4",
-    "mame": "ab06a77f0ffa227a481629d8a6135a786ef5cabe",
+    "mame": "mame0289",
 }
 
 CHIPS: tuple[Chip, ...] = (

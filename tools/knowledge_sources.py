@@ -1,16 +1,16 @@
 """Writes `src/scry_core/knowledge_index/shared.json`, the index the shared chip dictionaries are
 held to, from the real sources, or compares the committed file with them.
 
-    python tools/knowledge_sources.py --mame REPO --dosbox REPO --rbil DIR [--index PATH] [--check]
+    python tools/knowledge_sources.py --mame DIR --dosbox REPO --rbil DIR [--index PATH] [--check]
 
 Exit 0: written, or equal under `--check`. Exit 1: `--check` and the committed index differs.
 Exit 3: a source could not be read or a rule matched nothing (or more than once): an index
 that examined nothing is never written. Exit 2: a bad option.
 
-- `--mame REPO` is a MAME checkout that holds the commit `shared.PINS["mame"]`, the one the
-  servers' MAME is built from.
-- `--dosbox REPO` is a DOSBox-X checkout that holds the commit `shared.PINS["dosbox-x"]`.
-  Both are read with `git show` at their commit, never by checking one out.
+- `--mame DIR` is a tree holding the files of the MAME tag `shared.PINS["mame"]` at their own
+  paths, fetched as `https://raw.githubusercontent.com/mamedev/mame/<tag>/<path>`.
+- `--dosbox REPO` is a DOSBox-X checkout that holds the commit `shared.PINS["dosbox-x"]`; the
+  files are read with `git show` at that commit.
 - `--rbil DIR` holds the six archives of Ralf Brown's Interrupt List, release 61, from
   https://www.cs.cmu.edu/~ralf/interrupt-list/ (`inter61a.zip` to `inter61f.zip`), checked
   against `ARCHIVES`. Credit: the list is by Ralf Brown and contributors, and its licence asks for
@@ -58,8 +58,7 @@ class Library:
     """The lines of each source file, read once."""
 
     def __init__(self, mame: Path, dosbox: Path, rbil: Path) -> None:
-        self.repos = {"mame": mame, "dosbox-x": dosbox}
-        self.rbil = rbil
+        self.mame, self.dosbox, self.rbil = mame, dosbox, rbil
         self._lines: dict[tuple[str, str], list[str]] = {}
         self._zips: dict[str, bytes] | None = None
 
@@ -69,15 +68,23 @@ class Library:
         return self._lines[scheme, file]
 
     def _read(self, scheme: str, file: str) -> str:
-        if scheme in self.repos:
+        if scheme == "mame":
+            path = self.mame / file
+            if not path.is_file():
+                raise Invalid(
+                    f"{path} is not a file: fetch it from "
+                    f"https://raw.githubusercontent.com/mamedev/mame/{PINS['mame']}/{file}"
+                )
+            return path.read_text(encoding="utf-8")
+        if scheme == "dosbox-x":
             done = subprocess.run(
-                ["git", "-C", str(self.repos[scheme]), "show", f"{PINS[scheme]}:{file}"],
+                ["git", "-C", str(self.dosbox), "show", f"{PINS['dosbox-x']}:{file}"],
                 capture_output=True,
                 check=False,
             )
             if done.returncode != 0:
                 raise Invalid(
-                    f"git show {PINS[scheme]}:{file} failed in {self.repos[scheme]}: "
+                    f"git show {PINS['dosbox-x']}:{file} failed in {self.dosbox}: "
                     f"{done.stderr.decode(errors='replace').strip()}"
                 )
             return done.stdout.decode("utf-8", errors="replace")
@@ -1028,7 +1035,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         epilog="Exit 0 written or equal, 1 differs under --check, 3 a source or a rule failed.",
     )
     ask.add_argument(
-        "--mame", type=Path, required=True, help="MAME checkout with the pin"
+        "--mame", type=Path, required=True, help="tree of MAME files at the pinned tag"
     )
     ask.add_argument("--dosbox", type=Path, required=True, help="DOSBox-X checkout with the pin")
     ask.add_argument("--rbil", type=Path, required=True, help="directory of the RBIL archives")
