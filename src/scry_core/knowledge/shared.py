@@ -13,7 +13,7 @@ _INDEX = "knowledge_index"
 
 #: `rbil61` has no pin: its archives are checked by hash.
 PINS = {
-    "dosbox-x": "054925019180170303ee2cfef1e4aee2d82f07e4",
+    "dosbox-x": "2a43c7335efd91f87bf5582245abdd5b3f18d5d4",
     "mame": "mame0289",
 }
 

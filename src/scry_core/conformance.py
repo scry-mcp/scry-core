@@ -22,6 +22,7 @@ from scry_core.knowledge import (
     SourceIndex,
     Support,
     check,
+    shared,
 )
 from scry_core.knowledge.entry import Entry
 from scry_core.project_store import STORE
@@ -468,6 +469,14 @@ class KnowledgeContract:
     def test_every_checked_entry_is_locked_and_stays_as_it_was_locked(
             self, subject: KnowledgeSubject) -> None:
         _none(check.locked(_whole(subject), subject.lock()))
+
+    def test_each_emulator_is_pinned_where_scry_core_pins_it(
+            self, subject: KnowledgeSubject) -> None:
+        declared = {"its base": subject.base().pins, "its source index": subject.sources().pins}
+        _none([f"{who} pins {scheme} at {got[scheme]!r}, and `scry_core.knowledge.shared.PINS` "
+               f"pins it at {pin!r}: take the pin from there"
+               for scheme, pin in shared.PINS.items() for who, got in declared.items()
+               if scheme in got and got[scheme] != pin])
 
     def test_the_base_serves_the_confirmed_entries_and_counts_the_rest(
             self, subject: KnowledgeSubject) -> None:

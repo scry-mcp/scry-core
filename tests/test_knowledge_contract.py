@@ -13,7 +13,19 @@ import pytest
 from null_server import KNOWLEDGE, NullKnowledge
 
 from scry_core import conformance
-from scry_core.knowledge import Base, Confirmation, Device, Scope, Support, digest, lock, seal, text
+from scry_core.knowledge import (
+    Base,
+    Confirmation,
+    Device,
+    Scope,
+    SourceIndex,
+    Support,
+    digest,
+    lock,
+    seal,
+    shared,
+    text,
+)
 
 CASES = sorted(n for n in dir(conformance.KnowledgeContract) if n.startswith("test_"))
 OWED = "test_every_declared_scope_device_and_chip_has_the_dictionaries_it_owes"
@@ -31,6 +43,7 @@ LOCKED = "test_every_checked_entry_is_locked_and_stays_as_it_was_locked"
 EXAMINED = "test_the_check_examined_something"
 SERVES = "test_the_base_serves_the_confirmed_entries_and_counts_the_rest"
 RETURNS = "test_no_query_shape_returns_an_entry_the_base_holds_back"
+PINNED = "test_each_emulator_is_pinned_where_scry_core_pins_it"
 EXIT = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
 EXIT_ID = "ibm-pc:call:0x21/0x4C"
 SEQ_PORT = "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ 0x3c4"
@@ -94,7 +107,7 @@ def entry(doc: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def test_the_fixture_base_passes_every_case_and_the_runner_can_tell_a_failure() -> None:
-    assert len(CASES) == 17 and run(NullKnowledge()) == set()
+    assert len(CASES) == 18 and run(NullKnowledge()) == set()
     assert run(NullKnowledge(declared=Support())) == {EXAMINED, UNDECLARED}
 
 
@@ -123,6 +136,32 @@ def test_a_base_filtered_by_another_confirmation_than_its_declared_one_fails_the
 def test_the_fixture_base_serves_one_entry_and_holds_five_back() -> None:
     served = NullKnowledge().base()
     assert [e.id for e in served.entries()] == [EXIT_ID] and served.held_back == 5
+
+
+class PinsAnother(NullKnowledge):
+    """Declares its own commit for an emulator scry-core pins, in its base."""
+
+    def base(self, fts5: bool | None = None) -> Base:
+        return Base.load(self.root, fts5=fts5, pins={**shared.PINS, "dosbox-x": "0" * 40},
+                         confirmation=Confirmation.of([self.lock()], [self.second_check()]))
+
+
+class IndexPinsAnother(NullKnowledge):
+    """Captured its source index at another commit than the one scry-core pins."""
+
+    def sources(self) -> SourceIndex:
+        got = super().sources()
+        return SourceIndex(got.rows, got.lists, {**shared.PINS, "mame": "mame0001"})
+
+
+@pytest.mark.parametrize("subject", [PinsAnother(), IndexPinsAnother()])
+def test_a_server_that_pins_an_emulator_elsewhere_than_scry_core_fails_the_pin_case(
+        subject: NullKnowledge) -> None:
+    assert run(subject) == {PINNED}
+
+
+def test_a_server_that_pins_what_scry_core_pins_or_pins_nothing_it_pins_passes() -> None:
+    assert PINNED not in run(NullKnowledge())
 
 
 def key_changed(c: Copy) -> None:
