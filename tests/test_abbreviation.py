@@ -34,10 +34,27 @@ from scry_core.naming import Named
     ("~someone/notes.txt", "notes.txt"),
     ("cd /Users/someone", "~"),
     ("cd /home/someone extra", "~"),
+    ("cd C:\\Users\\someone", "~"),
+    ("C:\\GAMES\\X.EXE", "X.EXE"),
+    ("UFODATA/CITYMAP1\\.BLD", "CITYMAP1\\.BLD"),
+    ("GAME\\.EXE", "GAME\\.EXE"),
+    ("CITYMAP\\d+\\.BLD", "CITYMAP\\d+\\.BLD"),
+    ("ERR:\\d+", "ERR:\\d+"),
+    ("\\Users\\someone", "~"),
+    ("Users\\someone\\Desktop\\a.txt", "a.txt"),
+    ("shots\\title.png", "title.png"),
+    ("%USERPROFILE%\\Documents\\a.txt", "a.txt"),
+    ("~\\notes.txt", "notes.txt"),
 ])
 def test_a_path_reaches_the_caption_by_its_last_name_and_a_home_as_a_tilde(
         given: str, said: str) -> None:
     assert ab.value(given) == said
+
+
+def test_a_pattern_with_an_escaped_dot_is_read_whole_not_cut_at_its_backslash() -> None:
+    assert ab.caption("log_wait", {"channel": "dos", "pattern": "UFODATA/CITYMAP1\\.BLD",
+                                   "seconds": 120}) == "log_wait dos CITYMAP1\\.BLD 120"
+    assert ab.caption("log_wait", {"pattern": "GAME\\.EXE"}) == "log_wait GAME\\.EXE"
 
 
 def test_no_folder_of_a_path_under_a_home_reaches_the_caption() -> None:
