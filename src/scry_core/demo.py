@@ -1218,9 +1218,6 @@ def _update_readmes(demo: Demo, run: Run, readme: Path, capture: Path, files: Be
     if demo.front is not None:
         opened(demo.front, "flow", files.flow, flow_begin(demo.name), flow_end(demo.name))
     if demo.lead is not None:
-        if not files.lead.is_file():
-            raise Invalid(f"the run wrote no exchange for the lead of {demo.name}, so the "
-                          "READMEs were left as they were")
         opened(demo.lead.front, "lead", files.lead, lead_begin(demo.name), lead_end(demo.name))
     built = None
     if shown:

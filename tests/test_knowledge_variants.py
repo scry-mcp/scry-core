@@ -61,7 +61,8 @@ def test_a_query_with_a_selector_is_read_whole_and_a_range_of_calls_takes_none()
     assert key == "0x10/0x12/BL=0x36" and got.selector == keys.Selector("BL", 0x36, 0x36)
     assert keys.call_selector("call", "0x10/0x12/BL=0x31..0x36") == keys.Selector("BL", 0x31, 0x36)
     assert keys.call_selector("", "0x10/0x12") is None
-    for typed, says in (("0x10/0x12..0x10/0x14/BL=0x36", "one call"), ("0x10/BL=0x36", "INT/AH")):
+    for typed, says in (("0x10/0x12..0x10/0x14/BL=0x36", "one call"), ("0x10/BL=0x36", "INT/AH"),
+                        ("BL=0x36", "selector follows INT/AH")):
         with pytest.raises(KeyFault, match=says):
             keys.query("call", typed)
 

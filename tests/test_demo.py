@@ -1401,6 +1401,21 @@ def test_the_exchange_s_call_is_one_line_with_its_long_values_cut(
         "a phone cannot hold it whole"
 
 
+def test_narrow_cuts_a_long_string_wherever_the_call_holds_it() -> None:
+    ends = d.LEAD_STRING_ENDS
+    long, cut = "b" * 40, f"{'b' * ends}…{'b' * ends}"
+    assert d.narrow({"a": long, "n": 7, "keys": [long, ("F1", long)]}) == {
+        "a": cut, "n": 7, "keys": [cut, ["F1", cut]]}
+    assert d.narrow("short") == "short"
+
+
+def test_a_transcript_with_no_lead_has_no_answer_to_give(tmp_path: Path) -> None:
+    transcripts = d.Transcripts(d.Normaliser(tmp_path, Path("/home/nobody-here"), {}))
+    with pytest.raises(ValueError, match="step boot is no lead's"):
+        transcripts.answered(d.Step("boot", "start", {}, _said("value")),
+                             d.Reply({"status": "ok", "value": 7}))
+
+
 def test_a_lead_outside_the_folder_its_readme_opens_is_refused_before_a_call(
         tmp_path: Path, log: Path) -> None:
     elsewhere = tmp_path / "other" / "README.md"

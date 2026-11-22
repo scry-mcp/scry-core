@@ -4,6 +4,7 @@ The contract's own cases judge the result, so a seal that would leave a case red
 from __future__ import annotations
 
 import json
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -237,6 +238,35 @@ def test_what_cannot_be_read_or_written_is_refused_and_not_a_traceback(
     assert "no directory" in capsys.readouterr().err and calls(copy).read_bytes() == wrote
 
 
+def test_an_entry_with_no_readable_key_does_not_hide_the_one_asked_for(tmp_path: Path) -> None:
+    copy = Copy(tmp_path)
+
+    def stray(doc: dict[str, Any]) -> None:
+        entry(doc, "0x21/0x4D").update(checked=checked())
+        doc["entries"][:0] = ["a stray string", {"summary": "no key"}, {"key": 7},
+                              {"key": "0x21/ZZ"}]
+
+    write(copy, stray)
+    assert seal.seal(calls(copy), [GET_CODE], copy.lock_path) == []
+    assert GET_CODE in knowledge.read_lock(copy.lock_path).checked
+
+
+def test_a_lock_that_cannot_be_written_says_the_pair_may_be_half_written(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    copy = Copy(tmp_path)
+    write(copy, lambda d: entry(d, "0x21/0x4D").update(checked=checked()))
+    opened = Path.open
+
+    def refusing(self: Path, *args: Any, **kwargs: Any) -> Any:
+        if self == copy.lock_path and "w" in args:
+            raise PermissionError("the lock is read-only")
+        return opened(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", refusing)
+    [fault] = seal.seal(calls(copy), [GET_CODE], copy.lock_path)
+    assert "the lock is read-only" in fault and "may be half written" in fault, fault
+
+
 def test_a_file_with_windows_line_ends_is_sealed_with_the_line_ends_the_command_writes(
         tmp_path: Path) -> None:
     copy = Copy(tmp_path)
@@ -250,6 +280,23 @@ def test_the_command_runs_as_a_module_without_the_package_having_loaded_it() -> 
     ran = subprocess.run([sys.executable, "-W", "error", "-m", "scry_core.knowledge.seal",
                           "--help"], capture_output=True, text=True, check=False)
     assert ran.returncode == 0 and ran.stderr == "" and "--lock" in ran.stdout
+
+
+def test_the_module_run_as_a_script_exits_with_the_status_of_its_command(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    copy = Copy(tmp_path)
+    write(copy, lambda d: entry(d, "0x21/0x4D").update(checked=checked()))
+    monkeypatch.setattr(sys, "argv", ["seal", str(calls(copy)), GET_CODE, "--lock",
+                                      str(copy.lock_path)])
+    with pytest.raises(SystemExit) as ended:
+        runpy.run_path(seal.__file__, run_name="__main__")
+    assert ended.value.code == 0 and "sealed 1 in calls.json" in capsys.readouterr().out
+    monkeypatch.setattr(sys, "argv", ["seal", str(calls(copy)), "ibm-pc:call:0x21/0x99", "--lock",
+                                      str(copy.lock_path)])
+    with pytest.raises(SystemExit) as refused:
+        runpy.run_path(seal.__file__, run_name="__main__")
+    assert refused.value.code == 2 and "is no entry" in capsys.readouterr().err
 
 
 def test_the_ports_a_register_goes_by_are_part_of_what_its_seal_covers(tmp_path: Path) -> None:
