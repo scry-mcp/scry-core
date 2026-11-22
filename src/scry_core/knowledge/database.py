@@ -5,8 +5,11 @@ hand. The database is the only copy in memory too: an `Entry` is built from its 
 asked for, so what a server holds is the rows and no Python object per entry. A lookup is an
 indexed read (by id, by key, by range of numbers or addresses, by alias, by device) and a text
 search asks FTS5 when the host's SQLite has it, else an index kept in Python that only such a host
-builds. `faults` lists what a file or an entry got wrong: a run is lenient (the bad entry is
-skipped and counted) and the tests are strict (`faults()` must be empty).
+builds. Given a `Confirmation`, the base loads the confirmed entries only: an entry held back is
+counted and its id, kind and key are kept to say it exists, and nothing else of it, so no query
+shape can return it and no relation can point at it. `faults` lists what a file or an entry got
+wrong: a run is lenient (the bad entry is skipped and counted) and the tests are strict
+(`faults()` must be empty).
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from typing import Any
 
 from scry_core.knowledge import entry as fmt
 from scry_core.knowledge import keys, text
+from scry_core.knowledge.confirmed import Confirmation
 
 #: A package's dictionaries sit in its `knowledge` directory, subdirectories included.
 DIRECTORY = "knowledge"
@@ -35,6 +39,8 @@ CREATE TABLE alias (alias TEXT NOT NULL, n INTEGER NOT NULL);
 CREATE TABLE relation (n INTEGER NOT NULL, rel TEXT NOT NULL, target TEXT NOT NULL,
                        PRIMARY KEY (n, rel, target)) WITHOUT ROWID;
 CREATE TABLE device_port (n INTEGER NOT NULL, lo INTEGER NOT NULL, hi INTEGER NOT NULL);
+CREATE TABLE held (id TEXT PRIMARY KEY, scope TEXT NOT NULL, kind TEXT NOT NULL,
+                   key TEXT NOT NULL, lo INTEGER, hi INTEGER, device TEXT NOT NULL) WITHOUT ROWID;
 CREATE INDEX entry_exact ON entry (kind, key, scope);
 CREATE INDEX entry_range ON entry (kind, scope, lo, hi);
 CREATE INDEX entry_address ON entry (scope, a_lo, a_hi);
@@ -114,11 +120,17 @@ def _body(e: fmt.Entry) -> str:
 class Base:
     """The dictionaries of `sources` (a package name, whose `knowledge` directory is read, or a
     directory), in the database. `fts5` is None to use FTS5 where the host has it, False to force
-    the index of our own. `pins` are the commit or tag each source scheme is pinned to."""
+    the index of our own. `pins` are the commit or tag each source scheme is pinned to.
+    `confirmation` is what a server serves under: with none, every entry is loaded, which is the
+    view the checks of the files take (`unfiltered`) and never a server's."""
 
     def __init__(self, sources: Sequence[str | Path] = (), fts5: bool | None = None,
-                 pins: Mapping[str, str] | None = None) -> None:
+                 pins: Mapping[str, str] | None = None,
+                 confirmation: Confirmation | None = None) -> None:
         self.pins: Mapping[str, str] = dict(pins or {})
+        self._sources = tuple(sources)
+        self._fts5_asked = fts5
+        self._confirming = confirmation
         self.dictionaries: list[fmt.Header] = []
         self.file_faults: list[str] = []
         self.entry_faults: list[str] = []
@@ -133,6 +145,9 @@ class Base:
         self._fallback = None if self.uses_fts5 else text.Fallback()
         for source in sources:
             self._read(source)
+        if confirmation is not None:
+            self._drop_held_relations()
+            self._confirming = None
         if self._fallback is not None:
             self._fallback.freeze()
         self._db.execute("PRAGMA query_only = ON")
@@ -147,8 +162,19 @@ class Base:
 
     @classmethod
     def load(cls, *sources: str | Path, fts5: bool | None = None,
-             pins: Mapping[str, str] | None = None) -> Base:
-        return cls(sources, fts5, pins)
+             pins: Mapping[str, str] | None = None,
+             confirmation: Confirmation | None = None) -> Base:
+        return cls(sources, fts5, pins, confirmation)
+
+    def unfiltered(self) -> Base:
+        """The same dictionaries with every entry loaded, held back or not: what the checks of
+        the files judge. A server never serves it."""
+        return Base(self._sources, self._fts5_asked, self.pins)
+
+    @property
+    def held_back(self) -> int:
+        """How many entries the confirmation held back."""
+        return int(self._db.execute("SELECT COUNT(*) FROM held").fetchone()[0])
 
     def _create_fts(self) -> bool:
         try:
@@ -183,6 +209,10 @@ class Base:
         where = f"{header.dictionary} {raw.get('key', '?') if isinstance(raw, dict) else '?'}"
         self.entry_faults.extend(f"{where}: {f}" for f in faults)
         if got is None:
+            return
+        if self._confirming is not None and not self._confirming.confirms(got):
+            self._db.execute("INSERT OR IGNORE INTO held VALUES (?,?,?,?,?,?,?)",
+                             (got.id, got.scope, got.kind, got.key, got.lo, got.hi, got.device))
             return
         clash = self._overlap(got, h)
         variant = self._variant_clash(got)
@@ -224,6 +254,61 @@ class Base:
                              (n, *(" ".join(w) for w in words.values())))
         else:
             self._fallback.add(n, {k: set(w) for k, w in words.items()})
+
+    def _held_device(self, scope: str, key: str) -> bool:
+        """Whether the device `key`, as seen from `scope`, is an entry held back: the resolution
+        of `device_entry` over the entries loaded and the entries held back together."""
+        served = {of for (of,) in self._db.execute(
+            "SELECT scope FROM entry WHERE kind = 'device' AND key = ?", (key,))}
+        held = {of for (of,) in self._db.execute(
+            "SELECT scope FROM held WHERE kind = 'device' AND key = ?", (key,))}
+        for wanted in (scope, "chip"):
+            if wanted in served:
+                return False
+            if wanted in held:
+                return True
+        return not served and len(held) == 1
+
+    def _drop_held_relations(self) -> None:
+        """Forget what an entry loaded says of an entry held back: a `device` that names one and
+        a device's `contains` that lists one, so no reply points at an entry it cannot serve."""
+        if not self._db.execute("SELECT 1 FROM held WHERE kind = 'device' LIMIT 1").fetchone():
+            return
+        for n, scope, device in self._db.execute(
+                "SELECT n, scope, device FROM entry WHERE device != ''").fetchall():
+            if self._held_device(scope, device):
+                self._db.execute("UPDATE entry SET device = '' WHERE n = ?", (n,))
+        for n, scope, body in self._db.execute(
+                "SELECT n, scope, body FROM entry WHERE kind = 'device'").fetchall():
+            got = json.loads(body)
+            gone = [k for k in got.get("contains", ()) if self._held_device(scope, k)]
+            if gone:
+                got["contains"] = [k for k in got["contains"] if k not in gone]
+                self._db.execute("UPDATE entry SET body = ? WHERE n = ?", (
+                    json.dumps(got, ensure_ascii=False, separators=(",", ":")), n))
+                self._db.executemany("DELETE FROM relation WHERE n = ? AND rel = 'contains' "
+                                     "AND target = ?", [(n, k) for k in gone])
+
+    def unconfirmed(self, id: str = "", kind: str = "", key: str = "", device: str = "",
+                    scopes: Iterable[str] = ()) -> list[str]:
+        """The ids of the entries held back that a question with these filters would have matched
+        had they been loaded: what `search` takes, but for words, which no held entry keeps."""
+        if id:
+            return [i for (i,) in self._db.execute("SELECT id FROM held WHERE id = ?", (id,))]
+        where, args = self._base_filters(kind, tuple(scopes))
+        clauses, more = [where], list(args)
+        number = self._key_clause(kind, key, clauses, more) if key else None
+        if device:
+            clauses.append("(device = ? OR (kind = 'device' AND key = ?) OR "
+                           "(kind IN ('register','command') AND scope = ?))")
+            more += [device, device, device]
+        return [i for i, k, row_key in self._db.execute(
+            f"SELECT id, kind, key FROM held WHERE {' AND '.join(clauses)} ORDER BY id", more)
+            if number is None or self._prefix_of(kind, key, k, row_key)]
+
+    def held_scopes(self) -> list[str]:
+        """The scopes that have entries held back, sorted."""
+        return [s for (s,) in self._db.execute("SELECT DISTINCT scope FROM held ORDER BY scope")]
 
     def _overlap(self, got: fmt.Entry, h: int) -> str:
         """The id of an entry already loaded from the same dictionary whose numbers overlap `got`'s
@@ -539,11 +624,12 @@ class Base:
         reached: dict[str, tuple[str, ...]] = {}
         for way, value in (e.reached or {}).items():
             names = [value] if isinstance(value, str) else list(value)
-            reached[way] = tuple(self._port_id(device, n) for n in names)
+            reached[way] = tuple(i for n in names if (i := self._port_id(device, n)) is not None)
         return Relations(device, contains, tuple(sorted(used, key=_order)), reached)
 
-    def _port_id(self, device: fmt.Entry | None, name: str) -> str:
-        """The id of the port entry a `reached` word names, else the word (a handler's name)."""
+    def _port_id(self, device: fmt.Entry | None, name: str) -> str | None:
+        """The id of the port entry a `reached` word names, else the word (a handler's name), or
+        None when the port is an entry held back."""
         if not name.lower().startswith("0x"):
             return name
         try:
@@ -554,6 +640,9 @@ class Base:
                                 "ORDER BY n", (wanted,)).fetchall()
         mine = [i for i, of in hits if device is not None and of == device.key]
         chosen = mine or [i for i, _ in hits]
+        if not chosen and self._db.execute(
+                "SELECT 1 FROM held WHERE kind = 'port' AND key = ?", (wanted,)).fetchone():
+            return None
         return chosen[0] if chosen else name
 
 
