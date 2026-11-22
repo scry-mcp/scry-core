@@ -387,6 +387,31 @@ def test_a_missing_page_a_missing_block_a_stray_one_and_a_stray_file_are_each_dr
     assert "docs/reference/write-memory.md: missing, and it holds poke" in reference.drift(reg)
 
 
+def test_a_block_added_after_the_last_is_set_apart_from_it_by_a_blank_line(
+        tmp_path: Path) -> None:
+    """The end marker follows an entry's closing `</details>`, and a blank line is what ends that
+    HTML block: without it the next heading is swallowed and shows as raw text."""
+    _written(_registry(tmp_path))
+    page = tmp_path / "docs/reference/read.md"
+    assert page.read_text(encoding="utf-8").endswith(end_marker("peek") + "\n")
+    reg = _written(_one_page(tmp_path))
+    text = page.read_text(encoding="utf-8")
+    assert end_marker("peek") + "\n\n" + begin_marker("poke") in text, text
+    assert reference.write(reg) == [], "a second write changed the page again"
+
+
+def test_a_page_whose_blocks_touch_has_a_blank_line_between_them_once_written(
+        tmp_path: Path) -> None:
+    reg = _written(_one_page(tmp_path))
+    page = tmp_path / "docs/reference/read.md"
+    glued = page.read_text(encoding="utf-8").replace(
+        end_marker("peek") + "\n\n", end_marker("peek") + "\n")
+    assert glued != page.read_text(encoding="utf-8")
+    page.write_text(glued, encoding="utf-8")
+    assert reference.write(reg) == ["docs/reference/read.md"]
+    assert end_marker("peek") + "\n\n" + begin_marker("poke") in page.read_text(encoding="utf-8")
+
+
 def test_a_block_out_of_the_roster_s_order_is_drift(tmp_path: Path) -> None:
     reg = _written(_one_page(tmp_path))
     page = tmp_path / "docs/reference/read.md"

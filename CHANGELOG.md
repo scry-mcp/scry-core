@@ -47,6 +47,9 @@ What a server author notices. A client's view of each server is in that server's
   emulator runs. A demo without one builds as before. `demo.beside_transcript` and
   `demo.last_under` are public, and `committed_run` reads a committed run back (`read`) and says
   the timeline its steps would write for it (`timeline_of`).
+- The reference generator (`scry_core.reference`) leaves a blank line after every block's end
+  marker, so an entry's closing `</details>` no longer swallows the next tool's heading when a
+  tool is added after the last one of a page.
 - A sixth overlay layer, `record`: a blinking mark while the session records video or audio,
   on by default (`overlay.Overlay.record`, after `pause` in `overlay.LAYERS`). A server tells the
   presence with `Shown.recording(kind, on)`, `kind` being `video` or `audio`; the payload's

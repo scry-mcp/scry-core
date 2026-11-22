@@ -278,9 +278,16 @@ def _rewritten(text: str, want: _Expected) -> str:
             head += s.after
     if not segments:
         head = head.rstrip("\n") + "\n\n"
-    out = head + "".join(f"{begin_marker(n)}\n{b}\n{end_marker(n)}{after.get(n, chr(10) * 2)}"
+    out = head + "".join(f"{begin_marker(n)}\n{b}\n{end_marker(n)}{_apart(after.get(n, ''))}"
                          for n, b in want.blocks.items())
     return out.rstrip("\n") + "\n"
+
+
+def _apart(after: str) -> str:
+    """The text after a block's end marker, closed by a blank line: the entry ends in
+    `</details>`, an HTML block that only a blank line ends, and without one the next block's
+    heading is swallowed into it and shows as raw text."""
+    return after.rstrip("\n") + "\n\n"
 
 
 # ===================================================================== the comparison
