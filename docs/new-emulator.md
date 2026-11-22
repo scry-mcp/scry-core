@@ -536,7 +536,8 @@ number fields; `scry_core.naming` does the rest.
   the variant's value, else the call itself, else None; a register the stop does not say never
   picks a variant, so a caption never names one it cannot know. A namer calls it where it names
   a call. `base` is either base a server loads, its dictionaries or its base of rows, and so
-  for `notes.note` and `knowledge.calls.resolve`.
+  for `notes.note` and `knowledge.calls.resolve`; on a base of rows an address is named by a
+  `memory` entry's key only: it does not read an entry's `address` and `length`.
 - **A disassembled line's note**: `notes.note(base, scope, operands, names_on=...)` returns what
   the base calls the operands the server parsed (a port, an interrupt, an address), and None when
   the session's `names` switch is off. It goes in a row's `note`, never in a person's `comment`. An operand a register holds is named only for the instruction at

@@ -207,8 +207,10 @@ class Base(Index[Served]):
              lock: sealed.Lock | None) -> None:
         header = dictionary.header
         span = keys.span(header.kind, entry.key)
+        memory = header.kind == "memory"
         got = Served(0, entry.id, header.scope, header.kind, entry.key, _access(entry, header),
-                     entry.name, entry.aliases, dictionary.source_of(entry), h, span.lo, span.hi)
+                     entry.name, entry.aliases, dictionary.source_of(entry), h, span.lo, span.hi,
+                     span.lo if memory else None)
         if lock is not None and lock.standing(dictionary, entry) != sealed.SERVED:
             self._hold(got)
             return
@@ -219,7 +221,8 @@ class Base(Index[Served]):
         shown = _shown(entry, dictionary.emulators)
         n = self._insert(got, h, (json.dumps(list(entry.aliases)), got.source), entry.aliases,
                          {"name": entry.name, "aliases": " ".join(entry.aliases),
-                          "rows": " ".join(r.text for r in shown)})
+                          "rows": " ".join(r.text for r in shown)},
+                         span.hi if memory else None)
         if n is None:
             self.load_faults.append(f"{header.dictionary}: the id {entry.id} is already an "
                                     "entry; the second is skipped")

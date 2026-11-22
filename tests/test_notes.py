@@ -139,3 +139,8 @@ def test_a_base_of_rows_notes_the_call_a_line_makes(tmp_path: Path) -> None:
     assert notes.note(rows, "video", [Operand("interrupt", 0x10, function=(0x12,),
                                               registers={"BL": 0x31})],
                       names_on=True) == Note("palette loading (BL=0x31)", True)
+
+
+def test_a_base_of_rows_names_an_address_its_memory_entry_covers(tmp_path: Path) -> None:
+    rows = rows_of(tmp_path, "memory.json")
+    assert _note(rows, Operand("address", 0x449)) == Note("video mode (0x449)", False)
