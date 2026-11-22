@@ -388,13 +388,19 @@ public source each fact was checked against. A server ships dictionaries and one
     so the compiled arm is the one listed.
   - Two items reach past the region's own lines, so a fact that lives in the chip's clockwork
     (a count that wraps to 0xFFFF after terminal count, a flag set only under its enable bit) is
-    owed by the entry whose handler touches it. A `state` item is a member the region stores and
-    code of its file reads outside the region, or a member the region returns and code outside
-    it writes, the handler's other cases included: one item per member and function, carrying
-    every line of that function that does it. A guest register is not state (it is the call's
-    own output), a statement that saves state (`save_item`, `WRITE_POD`) touches nothing, a
-    member only the entry's own regions touch owes nothing, and an arm the key leaves out stores
-    nothing. A `lookup` item is a `const` table the file defines (`name[] = {`) that the region
+    owed by the entry that hands it out. A `state` item is a member the region hands out (in a
+    `return`, in a local the function returns, or in a guest register) and code of its file
+    writes outside the region, the handler's other cases included: one item per member and
+    function, carrying every line of that function that writes it. It names one thing: a
+    scalar member, or an element at a fixed index (a literal, a constant's name), and that index
+    matches only itself, so `m_data[REG_C]` is owed for a write of `m_data[REG_C]` and never for
+    one of `m_data[REG_A]`, `m_data[12]` or `m_data[offset]`. An element the region reaches at
+    an index it does not fix (`m_data[offset]`, a loop's variable) owes nothing, while a
+    computed index earlier in the path picks an instance (`m_chan[ch].count`) and matches any.
+    What a region stores is owed by the entries that read it back, not by every function that
+    reads it, since those are the chip's whole engine and no one fact about the write. A guest
+    register is not state (it is the call's own output), a member only the entry's own regions
+    write owes nothing, and an arm the key leaves out hands out nothing. A `lookup` item is a `const` table the file defines (`name[] = {`) that the region
     reads at an index computed from something, owed at the table's lines. Each closes like any
     other item, at any of its lines: a row that quotes one (the wrap, the table's value), a
     `parent` closure naming the entry whose region holds that line and has a row there, or a

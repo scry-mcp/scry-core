@@ -1,16 +1,15 @@
 """What a region owes beyond its own lines: the `state` it shares with the rest of its file and
 the `lookup` tables it indexes.
 
-A `state` item is a member the region stores and code of the file outside the region reads, or
-a member the region returns and code outside it writes: one item for each member and function,
-the handler's own other cases included, whatever the number of lines, so a fact that lives in
-the chip's own clockwork (a count that wraps after terminal count, a flag set only under its
-enable bit) reaches the entry whose handler touches the member. A member is named by its path
-less any root the function owns (a local, a parameter), so `chan->currcnt` and a method's bare
-`currcnt` are one; an index that is a literal or a constant's name is part of the member (a
-number and a name may be one), any other matches every index, and the member named whole
-matches only itself. A member inside a subscript is read, and `++`, `--` or `op=` read what
-they write.
+A `state` item is a member the region hands out and code of the file outside the region writes:
+one item for each member and function, the handler's other cases included, so a fact of the
+chip's clockwork (a count that wraps after terminal count, a flag set only under its enable bit)
+reaches the entry that hands it out. What a region stores owes nothing: its readers are the
+chip's whole engine, not a fact about the write. A member is named by its path less any root the
+function owns (a local, a parameter). An item names one thing: an element reached at an index
+the region does not fix (`m_data[offset]`) owes nothing, and a fixed index (a literal, a
+constant's name) matches only itself; a computed index before the last part picks an instance
+(`m_chan[ch].count`) and matches any, and the member named whole matches only itself.
 
 A `lookup` item is a table the file defines (`name[] = {`) that the region reads at an index
 that is not a constant, owed at the table's own lines. A row or a closure over any line of
@@ -38,25 +37,23 @@ _GUEST = re.compile(r"reg_e?(?:[abcd][xlh]|[sd]i|[sb]p|ip|flags)")
 _WORDS = {"const", "constexpr", "static", "auto", "volatile", "extern", "inline", "struct",
           "class", "enum", "union", "typename", "template", "using", "namespace", "this",
           "nullptr", "true", "false", "NULL"}
-#: The calls that register or copy a member for a saved state: no behaviour a program sees.
-SAVES = ("save_item", "save_pointer", "WRITE_POD", "READ_POD", "WRITE_POD_SIZE",
-         "READ_POD_SIZE")
-_SAVE = re.compile(rf"\b(?:{'|'.join(SAVES)})\s*\(")
 _INDEXED = re.compile(rf"(?<![\w.>])([A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)\s*{_SUBSCRIPT}")
 _TABLE = r"(?m)^[^;{{}}\n]*\b(?:const|constexpr)\b[^;{{}}=\n]*\b{}\s*(?:\[[^\]]*\]\s*)+=\s*\{{"
 _TRAILERS = ("const", "override", "noexcept", "final")
-#: A computed index: it may be the one another function names. A member written whole
-#: (allocated, saved) is not one of its elements.
+_HEAD = re.compile(r"(?:do )?(?:for|while) \((.*)\)", re.S)
+#: A name of its own, not a field reached through `.` or `->`.
+_BARE = r"(?<![\w.])(?<!->)"
+#: A computed index: it picks an instance on the way to a member, never the element owed. A
+#: member written whole (allocated, saved) is not one of its elements.
 _ANY = "*"
 
 Member = tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True)
-class Touch:
+class Write:
     member: Member
     line: int
-    writes: bool
     text: str
 
 
@@ -65,7 +62,7 @@ class Function:
     name: str
     start: int
     stop: int
-    touches: tuple[Touch, ...]
+    writes: tuple[Write, ...]
 
 
 def _index(text: str) -> str:
@@ -108,32 +105,21 @@ def _paths(text: str, owned: set[str], at: int = 0) -> list[tuple[int, Member, s
     return out
 
 
-def _statement(text: str, line: int, owned: set[str], out: list[Touch],
+def _statement(text: str, line: int, owned: set[str], out: list[Write],
                declares: bool = False) -> None:
-    """The members a statement writes (the path an assignment, `++` or `--` changes) and the
-    members it reads (every other one, and the one `++`, `--` or `op=` changes); the first
-    assignment of a declaration gives its local a value and writes no member. A statement that
-    saves state touches nothing."""
-    if _SAVE.search(text):
-        return
-    written: set[int] = set()
+    """The members a statement writes: the path an assignment, `++` or `--` changes. The first
+    assignment of a declaration gives its local a value and writes no member."""
     previous = 0
     found = _paths(text, owned)
     for k, (a, b, op) in enumerate(cover._assignments(text)):
         left = [p for p in found if previous <= p[0] < a and not p[3]]
-        if not left and not text[previous:a].strip():
+        prefix = op in ("++", "--") and not re.search(r"[\w\]]\s*$", text[previous:a])
+        if prefix or (not left and not text[previous:a].strip()):
             left = [p for p in found if p[0] >= b and not p[3]][:1]
         previous = b
-        if declares and k == 0:
-            written.update(p[0] for p in left)
-        elif left:
-            at, member, shown, _ = left[-1]
-            written.add(at)
-            out.append(Touch(member, line, True, shown))
-            if op != "=":
-                out.append(Touch(member, line, False, shown))
-    out += [Touch(member, line, False, shown) for at, member, shown, _ in found
-            if at not in written]
+        if left and not (declares and k == 0):
+            _, member, shown, _ = left[-1]
+            out.append(Write(member, line, shown))
 
 
 def _declared(text: str) -> str | None:
@@ -152,14 +138,15 @@ def _all(nodes: Iterable[cover.Node]) -> Iterator[cover.Node]:
         yield from _all(n.orelse)
 
 
-def _touches(nodes: Iterable[cover.Node], owned: set[str]) -> list[Touch]:
-    out: list[Touch] = []
+def _writes(nodes: Iterable[cover.Node], owned: set[str]) -> list[Write]:
+    out: list[Write] = []
     for n in nodes:
         if n.kind in ("simple", "exit", "if", "loop", "switch") and n.text:
             name = _declared(n.text) if n.kind in ("simple", "loop") else None
             if name is not None:
                 owned.add(name)
-            _statement(n.text, n.line, owned, out, name is not None)
+            head = _HEAD.fullmatch(n.text) if n.kind == "loop" else None
+            _statement(head.group(1) if head else n.text, n.line, owned, out, name is not None)
     return out
 
 
@@ -226,7 +213,7 @@ def _function_name(text: str, brace: int) -> str:
 
 @lru_cache(maxsize=16)
 def functions(text: str) -> tuple[Function, ...]:
-    """Every function the blanked `text` defines, with the members each touches."""
+    """Every function the blanked `text` defines, with the members each writes."""
     found = []
     i = 0
     while i < len(text):
@@ -238,39 +225,42 @@ def functions(text: str) -> tuple[Function, ...]:
             break
         tree = cover.Parser(text, i + 1, end - 1).statements()
         found.append(Function(name, i + 1, end - 1,
-                              tuple(_touches(_all(tree), _parameters(text, i)))))
+                              tuple(_writes(_all(tree), _parameters(text, i)))))
         i = end
     return tuple(found)
 
 
-def _one_index(x: str, y: str) -> bool:
-    """Whether two indexes may be one: equal, either computed, or a number and a constant's
-    name, whose value this reader does not know. No index, the member whole, is only itself."""
-    return x == y or (bool(x) and bool(y) and (_ANY in (x, y) or x.isdigit() != y.isdigit()))
+def _one_index(x: str, y: str, last: bool) -> bool:
+    """Whether two indexes are one: equal, or, before the last part, either computed. A name
+    and a number are two, since this reader does not know the name's value."""
+    return x == y or (not last and bool(x) and bool(y) and _ANY in (x, y))
 
 
 def _same(a: Member, b: Member) -> bool:
     """Whether two paths name one member: the shorter is the end of the longer, part by part."""
     short, long_ = (a, b) if len(a) <= len(b) else (b, a)
-    return all(x[0] == y[0] and _one_index(x[1], y[1])
-               for x, y in zip(short, long_[len(long_) - len(short):], strict=True))
+    return all(x[0] == y[0] and _one_index(x[1], y[1], k == len(short) - 1)
+               for k, (x, y) in enumerate(zip(short, long_[len(long_) - len(short):],
+                                              strict=True)))
 
 
 def _returned(region: list[cover.Node], whole: list[cover.Node], owned: set[str]
-              ) -> list[Touch]:
-    """What the region returns: the members read in a `return` of the region, or in the value
-    it gives a local that some `return` of the function hands back."""
+              ) -> list[tuple[Member, str]]:
+    """What the region hands out: the members read in a `return` of the region, or in the value
+    it gives a guest register or a local that some `return` of the function hands back."""
     handed = owned & {name for n in _all(whole) if n.kind == "exit"
-                      and n.text.startswith("return") for name in cover._NAME.findall(n.text[6:])}
-    out: list[Touch] = []
+                      and n.text.startswith("return")
+                      for name in re.findall(_BARE + cover._NAME.pattern, n.text[6:])}
+    out: list[tuple[Member, str]] = []
     for n in region:
         if n.kind not in ("simple", "exit") or not n.text:
             continue
         value = n.text[6:] if n.kind == "exit" and n.text.startswith("return") else ""
         for a, b, _ in cover._assignments(n.text)[:1]:
-            if any(re.search(rf"\b{re.escape(h)}\s*$", n.text[:a]) for h in handed):
+            if any(re.search(rf"{_BARE}{re.escape(h)}\s*$", n.text[:a]) for h in handed) \
+                    or _GUEST.fullmatch(n.text[:a].strip()):
                 value = n.text[b:]
-        out += [Touch(m, n.line, False, shown) for _, m, shown, _ in _paths(value, owned)]
+        out += [(m, shown) for _, m, shown, _ in _paths(value, owned)]
     return out
 
 
@@ -281,19 +271,16 @@ def state(text: str, start: int, region: list[cover.Node], whole: list[cover.Nod
     owned = _parameters(text, start - 1) | {
         name for n in _all(whole) if n.kind in ("simple", "loop") and n.text
         and (name := _declared(n.text)) is not None}
-    wanted: list[tuple[Touch, bool]] = []
-    for t, writes in [(t, False) for t in _touches(region, set(owned)) if t.writes] + [
-            (t, True) for t in _returned(region, whole, owned)]:
-        if not any(w == writes and u.member == t.member for u, w in wanted):
-            wanted.append((t, writes))
+    wanted: dict[Member, str] = {}
+    for member, shown in _returned(region, whole, owned):
+        if member[-1][1] != _ANY:
+            wanted.setdefault(member, shown)
     out: list[cover.Item] = []
     for f in functions(text):
-        for t, writes in wanted:
-            lines = tuple(sorted({u.line for u in f.touches
-                                  if u.writes == writes and _same(u.member, t.member)}))
+        for member, shown in wanted.items():
+            lines = tuple(sorted({w.line for w in f.writes if _same(w.member, member)}))
             if lines and not all(span[0] <= x <= span[1] for x in lines):
-                verb = "written" if writes else "read"
-                out.append(cover.Item(lines[0], "state", f"{t.text} {verb} by {f.name}", lines))
+                out.append(cover.Item(lines[0], "state", f"{shown} written by {f.name}", lines))
     return out
 
 
