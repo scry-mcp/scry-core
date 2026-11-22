@@ -30,6 +30,8 @@ def test_the_command_a_key_reaches_lists_what_the_key_does_not_decide() -> None:
         (17, "branch", "if (m_state == state_t::READY)"),
         (19, "call", "LOG_CMD"),
         (20, "key", "if ((data & 0xe0) == 0xe0) is always true for this key"),
+        (22, "local", "level ="),
+        (23, "local", "mask ="),
         (24, "branch", "if (m_isr & mask)"),
         (26, "store", "m_isr &="),
         (27, "store", "m_base =")]
@@ -86,9 +88,85 @@ def test_the_declaration_of_a_pointer_is_no_store_and_its_chained_assignment_is(
     assert [t for _, k, t in got if k == "store"] == ["p->last ="]
 
 
-def test_a_local_assigned_later_is_no_store_and_a_parameter_is() -> None:
+def test_a_local_or_a_parameter_assigned_is_a_local_and_no_store() -> None:
     got = items("void f(int offset) { int x; x = 1; offset &= 3; }", "f")
-    assert [t for _, k, t in got if k == "store"] == ["offset &="]
+    assert [t for _, k, t in got if k == "store"] == []
+    assert sorted(t for _, k, t in got if k == "local") == ["offset &=", "x ="]
+
+
+def test_a_declaration_gives_a_local_only_when_it_gives_a_value() -> None:
+    got = items("void f() { Bitu a = 1; Bitu b; int *p = &x; }", "f")
+    assert [t for _, k, t in got if k == "local"] == ["a =", "p ="]
+
+
+def test_an_assignment_of_what_a_call_returns_is_no_local_for_the_call_is_the_item() -> None:
+    got = items("void f() {\n  Bitu a = get(1);\n  a = 2;\n  Bitu b = x ? get() : 0;\n}\n", "f")
+    assert [(n, k) for n, k, _ in got if k == "local"] == [(3, "local")]
+    assert [n for n, k, _ in got if k == "call"] == [2, 4]
+
+
+def test_a_reference_parameter_assigned_is_a_store_for_it_reaches_the_caller() -> None:
+    got = items("void f(Foo &state, Bar bar) { state = 1; bar = 2; }", "f")
+    assert sorted((k, t) for _, k, t in got) == [("local", "bar ="), ("store", "state =")]
+
+
+def test_an_assignment_through_a_local_is_still_a_store() -> None:
+    got = items("void f(Foo *p) { Foo q; q.x = 1; p->y = 2; p[0] = 3; }", "f")
+    assert sorted(t for _, k, t in got if k == "store") == ["p->y =", "p[0] =", "q.x ="]
+
+
+def test_an_indexed_or_dereferenced_target_ending_in_a_local_is_still_a_store() -> None:
+    src = ("void f(Bitu offset, Bitu data) {\n  Bitu n;\n  m_regs[4 + offset] = data;\n"
+           "  *(p + n) = data;\n  m_regs[n] = data;\n}\n")
+    assert [(n, k) for n, k, _ in items(src, "f")] == [(3, "store"), (4, "store"), (5, "store")]
+
+
+def test_a_static_or_a_reference_local_is_state_the_caller_or_a_later_call_sees() -> None:
+    src = "void f() {\n  static Bitu n = 0;\n  n++;\n  Bitu &r = g;\n  r = 1;\n}\n"
+    got = items(src, "f")
+    assert [(n, k) for n, k, _ in got] == [(3, "store"), (5, "store")]
+
+
+def test_a_chain_that_ends_in_a_call_gives_no_local_for_any_target_of_it() -> None:
+    got = items("void f() {\n  Bitu t = u = g();\n}\n", "f")
+    assert [k for _, k, _ in got if k == "local"] == []
+
+
+def test_a_register_met_after_a_bitwise_and_is_read_and_after_an_address_of_is_not() -> None:
+    src = "void f() {\n  foo(mask & reg_al);\n  bar(ok && reg_dl);\n  baz(&reg_ax);\n}\n"
+    got = [(n, t) for n, k, t in items(src, "f") if k == "input"]
+    assert got == [(2, "reg_al to foo"), (3, "reg_dl to bar")]
+
+
+def test_a_guest_register_handed_to_a_call_or_a_local_is_an_input() -> None:
+    src = ("void f() {\n  uint8_t drive;\n  MEM_StrCopy(SegPhys(ds) + reg_dx, name, 9);\n"
+           "  uint32_t handle = RealHandle(reg_bx);\n  drive = reg_bl;\n"
+           "  if (DOS_Close(reg_cx, &reg_al)) {}\n}\n")
+    got = items(src, "f")
+    assert [(n, t) for n, k, t in got if k == "input"] == [
+        (3, "reg_dx to MEM_StrCopy"), (4, "reg_bx into handle"), (4, "reg_bx to RealHandle"),
+        (5, "reg_bl into drive"), (6, "reg_cx to DOS_Close")]
+    assert (4, "local", "handle =") not in got and (5, "local", "drive =") in got
+
+
+def test_a_register_stored_into_state_the_function_does_not_own_is_a_store_and_no_input() -> None:
+    got = items("void f() {\n  m_latch = reg_bl;\n}\n", "f")
+    assert [(k, t) for _, k, t in got] == [("store", "m_latch =")]
+
+
+@pytest.mark.parametrize(("register", "kin"), [
+    ("reg_al", "a"), ("reg_ax", "a"), ("reg_ah", "a"), ("reg_bl", "b"), ("reg_dx", "d"),
+    ("reg_si", "si"), ("ds", "ds")])
+def test_the_halves_of_a_register_are_one_family(register: str, kin: str) -> None:
+    assert cover.family(register) == kin
+
+
+@pytest.mark.parametrize("body", [
+    "if (reg_al & 1) mode |= 8;", "if (reg_al == 3) { reg_ax = 0; }", "reg_ax = 7;",
+    "x = &reg_ax;", "reg_al += 1;", "foo(&reg_ax);", "foo(reg_ax_value);", "foo(a.reg_ax);"])
+def test_a_register_only_tested_or_written_is_no_input(body: str) -> None:
+    got = items(f"void f() {{\n  int mode;\n  {body}\n}}\n", "f")
+    assert not [i for i in got if i[1] == "input"]
 
 
 def test_a_call_the_stores_pattern_names_is_a_store() -> None:
@@ -255,7 +333,7 @@ def test_a_condition_with_a_call_lists_the_call() -> None:
 
 def test_a_function_with_a_const_qualifier_and_a_call_before_its_definition_is_found() -> None:
     src = "void g() { f(); }\nint C::f(int a) const\n{\n  a = 1;\n}\n"
-    assert items(src, "C::f") == [(4, "store", "a =")]
+    assert items(src, "C::f") == [(4, "local", "a =")]
 
 
 def test_a_switch_with_no_case_for_every_value_takes_its_default_or_nothing() -> None:

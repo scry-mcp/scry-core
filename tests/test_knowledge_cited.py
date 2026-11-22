@@ -9,13 +9,14 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
-from rows_world import World, build, drop_row, entry_doc, result, set_row
+from rows_world import World, build, drop_row, entry_doc, git_repo, result, set_row
 
 from scry_core.knowledge import closure, cover, review, rows
 
 MAME = "mame:src/devices/machine/chipx.cpp"
 DOSBOX = "dosbox-x:src/hardware/chipx.cpp"
 DRIVE = "src/devices/machine/drive.cpp"
+TAKE = "dosbox-x:src/ints/take.cpp"
 SHEET = "datasheet:chipx.raw.txt"
 Change = Callable[[dict[str, Any]], None]
 NO_EFFECT = ": its lines hold no effect, only "
@@ -302,3 +303,78 @@ def test_a_verdict_that_cites_more_places_than_a_row_quotes_is_red(world: World)
     world.edit("command", without_agrees(*places))
     assert any(f.startswith(f"agrees of mame on row 3 cites 7 places, over {rows.QUOTES_PER_ROW}")
                for f in faults(world)), faults(world)
+
+
+# What the lines of an `agrees` show on a row about an input register and on one that is not.
+TAKE_SOURCE = """// synthetic source for the tests of the row tools: it is not DOSBox-X code
+
+static void Take(uint32_t length) {
+	uint8_t drive;
+	MEM_StrCopy(SegPhys(ds) + reg_dx, name1, DOSNAMEBUF);
+	uint32_t handle = RealHandle(reg_bx);
+	if (reg_dx > 1) {
+		return;
+	}
+	if (reg_cl & 1) drive |= 8;
+	length &= 3;
+}
+"""
+
+
+def take_world(world: World, closed: list[dict[str, str]],
+               change: Change | None = None) -> closure.Report:
+    (world.dosbox / "src/ints/take.cpp").write_text(TAKE_SOURCE, encoding="utf-8")
+    again = World(world.root, git_repo(world.dosbox))
+
+    def take(doc: dict[str, Any]) -> None:
+        entry = entry_doc(doc)
+        entry["regions"] = [{"ref": TAKE, "function": "Take"}, entry["regions"][-1]]
+        entry["closed"] = closed
+    again.edit("call", take)
+    if change:
+        again.edit("call", change)
+    return result(again, "call")
+
+
+def red(got: closure.Report, lines: str, row: str) -> list[str]:
+    return [f for f in got.faults if f.startswith(f"agrees {TAKE}:{lines} on row {row}{NO_EFFECT}")]
+
+
+@pytest.mark.parametrize(("row", "holds"), [("3", True), ("2", False), ("4", False)])
+def test_an_agrees_that_hands_a_register_on_holds_on_the_in_row_of_that_register_only(
+        world: World, row: str, holds: bool) -> None:
+    got = red(take_world(world, [agrees(TAKE, "5", row)]), "5", row)
+    assert (got == []) == holds, got
+
+
+def test_an_agrees_that_hands_a_register_on_shows_nothing_on_a_row_about_an_output(
+        world: World) -> None:
+    got = take_world(world, [agrees(TAKE, "5", "4")], set_row("4", on="out DX"))
+    assert red(got, "5", "4")
+
+
+def test_an_agrees_that_only_tests_a_register_shows_nothing_even_on_an_in_row(
+        world: World) -> None:
+    assert red(take_world(world, [agrees(TAKE, "7", "3")]), "7", "3")
+
+
+def test_an_agrees_that_sets_a_local_holds_on_any_row(world: World) -> None:
+    assert red(take_world(world, [agrees(TAKE, "10", "4")]), "10", "4") == []
+
+
+def test_an_agrees_over_the_result_of_a_call_kept_in_a_local_shows_nothing(world: World) -> None:
+    got = take_world(world, [agrees(TAKE, "6", "4")])
+    assert red(got, "6", "4"), got.faults
+
+
+def test_a_closure_over_the_assignment_to_a_parameter_alone_closes_no_listed_item(
+        world: World) -> None:
+    got = take_world(world, [agrees(TAKE, "11", "4")])
+    assert f"closed {TAKE}:11 closes no listed item" in got.faults
+    assert red(got, "11", "4") == []
+
+
+def test_a_local_and_an_input_are_owed_no_row(world: World) -> None:
+    got = take_world(world, [])
+    assert [f for f in got.faults if f.startswith("OPEN") and ("local" in f or "input" in f)] == []
+    assert any(f.startswith(f"OPEN {TAKE}:6 call RealHandle") for f in got.faults)

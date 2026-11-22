@@ -26,7 +26,7 @@ from rows_world import (
 from scry_core.knowledge import closure, quote, rows, shared
 from scry_core.knowledge.quote import Invalid
 
-ITEMS = {"command": 21, "register": 14, "call": 32, "family": 8}
+ITEMS = {"command": 21, "register": 13, "call": 32, "family": 8}
 Cli = Callable[..., tuple[int, str, str]]
 
 
@@ -280,8 +280,7 @@ def test_an_item_both_claimed_and_closed_is_a_fault(world: World) -> None:
 
 def test_a_line_a_closure_covers_is_closed_with_its_reason(world: World) -> None:
     report = result(world, "register")
-    assert {r.by for r in report.results if r.item.line in (41, 44)} == {
-        "closed: decode", "closed: dead"}
+    assert {r.by for r in report.results if r.item.line == 44} == {"closed: dead"}
 
 
 def test_a_function_the_source_lacks_makes_the_check_invalid(world: World) -> None:

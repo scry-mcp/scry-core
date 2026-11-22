@@ -126,11 +126,6 @@
    "closed": [
     {
      "ref": "mame:src/devices/machine/chipx.cpp",
-     "lines": "41",
-     "as": "decode"
-    },
-    {
-     "ref": "mame:src/devices/machine/chipx.cpp",
      "lines": "44",
      "as": "dead"
     },

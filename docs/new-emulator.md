@@ -333,9 +333,15 @@ public source each fact was checked against. A server ships dictionaries and one
     emulator's code is claimed by a note, closed by a verdict, or closed with another reason of
     the fixed set; an `absent` note claims nothing.
   - What a verdict's lines must show, because a line that exists proves nothing by existing: an
-    `agrees` cites an effect, a `store`, the return of a value (a DOSBox-X callback's `CBRET_*`
-    is its dispatcher's, not one) or a line of a section; lines that hold only a condition, a
-    decode, a `switch`, a label or a call fault. A call counts when the callee table follows it
+    `agrees` cites an effect, a `store`, a `local`, the return of a value (a DOSBox-X callback's
+    `CBRET_*` is its dispatcher's, not one) or a line of a section; lines that hold only a
+    condition, a decode, a `switch`, a label or a call fault. A `local` is an assignment to a
+    variable the function owns or to a parameter it takes by value, when the value is no call's
+    result; it counts as an effect and is owed no row, so a closure over lines that hold only
+    locals and inputs closes nothing and is red. An `input` is a line that hands a guest register to a call or to a
+    local (`reg_dx` to `MEM_StrCopy`); it counts as an effect only for an `in` row, and only when
+    the register is one the row names (`in DS:DX` takes `reg_dx`, `in AL` takes `reg_al` and
+    `reg_ax`). A call counts when the callee table follows it
     (`open`) and the verdict cites an effect in its body. A verdict cites as a row quotes: at most
     6 places of at most 12 lines. A callee with several bodies (a drive's `FileOpen`, a device's
     `Read`) is listed in the table as each `<file> <function>`, and its call is open until a
@@ -350,7 +356,8 @@ public source each fact was checked against. A server ships dictionaries and one
     paste); `rows quote --stamp <dictionary>` writes the digest into every quote that has none.
   - `rows cover <dictionary> [<id>...]` lists what each entry's code owes rows for, item by
     item (`path`, `before`, `branch`, `exit`, `call`, `store`, `key`, `build`, `empty`, `list`),
-    each with what closes it. It reads C++ as text: macros, calls through a pointer or a member
+    each with what closes it; the `local` and `input` items a verdict may cite are not listed,
+    because no row is owed for them. It reads C++ as text: macros, calls through a pointer or a member
     and values carried in a variable are named, never followed.
   - `rows check <dictionary> [<id>...]` is the script half of the check: every quote is at the
     pin and gives its digest, every row quotes its own party only, every item is closed by a row,

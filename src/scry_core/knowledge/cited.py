@@ -1,10 +1,11 @@
 """What the lines of a verdict must show (`rows check`). An `agrees` cites an effect of the
-emulator: a store, the return of a value, a line of a table it reads; a line that is only a
-header, a condition, a dispatch, a label or a call shows nothing done. A call counts when the
-callee table follows it (`open`) and the verdict also cites an effect in its body; a call with
-several bodies (`virtual`) counts only when the verdict cites an effect in each of them. An
-`unfollowed` closes a call the table does not follow. An `absent` note cites the whole body
-where the thing would be, never a line beside it.
+emulator: a store, an assignment to a local, the return of a value, a line of a table it reads,
+and on a row about an input register the line that hands that register to a call or a local; a
+line that is only a header, a condition, a dispatch, a label or a call shows nothing done. A call
+counts when the callee table follows it (`open`) and the verdict also cites an effect in its
+body; a call with several bodies (`virtual`) counts only when the verdict cites an effect in each
+of them. An `unfollowed` closes a call the table does not follow. An `absent` note cites the
+whole body where the thing would be, never a line beside it.
 """
 
 from __future__ import annotations
@@ -31,17 +32,32 @@ from scry_core.knowledge.rows import (
 #: of several bodies. A `none` callee is one the table says does nothing a row is about.
 UNFOLLOWED = ("shared", "engine", "virtual")
 #: The item kinds that are something the emulator does, whatever line holds them.
-EFFECTS = ("store", "list")
+EFFECTS = ("store", "local", "list")
+#: What a row says about, when it is about registers the guest hands in: `in AL`, `in DS:DX`.
+INPUT = "in"
+_NAMED = re.compile(r"\b(?:[A-D][XLH]|SI|DI|BP|SP|IP|[CDES]S)\b")
 #: A DOSBox-X callback returns `CBRET_*` to its dispatcher, never a value the guest sees.
 _VALUE = re.compile(r"(?:return|throw)\s*(?!CBRET_)\S")
 _EMPTY = ": its lines hold no effect, only "
-_ASKED = (": an `agrees` cites the store, the returned value or the branch body that does the "
-          "row; a call counts when the callee table follows it (`open`) and the verdict cites "
-          "its body")
+_ASKED = (": an `agrees` cites the store, the local it sets, the returned value or the branch "
+          "body that does the row, or on an `in` row the line that hands the register on; a "
+          "call counts when the callee table follows it (`open`) and the verdict cites its body")
 
 
-def is_effect(item: cover.Item) -> bool:
-    return item.kind in EFFECTS or (item.kind == "exit" and bool(_VALUE.match(item.text)))
+def _handed_in(row: Row) -> frozenset[str]:
+    """The families of the registers an `in` row is about, none for any other row."""
+    on = row.on.split(" ", 1)
+    if on[0] != INPUT or len(on) < 2:
+        return frozenset()
+    return frozenset(cover.family("reg_" + name) for name in _NAMED.findall(on[1].upper()))
+
+
+def is_effect(item: cover.Item, inputs: frozenset[str]) -> bool:
+    """Whether the item is something done; `inputs` are the registers the row is about when it
+    is an `in` row, whose line that hands one of them on shows it."""
+    return (item.kind in EFFECTS
+            or (item.kind == "input" and cover.family(item.text.split(" ", 1)[0]) in inputs)
+            or (item.kind == "exit" and bool(_VALUE.match(item.text))))
 
 
 @dataclass(frozen=True)
@@ -94,7 +110,7 @@ def _kinds(items: Sequence[Listed]) -> str:
 
 
 def _agrees(c: Closure, verdict: Sequence[Closure], listed: Sequence[Listed],
-            bodies: dict[str, list[Listed]]) -> list[str]:
+            bodies: dict[str, list[Listed]], inputs: frozenset[str]) -> list[str]:
     where = f"agrees {c.ref}:{c.lines} on row {c.row}"
     inside = _inside(listed, c.ref, c.first, c.last)
     virtual = [x for x in inside if x.how is not None and x.how.kind == "virtual"]
@@ -106,18 +122,18 @@ def _agrees(c: Closure, verdict: Sequence[Closure], listed: Sequence[Listed],
         for file, function in x.how.implementations:
             ref = f"{scheme}:{file}"
             body = bodies[f"{ref} {function}"]
-            if not any(is_effect(y.item) for v in verdict
+            if not any(is_effect(y.item, inputs) for v in verdict
                        for y in _inside(body, v.ref, v.first, v.last)):
                 missing.append(f"{file} {function}")
         if missing:
             out.append(f"{where} goes through {x.item.text}, which has several bodies, and cites "
                        f"no effect in {', '.join(missing)}: cite each, or write a `differs` note "
                        "per body that departs, or close the call `unfollowed`")
-    if virtual or any(is_effect(x.item) for x in inside):
+    if virtual or any(is_effect(x.item, inputs) for x in inside):
         return out
     opened = {(split_ref(x.ref)[0], last_name(x.how.detail or x.item.text)) for x in inside
               if x.how is not None and x.how.kind == "open"}
-    if any(is_effect(y.item) and (split_ref(y.ref)[0], last_name(y.function)) in opened
+    if any(is_effect(y.item, inputs) and (split_ref(y.ref)[0], last_name(y.function)) in opened
            for v in verdict
            for y in _inside(listed, v.ref, v.first, v.last)):
         return out
@@ -171,7 +187,9 @@ def prove(dictionary: Dictionary, entry: Entry, sources: Sources, listed: Sequen
     proof = Proof()
     bodies = _bodies_of(dictionary, entry, sources, listed)
     closures = list(entry.closed)
+    handed = {r.n: _handed_in(r) for r in entry.rows if r.of == "doc"}
     for k, c in enumerate(closures):
+        inputs = handed.get(c.row, frozenset())
         held = [y for b in bodies.values() for y in _inside(b, c.ref, c.first, c.last)]
         verdict = [v for v in closures if v.reason == c.reason and v.row == c.row
                    and v.party == c.party]
@@ -184,11 +202,11 @@ def prove(dictionary: Dictionary, entry: Entry, sources: Sources, listed: Sequen
                                 "cites the lines that show it, as a quote does")
         if c.reason == "agrees" and held and not _inside(listed, c.ref, c.first, c.last):
             proof.used.add(k)
-            if not any(is_effect(y.item) for y in held):
+            if not any(is_effect(y.item, inputs) for y in held):
                 proof.faults.append(f"agrees {c.ref}:{c.lines} on row {c.row}{_EMPTY}"
                                     f"{_kinds(held)}{_ASKED}")
         elif c.reason == "agrees":
-            proof.faults += _agrees(c, verdict, listed, bodies)
+            proof.faults += _agrees(c, verdict, listed, bodies, inputs)
         elif c.reason == "unfollowed":
             proof.faults += _unfollowed(c, listed)
     for row in entry.rows:

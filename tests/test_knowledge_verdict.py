@@ -150,6 +150,6 @@ def test_an_agrees_over_the_decode_of_the_key_alone_proves_nothing(world: World)
     world.edit("command", closed_with({"ref": MAME, "lines": "13", "as": "agrees", "row": "1"}))
     assert result(world).faults == [
         "agrees mame:src/devices/machine/chipx.cpp:13 on row 1: its lines hold no effect, only "
-        "key: an `agrees` cites the store, the returned value or the branch body that does the "
-        "row; a call counts when the callee table follows it (`open`) and the verdict cites its "
-        "body"]
+        "key: an `agrees` cites the store, the local it sets, the returned value or the branch "
+        "body that does the row, or on an `in` row the line that hands the register on; a "
+        "call counts when the callee table follows it (`open`) and the verdict cites its body"]

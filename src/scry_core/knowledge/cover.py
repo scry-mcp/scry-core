@@ -7,6 +7,11 @@ a function or a case it cannot find is `Invalid`, never an empty list.
 
 An item is `kind`, `line` and the statement's `text`. The committed form of an item is its
 `record`: kind, file, line and the digest of the line, never source text.
+
+Two kinds are listed for what a verdict may cite and are never owed a row: a `local` is an
+assignment to something the function owns (a declared variable, a parameter taken by value), and
+an `input` is a statement handing a guest register to a call or to a local. Neither is state the
+guest can see, so leaving one out costs nothing; showing one is how an `in` row is proved.
 """
 
 from __future__ import annotations
@@ -17,7 +22,10 @@ from dataclasses import dataclass, field
 
 from scry_core.knowledge.quote import Invalid, span, stamp
 
-KINDS = ("path", "before", "branch", "exit", "call", "store", "key", "build", "empty", "list")
+KINDS = ("path", "before", "branch", "exit", "call", "store", "key", "build", "empty", "list",
+         "local", "input")
+#: The kinds that show what the code does without being state a row must account for.
+NOT_OWED = ("local", "input")
 KEYWORDS = {"if", "for", "while", "switch", "return", "sizeof", "case", "defined", "else", "do",
             "catch", "goto", "break", "continue", "static_cast", "reinterpret_cast", "const_cast",
             "new", "delete", "throw", "default", "assert"}
@@ -36,6 +44,9 @@ _LABEL = re.compile(r"[A-Za-z_]\w*\s*:(?!:)")
 _DECL = re.compile(
     r"^(?:const\s+|static\s+|unsigned\s+)*[A-Za-z_][\w:<>]*[\s*&]+([A-Za-z_]\w*)\s*(?:=|;|\[|$)")
 _NAME = re.compile(r"[A-Za-z_]\w*")
+#: A register of the guest as DOSBox-X's code names it.
+_REGISTER = re.compile(r"(?<![\w.>])reg_(?:[abcd][xlh]|[sd]i|[sb]p|ip|flags)\b")
+
 
 
 @dataclass(frozen=True, order=True)
@@ -587,27 +598,102 @@ def _assignments(text: str) -> list[tuple[int, int, str]]:
     return found
 
 
+def family(register: str) -> str:
+    """What names the part of the machine a register is: `reg_al`, `reg_ah` and `reg_ax` are one
+    family, `a`; `reg_si` and `ds` are their own."""
+    name = register.removeprefix("reg_").lower()
+    return name[0] if len(name) == 2 and name[0] in "abcd" and name[1] in "xlh" else name
+
+
+def _address_of(before: str) -> bool:
+    """Whether the text before a name ends in a unary `&`, not a bitwise or logical one."""
+    return before.endswith("&") and not before.endswith("&&") and not re.search(
+        r"[\w)\]]\s*&$", before)
+
+
+def _read_registers(text: str) -> list[tuple[int, str]]:
+    """The guest registers a statement reads, not an address taken to be written through."""
+    return [(m.start(), m.group(0)) for m in _REGISTER.finditer(text)
+            if not _address_of(text[:m.start()].rstrip())]
+
+
+def _inputs(text: str, line: int, reading: _Reading) -> None:
+    """An `input` for each guest register a statement hands to a call as an argument."""
+    registers = _read_registers(text)
+    for m in _CALL.finditer(text) if registers else ():
+        last = re.split(r"::|\.|->", m.group(1))[-1]
+        if last in KEYWORDS or last in TYPES:
+            continue
+        end = _matching(text, m.end() - 1, "(", ")")
+        for at, name in registers:
+            if m.end() <= at < end:
+                reading.add(line, "input", f"{name} to {m.group(1)}")
+
+
+def _has_call(text: str) -> bool:
+    return any(re.split(r"::|\.|->", m.group(1))[-1] not in KEYWORDS | TYPES
+               for m in _CALL.finditer(text))
+
+
 def _stores(text: str, line: int, locals_: set[str], reading: _Reading) -> None:
-    """A store for each assignment outside the function's locals, a chained one included; the
-    declaration of a local, pointer or not, is no store."""
+    """A store for each assignment outside the function's locals, a chained one included. An
+    assignment to a local or a parameter, or the declaration of a local that gives it a value, is
+    a `local` when the value is no call's result (a call is its own item, and what it does is its
+    body's); the registers the value reads are `input`."""
     decl = _DECL.match(text)
     declared = decl.group(1) if decl and decl.group(1) not in KEYWORDS else None
-    if declared:
+    kept = bool(decl and declared and (re.match(r"\s*static\b", text)
+                                       or "&" in text[:decl.start(1)]))
+    if declared and not kept:
         locals_.add(declared)
+    assigned = _assignments(text)
     previous = 0
-    for k, (a, b, op) in enumerate(_assignments(text)):
+    for k, (a, b, op) in enumerate(assigned):
         left = text[previous:a].strip() or text[b:].strip()
         previous = b
         word = left.split()[-1] if left.split() else ""
-        if k == 0 and declared and re.search(rf"\b{re.escape(declared)}$", left):
-            continue
         root = re.match(r"[\w:]*?([A-Za-z_]\w*)", word)
-        through = bool(re.search(r"->|\.|\[|^\*", word))
-        if through or (root and root.group(1) not in locals_) or not root:
+        through = bool(re.search(r"->|\.|\[|^\(?\*", left))
+        own = declared if k == 0 and declared and re.search(
+            rf"\b{re.escape(declared)}$", left) else None
+        if own and kept:
+            continue
+        mine = own or (root.group(1) if root and not through and root.group(1) in locals_
+                       else None)
+        if mine:
+            value = text[b:]
+            if not _has_call(value):
+                reading.add(line, "local", f"{mine} {op}")
+            for _, register in _read_registers(value):
+                reading.add(line, "input", f"{register} into {mine}")
+        else:
             reading.add(line, "store", f"{left} {op}")
     if reading.stores and reading.stores.search(text) and not any(
             i.line == line and i.kind == "store" for i in reading.out):
         reading.add(line, "store", text[:80])
+
+
+def _parameters(text: str, body: int) -> set[str]:
+    """The parameters of the function whose body opens at `body` that a write to cannot reach the
+    caller's object through: not a reference."""
+    at = body - 1
+    while at > 0 and (text[at - 1].isspace() or text[at - 5:at] == "const"):
+        at -= 5 if text[at - 5:at] == "const" else 1
+    if at <= 0 or text[at - 1] != ")":
+        return set()
+    depth, open_ = 0, at - 1
+    while open_ >= 0:
+        depth += (text[open_] == ")") - (text[open_] == "(")
+        if depth == 0:
+            break
+        open_ -= 1
+    names: set[str] = set()
+    for part in re.split(r",", text[open_ + 1:at - 1]):
+        part = part.split("=")[0]
+        got = re.search(r"([A-Za-z_]\w*)\s*(?:\[[^\]]*\])?\s*$", part)
+        if got and "&" not in part and got.group(1) not in KEYWORDS | TYPES:
+            names.add(got.group(1))
+    return names
 
 
 def _rekey(text: str, reading: _Reading, conditional: bool) -> None:
@@ -653,6 +739,7 @@ def _items(nodes: list[Node], reading: _Reading, locals_: set[str],
         elif n.kind == "if":
             reading.add(n.line, "branch", f"if ({n.text})")
             _calls(n.text, n.line, reading)
+            _inputs(n.text, n.line, reading)
             _items(n.body, reading, locals_, True)
             if n.orelse:
                 if n.orelse[0].kind != "if":
@@ -661,10 +748,12 @@ def _items(nodes: list[Node], reading: _Reading, locals_: set[str],
         elif n.kind == "loop":
             reading.add(n.line, "branch", n.text)
             _calls(n.text, n.line, reading)
+            _inputs(n.text, n.line, reading)
             _items(n.body, reading, locals_, True)
         elif n.kind == "switch":
             reading.add(n.line, "branch", f"switch ({n.text})")
             _calls(n.text, n.line, reading)
+            _inputs(n.text, n.line, reading)
             _items(n.body, reading, locals_, True)
         elif n.kind == "case":
             reading.add(n.line, "branch", n.text)
@@ -674,12 +763,14 @@ def _items(nodes: list[Node], reading: _Reading, locals_: set[str],
             if conditional or n.text.startswith(("return", "throw", "goto")):
                 reading.add(n.line, "exit", n.text)
             _calls(n.text, n.line, reading)
+            _inputs(n.text, n.line, reading)
         else:
             if "?" in n.text:
                 reading.add(n.line, "branch", f"ternary in: {n.text[:70]}")
             _stores(n.text, n.line, locals_, reading)
             _rekey(n.text, reading, conditional)
             _calls(n.text, n.line, reading)
+            _inputs(n.text, n.line, reading)
 
 
 def _switched(n: Node, key: Key | None) -> list[Node] | None:
@@ -742,7 +833,7 @@ def list_function(source: str, name: str, *, case: Iterable[str] = (), preamble:
     first = min(first, opens)
     if not paths:
         first, last = parser.line(start), parser.line(stop)
-    _items(region, reading, set())
+    _items(region, reading, _parameters(text, start))
     if not region and not paths:
         reading.add(parser.line(start), "empty", "the function's body holds no statement")
     for node, conds in before:

@@ -3,8 +3,9 @@ and gives its digest, every row quotes only its own party, the entry has an offi
 says it has no official source), and every item the coverage lister reads from the entry's
 regions is closed by a row, the key, a closure with a reason of the fixed set, or the callee
 table. An item left over is open, as a key with no entry is; an item both claimed and closed is a
-fault. The verdict each emulator owes on each official row is `verdict`'s, what the lines of a
-verdict must show is `cited`'s, the lines of the declared official ranges are `official`'s.
+fault; a `local` or an `input` is shown by a verdict and owed nothing. The verdict each emulator
+owes on each official row is `verdict`'s, what the lines of a verdict must show is `cited`'s, the
+lines of the declared official ranges are `official`'s.
 """
 
 from __future__ import annotations
@@ -167,6 +168,8 @@ def check(dictionary: Dictionary, entry: Entry, sources: Sources, callees: Calle
         for item in listing.items:
             how = callees.of(scheme, file, item.text) if item.kind == "call" else None
             listed.append(cited.Listed(region.ref, item, region.function, how))
+            if item.kind in cover.NOT_OWED:
+                continue
             if item.kind == "key":
                 by = "the key"
             elif item.kind == "call":
