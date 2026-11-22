@@ -34,18 +34,37 @@ def body(got: migrate.Draft) -> dict[str, Any]:
 
 def test_the_shared_checks_evidence_is_drafted_row_by_row(world: World) -> None:
     got = draft(world, "shared")
-    assert (got.anchored, got.marked, got.omissions) == (3, 4, 1)
+    assert (got.anchored, got.marked, got.omissions, got.candidates) == (3, 4, 1, 3)
     drafted = body(got)["rows"]
     assert [(r["on"], r["of"], r["text"]) for r in drafted] == [
-        ("is", ["mame"], "The command rotates the priority."),
-        ("", ["mame"], "A set in-service bit is cleared."),
-        ("is", ["doc"], "The datasheet names the mode."),
-        ("", ["mame"], "MAME acts only in its ready state.")]
+        ("is", "doc", "The datasheet names the mode.")]
+
+
+def test_a_statement_that_quotes_an_emulator_is_a_candidate_and_never_a_row(
+        world: World) -> None:
+    got = body(draft(world, "shared"))
+    assert [(c["of"], c["statement"], [q["lines"] for q in c["quotes"]]) for c in
+            got["candidates"]] == [
+        ("mame", "The command rotates the priority.", ["24"]),
+        ("mame", "A set in-service bit is cleared.", ["26"]),
+        ("mame", "MAME acts only in its ready state.", ["17"])]
+    assert {c["why"] for c in got["candidates"]} == {
+        "quotes an emulator: find the official line"}
+    assert all(r["of"] == "doc" for r in got["rows"])
+
+
+def test_a_statement_that_quotes_both_keeps_a_doc_row_and_a_candidate_that_names_it(
+        world: World) -> None:
+    got = body(draft(world, "calls"))
+    assert [(r["of"], r["n"]) for r in got["rows"]] == [("doc", "1")]
+    assert [(c["of"], c["row"]) for c in got["candidates"]] == [("dosbox-x", ""),
+                                                               ("dosbox-x", "1")]
 
 
 def test_a_drafted_quote_is_stamped_from_the_source_and_not_taken_from_the_evidence(
         world: World) -> None:
-    quotes = [q for r in body(draft(world, "shared"))["rows"] for q in r["quotes"]]
+    got = body(draft(world, "shared"))
+    quotes = [q for r in [*got["rows"], *got["candidates"]] for q in r["quotes"]]
     assert all(world.sources().faults(quote.Quote(q["ref"], q["lines"], q["sha"])) == []
                for q in quotes)
     assert {q["lines"] for q in quotes if q["ref"] == MAME} == {"24", "26", "17"}
@@ -72,7 +91,7 @@ def test_a_statement_the_check_found_unsupported_is_marked_with_its_verdict(worl
 def test_a_datasheet_quote_is_found_in_the_capture_where_its_text_occurs_once(
         world: World) -> None:
     rows_ = body(draft(world, "shared"))["rows"]
-    doc = [q for r in rows_ if r["of"] == ["doc"] for q in r["quotes"]]
+    doc = [q for r in rows_ if r["of"] == "doc" for q in r["quotes"]]
     assert [q["lines"] for q in doc] == ["4"]
 
 
@@ -89,8 +108,8 @@ def test_a_piece_of_the_old_text_no_statement_holds_is_marked(world: World) -> N
 
 def test_an_omission_the_check_needed_is_a_draft_row_and_one_it_did_not_is_left(
         world: World) -> None:
-    got = body(draft(world, "shared"))["rows"]
-    assert [r["text"] for r in got if r["from"] == "omission"] == [
+    got = body(draft(world, "shared"))["candidates"]
+    assert [c["statement"] for c in got if c["field"] == "omission"] == [
         "MAME acts only in its ready state."]
 
 
@@ -111,16 +130,15 @@ def test_the_dosbox_x_evidence_is_drafted_and_its_opened_callees_become_regions(
     assert (got.anchored, got.marked, got.omissions) == (2, 3, 0)
     assert body(got)["regions"][1] == {"ref": "dosbox-x:src/ints/call.cpp",
                                        "function": "make_temp"}
-    parties = [r["of"] for r in body(got)["rows"]]
-    assert parties == [["dosbox-x"], ["dosbox-x", "doc"]] or parties == [
-        ["dosbox-x"], ["doc", "dosbox-x"]]
+    assert [r["of"] for r in body(got)["rows"]] == ["doc"]
 
 
 def test_the_mame_evidence_is_drafted_with_its_line_ranges_and_its_omissions(
         world: World) -> None:
     got = draft(world, "mame")
     assert (got.anchored, got.omissions) == (2, 1)
-    lines = [q["lines"] for r in body(got)["rows"] for q in r["quotes"]]
+    assert body(got)["rows"] == []
+    lines = [q["lines"] for c in body(got)["candidates"] for q in c["quotes"]]
     assert lines == ["24-28", "42-43", "26-27"]
 
 
@@ -133,8 +151,8 @@ def test_the_draft_is_not_a_valid_dictionary_until_a_person_resolves_it(world: W
 
 def test_the_summary_counts_what_was_anchored_and_what_was_marked(world: World) -> None:
     assert draft(world, "shared").summary() == (
-        "0xE0..0xE7: 3 statements anchored, 4 marked unanchored, 1 omissions as rows, 4 draft "
-        "rows, 3 quotes dropped")
+        "0xE0..0xE7: 3 statements anchored, 4 marked unanchored, 1 omissions drafted, 1 draft "
+        "rows, 3 candidates, 3 quotes dropped")
 
 
 def test_an_entry_the_old_dictionary_lacks_is_invalid(world: World) -> None:
@@ -227,7 +245,7 @@ def test_two_quotes_that_land_on_the_same_lines_make_one(world: World) -> None:
     cites = [_cite(4, "Block * blk"), _cite(4, "blocks[(port == 0x20)")]
     got = migrate.draft(_old(world), ID, _evidence(world, [_statement("name", "n", *cites)]),
                         world.sources())
-    assert [len(r["quotes"]) for r in body(got)["rows"]] == [1]
+    assert [len(r["quotes"]) for r in body(got)["candidates"]] == [1]
 
 
 def test_a_placement_statement_becomes_a_place_row_and_an_unfound_omission_is_marked(
@@ -237,7 +255,7 @@ def test_a_placement_statement_becomes_a_place_row_and_an_unfound_omission_is_ma
     got = migrate.draft(_old(world), ID, _evidence(
         world, [_statement("handlers.read", "h", _cite(4, "Block * blk"))], omissions=[omission]),
         world.sources())
-    assert [r["on"] for r in body(got)["rows"]] == ["place"]
+    assert [r["on"] for r in body(got)["candidates"]] == ["place"]
     assert any(m["field"] == "omission" for m in body(got)["unanchored"])
 
 

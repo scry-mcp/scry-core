@@ -4,6 +4,7 @@
  "kind": "call",
  "scope": "dos",
  "covers": "a synthetic dictionary for the tests",
+ "source": "official",
  "engine": [],
  "entries": [
   {
@@ -38,30 +39,20 @@
     {
      "n": "1",
      "on": "is",
-     "of": [
-      "doc",
-      "dosbox-x"
-     ],
+     "of": "doc",
      "text": "Create temporary file: makes a file with a unique name.",
      "quotes": [
       {
        "ref": "rbil61:INTER.A",
        "lines": "1",
        "sha": "455ba13a437361e7e2da9e8dd8c1d49f9b5e66f5d2d02162e857f1d9b800a8b5"
-      },
-      {
-       "ref": "dosbox-x:src/ints/call.cpp",
-       "lines": "9-12",
-       "sha": "776fa0ef6f968990faed17f76eb51da462700c2fadc2f208cc797a0506402dc8"
       }
      ]
     },
     {
      "n": "2",
      "on": "in CX",
-     "of": [
-      "doc"
-     ],
+     "of": "doc",
      "text": "CX holds the attribute of the new file.",
      "quotes": [
       {
@@ -74,9 +65,7 @@
     {
      "n": "3",
      "on": "in DS:DX",
-     "of": [
-      "doc"
-     ],
+     "of": "doc",
      "text": "An ASCIZ path ending in a backslash.",
      "quotes": [
       {
@@ -89,30 +78,65 @@
     {
      "n": "4",
      "on": "out CF=0",
-     "of": [
-      "doc",
-      "dosbox-x"
-     ],
+     "of": "doc",
      "text": "On success CF is clear and AX holds the file handle.",
      "quotes": [
       {
        "ref": "rbil61:INTER.A",
        "lines": "5-6",
        "sha": "b6933c4374329dd339e6e9ef2f3d3a975c2dd3c96b1f85f0b243ccba9a7c4f5b"
-      },
-      {
-       "ref": "dosbox-x:src/ints/call.cpp",
-       "lines": "12-14",
-       "sha": "b1b40e9512a6b13681f893e6ee2cce8c8fece196da33c5cd28c9a42ddd451636"
       }
      ]
     },
     {
      "n": "5",
+     "on": "place",
+     "of": "dosbox-x",
+     "vs": "place",
+     "text": "The INT 21h handler reaches it by its case 0x5a.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "9",
+       "sha": "64ea692038c13d3b1775930c919d6fb94b1e9e1f6d9a2a8431c7eeacbffbc394"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "in CX",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "2",
+     "text": "CX is never read: the attribute does not reach the file.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "10-11",
+       "sha": "1507f6c02d8d0ace31438d496ffe42ace63a52efcaebf14483b25bd85544380c"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "in DS:DX",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "An empty path becomes a backslash; a path need not end with one.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "32-34",
+       "sha": "0e79f422730b99c446a2a90ee5e560e249ba04865d472bfe6201698b1a5bb10e"
+      }
+     ]
+    },
+    {
+     "n": "8",
      "on": "out CF=1",
-     "of": [
-      "dosbox-x"
-     ],
+     "of": "dosbox-x",
+     "vs": "extra",
      "text": "On failure CF is set and AX holds the DOS error code the create left.",
      "quotes": [
       {
@@ -123,11 +147,10 @@
      ]
     },
     {
-     "n": "6",
+     "n": "9",
      "on": "when",
-     "of": [
-      "dosbox-x"
-     ],
+     "of": "dosbox-x",
+     "vs": "extra",
      "text": "A build that defines NOFILES answers with a register change and no file.",
      "quotes": [
       {
@@ -138,11 +161,10 @@
      ]
     },
     {
-     "n": "7",
+     "n": "A",
      "on": "when",
-     "of": [
-      "dosbox-x"
-     ],
+     "of": "dosbox-x",
+     "vs": "extra",
      "text": "AH 06h and 07h return before the dispatch.",
      "quotes": [
       {
@@ -153,26 +175,10 @@
      ]
     },
     {
-     "n": "8",
-     "on": "in DS:DX",
-     "of": [
-      "dosbox-x"
-     ],
-     "text": "An empty path becomes a backslash.",
-     "quotes": [
-      {
-       "ref": "dosbox-x:src/ints/call.cpp",
-       "lines": "32-34",
-       "sha": "0e79f422730b99c446a2a90ee5e560e249ba04865d472bfe6201698b1a5bb10e"
-      }
-     ]
-    },
-    {
-     "n": "9",
+     "n": "B",
      "on": "out DS:DX",
-     "of": [
-      "dosbox-x"
-     ],
+     "of": "dosbox-x",
+     "vs": "extra",
      "text": "The name is eight letters drawn at random, and the error code is cleared first.",
      "quotes": [
       {
@@ -183,11 +189,10 @@
      ]
     },
     {
-     "n": "10",
+     "n": "C",
      "on": "does",
-     "of": [
-      "dosbox-x"
-     ],
+     "of": "dosbox-x",
+     "vs": "extra",
      "text": "The file is created by the create routine and its result returned.",
      "quotes": [
       {
@@ -209,6 +214,12 @@
      "ref": "dosbox-x:src/ints/call.cpp",
      "lines": "8",
      "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "lines": "12-14",
+     "as": "agrees",
+     "row": "4"
     },
     {
      "ref": "rbil61:INTER.A",

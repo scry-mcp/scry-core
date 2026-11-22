@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from scry_core.knowledge import callees, quote, rows
+from scry_core.knowledge import callees, closure, quote, rows
 
 FIXTURES = Path(__file__).parent / "fixtures" / "knowledge" / "rows"
 DICTIONARIES = ("command", "register", "call", "family")
@@ -29,6 +29,15 @@ def git_repo(path: Path) -> str:
     git("add", "-A")
     git("commit", "-q", "-m", "fixture")
     return git("rev-parse", "HEAD")
+
+
+SEARCHED = [{"where": place, "gave": "nothing"} for place in rows.SEARCH_PLACES]
+
+
+def datasheet(capture: str) -> quote.Datasheet:
+    return quote.Datasheet("synthetic", "https://example.invalid/chipx.pdf",
+                           "https://archive.example.invalid/chipx.pdf", "maker-datasheet", "layer",
+                           "pdftotext -raw", "0.0", "0" * 64, capture)
 
 
 @dataclass
@@ -54,8 +63,7 @@ class World:
 
     def sources(self) -> quote.Sources:
         capture = (FIXTURES / "datasheets" / "chipx.raw.txt").read_bytes()
-        table = {"chipx.raw.txt": quote.Datasheet("synthetic", "", "0" * 64,
-                                                  hashlib.sha256(capture).hexdigest())}
+        table = {"chipx.raw.txt": datasheet(hashlib.sha256(capture).hexdigest())}
         return quote.Sources(mame=self.mame, dosbox=self.dosbox, rbil=self.rbil,
                              datasheets=self.datasheets, pins={"dosbox-x": self.pin, "mame": "x"},
                              table=table)
@@ -102,3 +110,42 @@ def git_repo_again(path: Path) -> str:
     done = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"], capture_output=True,
                           text=True, check=True)
     return done.stdout.strip()
+
+
+def entry_doc(doc: dict[str, Any]) -> dict[str, Any]:
+    entry: dict[str, Any] = doc["entries"][0]
+    return entry
+
+
+def result(world: World, name: str = "command") -> closure.Report:
+    dictionary = world.dictionary(name)
+    return closure.check(dictionary, dictionary.entries[0], world.sources(), world.callees(),
+                         {e.id: e for e in dictionary.entries})
+
+
+def drop_row(n: str) -> Callable[[dict[str, Any]], None]:
+    def change(doc: dict[str, Any]) -> None:
+        entry_doc(doc)["rows"] = [r for r in entry_doc(doc)["rows"] if r["n"] != n]
+    return change
+
+
+def drop_subject(subject: str) -> Callable[[dict[str, Any]], None]:
+    def change(doc: dict[str, Any]) -> None:
+        entry_doc(doc)["rows"] = [r for r in entry_doc(doc)["rows"] if r["on"] != subject]
+    return change
+
+
+def set_row(which: str, **fields: Any) -> Callable[[dict[str, Any]], None]:
+    def change(doc: dict[str, Any]) -> None:
+        for r in entry_doc(doc)["rows"]:
+            if r["n"] == which:
+                r.update(fields)
+    return change
+
+
+def set_entry(**fields: Any) -> Callable[[dict[str, Any]], None]:
+    return lambda doc: entry_doc(doc).update(fields)
+
+
+def set_head(**fields: Any) -> Callable[[dict[str, Any]], None]:
+    return lambda doc: doc.update(fields)

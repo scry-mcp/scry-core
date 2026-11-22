@@ -4,6 +4,18 @@
  "kind": "register",
  "scope": "chipx",
  "covers": "a synthetic dictionary for the tests",
+ "source": "official",
+ "documents": [
+  {
+   "name": "chipx.raw.txt",
+   "variant": "chipx"
+  }
+ ],
+ "official": {
+  "chipx.raw.txt": [
+   "34-36"
+  ]
+ },
  "handlers": [
   {
    "ref": "mame:src/devices/machine/chipx.cpp",
@@ -24,6 +36,10 @@
    ],
    "regions": [
     {
+     "ref": "datasheet:chipx.raw.txt",
+     "lines": "34-36"
+    },
+    {
      "ref": "mame:src/devices/machine/chipx.cpp",
      "function": "chipx_device::start"
     },
@@ -40,39 +56,34 @@
     {
      "n": "1",
      "on": "is",
-     "of": [
-      "doc"
-     ],
-     "text": "The control register holds the mode in bits 3 to 1.",
+     "of": "doc",
+     "text": "The status register is read only.",
      "quotes": [
       {
        "ref": "datasheet:chipx.raw.txt",
-       "lines": "4",
-       "sha": "47213646015d820aa41e76e54bbf10000c8a43953cd60f73168f3b7243b65a16"
+       "lines": "34",
+       "sha": "14a0815fd12081a67cd3ddd5880894404a9019fd61df8f670e262dbf2bfae0d5"
       }
      ]
     },
     {
      "n": "2",
      "on": "read",
-     "of": [
-      "mame"
-     ],
-     "text": "A read of offset 2 returns the status byte.",
+     "of": "doc",
+     "text": "Reading it returns the busy flag in bit 0 and clears the flag.",
      "quotes": [
       {
-       "ref": "mame:src/devices/machine/chipx.cpp",
-       "lines": "42-43",
-       "sha": "ce19090150a846bc6ca8cc3f6702195f5bda4b12c03ef6ccfffe3602f893f381"
+       "ref": "datasheet:chipx.raw.txt",
+       "lines": "35-36",
+       "sha": "f5b878eded2cc39b4f63689a7f15f26d2add7f67bf6bb71a043daab42df9878e"
       }
      ]
     },
     {
      "n": "3",
      "on": "write",
-     "of": [
-      "mame"
-     ],
+     "of": "mame",
+     "vs": "extra",
      "text": "Starting the chip arms a timer that calls the tick routine.",
      "quotes": [
       {
@@ -85,9 +96,8 @@
     {
      "n": "4",
      "on": "write",
-     "of": [
-      "mame"
-     ],
+     "of": "mame",
+     "vs": "extra",
      "text": "The tick loads the count and the reload value from its parameter.",
      "quotes": [
       {
@@ -100,9 +110,8 @@
     {
      "n": "5",
      "on": "write",
-     "of": [
-      "mame"
-     ],
+     "of": "mame",
+     "vs": "extra",
      "text": "The idle routine does nothing.",
      "quotes": [
       {
@@ -123,6 +132,12 @@
      "ref": "mame:src/devices/machine/chipx.cpp",
      "lines": "44",
      "as": "dead"
+    },
+    {
+     "ref": "mame:src/devices/machine/chipx.cpp",
+     "lines": "42-43",
+     "as": "agrees",
+     "row": "2"
     }
    ]
   }

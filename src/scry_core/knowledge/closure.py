@@ -1,7 +1,10 @@
 """The script half of the check of an entry (`rows check`): every quote is in the pinned source
-and gives its digest, every row speaks only for the parties it quotes, and every item the
-coverage lister reads from the entry's regions is closed by a row, the key, a closure with a
-reason of the fixed set, or the callee table. An item left over is open, as a key with no entry is.
+and gives its digest, every row quotes only its own party, the entry has an official region (or
+says it has no official source), and every item the coverage lister reads from the entry's
+regions is closed by a row, the key, a closure with a reason of the fixed set, or the callee
+table. An item left over is open, as a key with no entry is; an item both claimed and closed is a
+fault. The verdict each emulator owes on each official row is `verdict`'s, the lines of the
+declared official ranges are `official`'s.
 """
 
 from __future__ import annotations
@@ -11,7 +14,7 @@ from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from scry_core.knowledge import cover
+from scry_core.knowledge import cover, official, verdict
 from scry_core.knowledge.callees import Callees
 from scry_core.knowledge.quote import PARTY, Sources, span, split_ref
 from scry_core.knowledge.rows import Closure, Dictionary, Entry, Region
@@ -76,15 +79,12 @@ def _check_rows(entry: Entry, sources: Sources, known: Mapping[str, Entry], scop
                 kind: str, report: Report) -> None:
     for row in entry.rows:
         where = f"row {row.n}"
-        quoted = set()
         for q in row.quotes:
             report.quotes += 1
             report.faults += [f"{where}: {f}" for f in sources.faults(q)]
-            quoted.add(q.party)
-        for who in sorted(set(row.of) - quoted):
-            report.faults.append(f"{where} speaks for {who} and quotes nothing of it")
-        for who in sorted(quoted - set(row.of)):
-            report.faults.append(f"{where} quotes {who} and does not speak for it")
+            if q.party != row.of:
+                report.faults.append(f"{where} speaks for {row.of} and quotes {q.party}: a row "
+                                     "quotes its own party only")
         for link in row.links:
             if not _LINK.fullmatch(link):
                 report.faults.append(f"{where}: link {link!r} is an entry id")
@@ -124,6 +124,13 @@ def _closed_by(closures: list[Closure], ref: str, line: int) -> int | None:
     return None
 
 
+def _agreeing(closures: list[Closure], ref: str, line: int) -> list[int]:
+    """Every `agrees` closure over the line: one statement of an emulator, a decode of its key
+    included, may do what several official rows say, so each of them is used by it."""
+    return [k for k, c in enumerate(closures)
+            if c.reason == "agrees" and c.ref == ref and c.first <= line <= c.last]
+
+
 def check(dictionary: Dictionary, entry: Entry, sources: Sources, callees: Callees,
           known: Mapping[str, Entry]) -> Report:
     """The report of one entry. `Invalid` when a source or a function cannot be read."""
@@ -132,6 +139,8 @@ def check(dictionary: Dictionary, entry: Entry, sources: Sources, callees: Calle
     if not dictionary.regions(entry):
         report.faults.append("no region answers this entry: it names none and its header's "
                              "handlers are none")
+    report.faults += official.entry_faults(dictionary, entry)
+    report.faults += verdict.faults(dictionary, entry)
     claims = _claims(entry)
     closures = list(entry.closed)
     used: set[int] = set()
@@ -143,11 +152,16 @@ def check(dictionary: Dictionary, entry: Entry, sources: Sources, callees: Calle
                 by = _callee(dictionary, entry, known, callees, region, item, report)
             elif item.line in claims.get(region.ref, {}):
                 by = "row " + ", ".join(claims[region.ref][item.line])
+                if (k := _closed_by(closures, region.ref, item.line)) is not None:
+                    used.add(k)
+                    report.faults.append(f"{region.ref}:{item.line} is claimed by {by} and closed "
+                                         f"as {closures[k].reason}: one of the two")
             elif (k := _closed_by(closures, region.ref, item.line)) is not None:
                 used.add(k)
                 by = f"closed: {closures[k].reason}"
             else:
                 by = OPEN
+            used.update(_agreeing(closures, region.ref, item.line))
             report.results.append(Result(region, item, by))
             if by == OPEN:
                 report.faults.append(f"OPEN {region.ref}:{item.line} {item.kind} {item.text}")

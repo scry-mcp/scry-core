@@ -28,3 +28,9 @@ synthetic datasheet line 27: the control register holds the mode in bits 3 to 1
 synthetic datasheet line 28: the control register holds the mode in bits 3 to 1
 synthetic datasheet line 29: the control register holds the mode in bits 3 to 1
 synthetic datasheet line 30: the control register holds the mode in bits 3 to 1
+
+synthetic datasheet footer: page 3 of 9
+synthetic datasheet timing: the write pulse is 200 ns minimum
+synthetic datasheet line 34: the status register is read only
+synthetic datasheet line 35: bit 0 of the status register is the busy flag
+synthetic datasheet line 36: reading it clears the busy flag

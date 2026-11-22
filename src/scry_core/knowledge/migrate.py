@@ -1,12 +1,14 @@
 """`rows migrate`: a draft of an entry in the new shape from the old one and the evidence a check
 gathered for it.
 
-Each statement the check found supported becomes a draft row whose quotes are the evidence's
-lines, found again in the pinned source and stamped by the tool. A quote whose text is not at the
-line the evidence names is dropped and said; a statement that keeps no quote, one the check found
-unsupported, and a piece of the old text no statement holds are marked `unanchored` and never
-guessed at. The draft is not valid until a person has resolved those marks and set each row's
-`on`, which is why `rows check` refuses it.
+Each statement the check found supported has its quotes found again in the pinned source and
+stamped by the tool. What quotes an official document becomes a draft `doc` row; what quotes an
+emulator is a `candidate`, a statement whose official line is still to be found (it then becomes a
+`doc` row with an `agrees` closure, or a note). A quote whose text is not at the line the evidence
+names is dropped and said; a statement that keeps no quote, one the check found unsupported, and a
+piece of the old text no statement holds are marked `unanchored` and never guessed at. The draft is
+not valid until a person has resolved those marks and set each row's `on`, which is why `rows
+check` refuses it.
 """
 
 from __future__ import annotations
@@ -185,13 +187,15 @@ class Draft:
     anchored: int = 0
     marked: int = 0
     omissions: int = 0
+    candidates: int = 0
     dropped: list[str] = field(default_factory=list)
 
     def summary(self) -> str:
         rows = len(self.document["entries"][0]["rows"])
         return (f"{self.document['entries'][0]['key']}: {self.anchored} statements anchored, "
-                f"{self.marked} marked unanchored, {self.omissions} omissions as rows, {rows} "
-                f"draft rows, {len(self.dropped)} quotes dropped")
+                f"{self.marked} marked unanchored, {self.omissions} omissions drafted, {rows} "
+                f"draft rows, {self.candidates} candidates, {len(self.dropped)} quotes "
+                "dropped")
 
 
 def _on(name: str) -> str:
@@ -216,10 +220,21 @@ def draft(dictionary: Path, wanted: str, evidence_file: Path, sources: Sources) 
     out = Draft({})
     rows: list[dict[str, Any]] = []
     marks: list[dict[str, str]] = []
+    candidates: list[dict[str, Any]] = []
 
     def row(on: str, text: str, quotes: list[Quote], source: str) -> None:
-        rows.append({"n": str(len(rows) + 1), "on": on, "of": sorted({q.party for q in quotes}),
-                     "text": text, "quotes": [q.as_json() for q in quotes], "from": source})
+        """A `doc` row from the official quotes, and a candidate per emulator the rest quote."""
+        official = [q for q in quotes if q.party == "doc"]
+        made = str(len(rows) + 1) if official else ""
+        if official:
+            rows.append({"n": made, "on": on, "of": "doc", "text": text,
+                         "quotes": [q.as_json() for q in official], "from": source})
+        for party in sorted({q.party for q in quotes} - {"doc"}):
+            candidates.append({"statement": text, "field": source, "of": party, "on": on,
+                               "quotes": [q.as_json() for q in quotes if q.party == party],
+                               "row": made,
+                               "why": "quotes an emulator: find the official line"})
+            out.candidates += 1
 
     for s in evidence.statements:
         if not s.supported:
@@ -260,8 +275,8 @@ def draft(dictionary: Path, wanted: str, evidence_file: Path, sources: Sources) 
         if name in old:
             entry[name] = old[name]
     entry |= {"regions": _regions(old_doc, evidence), "rows": rows, "closed": [],
-              "unanchored": marks, "dropped": out.dropped}
+              "candidates": candidates, "unanchored": marks, "dropped": out.dropped}
     out.document = {"format": FORMAT, "dictionary": old_doc.get("dictionary", scope),
                     "kind": kind, "scope": scope, "covers": old_doc.get("covers", ""),
-                    "entries": [entry]}
+                    "source": "official", "entries": [entry]}
     return out

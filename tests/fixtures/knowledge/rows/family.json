@@ -4,6 +4,29 @@
  "kind": "call",
  "scope": "video",
  "covers": "a synthetic dictionary for the tests",
+ "source": "emulator",
+ "searched": [
+  {
+   "where": "mame-header",
+   "gave": "The source header cites no document."
+  },
+  {
+   "where": "maker",
+   "gave": "The maker's site lists no manual for it."
+  },
+  {
+   "where": "bitsavers",
+   "gave": "Nothing under its name."
+  },
+  {
+   "where": "archive-org",
+   "gave": "No capture of a datasheet."
+  },
+  {
+   "where": "index",
+   "gave": "datasheetarchive.example has no entry."
+  }
+ ],
  "entries": [
   {
    "key": "0x10/0x12/BL=0x31",
@@ -22,9 +45,8 @@
     {
      "n": "0",
      "on": "is",
-     "of": [
-      "dosbox-x"
-     ],
+     "of": "dosbox-x",
+     "vs": "extra",
      "text": "Alternate function select, palette loading: says whether a default palette is loaded.",
      "quotes": [
       {
@@ -37,9 +59,8 @@
     {
      "n": "P2",
      "on": "when",
-     "of": [
-      "dosbox-x"
-     ],
+     "of": "dosbox-x",
+     "vs": "extra",
      "text": "With BH=55h and the ATI card the call leaves at once.",
      "quotes": [
       {
@@ -52,9 +73,8 @@
     {
      "n": "1",
      "on": "in AL",
-     "of": [
-      "dosbox-x"
-     ],
+     "of": "dosbox-x",
+     "vs": "extra",
      "text": "An AL above 1 returns AL = 0 and changes nothing else.",
      "quotes": [
       {
@@ -67,9 +87,8 @@
     {
      "n": "2",
      "on": "out AL",
-     "of": [
-      "dosbox-x"
-     ],
+     "of": "dosbox-x",
+     "vs": "extra",
      "text": "AL = 12h on return says the function is supported.",
      "quotes": [
       {

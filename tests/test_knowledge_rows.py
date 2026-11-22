@@ -9,12 +9,24 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from rows_world import DICTIONARIES, World, build
+from rows_world import (
+    DICTIONARIES,
+    SEARCHED,
+    World,
+    build,
+    drop_row,
+    drop_subject,
+    entry_doc,
+    result,
+    set_entry,
+    set_head,
+    set_row,
+)
 
 from scry_core.knowledge import closure, quote, rows, shared
 from scry_core.knowledge.quote import Invalid
 
-ITEMS = {"command": 14, "register": 11, "call": 32, "family": 8}
+ITEMS = {"command": 21, "register": 14, "call": 32, "family": 8}
 Cli = Callable[..., tuple[int, str, str]]
 
 
@@ -36,17 +48,6 @@ def cli(world: World, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFix
     return run
 
 
-def entry_doc(doc: dict[str, Any]) -> dict[str, Any]:
-    entry: dict[str, Any] = doc["entries"][0]
-    return entry
-
-
-def result(world: World, name: str = "command") -> closure.Report:
-    dictionary = world.dictionary(name)
-    return closure.check(dictionary, dictionary.entries[0], world.sources(), world.callees(),
-                         {e.id: e for e in dictionary.entries})
-
-
 @pytest.mark.parametrize("name", DICTIONARIES)
 def test_each_fixture_entry_closes_with_the_items_the_lister_gives(world: World, name: str) -> None:
     report = result(world, name)
@@ -66,51 +67,27 @@ def test_the_default_regions_are_the_headers_handlers_with_the_keys_own_value(
     dictionary = world.dictionary("command")
     got = dictionary.regions(dictionary.entries[0])
     assert [(r.function, r.case, r.value) for r in got] == [
-        ("chipx_device::write", ("0",), "data=224..231"), ("write_command", (), "val=224..231")]
+        ("chipx_device::write", ("0",), "data=224..231"), ("write_command", (), "val=224..231"),
+        ("", (), "")]
 
 
 def test_a_region_the_entry_names_replaces_the_headers_handler_of_that_function(
         world: World) -> None:
     def named(doc: dict[str, Any]) -> None:
         entry_doc(doc)["regions"] = [{"ref": "mame:src/devices/machine/chipx.cpp",
-                                      "function": "chipx_device::write", "case": ["1"]}]
+                                      "function": "chipx_device::write", "case": ["1"]},
+                                     *entry_doc(doc)["regions"]]
     path = world.edit("command", named)
     dictionary, faults = rows.read(path)
     assert dictionary is not None and not faults
     got = dictionary.regions(dictionary.entries[0])
     assert [(r.function, r.case) for r in got] == [("write_command", ()),
-                                                   ("chipx_device::write", ("1",))]
+                                                   ("chipx_device::write", ("1",)), ("", ())]
 
 
 # What a dictionary must keep, each refusal named.
-def drop_row(n: str) -> Callable[[dict[str, Any]], None]:
-    def change(doc: dict[str, Any]) -> None:
-        entry_doc(doc)["rows"] = [r for r in entry_doc(doc)["rows"] if r["n"] != n]
-    return change
-
-
-def drop_subject(subject: str) -> Callable[[dict[str, Any]], None]:
-    def change(doc: dict[str, Any]) -> None:
-        entry_doc(doc)["rows"] = [r for r in entry_doc(doc)["rows"] if r["on"] != subject]
-    return change
-
-
-def set_row(which: str, **fields: Any) -> Callable[[dict[str, Any]], None]:
-    def change(doc: dict[str, Any]) -> None:
-        for r in entry_doc(doc)["rows"]:
-            if r["n"] == which:
-                r.update(fields)
-    return change
-
-
-def set_entry(**fields: Any) -> Callable[[dict[str, Any]], None]:
-    return lambda doc: entry_doc(doc).update(fields)
-
-
-def set_head(**fields: Any) -> Callable[[dict[str, Any]], None]:
-    return lambda doc: doc.update(fields)
-
-
+DOCS = [{"name": "chipx.raw.txt", "variant": "chipx"},
+        {"name": "chipx.raw.txt", "variant": "chipx2"}]
 WORDS = " ".join(["word"] * 31)
 QUOTE = {"ref": "mame:src/devices/machine/chipx.cpp", "lines": "10"}
 
@@ -123,9 +100,9 @@ QUOTE = {"ref": "mame:src/devices/machine/chipx.cpp", "lines": "10"}
     (set_row("1", n="toolong7"), "1 to 6 letters or digits"),
     (set_row("2", n="1"), "two rows share a label"),
     (set_row("1", on="shouts"), "not a subject of a command"),
-    (set_row("1", of=[]), "one to three of"),
-    (set_row("1", of=["mame", "mame"]), "one to three of"),
-    (set_row("1", of=["gcc"]), "one to three of"),
+    (set_row("1", of=[]), "`of` is one party"),
+    (set_row("1", of=["doc"]), "`of` is one party"),
+    (set_row("1", of="gcc"), "`of` is one party"),
     (set_row("1", state="maybe"), "`state` is absent or one of undetermined"),
     (set_row("1", links=["a:b:c"] * 5), "at most 4 entry ids"),
     (set_row("1", quotes=[]), "1 to 6 `quotes`"),
@@ -142,7 +119,6 @@ QUOTE = {"ref": "mame:src/devices/machine/chipx.cpp", "lines": "10"}
     (set_entry(key="0xe0..0xe7"), "the key is written 0xE0..0xE7"),
     (set_entry(key="zz"), "hex"),
     (set_entry(surprise=1), "no field surprise"),
-    (set_entry(address=1), "a command has no placement field (address)"),
     (set_entry(regions=[{"ref": "mame:x.cpp"}]), "a function or a section of a list"),
     (set_entry(regions=[{"ref": "mame:x.cpp", "function": "f", "lines": "1"}]),
      "a function or a section of a list"),
@@ -162,6 +138,55 @@ QUOTE = {"ref": "mame:src/devices/machine/chipx.cpp", "lines": "10"}
     (set_head(defines={"gcc": []}), "`defines` maps a party"),
     (set_head(engine="x"), "`engine` is a list"),
     (set_head(format="scry-knowledge/1"), "is not a `scry-knowledge/2` document"),
+    # what an official entry has a row on is what the document says, not what an emulator does
+    (set_row("1", of="mame", vs="extra", quotes=[QUOTE]), "a command needs a row on is"),
+    (set_row("3", of="mame", vs="extra", quotes=[QUOTE]), "a command needs a row on write"),
+    # the verdict of an emulator beside an official row
+    (set_row("1", vs="extra"), "a `doc` row has no `vs`"),
+    (set_row("1", on="place"), "`place` is how an emulator reaches the thing"),
+    (set_row("1", variant=3), "`variant` is text"),
+    (set_row("4", vs=None), "a note of an emulator has `vs`"),
+    (set_row("4", vs="odd"), "a note of an emulator has `vs`"),
+    (set_row("5", row=""), "`differs` names the `doc` row it is about"),
+    (set_row("7", row=""), "`absent` names the `doc` row it is about"),
+    (set_row("4", row="1"), "`row` goes with `differs` or `absent`, not with place"),
+    (set_row("9", row="1"), "`row` goes with `differs` or `absent`, not with extra"),
+    (set_row("1", row="1"), "`row` goes with `differs` or `absent`, not with a doc"),
+    (set_row("4", on="is"), "`vs` place is on `place`"),
+    (set_row("4", variant="chipx"), "only a `doc` row has a `variant`"),
+    # the closures that name a row, an official line or an owner
+    (set_entry(closed=[{"ref": QUOTE["ref"], "lines": "24-27", "as": "agrees"}]),
+     "`agrees` closes lines of an emulator and names the `doc` row"),
+    (set_entry(closed=[{"ref": "datasheet:chipx.raw.txt", "lines": "10", "as": "agrees",
+                        "row": "1"}]), "`agrees` closes lines of an emulator"),
+    (set_entry(closed=[{"ref": QUOTE["ref"], "lines": "24", "as": "structure", "row": "1"}]),
+     "`row` goes with `agrees` only"),
+    (set_entry(closed=[{"ref": QUOTE["ref"], "lines": "24", "as": "layout"}]),
+     "`layout` closes a line of an official document"),
+    (set_entry(closed=[{"ref": QUOTE["ref"], "lines": "24", "as": "electrical"}]),
+     "`electrical` closes a line of an official document"),
+    (set_entry(closed=[{"ref": "datasheet:chipx.raw.txt", "lines": "14", "as": "elsewhere"}]),
+     "names the entry that owns the line"),
+    # the header: its source, its documents and the lines that are the programming model
+    (set_head(source="both"), "`source` is one of official, emulator"),
+    (set_head(documents=[{"name": "chipx.raw.txt"}]), "is `name` and `variant`"),
+    (set_head(documents=DOCS + DOCS[:1]), "names a document and variant twice"),
+    (set_head(documents=[]), "`official` names chipx.raw.txt, which `documents` does not"),
+    (set_head(official={}), "`documents` names chipx.raw.txt and `official` gives it no range"),
+    (set_head(official={"chipx.raw.txt": ["10-16", "16-17"]}), "has ranges that overlap"),
+    (set_head(official={"chipx.raw.txt": ["10-x"]}), "is a list of `a-b` ranges"),
+    (set_head(official={"chipx.raw.txt": []}), "is a list of `a-b` ranges"),
+    (set_head(official=["10-16"]), "`official` maps a document"),
+    (set_head(closed=[{"ref": QUOTE["ref"], "lines": "24", "as": "log"}]),
+     "a dictionary closes lines of an official document"),
+    # an entry or a dictionary that has no official source says where it looked
+    (set_head(source="emulator"), "an `emulator` source has no `doc` row"),
+    (set_head(source="emulator"), "an `emulator` source says where it searched"),
+    (set_entry(source="emulator", searched=SEARCHED), "an `emulator` source has no `doc` row"),
+    (set_entry(source="emulator"), "an `emulator` source says where it searched"),
+    (set_entry(source="official", searched=SEARCHED), "`searched` goes with an `emulator`"),
+    (set_entry(source="free"), "`source` is one of official, emulator"),
+    (set_head(searched="nowhere"), "`searched` lists `where` and `gave`"),
 ])
 def test_a_dictionary_that_breaks_a_limit_is_refused_by_name(
         world: World, change: Callable[[dict[str, Any]], None], fault: str) -> None:
@@ -186,17 +211,19 @@ def test_a_file_that_is_not_json_is_a_fault_and_not_a_crash(tmp_path: Path) -> N
 def test_an_entry_that_holds_a_placement_field_needs_a_row_on_place() -> None:
     def port(rows_: list[dict[str, Any]]) -> str:
         return json.dumps({"format": "scry-knowledge/2", "dictionary": "p", "kind": "port",
-                           "scope": "chipx", "covers": "c", "entries": [
+                           "scope": "chipx", "covers": "c", "source": "emulator",
+                           "searched": SEARCHED, "entries": [
                                {"key": "0x20", "name": "port", "address": 32, "rows": rows_}]})
-    mine = {"n": "1", "on": "is", "of": ["mame"], "text": "A port.", "quotes": [QUOTE]}
-    place = {**mine, "n": "2", "on": "place", "text": "At 0x20."}
+    mine = {"n": "1", "on": "is", "of": "mame", "vs": "extra", "text": "A port.",
+            "quotes": [QUOTE]}
+    place = {**mine, "n": "2", "on": "place", "vs": "place", "text": "At 0x20."}
     assert rows.parse(port([mine, place]))[1] == []
     assert any("needs a row on place" in f for f in rows.parse(port([mine]))[1])
 
 
 # What `rows check` is red on: each breaks one line the entry covers.
 def test_a_row_removed_leaves_its_item_open(world: World) -> None:
-    world.edit("command", drop_row("2"))
+    world.edit("command", drop_row("5"))
     report = result(world)
     assert report.open == 1
     assert "OPEN mame:src/devices/machine/chipx.cpp:17 branch if (m_state == state_t::READY)" \
@@ -214,14 +241,21 @@ def test_a_digest_that_no_longer_matches_makes_the_row_a_fault(world: World) -> 
     assert any("no longer gives its digest" in f for f in report.faults)
 
 
-def test_a_row_that_speaks_for_a_party_it_does_not_quote_is_a_fault(world: World) -> None:
-    world.edit("command", set_row("1", of=["mame", "dosbox-x"]))
-    assert "row 1 speaks for dosbox-x and quotes nothing of it" in result(world).faults
+MAME_LINES = {"ref": QUOTE["ref"], "lines": "10-12"}
+DOSBOX_LINE = {"ref": "dosbox-x:src/hardware/chipx.cpp", "lines": "4"}
+SHEET_LINE = {"ref": "datasheet:chipx.raw.txt", "lines": "10"}
 
 
-def test_a_row_that_quotes_a_party_it_does_not_speak_for_is_a_fault(world: World) -> None:
-    world.edit("call", set_row("1", of=["doc"]))
-    assert "row 1 quotes dosbox-x and does not speak for it" in result(world, "call").faults
+@pytest.mark.parametrize(("row", "quotes", "fault"), [
+    ("1", [MAME_LINES], "row 1 speaks for doc and quotes mame: a row quotes its own party only"),
+    ("1", [SHEET_LINE, DOSBOX_LINE], "row 1 speaks for doc and quotes dosbox-x"),
+    ("4", [DOSBOX_LINE], "row 4 speaks for mame and quotes dosbox-x"),
+    ("6", [MAME_LINES], "row 6 speaks for dosbox-x and quotes mame"),
+    ("6", [SHEET_LINE], "row 6 speaks for dosbox-x and quotes doc")])
+def test_a_row_quotes_its_own_party_only(world: World, row: str, quotes: list[dict[str, str]],
+                                         fault: str) -> None:
+    world.edit("command", set_row(row, quotes=quotes))
+    assert any(f.startswith(fault) for f in result(world).faults)
 
 
 def test_a_closure_that_closes_no_item_is_a_fault(world: World) -> None:
@@ -233,12 +267,13 @@ def test_a_closure_that_closes_no_item_is_a_fault(world: World) -> None:
         world).faults
 
 
-def test_a_closure_over_a_line_a_row_claims_closes_nothing_either(world: World) -> None:
+def test_an_item_both_claimed_and_closed_is_a_fault(world: World) -> None:
     def extra(doc: dict[str, Any]) -> None:
         entry_doc(doc)["closed"].append({"ref": "mame:src/devices/machine/chipx.cpp",
                                          "lines": "17", "as": "structure"})
     world.edit("command", extra)
-    assert any("closes no listed item" in f for f in result(world).faults)
+    assert ("mame:src/devices/machine/chipx.cpp:17 is claimed by row 5 and closed as structure: "
+            "one of the two") in result(world).faults
 
 
 def test_a_line_a_closure_covers_is_closed_with_its_reason(world: World) -> None:
@@ -272,7 +307,7 @@ def test_an_engine_function_the_header_does_not_name_is_open(world: World) -> No
 def test_an_opened_function_with_no_region_is_open(world: World) -> None:
     def without(doc: dict[str, Any]) -> None:
         entry_doc(doc)["regions"] = [r for r in entry_doc(doc)["regions"]
-                                     if r["function"] != "chipx_device::tick"]
+                                     if r.get("function") != "chipx_device::tick"]
         entry_doc(doc)["rows"] = [r for r in entry_doc(doc)["rows"] if r["n"] != "4"]
     world.edit("register", without)
     assert any("call chipx_device::tick" in f for f in result(world, "register").faults)
@@ -325,10 +360,10 @@ def test_a_run_that_examined_nothing_prints_invalid_and_exits_three(
 
 
 def test_a_check_with_an_open_item_exits_one_and_names_it(cli: Cli, world: World) -> None:
-    world.edit("command", drop_row("2"))
+    world.edit("command", drop_row("5"))
     code, out, _ = cli("check", str(world.root / "command.json"))
     assert code == 1 and "OPEN mame:src/devices/machine/chipx.cpp:17" in out
-    assert "open 1, faults" in out
+    assert "open 1, owed" in out
 
 
 def test_a_missing_function_exits_three_and_says_invalid(cli: Cli, world: World) -> None:
@@ -361,37 +396,81 @@ def test_an_entry_the_dictionary_lacks_is_invalid(cli: Cli, world: World) -> Non
 
 def test_the_entry_chosen_is_the_one_checked(cli: Cli, world: World) -> None:
     code, out, _ = cli("check", str(world.root / "command.json"), "chipx:command:0xE0..0xE7")
-    assert code == 0 and out.count("rows 6") == 1
+    assert code == 0 and out.count("rows 9") == 1
 
 
 def test_cover_prints_each_item_with_what_closes_it(cli: Cli, world: World) -> None:
     code, out, _ = cli("cover", str(world.root / "command.json"))
     assert code == 0
-    assert "17 branch  if (m_state == state_t::READY)" in out and "<- row 2" in out
+    assert "17 branch  if (m_state == state_t::READY)" in out and "<- row 5" in out
     assert "<- the key" in out and "<- callee: none:log" in out and "<- callee: engine" in out
 
 
 def test_cover_marks_an_open_item_and_exits_one(cli: Cli, world: World) -> None:
-    world.edit("command", drop_row("2"))
+    world.edit("command", drop_row("5"))
     code, out, _ = cli("cover", str(world.root / "command.json"))
     assert code == 1 and "<- OPEN" in out
 
 
-def test_review_prints_each_row_with_the_text_of_its_lines(cli: Cli, world: World) -> None:
+def test_review_prints_the_entry_in_the_order_of_a_reply(cli: Cli, world: World) -> None:
     code, out, _ = cli("review", str(world.root / "command.json"))
     assert code == 0
-    assert "row 2  when  of mame   [only]" in out
+    marks = ["official rows (the entry)", "notes of dosbox-x", "notes of mame",
+             "mame agrees with row 3", "official region whole", "notes of several emulators",
+             "  closed datasheet:chipx.raw.txt 14 as elsewhere"]
+    at = [out.index(m) for m in marks]
+    assert at == sorted(at)
+    assert out.index("  row 1  is  of doc") < out.index("  row 6  place  of dosbox-x place")
+
+
+def test_review_names_each_note_with_its_vs_and_the_row_it_is_about(cli: Cli,
+                                                                      world: World) -> None:
+    _, out, _ = cli("review", str(world.root / "command.json"))
+    assert "row 5  when  of mame differs row 2   [only]" in out
+    assert "row 7  when  of dosbox-x absent row 2   [absent: nothing observable may happen in " \
+        "its place]" in out
+    assert "row 9  write  of dosbox-x extra   [undetermined]" in out
+    assert "row 3  write  of doc  variant chipx2" in out
     assert "      17 | else if (m_state == state_t::READY)" in out
-    assert "row 6  write  of dosbox-x   [undetermined]" in out
-    assert "subjects with several parties: is, write" in out
 
 
-def test_review_names_the_subjects_several_parties_speak_on_and_the_closures(
+def test_review_shows_an_agrees_with_the_lines_the_row_and_the_rows_lines(
         cli: Cli, world: World) -> None:
+    _, out, _ = cli("review", str(world.root / "command.json"))
+    block = out.split("mame agrees with row 3: mame:src/devices/machine/chipx.cpp 24-27\n")[1]
+    assert block.startswith("            24 | if (m_isr & mask)\n")
+    assert "            27 | m_base = (level + 1) & 7;\n  row 3  write  of doc" in block
+    assert "      datasheet:chipx.raw.txt 13\n            13 | synthetic datasheet line 13" in block
+    assert "as agrees" not in out
+
+
+def test_review_shows_the_official_region_whole_for_an_extra_note(cli: Cli, world: World) -> None:
+    _, out, _ = cli("review", str(world.root / "command.json"))
+    block = out.split("official region whole, to read for each extra note (dosbox-x 9)")[1]
+    assert [f"{n} | synthetic datasheet line {n}" in block for n in range(10, 17)] == [True] * 7
+
+
+def test_review_shows_the_notes_of_two_emulators_on_one_subject_together(
+        cli: Cli, world: World) -> None:
+    _, out, _ = cli("review", str(world.root / "command.json"))
+    assert ("notes of several emulators on place, together\n"
+            "      mame 4 place: MAME takes it on a write at offset 0.\n"
+            "      dosbox-x 6 place: The port written picks the block") in out
+
+
+def test_review_says_an_entry_with_no_official_source_is_the_emulators_and_where_it_looked(
+        cli: Cli, world: World) -> None:
+    _, out, _ = cli("review", str(world.root / "family.json"))
+    assert out.splitlines()[1] == "  according to the emulator's source; no official document found"
+    assert "    searched archive-org: " in out and "official region whole" not in out
+    assert "official rows" not in out
+
+
+def test_review_names_the_closures_and_the_callee_decisions(cli: Cli, world: World) -> None:
     _, out, _ = cli("review", str(world.root / "call.json"))
-    assert "subjects with several parties: is, in DS:DX, out CF=0" in out
     assert "closed dosbox-x:src/ints/call.cpp 7 as unseen (no program can see the flag)" in out
     assert "callee decisions used:" in out and "create_file shared:dos:call:0x21/0x3C" in out
+    assert "dosbox-x agrees with row 4: dosbox-x:src/ints/call.cpp 12-14" in out
 
 
 def test_quote_prints_the_lines_with_their_digest_and_no_more(cli: Cli, world: World) -> None:
@@ -424,11 +503,11 @@ def test_stamp_writes_the_missing_digests_and_leaves_the_held_ones(cli: Cli, wor
             del r["quotes"][0]["sha"]
     path = world.edit("command", bare)
     code, out, _ = cli("quote", "--stamp", str(path), callees=False)
-    assert code == 0 and "stamped 2 quotes, 4 already held a digest" in out
+    assert code == 0 and "stamped 2 quotes, 7 already held a digest" in out
     code, out, _ = cli("check", str(path))
     assert code == 0
     code, out, _ = cli("quote", "--stamp", str(path), callees=False)
-    assert "stamped 0 quotes, 6 already held" in out
+    assert "stamped 0 quotes, 9 already held" in out
 
 
 def test_stamp_never_rewrites_a_digest_that_is_held(cli: Cli, world: World) -> None:
@@ -481,10 +560,13 @@ def test_stores_that_are_not_a_mapping_of_patterns_are_refused(world: World) -> 
 
 def test_a_handler_of_a_key_with_no_numbers_gets_no_value(tmp_path: Path) -> None:
     doc = {"format": "scry-knowledge/2", "dictionary": "d", "kind": "device", "scope": "chipx",
-           "covers": "c", "handlers": [{"ref": "mame:x.cpp", "function": "f", "value": "v"}],
+           "covers": "c", "source": "emulator", "searched": SEARCHED,
+           "handlers": [{"ref": "mame:x.cpp", "function": "f", "value": "v"}],
            "entries": [{"key": "chipx", "name": "chip", "rows": [
-               {"n": "1", "on": "is", "of": ["mame"], "text": "A chip.", "quotes": [QUOTE]},
-               {"n": "2", "on": "reset", "of": ["mame"], "text": "Resets.", "quotes": [QUOTE]}]}]}
+               {"n": "1", "on": "is", "of": "mame", "vs": "extra", "text": "A chip.",
+                "quotes": [QUOTE]},
+               {"n": "2", "on": "reset", "of": "mame", "vs": "extra", "text": "Resets.",
+                "quotes": [QUOTE]}]}]}
     dictionary, faults = rows.parse(json.dumps(doc))
     assert dictionary is not None and faults == []
     assert dictionary.regions(dictionary.entries[0])[0].value == ""
@@ -513,31 +595,33 @@ def test_migrate_without_an_output_file_prints_the_draft_and_says_the_summary_ap
 def test_a_vector_that_holds_an_address_needs_a_row_on_place() -> None:
     def vector(rows_: list[dict[str, Any]]) -> str:
         return json.dumps({"format": "scry-knowledge/2", "dictionary": "v", "kind": "vector",
-                           "scope": "chipx", "covers": "c", "entries": [
+                           "scope": "chipx", "covers": "c", "source": "emulator",
+                           "searched": SEARCHED, "entries": [
                                {"key": "0x08", "name": "tick", "address": 8, "length": 4,
                                 "rows": rows_}]})
-    mine = {"n": "1", "on": "is", "of": ["mame"], "text": "A vector.", "quotes": [QUOTE]}
+    mine = {"n": "1", "on": "is", "of": "mame", "vs": "extra", "text": "A vector.",
+            "quotes": [QUOTE]}
     assert any("needs a row on place" in f for f in rows.parse(vector([mine]))[1])
-    assert rows.parse(vector([mine, {**mine, "n": "2", "on": "place"}]))[1] == []
+    assert rows.parse(vector([mine, {**mine, "n": "2", "on": "place", "vs": "place"}]))[1] == []
 
 
 def test_review_leaves_out_what_an_entry_has_none_of(cli: Cli, world: World) -> None:
     _, out, _ = cli("review", str(world.root / "family.json"))
-    assert "subjects with several parties" not in out and "callee decisions" not in out
+    assert "several emulators" not in out and "callee decisions" not in out
 
 
 def test_a_row_with_two_quotes_over_one_line_claims_it_once(world: World) -> None:
     both = {"quotes": [{**QUOTE, "lines": "10-11", "sha": "a" * 64},
                        {**QUOTE, "lines": "11-12", "sha": "a" * 64}]}
-    world.edit("command", set_row("1", **both))
+    world.edit("command", set_row("4", **both))
     dictionary = world.dictionary("command")
     claims = closure._claims(dictionary.entries[0])
-    assert claims["mame:src/devices/machine/chipx.cpp"][11] == ["1"]
+    assert claims["mame:src/devices/machine/chipx.cpp"][11] == ["4"]
 
 
 def test_an_owner_that_has_a_row_on_the_lines_closes_it(world: World) -> None:
     world.edit("call", lambda doc: entry_doc(doc)["rows"].append(
-        {"n": "11", "on": "when", "of": ["dosbox-x"], "text": "The guard returns.",
+        {"n": "D", "on": "when", "of": "dosbox-x", "vs": "extra", "text": "The guard returns.",
          "quotes": [{"ref": "dosbox-x:src/ints/call.cpp", "lines": "43", "sha": "a" * 64}]}))
     owner = world.dictionary("call").entries[0]
     dictionary = world.dictionary("family")
@@ -547,7 +631,7 @@ def test_an_owner_that_has_a_row_on_the_lines_closes_it(world: World) -> None:
 
 
 @pytest.mark.parametrize(("change", "fault"), [
-    (set_row("1", of=[["mame"]]), "`of` is one to three"),
+    (set_row("1", of=[["mame"]]), "`of` is one party"),
     (set_entry(regions=[{"ref": 5, "function": "f"}]), "is `ref` with `function`"),
     (set_entry(regions=5), "`regions` is a list"),
     (set_entry(closed=5), "`closed` is a list"),
@@ -574,7 +658,10 @@ def test_cover_and_review_over_a_dictionary_with_no_entry_are_invalid(
 
 
 def test_an_entry_that_no_code_answers_is_a_fault(cli: Cli, world: World) -> None:
-    world.edit("command", lambda d: d.update(handlers=[]))
+    def bare(doc: dict[str, Any]) -> None:
+        doc["handlers"] = []
+        entry_doc(doc)["regions"] = []
+    world.edit("command", bare)
     code, out, _ = cli("check", str(world.root / "command.json"))
     assert "no region answers this entry" in out and code == 3
 
@@ -597,7 +684,7 @@ def replace_regions(dictionary: rows.Dictionary) -> rows.Entry:
 def test_a_function_is_held_by_the_emulator_it_belongs_to(world: World) -> None:
     def other(doc: dict[str, Any]) -> None:
         for r in entry_doc(doc)["regions"]:
-            if r["function"] == "chipx_device::tick":
+            if r.get("function") == "chipx_device::tick":
                 r["ref"] = "dosbox-x:src/hardware/chipx.cpp"
     path = world.edit("register", other)
     dictionary, _ = rows.read(path)
@@ -618,13 +705,14 @@ def rows_main_without_mame(world: World) -> tuple[int, str, str]:
     err = io.StringIO()
     keep, sys.stderr = sys.stderr, err
     try:
-        code = rows.main(["check", str(world.root / "command.json")])
+        code = rows.main(["--datasheets", str(world.datasheets), "check",
+                          str(world.root / "command.json")])
     finally:
         sys.stderr = keep
     return code, "", err.getvalue()
 
 
 def test_a_sweeping_word_next_to_punctuation_is_still_marked(cli: Cli, world: World) -> None:
-    world.edit("command", set_row("2", text="MAME accepts it always, and never twice."))
+    world.edit("command", set_row("5", text="MAME accepts it always, and never twice."))
     _, out, _ = cli("review", str(world.root / "command.json"))
-    assert "row 2  when  of mame   [always, never]" in out
+    assert "row 5  when  of mame differs row 2   [always, never]" in out

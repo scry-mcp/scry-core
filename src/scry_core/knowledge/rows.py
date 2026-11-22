@@ -1,10 +1,12 @@
 """The format `scry-knowledge/2`: an entry as rows that carry their evidence, and the command
 `rows` (`python -m scry_core.knowledge.rows`) that stamps, lists, checks and reads them.
 
-A dictionary file holds a header (what it covers, the code that answers its keys, what the build
-defines, the engine functions it does not cover) and its entries. An entry is its `key`, `name`
-and `aliases`, the `regions` of code that answer it, its `rows` and the items it `closed`. A row
-is one fact, of named parties, with the lines that say it; a quote is a location and a digest
+A dictionary file holds a header (its source, the official documents and the lines of them that
+are the programming model, what it covers, the code that answers its keys, what the build defines,
+the engine functions it does not cover) and its entries. An entry is its `key`, `name` and
+`aliases`, the `regions` that answer it (the official source's and each emulator's code), its
+`rows` and the items it `closed`. A `doc` row states what the official source says; a row of an
+emulator is a note beside it (`vs`). A quote is a location and a digest
 (`scry_core.knowledge.quote`), so no file here holds source text.
 """
 
@@ -23,40 +25,59 @@ from scry_core.knowledge import keys
 from scry_core.knowledge.callees import Callees
 from scry_core.knowledge.callees import parse as parse_callees
 from scry_core.knowledge.entry import ALIAS_MAX, ALIASES_MAX, NAME_MAX, entry_id
-from scry_core.knowledge.quote import QUOTE_LINES, Invalid, Quote, Sources, span, split_ref
+from scry_core.knowledge.quote import (
+    PARTY,
+    QUOTE_LINES,
+    Invalid,
+    Quote,
+    Sources,
+    span,
+    split_ref,
+)
 
 FORMAT = "scry-knowledge/2"
 PARTIES = ("doc", "dosbox-x", "mame")
+EMULATORS = ("dosbox-x", "mame")
+SOURCES = ("official", "emulator")
+VERDICTS = ("differs", "absent")
+VS = (*VERDICTS, "extra", "place")
+#: The places a dictionary of an `emulator` source says it looked for an official document.
+SEARCH_PLACES = ("mame-header", "maker", "bitsavers", "archive-org", "index")
+SEARCH_WORDS = 30
 TEXT_WORDS, QUOTES_PER_ROW, LINKS_PER_ROW, UNSEEN_WORDS = 30, 6, 4, 16
 CLOSED_AS = ("log", "structure", "decode", "key", "build", "dead", "see-also", "version",
-             "unseen", "preamble", "parent")
-OWNED = ("preamble", "parent")
+             "unseen", "preamble", "parent", "agrees", "layout", "electrical", "elsewhere")
+OWNED = ("preamble", "parent", "elsewhere")
+#: Reasons that close a line of an official document, and the one that closes an emulator's.
+OFFICIAL_ONLY = ("layout", "electrical", "elsewhere")
+DOCUMENT_REASONS = ("key", "see-also", "version", *OFFICIAL_ONLY)
 PLACEMENT = ("address", "length", "device", "ports", "irq", "dma", "contains", "classes",
              "handlers")
 #: Words a row's lines rarely support and a reader must look at (question 1 of the reader).
 SWEEPING = ("always", "never", "only", "every")
 STATES = ("undetermined",)
 
-_HEADER_FIELDS = {"format", "dictionary", "kind", "scope", "covers", "handlers", "defines",
-                  "stores", "engine", "entries"}
-_ENTRY_FIELDS = {"key", "name", "aliases", "access", "regions", "rows", "closed", *PLACEMENT}
-_ROW_FIELDS = {"n", "on", "of", "text", "quotes", "state", "links"}
+_HEADER_FIELDS = {"format", "dictionary", "kind", "scope", "covers", "source", "documents",
+                  "official", "searched", "closed", "handlers", "defines", "stores", "engine",
+                  "entries"}
+_ENTRY_FIELDS = {"key", "name", "aliases", "access", "source", "searched", "regions", "rows",
+                 "closed", *PLACEMENT}
+_ROW_FIELDS = {"n", "on", "of", "vs", "row", "variant", "text", "quotes", "state", "links"}
 _REGION_FIELDS = {"ref", "function", "case", "value", "preamble", "lines"}
-_CLOSED_FIELDS = {"ref", "lines", "as", "reason", "owner"}
+_CLOSED_FIELDS = {"ref", "lines", "as", "reason", "owner", "row"}
 _LABEL = re.compile(r"[A-Za-z0-9]{1,6}")
 _BITS = r"bits \d+-\d+(?: = \S+)?|bit \d+|value \S+"
-_PLACE = r"is|place|when|order"
 SUBJECTS: dict[str, str] = {
-    "call": r"is|when|does|in \S+|out \S+",
-    "register": rf"is|when|read|write|reset|order|{_BITS}",
-    "command": rf"is|when|write|order|{_BITS}",
-    "device": rf"{_PLACE}|reset|detect|type \S+",
+    "call": r"is|place|when|does|in \S+|out \S+",
+    "register": rf"is|place|when|read|write|reset|order|{_BITS}",
+    "command": rf"is|place|when|write|order|{_BITS}",
+    "device": r"is|place|when|order|reset|detect|type \S+",
     "port": rf"is|place|read|write|{_BITS}",
     "vector": r"is|when|does|place",
     "irq": r"is|place|when",
     "memory": rf"is|place|{_BITS}",
-    "error": r"is",
-    "input": r"is|value \S+",
+    "error": r"is|place",
+    "input": r"is|place|value \S+",
 }
 #: Subjects an entry of the kind must have a row on, each a set of which one is enough.
 REQUIRED: dict[str, tuple[tuple[str, ...], ...]] = {
@@ -77,9 +98,12 @@ REQUIRED: dict[str, tuple[tuple[str, ...], ...]] = {
 class Row:
     n: str
     on: str
-    of: tuple[str, ...]
+    of: str
     text: str
     quotes: tuple[Quote, ...]
+    vs: str = ""
+    row: str = ""
+    variant: str = ""
     state: str = ""
     links: tuple[str, ...] = ()
 
@@ -104,6 +128,11 @@ class Closure:
     reason: str
     why: str = ""
     owner: str = ""
+    row: str = ""
+
+    @property
+    def party(self) -> str:
+        return PARTY[split_ref(self.ref)[0]]
 
     @property
     def first(self) -> int:
@@ -124,6 +153,25 @@ class Entry:
     rows: tuple[Row, ...]
     closed: tuple[Closure, ...]
     placed: bool = False
+    source: str = ""
+    searched: tuple[Search, ...] = ()
+
+
+@dataclass(frozen=True)
+class Document:
+    """A row of the repository's document table that a dictionary relies on, and the part
+    (`variant`) of the family it describes."""
+
+    name: str
+    variant: str
+
+
+@dataclass(frozen=True)
+class Search:
+    """One place looked in for an official document, and what it gave."""
+
+    where: str
+    gave: str
 
 
 @dataclass(frozen=True)
@@ -132,6 +180,11 @@ class Header:
     kind: str
     scope: str
     covers: str
+    source: str
+    documents: tuple[Document, ...]
+    official: Mapping[str, tuple[str, ...]]
+    searched: tuple[Search, ...]
+    closed: tuple[Closure, ...]
     handlers: tuple[Region, ...]
     defines: Mapping[str, tuple[str, ...]]
     stores: Mapping[str, str]
@@ -142,6 +195,18 @@ class Header:
 class Dictionary:
     header: Header
     entries: tuple[Entry, ...]
+
+    @property
+    def emulators(self) -> tuple[str, ...]:
+        """The emulators the dictionary has code of, in the header's handlers or in an entry's
+        regions: each owes a verdict on every official row an entry states."""
+        refs = [r.ref for r in self.header.handlers]
+        refs += [r.ref for e in self.entries for r in e.regions]
+        found = {PARTY[split_ref(ref)[0]] for ref in refs}
+        return tuple(p for p in EMULATORS if p in found)
+
+    def source_of(self, entry: Entry) -> str:
+        return entry.source or self.header.source
 
     def regions(self, entry: Entry) -> tuple[Region, ...]:
         """The code that answers `entry`: the header's handlers, each with the key's own value
@@ -208,6 +273,31 @@ def _quote(raw: object, where: str, faults: list[str]) -> Quote | None:
     return Quote(raw["ref"], raw["lines"], str(raw.get("sha", "")))
 
 
+def _note(where: str, of: str, on: str, vs: object, about: object, variant: object,
+          faults: list[str]) -> None:
+    """What `vs`, `row` and `variant` are on a row of `of`."""
+    if of == "doc":
+        if vs != "":
+            faults.append(f"{where}: a `doc` row has no `vs`: only a note of an emulator has one")
+        if on == "place":
+            faults.append(f"{where}: `place` is how an emulator reaches the thing; what the "
+                          "document says of it is `is`")
+        if not isinstance(variant, str):
+            faults.append(f"{where}: `variant` is text")
+    elif variant != "":
+        faults.append(f"{where}: only a `doc` row has a `variant`")
+    if of in EMULATORS:
+        if vs not in VS:
+            faults.append(f"{where}: a note of an emulator has `vs`, one of {', '.join(VS)}")
+        elif vs == "place" and on != "place":
+            faults.append(f"{where}: `vs` place is on `place`")
+    if vs in VERDICTS:
+        if not (isinstance(about, str) and about):
+            faults.append(f"{where}: `{vs}` names the `doc` row it is about, as `row`")
+    elif about != "":
+        faults.append(f"{where}: `row` goes with `differs` or `absent`, not with {vs or 'a doc'}")
+
+
 def _row(raw: object, kind: str, where: str, faults: list[str]) -> Row | None:
     if not (isinstance(raw, dict) and set(raw) <= _ROW_FIELDS):
         faults.append(f"{where} is an object of {', '.join(sorted(_ROW_FIELDS))}")
@@ -224,10 +314,11 @@ def _row(raw: object, kind: str, where: str, faults: list[str]) -> Row | None:
     elif len(text.split()) > TEXT_WORDS:
         faults.append(f"{where}: `text` is {len(text.split())} words, over {TEXT_WORDS}")
     of = raw.get("of")
-    if not (isinstance(of, list) and of and all(isinstance(p, str) and p in PARTIES for p in of)
-            and len(set(of)) == len(of)):
-        faults.append(f"{where}: `of` is one to three of {', '.join(PARTIES)}")
-        of = []
+    if not (isinstance(of, str) and of in PARTIES):
+        faults.append(f"{where}: `of` is one party of {', '.join(PARTIES)}")
+        of = ""
+    vs, about, variant = raw.get("vs", ""), raw.get("row", ""), raw.get("variant", "")
+    _note(where, of, str(on), vs, about, variant, faults)
     state = raw.get("state", "")
     if state not in ("", *STATES):
         faults.append(f"{where}: `state` is absent or one of {', '.join(STATES)}")
@@ -245,7 +336,8 @@ def _row(raw: object, kind: str, where: str, faults: list[str]) -> Row | None:
         quotes = [q for q in got if q]
     if len(faults) != mine:
         return None
-    return Row(str(n), str(on), tuple(of), str(text), tuple(quotes), str(state), tuple(links))
+    return Row(str(n), str(on), str(of), str(text), tuple(quotes), str(vs), str(about),
+               str(variant), str(state), tuple(links))
 
 
 def _closure(raw: object, where: str, faults: list[str]) -> Closure | None:
@@ -265,14 +357,29 @@ def _closure(raw: object, where: str, faults: list[str]) -> Closure | None:
         faults.append(f"{where}: `as` {reason!r} is no reason of the set: "
                       f"{', '.join(CLOSED_AS)}")
         return None
-    why, owner = raw.get("reason", ""), raw.get("owner", "")
+    why, owner, row = raw.get("reason", ""), raw.get("owner", ""), raw.get("row", "")
+    party = PARTY[split_ref(raw["ref"])[0]]
+    if reason == "agrees" and not (party in EMULATORS and isinstance(row, str) and row):
+        faults.append(f"{where}: `agrees` closes lines of an emulator and names the `doc` row "
+                      "they do, as `row`")
+        return None
+    if reason != "agrees" and row != "":
+        faults.append(f"{where}: `row` goes with `agrees` only")
+        return None
+    if party == "doc" and reason not in DOCUMENT_REASONS:
+        faults.append(f"{where}: `{reason}` is about an emulator's code; a line of an official "
+                      f"document is closed as {', '.join(DOCUMENT_REASONS)}")
+        return None
+    if reason in OFFICIAL_ONLY and party != "doc":
+        faults.append(f"{where}: `{reason}` closes a line of an official document")
+        return None
     if reason == "unseen" and not (isinstance(why, str) and 0 < len(why.split()) <= UNSEEN_WORDS):
         faults.append(f"{where}: `unseen` needs a `reason` of at most {UNSEEN_WORDS} words")
         return None
     if reason in OWNED and not (isinstance(owner, str) and owner):
         faults.append(f"{where}: `{reason}` names the entry that owns the line, as `owner`")
         return None
-    return Closure(raw["ref"], raw["lines"], reason, str(why), str(owner))
+    return Closure(raw["ref"], raw["lines"], reason, str(why), str(owner), str(row))
 
 
 def _entry(raw: object, header: Header, where: str, faults: list[str]) -> Entry | None:
@@ -317,23 +424,110 @@ def _entry(raw: object, header: Header, where: str, faults: list[str]) -> Entry 
     if len(set(labels)) != len(labels):
         faults.append(f"{where}: two rows share a label")
     placed = any(f in raw for f in PLACEMENT)
-    if placed and not re.fullmatch(SUBJECTS[header.kind], "place"):
-        faults.append(f"{where}: a {header.kind} has no placement field "
-                      f"({', '.join(f for f in PLACEMENT if f in raw)})")
-    _required(made, header.kind, ident, placed, faults)
+    source = raw.get("source", "")
+    if source not in ("", *SOURCES):
+        faults.append(f"{where}: `source` is one of {', '.join(SOURCES)}")
+        source = ""
+    searched = _searched(raw, where, faults)
+    effective = source or header.source
+    if effective == "emulator":
+        _emulator_entry(made, where, faults)
+        if not (searched or header.searched):
+            faults.append(f"{where}: an `emulator` source says where it searched, as `searched`")
+    elif searched:
+        faults.append(f"{where}: `searched` goes with an `emulator` source")
+    _required(made, header.kind, ident, placed, effective, faults)
     return Entry(ident, key, str(name), tuple(aliases), tuple(r for r in regions if r),
-                 tuple(made), tuple(c for c in closed if c), placed)
+                 tuple(made), tuple(c for c in closed if c), placed, str(source), searched)
 
 
-def _required(rows: list[Row], kind: str, ident: str, placed: bool,
+def _emulator_entry(rows: list[Row], where: str, faults: list[str]) -> None:
+    """An entry no official document answers has the emulator's rows only, as notes of what it
+    does where the document is silent."""
+    for r in rows:
+        if r.of == "doc":
+            faults.append(f"{where}, row {r.n}: an `emulator` source has no `doc` row")
+        elif r.vs not in ("extra", "place"):
+            faults.append(f"{where}, row {r.n}: with no official document a note is `extra` or "
+                          "`place`")
+
+
+def _required(rows: list[Row], kind: str, ident: str, placed: bool, source: str,
               faults: list[str]) -> None:
-    subjects = {r.on.split(" ")[0] for r in rows}
+    """The subjects a row of the entry is on: what the document says, or in an `emulator` entry
+    what the emulator does; a `place` is the emulator's in either."""
+    stated = [r for r in rows if r.of == "doc" or source == "emulator"]
+    subjects = {r.on.split(" ")[0] for r in stated}
+    places = {r.on for r in rows}
     wanted = list(REQUIRED[kind])
-    if placed and ("place",) not in wanted and re.fullmatch(SUBJECTS[kind], "place"):
+    if placed and ("place",) not in wanted:
         wanted.append(("place",))
     for options in wanted:
-        if not subjects & set(options):
+        if not (subjects | (places if "place" in options else set())) & set(options):
             faults.append(f"{ident}: a {kind} needs a row on {' or '.join(options)}")
+
+
+def _searched(raw: dict[str, Any], where: str, faults: list[str]) -> tuple[Search, ...]:
+    """Each place of the fixed list with what it gave, or no `searched` at all."""
+    got = raw.get("searched")
+    if got is None:
+        return ()
+    ok = isinstance(got, list) and all(
+        isinstance(g, dict) and set(g) == {"where", "gave"} and isinstance(g["where"], str)
+        and isinstance(g["gave"], str) for g in got)
+    if not ok:
+        faults.append(f"{where}: `searched` lists `where` and `gave`")
+        return ()
+    made = tuple(Search(g["where"], g["gave"]) for g in got)
+    if sorted(m.where for m in made) != sorted(SEARCH_PLACES):
+        faults.append(f"{where}: `searched` has each place once: {', '.join(SEARCH_PLACES)}")
+    for m in made:
+        if not (0 < len(m.gave.split()) <= SEARCH_WORDS and m.gave.isascii()
+                and m.gave.isprintable()):
+            faults.append(f"{where}: what `{m.where}` gave is printable ASCII of 1 to "
+                          f"{SEARCH_WORDS} words")
+    return made
+
+
+def _documents(doc: dict[str, Any], faults: list[str]) -> tuple[Document, ...]:
+    listed = _listed(doc, "documents", "header", faults)
+    made = []
+    for i, raw in enumerate(listed):
+        if not (isinstance(raw, dict) and set(raw) == {"name", "variant"}
+                and all(isinstance(v, str) and v for v in raw.values())):
+            faults.append(f"documents {i + 1} is `name` and `variant`")
+        else:
+            made.append(Document(raw["name"], raw["variant"]))
+    if len(set(made)) != len(made):
+        faults.append("`documents` names a document and variant twice")
+    return tuple(made)
+
+
+def _official(doc: dict[str, Any], documents: tuple[Document, ...],
+              faults: list[str]) -> dict[str, tuple[str, ...]]:
+    """The lines of each document's capture that are the programming model."""
+    got = doc.get("official", {})
+    if not isinstance(got, dict):
+        faults.append("`official` maps a document to the line ranges of its programming model")
+        return {}
+    made: dict[str, tuple[str, ...]] = {}
+    named = {d.name for d in documents}
+    for name, ranges in got.items():
+        try:
+            if not (isinstance(ranges, list) and ranges):
+                raise ValueError("a list of ranges")
+            held = sorted(span(r) for r in ranges)
+        except (ValueError, TypeError):
+            faults.append(f"`official` of {name} is a list of `a-b` ranges")
+            continue
+        if any(b[0] <= a[1] for a, b in zip(held, held[1:], strict=False)):
+            faults.append(f"`official` of {name} has ranges that overlap")
+        if name not in named:
+            faults.append(f"`official` names {name}, which `documents` does not")
+        made[name] = tuple(ranges)
+    for name in sorted(named - set(made)):
+        faults.append(f"`documents` names {name} and `official` gives it no range")
+    return made
 
 
 def _header(doc: dict[str, Any], faults: list[str]) -> Header | None:
@@ -348,6 +542,19 @@ def _header(doc: dict[str, Any], faults: list[str]) -> Header | None:
             and isinstance(doc.get("covers"), str)):
         faults.append("`dictionary`, `scope` and `covers` are text")
         return None
+    source = doc.get("source")
+    if source not in SOURCES:
+        faults.append(f"`source` is one of {', '.join(SOURCES)}")
+        source = "official"
+    documents = _documents(doc, faults)
+    official = _official(doc, documents, faults)
+    searched = _searched(doc, "header", faults)
+    closed = tuple(c for i, raw in enumerate(_listed(doc, "closed", "header", faults))
+                   if (c := _closure(raw, f"header, closed {i + 1}", faults)))
+    for c in closed:
+        if c.party != "doc":
+            faults.append(f"header, closed {c.ref}:{c.lines}: a dictionary closes lines of an "
+                          "official document")
     handlers = [_region(h, f"handler {i + 1}", faults)
                 for i, h in enumerate(_listed(doc, "handlers", "header", faults))]
     defines, stores = doc.get("defines", {}), doc.get("stores", {})
@@ -368,8 +575,8 @@ def _header(doc: dict[str, Any], faults: list[str]) -> Header | None:
     if not (isinstance(engine, list) and all(isinstance(e, str) for e in engine)):
         faults.append("`engine` is a list of function names")
         engine = []
-    return Header(doc["dictionary"], kind, scope, doc["covers"],
-                  tuple(h for h in handlers if h),
+    return Header(doc["dictionary"], kind, scope, doc["covers"], source, documents, official,
+                  searched, closed, tuple(h for h in handlers if h),
                   {k: tuple(v) for k, v in defines.items()}, dict(stores), tuple(engine))
 
 
@@ -483,12 +690,13 @@ def _run_cover(got: argparse.Namespace) -> int:
 
 
 def _run_check(got: argparse.Namespace) -> int:
-    from scry_core.knowledge import closure
+    from scry_core.knowledge import closure, official
     dictionary, faults = _with_dictionary(got)
     sources, table = _sources(got), _callees(got)
     known = {e.id: e for e in dictionary.entries}
     reports = [closure.check(dictionary, e, sources, table, known)
                for e in _chosen(dictionary, got.entries)]
+    declared = official.check(dictionary, sources, partial=got.partial)
     for fault in faults:
         print(f"- {fault}")
     for report in reports:
@@ -496,8 +704,12 @@ def _run_check(got: argparse.Namespace) -> int:
     items = sum(len(r.results) for r in reports)
     if not items:
         raise Invalid("nothing was examined: no item was listed for the entries chosen")
+    if dictionary.header.official:
+        print(f"official: {declared.summary()}")
+    for fault in declared.faults:
+        print(f"  - {fault}")
     open_ = sum(r.open for r in reports)
-    bad = len(faults) + sum(len(r.faults) for r in reports)
+    bad = len(faults) + sum(len(r.faults) for r in reports) + len(declared.faults)
     print(f"TOTAL entries {len(reports)}, items {items}, open {open_}, faults {bad}")
     return 1 if bad else 0
 
@@ -514,7 +726,7 @@ def _run_review(got: argparse.Namespace) -> int:
         print(f"- {fault}")
     for entry in chosen:
         report = closure.check(dictionary, entry, sources, table, known)
-        print(review.entry_text(entry, report, sources))
+        print(review.entry_text(dictionary, entry, report, sources))
     return 1 if faults else 0
 
 
@@ -560,6 +772,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         if name == "migrate":
             sub.add_argument("--evidence", type=Path, required=True)
             sub.add_argument("--out", type=Path)
+        if name == "check":
+            sub.add_argument("--partial", action="store_true", help="the dictionary is not "
+                             "whole: count the official lines no entry holds instead of failing "
+                             "on them")
     got = ask.parse_args(argv)
     run = {"quote": _run_quote, "cover": _run_cover, "check": _run_check,
            "review": _run_review, "migrate": _run_migrate}[got.command]
