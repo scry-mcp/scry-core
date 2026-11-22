@@ -9,7 +9,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from rows_world import FIXTURES, World, build
+from rows_world import FIXTURES, World, build, datasheet
 
 from scry_core.knowledge import quote
 from scry_core.knowledge.quote import Invalid, Quote, Sources
@@ -100,10 +100,9 @@ def test_the_list_is_read_from_its_archives_too(world: World, tmp_path: Path) ->
 
 def test_a_capture_that_is_not_the_one_the_table_records_is_invalid(world: World) -> None:
     (world.datasheets / "chipx.raw.txt").write_text("another capture\n", encoding="utf-8")
-    with pytest.raises(Invalid, match="not the capture"):
+    with pytest.raises(Invalid, match=r"not the capture the table records.*pdftotext -raw 0\.0"):
         Sources(datasheets=world.datasheets, table={
-            "chipx.raw.txt": quote.Datasheet("t", "", "0" * 64, "1" * 64)}
-        ).lines("datasheet:chipx.raw.txt")
+            "chipx.raw.txt": datasheet("1" * 64)}).lines("datasheet:chipx.raw.txt")
 
 
 def test_a_datasheet_outside_the_table_is_invalid(world: World) -> None:
@@ -170,17 +169,40 @@ def test_a_quote_outside_the_file_is_a_fault_and_not_a_crash(world: World) -> No
 def test_the_datasheet_table_of_the_package_holds_the_four_datasheets_by_identity() -> None:
     table = quote.default_datasheets()
     assert sorted(table) == ["8237A.raw.txt", "8254.raw.txt", "8259A.raw.txt", "z80cpu_um.raw.txt"]
-    assert all(d.url.startswith("http") and len(d.pdf) == len(d.capture) == 64
+    assert all(d.url.startswith("http") and d.archive.startswith("http") and d.url != d.archive
+               and len(d.pdf) == len(d.capture) == 64 and d.tool and d.tool_version
+               and d.kind in quote.DOCUMENT_CLASSES and d.text in quote.DOCUMENT_TEXTS
                for d in table.values())
 
 
-@pytest.mark.parametrize("doc", [
-    "not json", "[]", '{"format": "scry-knowledge-datasheets/1"}',
-    '{"format": "scry-knowledge-datasheets/1", "datasheets": {"a": {"title": "t"}}}',
-    '{"format": "scry-knowledge-datasheets/1", "datasheets": {"a": {"title": "t", "url": "u", '
-    '"pdf": "xx", "capture": "yy"}}}', '{"format": "other"}'])
-def test_a_datasheet_table_that_is_not_one_is_refused(doc: str) -> None:
-    with pytest.raises(ValueError, match="datasheets"):
+def held(**changes: str) -> str:
+    one = {"title": "t", "url": "http://a", "archive": "http://b", "class": "maker-datasheet",
+           "text": "layer", "tool": "pdftotext -raw", "tool_version": "1", "pdf": "0" * 64,
+           "capture": "1" * 64, **changes}
+    return json.dumps({"format": "scry-knowledge-datasheets/1", "datasheets": {"a": one}})
+
+
+@pytest.mark.parametrize(("doc", "fault"), [
+    ("not json", "not JSON"), ("[]", "is not a"), ('{"format": "other"}', "is not a"),
+    ('{"format": "scry-knowledge-datasheets/1"}', "non-empty object"),
+    ('{"format": "scry-knowledge-datasheets/1", "datasheets": {"a": {"title": "t"}}}',
+     "all text"),
+    (held(pdf="xx"), "64-digit"),
+    (held(**{"class": "blog"}), "`class` is one of"),
+    (held(text="scan"), "`text` is one of"),
+    (held(archive="http://a"), "a different `archive` URL"),
+    (held(archive="a copy"), "a different `archive` URL"),
+    (held(tool=""), "all text")])
+def test_a_datasheet_table_that_is_not_one_is_refused(doc: str, fault: str) -> None:
+    with pytest.raises(ValueError, match=fault):
+        quote.parse_datasheets(doc)
+
+
+def test_the_same_document_held_twice_is_refused() -> None:
+    one = json.loads(held())["datasheets"]["a"]
+    doc = json.dumps({"format": "scry-knowledge-datasheets/1",
+                      "datasheets": {"a": one, "b": {**one, "capture": "2" * 64}}})
+    with pytest.raises(ValueError, match="one document"):
         quote.parse_datasheets(doc)
 
 

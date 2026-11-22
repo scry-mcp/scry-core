@@ -24,6 +24,8 @@ from scry_core.knowledge.shared import PINS
 PARTY = {"mame": "mame", "dosbox-x": "dosbox-x", "rbil61": "doc", "datasheet": "doc"}
 QUOTE_LINES = 12
 DATASHEETS_FORMAT = "scry-knowledge-datasheets/1"
+DOCUMENT_CLASSES = ("maker-datasheet", "maker-guide", "second-source")
+DOCUMENT_TEXTS = ("layer", "ocr")
 _SPAN = re.compile(r"([1-9][0-9]*)(?:-([1-9][0-9]*))?")
 _SHA = re.compile(r"[0-9a-f]{64}")
 
@@ -94,18 +96,46 @@ class Quote:
 
 @dataclass(frozen=True)
 class Datasheet:
-    """A datasheet held by identity: where it is, and the digest of the PDF and of the one text
-    capture a quote's lines are numbered in (`pdftotext -raw`, which keeps a two-column page in
-    reading order where `-layout` puts both columns on one line)."""
+    """An official document held by identity: where it is (its URL and an archive copy), what it
+    is (`kind`: the maker's datasheet or guide, or a second source's datasheet; `text`: a text
+    layer or an OCR), and the digest of the PDF and of the one text capture a quote's lines are
+    numbered in, with the tool and version that made it (`pdftotext -raw` keeps a two-column
+    page in reading order where `-layout` puts both columns on one line)."""
 
     title: str
     url: str
+    archive: str
+    kind: str
+    text: str
+    tool: str
+    tool_version: str
     pdf: str
     capture: str
 
 
+_DATASHEET_FIELDS = {"title", "url", "archive", "class", "text", "tool", "tool_version", "pdf",
+                     "capture"}
+
+
+def _datasheet(name: str, raw: object, where: str) -> Datasheet:
+    if not (isinstance(raw, dict) and set(raw) == _DATASHEET_FIELDS
+            and all(isinstance(v, str) and v for v in raw.values())):
+        raise ValueError(f"{where}: {name!r} is {', '.join(sorted(_DATASHEET_FIELDS))}, all text")
+    if not (_SHA.fullmatch(raw["pdf"]) and _SHA.fullmatch(raw["capture"])):
+        raise ValueError(f"{where}: {name!r} holds the 64-digit `pdf` and `capture` digests")
+    if raw["class"] not in DOCUMENT_CLASSES:
+        raise ValueError(f"{where}: {name!r} `class` is one of {', '.join(DOCUMENT_CLASSES)}")
+    if raw["text"] not in DOCUMENT_TEXTS:
+        raise ValueError(f"{where}: {name!r} `text` is one of {', '.join(DOCUMENT_TEXTS)}")
+    if not (raw["url"].startswith("http") and raw["archive"].startswith("http")
+            and raw["url"] != raw["archive"]):
+        raise ValueError(f"{where}: {name!r} has a `url` and a different `archive` URL")
+    return Datasheet(raw["title"], raw["url"], raw["archive"], raw["class"], raw["text"],
+                     raw["tool"], raw["tool_version"], raw["pdf"], raw["capture"])
+
+
 def parse_datasheets(text: str, where: str = "datasheets") -> dict[str, Datasheet]:
-    """The datasheet table, by capture file name, or `ValueError` naming what is wrong."""
+    """The document table, by capture file name, or `ValueError` naming what is wrong."""
     try:
         doc = json.loads(text)
     except json.JSONDecodeError as bad:
@@ -115,14 +145,13 @@ def parse_datasheets(text: str, where: str = "datasheets") -> dict[str, Datashee
     table = doc.get("datasheets")
     if not isinstance(table, dict) or not table:
         raise ValueError(f"{where}: `datasheets` is a non-empty object")
-    made: dict[str, Datasheet] = {}
-    for name, raw in table.items():
-        if not (isinstance(raw, dict) and set(raw) == {"title", "url", "pdf", "capture"}
-                and all(isinstance(v, str) for v in raw.values())
-                and _SHA.fullmatch(raw["pdf"]) and _SHA.fullmatch(raw["capture"])):
-            raise ValueError(f"{where}: {name!r} is `title`, `url`, and the 64-digit `pdf` and "
-                             "`capture` digests")
-        made[name] = Datasheet(raw["title"], raw["url"], raw["pdf"], raw["capture"])
+    made = {name: _datasheet(name, raw, where) for name, raw in table.items()}
+    seen: dict[str, str] = {}
+    for name, held in made.items():
+        for identity in (held.title, held.url, held.pdf):
+            if seen.setdefault(identity, name) != name:
+                raise ValueError(f"{where}: {name!r} and {seen[identity]!r} are one document "
+                                 f"({identity}) held twice")
     return made
 
 
@@ -201,11 +230,12 @@ class Sources:
                           f"{', '.join(sorted(self.table))}")
         path = root / file
         if not path.is_file():
-            raise Invalid(f"{path} is not a file: rebuild the capture with `pdftotext -raw`")
+            raise Invalid(f"{path} is not a file: rebuild the capture with {known.tool} "
+                          f"{known.tool_version}")
         data = path.read_bytes()
         if hashlib.sha256(data).hexdigest() != known.capture:
-            raise Invalid(f"{path} is not the capture the table records for {file} "
-                          "(`pdftotext -raw` of the PDF it names)")
+            raise Invalid(f"{path} is not the capture the table records for {file}: the "
+                          f"{known.tool} {known.tool_version} text of the PDF it names")
         return data.decode("utf-8", errors="replace")
 
     def read(self, quote: Quote) -> list[str]:
