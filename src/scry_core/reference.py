@@ -323,6 +323,9 @@ def drift(reg: Registry) -> list[str]:
         first = path.read_text(encoding="utf-8").split("\n", 1)[0]
         if want.family and first.startswith("# ") and first != want.title:
             found.append(f"{rel}: titled {first!r}, not {want.title!r}")
+        found += [f"{rel}: no blank line between the end of `{s.name}` and the next block, so "
+                  "the next heading shows as raw text" for s in segments[:-1]
+                  if not s.after.endswith("\n\n")]
         held = {s.name: s.block for s in segments}
         for name in named:
             if name not in held:

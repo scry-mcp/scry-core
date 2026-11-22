@@ -412,6 +412,17 @@ def test_a_page_whose_blocks_touch_has_a_blank_line_between_them_once_written(
     assert end_marker("peek") + "\n\n" + begin_marker("poke") in page.read_text(encoding="utf-8")
 
 
+def test_a_page_whose_blocks_touch_is_drift_naming_the_block_that_lacks_its_blank_line(
+        tmp_path: Path) -> None:
+    reg = _written(_one_page(tmp_path))
+    assert reference.drift(reg) == []
+    page = tmp_path / "docs/reference/read.md"
+    page.write_text(page.read_text(encoding="utf-8").replace(
+        end_marker("peek") + "\n\n", end_marker("peek") + "\n"), encoding="utf-8")
+    found = reference.drift(reg)
+    assert len(found) == 1 and "docs/reference/read.md" in found[0] and "`peek`" in found[0], found
+
+
 def test_a_block_out_of_the_roster_s_order_is_drift(tmp_path: Path) -> None:
     reg = _written(_one_page(tmp_path))
     page = tmp_path / "docs/reference/read.md"
