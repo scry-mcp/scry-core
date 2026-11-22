@@ -298,14 +298,35 @@ public source each fact was checked against. A server ships dictionaries and one
   miss of one (`6809` for `m6809`) is read as it, with a `note` saying so. `knowledge_tool.judge`
   goes in the pre-gate table.
 - **Rows (`scry-knowledge/2`, beside `/1`, loaded by nothing yet)**: an entry as rows that carry
-  their evidence, written and checked with `python -m scry_core.knowledge.rows`. A row is one
-  fact (`on`: its subject, `of`: `doc`, `dosbox-x` or `mame`, one sentence of at most 30 words)
-  with the source lines that say it. A quote is a `ref` (`<scheme>:<file>`), `lines` and `sha`,
-  the digest of those lines with white space folded; no file holds source text, and the digest
-  is written by the tool, never typed. The sources are read at their pins: `--mame` a tree of
-  the tag's files, `--dosbox` a checkout holding the pin of `knowledge.shared.PINS`, `--rbil` a
-  folder with the list's files or archives, `--datasheets` a folder of `pdftotext -raw`
-  captures, whose digests `knowledge_index/datasheets.json` holds.
+  their evidence, written and checked with `python -m scry_core.knowledge.rows`. The official
+  source is the spine: a `doc` row says what the official source says (the list, or a maker's
+  datasheet or guide held in `knowledge_index/datasheets.json`), and a row of an emulator is a
+  note beside it, with a `vs` that says which kind: `differs` or `absent` name the `doc` row
+  (`row`) the emulator does otherwise or does not do, `extra` is what it does that the
+  document leaves open, `place` is how it reaches the thing (`on: place`). A row has one party
+  (`of`: `doc`, `dosbox-x` or `mame`), a subject (`on`) and one sentence of at most 30 words, with
+  the source lines that say it. A quote is a `ref` (`<scheme>:<file>`), `lines` and `sha`, the
+  digest of those lines with white space folded; no file holds source text, and the digest is
+  written by the tool, never typed. The sources are read at their pins: `--mame` a tree of the
+  tag's files, `--dosbox` a checkout holding the pin of `knowledge.shared.PINS`, `--rbil` a
+  folder with the list's files or archives, `--datasheets` a folder of the captures the document
+  table names.
+  - The header says where the entry comes from: `source` is `official` or `emulator`. An
+    `official` dictionary names its `documents` (a row of the document table, with the `variant`
+    each describes) and, per document, the lines of its capture that are the programming model
+    (`official`). An `emulator` dictionary, or one entry that says `source: emulator`, has no
+    `doc` row and says where it looked (`searched`, each of its fixed places with what it gave).
+    A document is in the table with its class, whether its text is a layer or an OCR, the tool
+    and version that made its capture, and a second URL.
+  - An entry's official region is a section of the list or the lines of a capture, and every
+    line of it is claimed by a `doc` row or closed as `key`, `see-also`, `version`, `layout`,
+    `electrical` or `elsewhere` (a line another entry owns). A line about a version of MS-DOS or
+    PC DOS gets a `doc` row that names the version; a line about another product is closed
+    `version`.
+  - Each emulator the dictionary has code of owes a verdict on each `doc` row whose subject is
+    not `is`: exactly one note `differs` or `absent` naming it, or one closure `agrees` naming it
+    (the emulator's lines do what that row says and nothing more). Every item of an emulator's code
+    is claimed by a note, closed `agrees`, or closed with another reason of the fixed set.
   - `rows quote <ref> <lines>` prints the lines and their digest (`--json` for the quote to
     paste); `rows quote --stamp <dictionary>` writes the digest into every quote that has none.
   - `rows cover <dictionary> [<id>...]` lists what each entry's code owes rows for, item by
@@ -313,17 +334,23 @@ public source each fact was checked against. A server ships dictionaries and one
     each with what closes it. It reads C++ as text: macros, calls through a pointer or a member
     and values carried in a variable are named, never followed.
   - `rows check <dictionary> [<id>...]` is the script half of the check: every quote is at the
-    pin and gives its digest, every row quotes each party it speaks for, and every item is
-    closed by a row, the key, a `closed` entry with a reason of the fixed set, or the callee
-    table (`--callees`, `scry-knowledge-callees/1`, one decision a function). Exit 0 closed, 1 a
-    fault or an item left open, 3 INVALID (a source or a function not found, or nothing
-    examined).
-  - `rows review <dictionary> [<id>...]` prints each row with the text of its lines, for the
-    reader who judges whether the sentence says only what its lines say.
+    pin and gives its digest, every row quotes its own party only, every item is closed by a row,
+    the key, a `closed` entry with a reason of the fixed set, or the callee table (`--callees`,
+    `scry-knowledge-callees/1`, one decision a function), and the verdicts and the official
+    ranges hold. A line of a declared range that no entry and no dictionary closure holds is red;
+    `--partial` counts those lines instead, for a dictionary still being written. Exit 0 closed,
+    1 a fault or an item left open, 3 INVALID (a source or a function not found, a capture that is not
+    the document table's, or nothing examined).
+  - `rows review <dictionary> [<id>...]` prints the entry in the order a reply shows it: the `doc`
+    rows, each emulator's notes with their `vs` and the row they name, each `agrees` beside the
+    row it names, and the official region whole for the notes that are `extra`; for the reader
+    who judges whether each sentence says only what its lines say.
   - `rows migrate <old dictionary> <id> --evidence <file>` drafts an entry from an old-shape one
-    and the evidence its check gathered; quotes it cannot find at their lines are dropped and
-    said, and every statement it could not anchor is marked, so the draft fails `rows check`
-    until a person resolves the marks and sets each row's `on`.
+    and the evidence its check gathered: what quotes an official document becomes a `doc` row, and
+    what quotes an emulator is a `candidate` whose official line is still to be found. Quotes it
+    cannot find at their lines are dropped and said, and every statement it could not anchor is
+    marked, so the draft fails `rows check` until a person resolves the marks and sets each row's
+    `on`.
 
 ## Naming what the replies show
 
