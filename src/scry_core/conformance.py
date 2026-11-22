@@ -14,7 +14,16 @@ import pytest
 
 from scry_core import session_block
 from scry_core import window as w
-from scry_core.knowledge import Base, Lock, SourceIndex, Support, check
+from scry_core.knowledge import (
+    Base,
+    Confirmation,
+    Lock,
+    SecondCheck,
+    SourceIndex,
+    Support,
+    check,
+)
+from scry_core.knowledge.entry import Entry
 from scry_core.project_store import STORE
 from scry_core.window_stand_ins import hosts
 
@@ -346,10 +355,10 @@ def _started(subject: Promoter, project: Path, name: str) -> str:
 
 
 class KnowledgeSubject(Protocol):
-    """A server's knowledge base: what it declares, its loaded dictionaries (`fts5=False` forces
-    the index of our own), the committed index of the sources they cite, the committed lock of its
-    checked entries, and the scopes its code depends on (the keys of its cpu tables, the cpus its
-    demos run)."""
+    """A server's knowledge base: what it declares, its loaded dictionaries as it serves them
+    (`fts5=False` forces the index of our own), the committed index of the sources they cite, the
+    committed lock of its checked entries, the second check that confirmed some of them, and the
+    scopes its code depends on (the keys of its cpu tables, the cpus its demos run)."""
 
     def support(self) -> Support: ...
 
@@ -359,11 +368,42 @@ class KnowledgeSubject(Protocol):
 
     def lock(self) -> Lock: ...
 
+    def second_check(self) -> SecondCheck: ...
+
     def code_scopes(self) -> Iterable[str]: ...
 
 
 def _none(faults: list[str]) -> None:
     assert not faults, "\n".join(faults)
+
+
+def _whole(subject: KnowledgeSubject) -> Base:
+    """The subject's dictionaries with every entry loaded, for the checks of the files: a base
+    that serves only what is confirmed is judged apart."""
+    return subject.base().unfiltered()
+
+
+def _asked(served: Base, e: Entry) -> Iterable[tuple[str, list[Entry]]]:
+    """What `served` answers to each query shape that would reach `e`: by id, by key and scope,
+    by a range over its number, by its name, by its words, by its device."""
+    every = len(served) + 1
+    shapes: list[tuple[str, list[Entry]]] = [
+        ("its id", [x] if (x := served.by_id(e.id)) else []),
+        ("its key", [x] if (x := served.get(e.kind, e.key, e.scope, e.access)) else []),
+        ("a search by its key", served.search(kind=e.kind, key=e.key, scopes=(e.scope,),
+                                               limit=every).entries),
+        ("its name", served.by_alias(e.name)),
+        ("a search by its name", served.search(words=e.name, scopes=(e.scope,),
+                                               limit=every).entries)]
+    if e.lo is not None and e.kind != "call":
+        span = e.key if ".." in e.key else f"{e.key}..{e.key}"
+        shapes.append(("a range over its number", served.search(
+            kind=e.kind, key=span, scopes=(e.scope,), limit=every).entries))
+    for device in {e.key if e.kind == "device" else e.device, e.scope if e.kind in (
+            "register", "command") else ""} - {""}:
+        shapes.append((f"a search by device {device}", served.search(device=device,
+                                                                      limit=every).entries))
+    return shapes
 
 
 class KnowledgeContract:
@@ -372,7 +412,7 @@ class KnowledgeContract:
     without a new check."""
 
     def test_the_check_examined_something(self, subject: KnowledgeSubject) -> None:
-        base, support = subject.base(), subject.support()
+        base, support = _whole(subject), subject.support()
         assert support.scopes, "INVALID: no dictionary was examined: nothing here says what " \
             "this server supports"
         assert len(base) and base.dictionaries, "INVALID: the server's base holds no entry"
@@ -384,48 +424,70 @@ class KnowledgeContract:
 
     def test_every_declared_scope_device_and_chip_has_the_dictionaries_it_owes(
             self, subject: KnowledgeSubject) -> None:
-        _none(check.owed_dictionaries(subject.base(), subject.support()))
+        _none(check.owed_dictionaries(_whole(subject), subject.support()))
 
     def test_every_dictionary_is_of_a_declared_scope_and_the_code_names_no_other(
             self, subject: KnowledgeSubject) -> None:
-        _none(check.undeclared(subject.base(), subject.support(), subject.code_scopes()))
+        _none(check.undeclared(_whole(subject), subject.support(), subject.code_scopes()))
 
     def test_every_dictionary_file_parses(self, subject: KnowledgeSubject) -> None:
-        _none(subject.base().file_faults)
+        _none(_whole(subject).file_faults)
 
     def test_every_entry_is_whole_and_ids_are_unique(self, subject: KnowledgeSubject) -> None:
-        base = subject.base()
+        base = _whole(subject)
         _none([*base.entry_faults, *base.load_faults])
 
     def test_every_entry_agrees_with_the_source_index(self, subject: KnowledgeSubject) -> None:
-        _none(check.against_sources(subject.base(), subject.sources()))
+        _none(check.against_sources(_whole(subject), subject.sources()))
 
     def test_every_key_of_the_list_a_dictionary_covers_is_named_or_left_out(
             self, subject: KnowledgeSubject) -> None:
-        _none(check.covered(subject.base(), subject.sources()))
+        _none(check.covered(_whole(subject), subject.sources()))
 
     def test_every_relation_resolves(self, subject: KnowledgeSubject) -> None:
-        _none(check.relations(subject.base()))
+        _none(check.relations(_whole(subject)))
 
     def test_two_sources_agree_or_the_entry_says_how_they_differ(
             self, subject: KnowledgeSubject) -> None:
-        _none(check.both_sources(subject.base(), subject.sources()))
+        _none(check.both_sources(_whole(subject), subject.sources()))
 
     def test_no_alias_is_another_entry_s_name(self, subject: KnowledgeSubject) -> None:
-        _none(check.names_unique(subject.base()))
+        _none(check.names_unique(_whole(subject)))
 
     def test_the_database_holds_what_the_files_hold(self, subject: KnowledgeSubject) -> None:
-        _none(check.held(subject.base()))
+        _none(check.held(_whole(subject)))
 
     def test_the_fallback_answers_as_fts5_does(self, subject: KnowledgeSubject) -> None:
-        if not subject.base().uses_fts5:
+        if not subject.base(None).uses_fts5:
             pytest.skip("this host's SQLite has no FTS5, so the fallback is the only path")
-        _none(check.fallback_differs(subject.base))
+        _none(check.fallback_differs(lambda fts5: subject.base(fts5).unfiltered()))
 
     def test_a_checked_entry_is_never_reworded(self, subject: KnowledgeSubject) -> None:
-        _none(check.reworded(subject.base()))
+        _none(check.reworded(_whole(subject)))
 
     def test_every_checked_entry_is_locked_and_stays_as_it_was_locked(
             self, subject: KnowledgeSubject) -> None:
-        _none(check.locked(subject.base(), subject.lock()))
+        _none(check.locked(_whole(subject), subject.lock()))
+
+    def test_the_base_serves_the_confirmed_entries_and_counts_the_rest(
+            self, subject: KnowledgeSubject) -> None:
+        served, whole = subject.base(), _whole(subject)
+        sure = Confirmation.of([subject.lock()], [subject.second_check()])
+        out = [f"{e.id} is {sure.standing(e)} and the base serves it" for e in whole.entries()
+               if not sure.confirms(e) and served.by_id(e.id) is not None]
+        out += [f"{e.id} is confirmed and the base does not serve it" for e in whole.entries()
+                if sure.confirms(e) and served.by_id(e.id) is None]
+        held = sum(not sure.confirms(e) for e in whole.entries())
+        if served.held_back != held:
+            out.append(f"the base counts {served.held_back} entries held back and the files "
+                       f"hold {held} that are not confirmed")
+        _none(out)
+
+    def test_no_query_shape_returns_an_entry_the_base_holds_back(
+            self, subject: KnowledgeSubject) -> None:
+        served, whole = subject.base(), _whole(subject)
+        sure = Confirmation.of([subject.lock()], [subject.second_check()])
+        _none([f"{e.id} is held back and {how} returns it" for e in whole.entries()
+               if not sure.confirms(e) for how, found in _asked(served, e)
+               if e.id in {got.id for got in found}])
 

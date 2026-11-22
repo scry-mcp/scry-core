@@ -13,7 +13,7 @@ import pytest
 from null_server import KNOWLEDGE, NullKnowledge
 
 from scry_core import conformance
-from scry_core.knowledge import Device, Scope, Support, digest, lock, seal, text
+from scry_core.knowledge import Base, Confirmation, Device, Scope, Support, digest, lock, seal, text
 
 CASES = sorted(n for n in dir(conformance.KnowledgeContract) if n.startswith("test_"))
 OWED = "test_every_declared_scope_device_and_chip_has_the_dictionaries_it_owes"
@@ -29,6 +29,8 @@ FALLBACK = "test_the_fallback_answers_as_fts5_does"
 REWORDED = "test_a_checked_entry_is_never_reworded"
 LOCKED = "test_every_checked_entry_is_locked_and_stays_as_it_was_locked"
 EXAMINED = "test_the_check_examined_something"
+SERVES = "test_the_base_serves_the_confirmed_entries_and_counts_the_rest"
+RETURNS = "test_no_query_shape_returns_an_entry_the_base_holds_back"
 EXIT = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
 EXIT_ID = "ibm-pc:call:0x21/0x4C"
 SEQ_PORT = "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ 0x3c4"
@@ -92,8 +94,35 @@ def entry(doc: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def test_the_fixture_base_passes_every_case_and_the_runner_can_tell_a_failure() -> None:
-    assert len(CASES) == 15 and run(NullKnowledge()) == set()
+    assert len(CASES) == 17 and run(NullKnowledge()) == set()
     assert run(NullKnowledge(declared=Support())) == {EXAMINED, UNDECLARED}
+
+
+class ServesEverything(NullKnowledge):
+    """Loads its dictionaries with no confirmation, so every entry answers."""
+
+    def base(self, fts5: bool | None = None) -> Base:
+        return Base.load(self.root, fts5=fts5)
+
+
+class ServesWhatItIsGiven(NullKnowledge):
+    """Loads under a second check other than the one it declares."""
+
+    def base(self, fts5: bool | None = None) -> Base:
+        return Base.load(self.root, fts5=fts5, confirmation=Confirmation({}, frozenset(), {}))
+
+
+def test_a_base_that_loads_without_the_filter_fails_the_cases_that_hold_it() -> None:
+    assert run(ServesEverything()) == {SERVES, RETURNS}
+
+
+def test_a_base_filtered_by_another_confirmation_than_its_declared_one_fails_the_case() -> None:
+    assert run(ServesWhatItIsGiven()) == {SERVES}
+
+
+def test_the_fixture_base_serves_one_entry_and_holds_five_back() -> None:
+    served = NullKnowledge().base()
+    assert [e.id for e in served.entries()] == [EXIT_ID] and served.held_back == 5
 
 
 def key_changed(c: Copy) -> None:

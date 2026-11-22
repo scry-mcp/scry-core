@@ -19,6 +19,7 @@ from scry_core.knowledge import (
     Base,
     Lock,
     Scope,
+    SecondCheck,
     SourceIndex,
     Support,
     check,
@@ -50,7 +51,8 @@ class Shared:
         return Support(scopes=self.scopes, chips=shared.CHIPS)
 
     def base(self, fts5: bool | None = None) -> Base:
-        return Base.load(*self.directories, fts5=fts5, pins=shared.PINS)
+        return Base.load(*self.directories, fts5=fts5, pins=shared.PINS,
+                         confirmation=shared.confirmation())
 
     def sources(self) -> SourceIndex:
         return read_index(INDEX)
@@ -61,6 +63,9 @@ class Shared:
             {id_: held for got in locks for id_, held in got.checked.items()},
             tuple(r for got in locks for r in got.reopened),
         )
+
+    def second_check(self) -> SecondCheck:
+        return shared.second_check()
 
     def code_scopes(self) -> Iterable[str]:
         return ()

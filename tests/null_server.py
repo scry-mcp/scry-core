@@ -12,13 +12,16 @@ from scry_core import session_block
 from scry_core import window as w
 from scry_core.knowledge import (
     Base,
+    Confirmation,
     Device,
     Lock,
     Scope,
+    SecondCheck,
     SourceIndex,
     Support,
     read_index,
     read_lock,
+    read_second_check,
 )
 from scry_core.reply_contract import Invalid
 
@@ -170,15 +173,18 @@ class StatusDeniesASession(NullServer):
 
 class NullKnowledge:
     """Six fixture entries, each citing a real line of DOSBox-X's source, the index captured from
-    those lines and the lock of the one checked entry. `root`, `sources` and `lock` name copies,
-    for variants that break one rule."""
+    those lines, the lock of the one checked entry and the second check that confirmed it, so the
+    base serves one and holds five back. `root`, `sources`, `lock` and `second` name copies, for
+    variants that break one rule."""
 
     def __init__(self, root: Path = KNOWLEDGE / "null",
                  sources: Path = KNOWLEDGE / "null-sources.json",
                  lock: Path = KNOWLEDGE / "null-lock.json",
                  declared: Support | None = None,
-                 code: Iterable[str] = ("ibm-pc",)) -> None:
+                 code: Iterable[str] = ("ibm-pc",),
+                 second: Path = KNOWLEDGE / "null-second-check.json") -> None:
         self.root, self.index, self.locked, self.code = root, sources, lock, tuple(code)
+        self.second = second
         self.declared = declared or Support(
             scopes=(Scope("ibm-pc", written=("call", "port", "device")),),
             devices=(Device("vga-seq", written=("register",)),))
@@ -187,13 +193,17 @@ class NullKnowledge:
         return self.declared
 
     def base(self, fts5: bool | None = None) -> Base:
-        return Base.load(self.root, fts5=fts5)
+        return Base.load(self.root, fts5=fts5, confirmation=Confirmation.of(
+            [self.lock()], [self.second_check()]))
 
     def sources(self) -> SourceIndex:
         return read_index(self.index)
 
     def lock(self) -> Lock:
         return read_lock(self.locked)
+
+    def second_check(self) -> SecondCheck:
+        return read_second_check(self.second)
 
     def code_scopes(self) -> Iterable[str]:
         return self.code
