@@ -5,11 +5,14 @@ the README block and the normalisation."""
 from __future__ import annotations
 
 import dataclasses
+import importlib
 import json
 import os
 import shutil
 import sys
-from collections.abc import Mapping
+import types
+from collections.abc import Mapping, Sequence
+from fractions import Fraction
 from pathlib import Path
 from typing import Any, cast
 
@@ -544,6 +547,84 @@ def test_update_readme_makes_the_loop_beside_the_capture_and_writes_the_motion_b
     assert "old motion" not in text and "1. The pattern moves." in text
     assert f"{loop} rewritten: {len(data)} bytes, lossless, 1.2 s in 1 moment" \
         in capsys.readouterr().out
+
+
+def _spied_build(monkeypatch: pytest.MonkeyPatch) -> list[tuple[Any, ...]]:
+    """`motion.build` as it is, noting the extra arguments each call was given."""
+    seen: list[tuple[Any, ...]] = []
+    real = motion.build
+
+    def spy(cuts: Any, work: Path, *rest: Any) -> motion.Built:
+        seen.append(rest)
+        return real(cuts, work, *rest)
+
+    monkeypatch.setattr(motion, "build", spy)
+    return seen
+
+
+def _without_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pillow cannot be imported, and `scry_core.decorate` is imported afresh."""
+    monkeypatch.delitem(sys.modules, "scry_core.decorate", raising=False)
+    monkeypatch.setitem(sys.modules, "PIL", None)
+
+
+def _same_pictures(n: int, numbers: Sequence[int], pictures: Sequence[motion.Picture],
+                   rate: Fraction, box: motion.Box) -> list[motion.Picture]:
+    return list(pictures)
+
+
+@needs_loop_programs
+def test_a_demo_s_decorator_is_given_the_demo_the_run_and_its_timeline_and_draws_its_loop(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen = _spied_build(monkeypatch)
+    monkeypatch.setitem(sys.modules, "scry_core.decorate", types.ModuleType("scry_core.decorate"))
+    given: list[tuple[d.Demo, d.Run, dict[str, Any]]] = []
+
+    def decorator(demo: d.Demo, run: d.Run, document: Mapping[str, Any]) -> motion.Decorator:
+        given.append((demo, run, dict(document)))
+        return _same_pictures
+
+    demo = _moment_demo(tmp_path, decorator=decorator)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    assert seen == [(_same_pictures,)], "the loop was not built with the demo's decorator"
+    (there, run, document), = given
+    assert there is demo and run.dir.is_dir()
+    assert document["demo"] == "x"
+    assert [call["step"] for call in document["calls"]] == ["boot", "shot", "film", "end"]
+
+
+@needs_loop_programs
+def test_a_demo_with_no_decorator_builds_its_loop_with_nothing_to_draw(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen = _spied_build(monkeypatch)
+    _without_the_extra(monkeypatch)
+    assert _run(_moment_demo(tmp_path), tmp_path, "--update-readme") == verdict.EXIT_PASS
+    assert seen == [()]
+
+
+def test_a_decorate_module_that_fails_for_another_reason_is_not_blamed_on_the_extra(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    def broken(name: str) -> types.ModuleType:
+        raise ModuleNotFoundError("No module named 'scry_core.gone'", name="scry_core.gone")
+
+    monkeypatch.setattr(importlib, "import_module", broken)
+    monkeypatch.setattr(motion, "programs", lambda: {"ffmpeg": "ffmpeg", "img2webp": "img2webp"})
+    demo = _moment_demo(tmp_path, decorator=lambda demo, run, document: _same_pictures)
+    assert _run(demo, tmp_path, "--update-readme") == EXIT_INVALID
+    said = capsys.readouterr().out
+    assert "scry_core.gone" in said and "`decorate` extra" not in said, said
+
+
+def test_a_decorated_demo_without_the_extra_is_invalid_before_the_emulator_runs(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    _without_the_extra(monkeypatch)
+    monkeypatch.setattr(motion, "programs", lambda: {"ffmpeg": "ffmpeg", "img2webp": "img2webp"})
+    demo = _moment_demo(tmp_path, decorator=lambda demo, run, document: _same_pictures)
+    assert _run(demo, tmp_path, "--update-readme") == EXIT_INVALID
+    assert "`decorate` extra" in capsys.readouterr().out
+    assert _calls(log) == [], "the emulator ran for a loop that could not be drawn"
 
 
 @needs_loop_programs

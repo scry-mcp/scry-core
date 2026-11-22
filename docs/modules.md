@@ -138,6 +138,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.example` | The one shape of an example: the ask, the call, an excerpt of the reply, how to read it. |
 | `scry_core.motion` | A demo's `loop.webp` and `screen.png`: stretches cut from a run's recordings and assembled with ffmpeg and `img2webp`, both shown at 4:3. |
 | `scry_core.aspect` | The shape a game's picture is shown in: the whole frame at 4:3, one function for the loop and the still. |
+| `scry_core.committed_run` | A demo's committed run read back as its steps, and the timeline its steps' `events` name for it, standing in for an emulator in a server's tests. |
 | `scry_core.timeline` | What a demo run did, call by call, in the emulator's frames: the file the demo decorator reads. |
 | `scry_core.decorate` | A demo's clip with the presence layers drawn in from its run's timeline, richer than live; `python -m scry_core.decorate` makes one decorated loop. The only module that needs the `decorate` extra (Pillow and numpy). |
 | `scry_core.install` | The table of MCP clients and the block of a server's README that says how to add it to each. |
@@ -162,6 +163,8 @@ The document is `{"version": 2, "demo": <name>, "calls": [...]}`. Each call hold
 `before` and `after` come from the reply's `frame_before` and `frame_after`, else its last `frame`; a call that counts none stays where the call before left the machine. Loading a saved state rewinds the machine, so `after` can be smaller than `before`.
 
 An event is `{"kind": "key", "name", "down", "frame"}`, `{"kind": "button", "name", "down", "frame"}` or `{"kind": "pointer", "x", "y", "frame"}`. A pointer's `x` and `y` are the position the reply reports, in the emulator's screen pixels. A step names its events with `Step.events`, and an event's `frame` lies between its call's `before` and `after`.
+
+A demo draws its clip from this file when it declares `Demo.decorator`: a callable given the demo, the run and the loaded timeline that returns the `motion.Decorator` `motion.build` draws each cut with. `demo.execute` reads the timeline it just wrote and passes the result to `motion.build`; with no decorator the loop is built as the recordings are, and with one a missing `decorate` extra is refused before the emulator runs.
 
 ## Tests a server runs
 

@@ -41,6 +41,12 @@ What a server author notices. A client's view of each server is in that server's
   arguments as given and the emulator frame it began and ended at, and the input it fired where
   its step says (`Step.events`, `timeline.key`, `button`, `pointer`). The format is in
   `docs/modules.md`; `timeline.loads` reads it.
+- A demo draws its loop's cuts from its run's timeline when it declares `Demo.decorator`: given
+  the demo, the run and the timeline (`demo.Decoration`), it returns the `motion.Decorator` that
+  `motion.build` draws each cut with, and a missing `decorate` extra refuses the update before the
+  emulator runs. A demo without one builds as before. `demo.beside_transcript` and
+  `demo.last_under` are public, and `committed_run` reads a committed run back (`read`) and says
+  the timeline its steps would write for it (`timeline_of`).
 - A sixth overlay layer, `record`: a blinking mark while the session records video or audio,
   on by default (`overlay.Overlay.record`, after `pause` in `overlay.LAYERS`). A server tells the
   presence with `Shown.recording(kind, on)`, `kind` being `video` or `audio`; the payload's
