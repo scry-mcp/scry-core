@@ -4,6 +4,9 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- `knowledge_find` points at the "Knowledge base" section of a server's `REFERENCE.md`
+  (`knowledge_tool.REFERENCE`); a server's reference carries a section of that name.
+
 - A server serves only the knowledge entries that are confirmed: sealed in its lock and recorded
   by the second check under the seal they have now (`knowledge.confirmed`). `Base.load` takes a
   `Confirmation` and loads those entries only, counts the rest (`Base.held_back`) and drops a

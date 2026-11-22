@@ -387,6 +387,7 @@ def test_registering_binds_the_body_to_the_server_s_base_and_closes_its_reply(
     assert seen["title"] == knowledge_tool.TITLE and seen["read_only"] is True
     assert seen["summary"] is knowledge_tool.summary
     assert tool.__doc__.rstrip().endswith(knowledge_tool.REFERENCE)
+    assert knowledge_tool.REFERENCE == "Reference: REFERENCE.md, Knowledge base."
     got = tool(kind="port", key="0x3C5")
     assert got["answered"] is True and got["entries"][0]["id"] == "ibm-pc:port:0x3C5"
     assert list(inspect.signature(tool).parameters) == [
