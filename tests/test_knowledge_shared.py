@@ -199,7 +199,8 @@ def sample_repo(tmp_path: Path) -> tuple[Path, str]:
     repo = tmp_path / "mame-repo"
     if not repo.exists():
         shutil.copytree(SAMPLE / "mame", repo)
-        git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t.invalid"]
+        git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t.invalid",
+               "-c", "commit.gpgsign=false"]
         for step in (["init", "-q"], ["add", "."], ["commit", "-q", "-m", "sample"]):
             subprocess.run([*git, *step], check=True, capture_output=True)
     done = subprocess.run(
