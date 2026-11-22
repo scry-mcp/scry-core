@@ -297,7 +297,7 @@ public source each fact was checked against. A server ships dictionaries and one
   description lists the scopes of `base`, so a server types none, and a scope that is a near
   miss of one (`6809` for `m6809`) is read as it, with a `note` saying so. `knowledge_tool.judge`
   goes in the pre-gate table.
-- **Rows (`scry-knowledge/2`, beside `/1`, loaded by nothing yet)**: an entry as rows that carry
+- **Rows (`scry-knowledge/2`, in `<package>/knowledge_rows/`)**: an entry as rows that carry
   their evidence, written and checked with `python -m scry_core.knowledge.rows`. The official
   source is the spine: a `doc` row says what the official source says (the list, or a maker's
   datasheet or guide held in `knowledge_index/datasheets.json`), and a row of an emulator is a
@@ -439,6 +439,53 @@ public source each fact was checked against. A server ships dictionaries and one
     cannot find at their lines are dropped and said, and every statement it could not anchor is
     marked, so the draft fails `rows check` until a person resolves the marks and sets each row's
     `on`.
+  - The seal: a part of an entry is its official part (`doc`: its key, name, aliases, source,
+    `doc` rows, the closures of the document's lines and its official regions) or one emulator's
+    (its notes, its closures, its regions and the digest of each `doc` row it gives a verdict
+    on, so a `doc` row rewritten holds back the verdicts given on it until they are read again).
+    A reader who did not write a part seals it; a quote with no digest is refused:
+
+    ```sh
+    python -m scry_core.knowledge.rows seal <dictionary> <id>... --lock <lock> --part <part> \
+        --by <reader> --writer <writer>
+    ```
+
+    The lock (`scry-knowledge-rows-lock/1`, beside the package's `knowledge_rows/`, never in it)
+    keeps per part its seal, its reader, its writer and, per row, the row's digest and who judged
+    it. A row's digest is what it says and each quote's file and digest, not its `lines`, so a pin
+    that only moves the text breaks no seal. A part that changed since its seal is refused: its
+    rows at fault are reopened first, which lifts the part's seal and records who reopened it and
+    why:
+
+    ```sh
+    python -m scry_core.knowledge.rows reopen <dictionary> <id>... --lock <lock> --part <part> \
+        --row <n> --by <who> --why <what is wrong>
+    ```
+
+    With no `--row`, the fault is in the part's closures, regions or names. When the part is
+    sealed again, a row whose digest is unchanged keeps its judgement, a reopened row that was
+    not rewritten is refused, and the reader who judged what was reopened (the rows named, or the
+    part) does not seal it again. Both commands exit 0 done and 1 refused, writing nothing.
+  - The base: `knowledge.base.Base.load(<package or directory>..., lock=...)` serves an entry
+    only when every part of it (the official one and each emulator's) is sealed at the seal it
+    gives now; one held back keeps its id, kind and key, so `knowledge_find` says it exists and
+    is not confirmed (`unconfirmed`). `Base.unfiltered()` is the view the checks of the files
+    take. The rows sit in the database in the order a reply shows them, with each emulator's
+    verdict on each `doc` row; the search reads the names, the aliases and the rows' text.
+    `knowledge.shared.rows_lock()` is the lock of the shared dictionaries.
+  - `knowledge_find` over it answers an entry whole with its `rows`: the `doc` rows, each with
+    `verdicts` (per emulator: as documented, differs, absent or unfollowed), then each emulator's
+    notes with `vs` and the `row` they name; each row's `cites` says where its lines are (the
+    document's title, or the emulator's file, and the lines) and never copies them, and
+    `sources` gives each place once with its URL. Past 24 rows the reply is cut, the notes
+    before the `doc` rows, and says `rows_total`. An entry no official document answers carries
+    `source`, the sentence that says whose code it is from. `id=<entry id>#<n>` answers one row,
+    each cited line with the URL that opens it at the pin.
+  - The tests: `KnowledgeSubject` gives `rows_base()`, `rows_sources()` (the packages or
+    directories its dictionaries of rows are in) and `rows_lock()`, and `KnowledgeContract`
+    holds them: every dictionary of rows parses, a sealed part is never changed (it names the
+    rows that were), the base serves exactly the entries the lock seals, and no query shape
+    returns one held back.
 
 ## Naming what the replies show
 

@@ -62,7 +62,7 @@ def _listing(region: Region, dictionary: Dictionary, sources: Sources) -> cover.
     return cover.list_function(
         "\n".join(held), region.function, case=region.case, preamble=region.preamble,
         key=cover.parse_key(region.value) if region.value else None,
-        defined=header.defines.get(party, ()), stores=header.stores.get(party, ""))
+        defined=header.defines.get(party, ()))
 
 
 def _claims(entry: Entry) -> dict[str, dict[int, list[str]]]:

@@ -6,7 +6,7 @@ caller as the others do."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -23,9 +23,11 @@ from scry_core.knowledge import (
     SourceIndex,
     Support,
     check,
+    sealed,
     shared,
 )
-from scry_core.knowledge.entry import Entry
+from scry_core.knowledge import base as rows_base
+from scry_core.knowledge.index import Index, Keyed
 from scry_core.project_store import STORE
 from scry_core.window_stand_ins import hosts
 
@@ -359,8 +361,10 @@ def _started(subject: Promoter, project: Path, name: str) -> str:
 class KnowledgeSubject(Protocol):
     """A server's knowledge base: what it declares, its loaded dictionaries as it serves them
     (`fts5=False` forces the index of our own), the committed index of the sources they cite, the
-    committed lock of its checked entries, the second check that confirmed some of them, and the
-    scopes its code depends on (the keys of its cpu tables, the cpus its demos run)."""
+    committed lock of its checked entries, the second check that confirmed some of them, the
+    scopes its code depends on (the keys of its cpu tables, the cpus its demos run), and its
+    dictionaries of rows: the base it serves of them, where they are (package names or
+    directories) and the lock of their seals."""
 
     def support(self) -> Support: ...
 
@@ -374,6 +378,12 @@ class KnowledgeSubject(Protocol):
 
     def code_scopes(self) -> Iterable[str]: ...
 
+    def rows_base(self, fts5: bool | None = None) -> rows_base.Base: ...
+
+    def rows_sources(self) -> Sequence[str | Path]: ...
+
+    def rows_lock(self) -> sealed.Lock: ...
+
 
 def _none(faults: list[str]) -> None:
     assert not faults, "\n".join(faults)
@@ -385,17 +395,17 @@ def _whole(subject: KnowledgeSubject) -> Base:
     return subject.base().unfiltered()
 
 
-def _asked(served: Base, e: Entry) -> Iterable[tuple[str, list[Entry]]]:
+def _asked(served: Index[Any], e: Keyed) -> Iterable[tuple[str, list[Any]]]:
     """What `served` answers to each query shape that would reach `e`: by id, by key and scope,
     by a key alone, by a range over its number, by its name, by its words, by its address, by its
     device, as a device, as a variant of its call, and the nearest entries each search offers
     when it finds none."""
     every = len(served) + 1
-    shapes: list[tuple[str, list[Entry]]] = [
+    shapes: list[tuple[str, list[Any]]] = [
         ("its id", [x] if (x := served.by_id(e.id)) else []),
         ("its key", [x] if (x := served.get(e.kind, e.key, e.scope, e.access)) else []),
         ("its name", served.by_alias(e.name))]
-    searches: list[tuple[str, Found]] = [
+    searches: list[tuple[str, Found[Any]]] = [
         ("a search by its key", served.search(kind=e.kind, key=e.key, scopes=(e.scope,),
                                               limit=every)),
         ("a search by its key alone", served.search(key=e.key, scopes=(e.scope,), limit=every)),
@@ -513,3 +523,49 @@ class KnowledgeContract:
                if not sure.confirms(e) for how, found in _asked(served, e)
                if e.id in {got.id for got in found}])
 
+    def test_every_dictionary_of_rows_parses_and_ids_are_unique(
+            self, subject: KnowledgeSubject) -> None:
+        whole = subject.rows_base().unfiltered()
+        assert whole.dictionaries, "INVALID: no dictionary of rows was examined"
+        _none(whole.faults())
+
+    def test_a_sealed_row_is_never_reworded(self, subject: KnowledgeSubject) -> None:
+        lock = subject.rows_lock()
+        out: list[str] = []
+        known: set[str] = set()
+        for source in subject.rows_sources():
+            for _, dictionary, _ in rows_base.dictionaries(source):
+                if dictionary is not None:
+                    out += sealed.frozen(dictionary, lock)
+                    known |= {e.id for e in dictionary.entries}
+        out += [f"{i} is sealed in the lock and no dictionary holds it"
+                for i in sorted(set(lock.sealed) - known)]
+        _none(out)
+
+    def test_the_base_serves_the_sealed_entries_and_holds_the_rest_back(
+            self, subject: KnowledgeSubject) -> None:
+        served, standing = subject.rows_base(), _standing(subject)
+        out = [f"{i} is {got} and the base "
+               f"{'does not serve' if got == sealed.SERVED else 'serves'} it"
+               for i, got in standing.items()
+               if (got == sealed.SERVED) != (served.by_id(i) is not None)]
+        held = sum(got != sealed.SERVED for got in standing.values())
+        if served.held_back != held:
+            out.append(f"the base holds back {served.held_back} entries and {held} are not "
+                       "sealed")
+        _none(out)
+
+    def test_no_query_shape_returns_an_entry_of_rows_held_back(
+            self, subject: KnowledgeSubject) -> None:
+        served, standing = subject.rows_base(), _standing(subject)
+        _none([f"{e.id} is held back and {how} returns it" for e in served.unfiltered().entries()
+               if standing.get(e.id) != sealed.SERVED for how, found in _asked(served, e)
+               if e.id in {got.id for got in found}])
+
+
+def _standing(subject: KnowledgeSubject) -> dict[str, str]:
+    """Each entry of rows the subject's files hold, with what its lock says of it."""
+    lock = subject.rows_lock()
+    return {e.id: lock.standing(dictionary, e) for source in subject.rows_sources()
+            for _, dictionary, _ in rows_base.dictionaries(source) if dictionary is not None
+            for e in dictionary.entries}

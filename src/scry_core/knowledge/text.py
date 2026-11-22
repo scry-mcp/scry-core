@@ -46,8 +46,9 @@ def terms(query: str) -> list[Term]:
 class Fallback:
     """Word to the entries that hold it, per field, for a host with no FTS5."""
 
-    def __init__(self) -> None:
-        self._held: dict[str, dict[str, set[int]]] = {f: {} for f in FIELDS}
+    def __init__(self, fields: tuple[str, ...] = FIELDS) -> None:
+        self._fields = fields
+        self._held: dict[str, dict[str, set[int]]] = {f: {} for f in fields}
         self._sorted: dict[str, list[str]] = {}
 
     def add(self, n: int, fields: dict[str, set[str]]) -> None:
@@ -72,10 +73,11 @@ class Fallback:
         return have
 
     def tiers(self, asked: list[Term]) -> dict[int, int]:
-        """The entries holding every word of `asked`, each with its tier (an index of `FIELDS`)."""
+        """The entries holding every word of `asked`, each with its tier (an index of the
+        fields)."""
         so_far: list[set[int]] = [set() for _ in asked]
         found: dict[int, int] = {}
-        for tier, field in enumerate(FIELDS):
+        for tier, field in enumerate(self._fields):
             for have, term in zip(so_far, asked, strict=True):
                 have |= self._in(field, term)
             for n in set.intersection(*so_far):

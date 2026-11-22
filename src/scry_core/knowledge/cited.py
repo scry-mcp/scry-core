@@ -127,8 +127,7 @@ def _bodies_of(dictionary: Dictionary, sources: Sources, callees: Callees,
                 continue
             party = PARTY[scheme]
             got = cover.list_function("\n".join(sources.lines(ref)), function,
-                                      defined=header.defines.get(party, ()),
-                                      stores=header.stores.get(party, ""))
+                                      defined=header.defines.get(party, ()))
             out[key] = [Listed(ref, i, function, callees.of(scheme, file, i.text)
                                if i.kind == "call" else None) for i in got.items]
     return out

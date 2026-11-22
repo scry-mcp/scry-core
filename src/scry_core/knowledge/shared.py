@@ -4,10 +4,14 @@ sources their entries cite."""
 from __future__ import annotations
 
 from importlib import resources
+from typing import TYPE_CHECKING
 
 from scry_core.knowledge.confirmed import Confirmation, SecondCheck, parse_second_check
 from scry_core.knowledge.lock import Lock, parse_lock
 from scry_core.knowledge.support import NAMED, Chip, Scope
+
+if TYPE_CHECKING:
+    from scry_core.knowledge import sealed
 
 _INDEX = "knowledge_index"
 
@@ -53,6 +57,14 @@ def locks() -> tuple[Lock, ...]:
     folder = resources.files("scry_core") / _INDEX
     return tuple(parse_lock((folder / name).read_text(encoding="utf-8"), name)
                  for name in ("shared-lock.json", "cpus-lock.json"))
+
+
+def rows_lock() -> sealed.Lock:
+    """The seals of the shared dictionaries of rows."""
+    from scry_core.knowledge import sealed
+    name = "rows-lock.json"
+    return sealed.parse_lock((resources.files("scry_core") / _INDEX / name).read_text(
+        encoding="utf-8"), name)
 
 
 def second_check() -> SecondCheck:

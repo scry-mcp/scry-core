@@ -136,7 +136,7 @@ QUOTE = {"ref": "mame:src/devices/machine/chipx.cpp", "lines": "10"}
     (drop_subject("write"), "needs a row on write"),
     (set_head(kind="widget"), "`kind` is one of"),
     (set_head(extra=1), "no header field extra"),
-    (set_head(stores={"mame": "("}), "no pattern"),
+    (set_head(stores={"mame": "real_writeb"}), "no header field stores"),
     (set_head(defines={"gcc": []}), "`defines` maps a party"),
     (set_head(engine="x"), "`engine` is a list"),
     (set_head(format="scry-knowledge/1"), "is not a `scry-knowledge/2` document"),
@@ -565,11 +565,6 @@ def test_an_entry_that_is_not_an_object_and_a_header_without_text_are_refused(
     assert dictionary is None and "`entries` is a list" in faults[-1]
 
 
-def test_stores_that_are_not_a_mapping_of_patterns_are_refused(world: World) -> None:
-    _, faults = rows.read(world.edit("command", set_head(stores=["x"])))
-    assert any("`stores` maps a party" in f for f in faults)
-
-
 def test_a_handler_of_a_key_with_no_numbers_gets_no_value(tmp_path: Path) -> None:
     doc = {"format": "scry-knowledge/2", "dictionary": "d", "title": "t", "kind": "device",
            "scope": "chipx",
@@ -661,13 +656,6 @@ def test_a_value_of_the_wrong_type_is_a_fault_and_never_a_traceback(
         world: World, change: Callable[[dict[str, Any]], None], fault: str) -> None:
     _, faults = rows.read(world.edit("command", change))
     assert any(fault in f for f in faults), faults
-
-
-def test_a_stores_pattern_that_does_not_compile_is_a_fault_and_the_check_still_runs(
-        cli: Cli, world: World) -> None:
-    world.edit("command", set_head(stores={"mame": "("}))
-    code, out, _ = cli("check", str(world.root / "command.json"))
-    assert code == 1 and "`stores` of mame is no pattern" in out and "faults 1" in out
 
 
 @pytest.mark.parametrize("command", ["cover", "review"])

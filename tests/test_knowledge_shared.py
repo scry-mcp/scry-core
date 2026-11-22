@@ -25,8 +25,10 @@ from scry_core.knowledge import (
     check,
     read_index,
     read_lock,
+    sealed,
     shared,
 )
+from scry_core.knowledge import base as rows_base
 
 PACKAGE = Path(scry_core.__file__).parent
 CHIPS = PACKAGE / "knowledge" / "chips"
@@ -66,6 +68,15 @@ class Shared:
 
     def second_check(self) -> SecondCheck:
         return shared.second_check()
+
+    def rows_base(self, fts5: bool | None = None) -> rows_base.Base:
+        return rows_base.Base.load(*self.rows_sources(), lock=shared.rows_lock(), fts5=fts5)
+
+    def rows_sources(self) -> tuple[str, ...]:
+        return ("scry_core",)
+
+    def rows_lock(self) -> sealed.Lock:
+        return shared.rows_lock()
 
     def code_scopes(self) -> Iterable[str]:
         return ()
