@@ -22,7 +22,7 @@ What a server author notices. A client's view of each server is in that server's
 - The chips both emulators model are written once, here: `knowledge.shared` gives their
   declarations (`CHIPS`), the cpus named for any system built on them (`CPUS`) and the one pin of
   each emulator's source (`PINS`), and a server loads `knowledge/chips/` and, if it declares those
-  cpus, `knowledge/cpus/`. The MAME pin is the commit the servers' MAME is built from.
+  cpus, `knowledge/cpus/`.
   `tools/knowledge_sources.py` writes the index of the sources they cite and takes a checkout of
   each emulator (`--mame REPO`, `--dosbox REPO`) that holds its pin.
 - `scry_core.decorate` draws the presence layers into a demo's clip from the demo's run, richer
