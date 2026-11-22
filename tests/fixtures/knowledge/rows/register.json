@@ -1,6 +1,7 @@
 {
  "format": "scry-knowledge/2",
  "dictionary": "chipx-registers",
+ "title": "The registers of chip X",
  "kind": "register",
  "scope": "chipx",
  "covers": "a synthetic dictionary for the tests",

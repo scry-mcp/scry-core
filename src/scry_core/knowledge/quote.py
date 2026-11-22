@@ -146,13 +146,17 @@ def parse_datasheets(text: str, where: str = "datasheets") -> dict[str, Datashee
     if not isinstance(table, dict) or not table:
         raise ValueError(f"{where}: `datasheets` is a non-empty object")
     made = {name: _datasheet(name, raw, where) for name, raw in table.items()}
+    _one_each(made, where)
+    return made
+
+
+def _one_each(made: Mapping[str, Datasheet], where: str) -> None:
     seen: dict[str, str] = {}
     for name, held in made.items():
         for identity in (held.title, held.url, held.pdf):
             if seen.setdefault(identity, name) != name:
                 raise ValueError(f"{where}: {name!r} and {seen[identity]!r} are one document "
                                  f"({identity}) held twice")
-    return made
 
 
 def default_datasheets() -> dict[str, Datasheet]:
@@ -161,6 +165,24 @@ def default_datasheets() -> dict[str, Datasheet]:
     return parse_datasheets(
         (resources.files("scry_core") / "knowledge_index" / name).read_text(encoding="utf-8"),
         name)
+
+
+def table_for(dictionary: Path) -> dict[str, Datasheet]:
+    """The documents a dictionary may quote: this package's table and the one in the
+    `knowledge_index` of the package that holds the dictionary, or `ValueError` when the two hold
+    one document in two forms."""
+    table = default_datasheets()
+    for folder in dictionary.resolve().parents:
+        beside = folder / "knowledge_index" / "datasheets.json"
+        if beside.is_file():
+            where = f"{folder.name}/knowledge_index/datasheets.json"
+            for name, held in parse_datasheets(beside.read_text(encoding="utf-8"), where).items():
+                if table.setdefault(name, held) != held:
+                    raise ValueError(f"{where}: {name!r} is also in scry_core's table, in "
+                                     "another form")
+            _one_each(table, f"scry_core's table and {where}")
+            break
+    return table
 
 
 def _split(text: str) -> list[str]:

@@ -1,6 +1,7 @@
 {
  "format": "scry-knowledge/2",
  "dictionary": "pit8253",
+ "title": "The 8253 and 8254 interval timer, its registers",
  "kind": "register",
  "scope": "pit8253",
  "covers": "The registers of the 8253 and 8254 interval timer: the three counters and the control word",

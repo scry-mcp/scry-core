@@ -1,6 +1,7 @@
 """What `rows review` prints for a reader, in the order a reply shows an entry: the `doc` rows as
-the entry, then per emulator its notes with their `vs` and the row each names, then each `agrees`
-with the emulator's lines beside the row's text and quoted lines, then the entry's official region
+the entry, then per emulator its notes with their `vs` and the row each names, then each verdict
+closed on a row (`agrees`, every place it cites together, or `unfollowed`) with the emulator's lines
+beside the row's text and quoted lines, then the entry's official region
 whole for the notes that are `extra`; and what the reader's other questions need (the closures,
 the callee decisions the entry used).
 """
@@ -12,7 +13,15 @@ from collections import defaultdict
 
 from scry_core.knowledge.closure import Report
 from scry_core.knowledge.quote import Quote, Sources, split_ref
-from scry_core.knowledge.rows import EMULATORS, SWEEPING, Dictionary, Entry, Row
+from scry_core.knowledge.rows import (
+    EMULATORS,
+    SWEEPING,
+    VERDICT_CLOSURES,
+    Closure,
+    Dictionary,
+    Entry,
+    Row,
+)
 
 _WIDTH = 110
 
@@ -63,12 +72,19 @@ def entry_text(dictionary: Dictionary, entry: Entry, report: Report, sources: So
             for r in notes:
                 out += _row(r, sources)
     by_row = {r.n: r for r in docs}
+    verdicts: dict[tuple[str, str, str], list[Closure]] = defaultdict(list)
     for c in entry.closed:
-        if c.reason == "agrees":
-            out.append(f"{c.party} agrees with row {c.row}: {c.ref} {c.lines}")
+        if c.reason in VERDICT_CLOSURES:
+            verdicts[(c.party, c.row, c.reason)].append(c)
+    for (party, n, reason), places in verdicts.items():
+        said = (f"{party} agrees with row {n}, as documented" if reason == "agrees" else
+                f"{party} leaves row {n} unfollowed: what it does there was not established")
+        out.append(f"{said} ({len(places)} place{'s' if len(places) > 1 else ''})")
+        for c in places:
+            out.append(f"      {c.ref} {c.lines}")
             out += _lines(Quote(c.ref, c.lines), sources)
-            if c.row in by_row:
-                out += _row(by_row[c.row], sources)
+        if n in by_row:
+            out += _row(by_row[n], sources)
     extras = [r for r in entry.rows if r.vs == "extra"]
     official = [g for g in dictionary.regions(entry)
                 if g.lines and split_ref(g.ref)[0] in ("datasheet", "rbil61")]
@@ -87,7 +103,7 @@ def entry_text(dictionary: Dictionary, entry: Entry, report: Report, sources: So
             out.append(f"notes of several emulators on {subject}, together")
             out += [f"      {r.of} {r.n} {r.vs}: {r.text}" for r in together]
     for c in entry.closed:
-        if c.reason == "agrees":
+        if c.reason in VERDICT_CLOSURES:
             continue
         out.append(f"  closed {c.ref} {c.lines} as {c.reason}"
                    + (f" ({c.why})" if c.why else "") + (f" owner {c.owner}" if c.owner else ""))

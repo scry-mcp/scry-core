@@ -206,6 +206,36 @@ def test_the_same_document_held_twice_is_refused() -> None:
         quote.parse_datasheets(doc)
 
 
+def beside(tmp_path: Path, table: str) -> Path:
+    """A dictionary inside a package whose `knowledge_index` holds `table`."""
+    package = tmp_path / "pkg"
+    (package / "knowledge_index").mkdir(parents=True)
+    (package / "knowledge_index" / "datasheets.json").write_text(table, encoding="utf-8")
+    (package / "knowledge_rows").mkdir()
+    return package / "knowledge_rows" / "d.json"
+
+
+def test_a_dictionary_reads_the_table_of_its_own_package_with_this_one(tmp_path: Path) -> None:
+    got = quote.table_for(beside(tmp_path, held(title="own", url="http://own",
+                                                 archive="http://own-copy", pdf="7" * 64)))
+    assert "a" in got and set(quote.default_datasheets()) < set(got)
+
+
+def test_a_dictionary_with_no_table_beside_it_reads_this_one(tmp_path: Path) -> None:
+    assert quote.table_for(tmp_path / "d.json") == quote.default_datasheets()
+
+
+def test_a_document_both_tables_hold_in_two_forms_is_refused(tmp_path: Path) -> None:
+    own = quote.default_datasheets()["8254.raw.txt"]
+    twin = held(title=own.title, url="http://other", archive="http://other-copy", pdf="7" * 64)
+    with pytest.raises(ValueError, match="one document"):
+        quote.table_for(beside(tmp_path, twin))
+    other = json.loads(held())
+    other["datasheets"] = {"8254.raw.txt": other["datasheets"]["a"]}
+    with pytest.raises(ValueError, match="also in scry_core's table"):
+        quote.table_for(beside(tmp_path / "x", json.dumps(other)))
+
+
 def test_the_fixture_captures_are_the_ones_the_tests_hash() -> None:
     assert (FIXTURES / "datasheets" / "chipx.raw.txt").read_text().startswith(
         "synthetic datasheet line 1")

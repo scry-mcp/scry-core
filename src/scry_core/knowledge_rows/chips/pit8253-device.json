@@ -1,6 +1,7 @@
 {
  "format": "scry-knowledge/2",
  "dictionary": "pit8253-device",
+ "title": "The 8253 and 8254 interval timer as a chip",
  "kind": "device",
  "scope": "chip",
  "covers": "The 8253 and 8254 programmable interval timer as a chip: its power-up state, its six counter modes and the GATE input",

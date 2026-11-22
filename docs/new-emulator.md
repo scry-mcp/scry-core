@@ -310,23 +310,42 @@ public source each fact was checked against. A server ships dictionaries and one
   written by the tool, never typed. The sources are read at their pins: `--mame` a tree of the
   tag's files, `--dosbox` a checkout holding the pin of `knowledge.shared.PINS`, `--rbil` a
   folder with the list's files or archives, `--datasheets` a folder of the captures the document
-  table names.
-  - The header says where the entry comes from: `source` is `official` or `emulator`. An
+  table names. The document table is scry-core's together with the
+  `knowledge_index/datasheets.json` of the package that holds the dictionary, if it has one; a
+  document the two hold in two forms is INVALID.
+  - The header names what the dictionary covers in a few words (`title`, "INT 21h, the DOS
+    services") and says where the entry comes from: `source` is `official` or `emulator`. An
     `official` dictionary names its `documents` (a row of the document table, with the `variant`
     each describes) and, per document, the lines of its capture that are the programming model
     (`official`). An `emulator` dictionary, or one entry that says `source: emulator`, has no
     `doc` row and says where it looked (`searched`, each of its fixed places with what it gave).
     A document is in the table with its class, whether its text is a layer or an OCR, the tool
     and version that made its capture, and a second URL.
-  - An entry's official region is a section of the list or the lines of a capture, and every
-    line of it is claimed by a `doc` row or closed as `key`, `see-also`, `version`, `layout`,
-    `electrical` or `elsewhere` (a line another entry owns). A line about a version of MS-DOS or
-    PC DOS gets a `doc` row that names the version; a line about another product is closed
-    `version`.
+  - An entry's official region is a section of the list or the lines of a capture (its own, or a
+    header handler's when it names none), and every line of it is claimed by a `doc` row or closed
+    as `key`, `see-also`, `version`, `layout`, `electrical` or `elsewhere` (a line another entry
+    owns). A `doc` row quotes inside that region only. A line about a version of MS-DOS or PC DOS
+    gets a `doc` row that names the version; a line about another product is closed `version`.
   - Each emulator the dictionary has code of owes a verdict on each `doc` row whose subject is
-    not `is`: exactly one note `differs` or `absent` naming it, or one closure `agrees` naming it
-    (the emulator's lines do what that row says and nothing more). Every item of an emulator's code
-    is claimed by a note, closed `agrees`, or closed with another reason of the fixed set.
+    not `is`, of one class: closures `agrees` that together show the row done (a row of two
+    halves takes one per half), closures `unfollowed`, or notes `differs` or `absent` (one per part
+    that departs). Two classes on one row are red, an `is` row included. Every item of an
+    emulator's code is claimed by a note, closed by a verdict, or closed with another reason of
+    the fixed set; an `absent` note claims nothing.
+  - What a verdict's lines must show, because a line that exists proves nothing by existing: an
+    `agrees` cites an effect, a `store`, the return of a value (a DOSBox-X callback's `CBRET_*`
+    is its dispatcher's, not one) or a line of a section; lines that hold only a condition, a
+    decode, a `switch`, a label or a call fault. A call counts when the callee table follows it
+    (`open`) and the verdict cites an effect in its body. A verdict cites as a row quotes: at most
+    6 places of at most 12 lines. A callee with several bodies (a drive's `FileOpen`, a device's
+    `Read`) is listed in the table as each `<file> <function>`, and its call is open until a
+    verdict or a note covers it; an `agrees` through it cites an effect in each body, otherwise
+    the row gets a `differs` note per body that departs or a closure `unfollowed` over the call
+    (the emulator's behaviour for this row was not established), which `rows review` prints as
+    such. `unfollowed` closes only a call the table leaves to another entry, to the engine or to
+    several bodies; a `none` callee does nothing a row is about. An `absent` note cites, in one
+    file, the whole body where the thing would be: the region itself, or a case, a block or a
+    branch the lister reads inside it, or a section of a region of the entry.
   - `rows quote <ref> <lines>` prints the lines and their digest (`--json` for the quote to
     paste); `rows quote --stamp <dictionary>` writes the digest into every quote that has none.
   - `rows cover <dictionary> [<id>...]` lists what each entry's code owes rows for, item by
@@ -336,15 +355,37 @@ public source each fact was checked against. A server ships dictionaries and one
   - `rows check <dictionary> [<id>...]` is the script half of the check: every quote is at the
     pin and gives its digest, every row quotes its own party only, every item is closed by a row,
     the key, a `closed` entry with a reason of the fixed set, or the callee table (`--callees`,
-    `scry-knowledge-callees/1`, one decision a function), and the verdicts and the official
-    ranges hold. A line of a declared range that no entry and no dictionary closure holds is red;
+    `scry-knowledge-callees/1`, one decision a function, the `callees.json` beside the
+    dictionary when not given), and the verdicts and the official ranges hold. A line of a declared range that no entry and no dictionary closure holds is red;
     `--partial` counts those lines instead, for a dictionary still being written. Exit 0 closed,
     1 a fault or an item left open, 3 INVALID (a source or a function not found, a capture that is not
     the document table's, or nothing examined).
   - `rows review <dictionary> [<id>...]` prints the entry in the order a reply shows it: the `doc`
-    rows, each emulator's notes with their `vs` and the row they name, each `agrees` beside the
-    row it names, and the official region whole for the notes that are `extra`; for the reader
-    who judges whether each sentence says only what its lines say.
+    rows, each emulator's notes with their `vs` and the row they name, each verdict closed on a
+    row (every place of an `agrees` together, or `unfollowed`) beside the row it names, and the
+    official region whole for the notes that are `extra`; for the reader who judges whether each
+    sentence says only what its lines say.
+  - Writing a note, each rule with the error it prevents:
+    - Registers are named in hex as the emulator's code writes them (`0x0E`), never in the
+      document's own numbering (R16 is octal in the AY's manual), or a reader matches the wrong
+      register.
+    - A negation ("has no reset", "never reads AL") is written only with a line that shows it: a
+      whole body with nothing in it, a handler table without the entry. A search that found
+      nothing is not a line.
+    - A hedge of the source ("reportedly", "usually", "should") stays in the row: dropping it
+      states as fact what the source does not.
+    - A note is `extra` only when no official line of the entry or of the dictionary speaks of
+      its subject; otherwise it is `differs` or `absent` and names that row.
+    - Something a program can observe happening instead (a logged refusal, a fixed answer, a
+      success faked) makes the note `differs`, not `absent`.
+  - Reading a verdict, the test of each in one sentence:
+    - `agrees`: the cited lines, read alone, do every part of the row and nothing it excludes.
+    - `differs`: the cited lines show the emulator doing something observable that the row's
+      text does not say.
+    - `absent`: the cited body is where the row's behaviour would be, and nothing in it does it.
+    - `unfollowed`: the cited call is the one the behaviour goes through, and the table does not
+      follow it.
+    - `extra`: no line of the entry's official region, read whole, speaks of the subject.
   - `rows migrate <old dictionary> <id> --evidence <file>` drafts an entry from an old-shape one
     and the evidence its check gathered: what quotes an official document becomes a `doc` row, and
     what quotes an emulator is a `candidate` whose official line is still to be found. Quotes it

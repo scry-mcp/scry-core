@@ -60,3 +60,20 @@ def test_the_scheme_keeps_two_emulators_apart() -> None:
 def test_a_table_that_is_not_one_is_refused(text: str) -> None:
     with pytest.raises(ValueError, match="callee table|decision|text|scheme"):
         callees.parse(text)
+
+
+def test_a_call_with_several_bodies_lists_each_of_them() -> None:
+    got = callees.parse(table(**{"dosbox-x:FileOpen": [
+        "src/dos/drive_local.cpp localDrive::FileOpen",
+        "src/dos/drive_fat.cpp fatDrive::FileOpen"]}))
+    found = got.of("dosbox-x", "src/dos/dos_files.cpp", "Drives[drive]->FileOpen")
+    assert found is not None and found.spelled() == "virtual"
+    assert found.implementations == (("src/dos/drive_local.cpp", "localDrive::FileOpen"),
+                                     ("src/dos/drive_fat.cpp", "fatDrive::FileOpen"))
+
+
+@pytest.mark.parametrize("bodies", [
+    [], ["a.cpp f"], ["a.cpp f", "a.cpp f"], ["a.cpp f", "g"], ["a.cpp f", 3]])
+def test_a_call_with_several_bodies_that_does_not_list_two_is_refused(bodies: list[Any]) -> None:
+    with pytest.raises(ValueError, match="several bodies"):
+        callees.parse(table(**{"mame:read": bodies}))

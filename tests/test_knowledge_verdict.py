@@ -1,5 +1,5 @@
-"""The verdict each emulator owes on each official row of an entry: exactly one of a note
-`differs` or `absent`, or a closure `agrees`, naming the row."""
+"""The verdict each emulator owes on each official row of an entry: one class of `agrees`
+closures, `unfollowed` closures, or notes `differs` or `absent`, naming the row."""
 
 from __future__ import annotations
 
@@ -60,21 +60,44 @@ def test_an_official_row_no_emulator_judged_is_red(world: World, change: Change,
 
 
 @pytest.mark.parametrize(("change", "fault"), [
-    (a_note("A", "mame", "absent", "2", MAME, "17"),
-     "row 2 has 2 verdicts of mame (note 5, note A): exactly one"),
     (a_note("A", "mame", "differs", "3", MAME, "17"),
-     "row 3 has 2 verdicts of mame (note A, closure mame:src/devices/machine/chipx.cpp:24-27)"),
-    (closed_with({"ref": DOSBOX, "lines": "4", "as": "agrees", "row": "2"}),
-     "row 2 has 2 verdicts of dosbox-x (note 7, closure dosbox-x:src/hardware/chipx.cpp:4)")])
-def test_two_verdicts_of_one_emulator_on_one_row_are_red(world: World, change: Change,
-                                                         fault: str) -> None:
+     "row 3 has verdicts of mame of 2 classes (note A, agrees "
+     "mame:src/devices/machine/chipx.cpp:24-27)"),
+    (closed_with({"ref": DOSBOX, "lines": "11", "as": "agrees", "row": "2"}),
+     "row 2 has verdicts of dosbox-x of 2 classes (note 7, agrees "
+     "dosbox-x:src/hardware/chipx.cpp:11)"),
+    (closed_with({"ref": MAME, "lines": "26", "as": "agrees", "row": "1"},
+                 {"ref": MAME, "lines": "27", "as": "unfollowed", "row": "1"}),
+     "row 1 has verdicts of mame of 2 classes")])
+def test_two_classes_of_verdict_of_one_emulator_on_one_row_are_red(world: World, change: Change,
+                                                                   fault: str) -> None:
     world.edit("command", change)
     assert any(f.startswith(fault) for f in result(world).faults), result(world).faults
 
 
+def test_an_is_row_that_carries_verdicts_holds_them_to_one_class(world: World) -> None:
+    world.edit("command", closed_with({"ref": MAME, "lines": "26", "as": "agrees", "row": "1"}))
+    world.edit("command", a_note("A", "mame", "differs", "1", MAME, "17"))
+    assert any(f.startswith("row 1 has verdicts of mame of 2 classes")
+               for f in result(world).faults)
+
+
+def test_several_notes_of_one_emulator_on_one_row_are_one_verdict(world: World) -> None:
+    world.edit("command", a_note("A", "mame", "differs", "2", MAME, "17"))
+    assert verdict_faults(world) == []
+
+
+def test_several_agrees_of_one_emulator_on_one_row_are_one_verdict(world: World) -> None:
+    world.edit("command", lambda doc: entry_doc(doc).update(closed=[
+        *[c for c in entry_doc(doc)["closed"] if c["as"] != "agrees"],
+        {"ref": MAME, "lines": "24-26", "as": "agrees", "row": "3"},
+        {"ref": MAME, "lines": "27", "as": "agrees", "row": "3"}]))
+    assert result(world).faults == []
+
+
 def test_a_verdict_of_one_emulator_does_not_stand_for_the_other(world: World) -> None:
-    world.edit("command", set_row("7", of="mame", quotes=[{"ref": MAME, "lines": "17"}]))
-    assert any(f.startswith("row 2 has 2 verdicts of mame") for f in result(world).faults)
+    world.edit("command", set_row("7", of="mame", vs="differs", quotes=[
+        {"ref": MAME, "lines": "17"}]))
     assert any(f.startswith("row 2 has no verdict of dosbox-x") for f in result(world).faults)
 
 
@@ -91,7 +114,7 @@ def test_an_agrees_that_names_a_row_that_is_not_there_is_red(world: World) -> No
             if c["as"] == "agrees":
                 c["row"] = "9"
     world.edit("command", change)
-    assert ("mame closure mame:src/devices/machine/chipx.cpp:24-27 names row 9, which is no "
+    assert ("mame agrees mame:src/devices/machine/chipx.cpp:24-27 names row 9, which is no "
             "`doc` row of the entry") in result(world).faults
 
 
@@ -101,7 +124,7 @@ def test_an_agrees_that_names_no_row_is_refused_by_the_format(world: World) -> N
             if c["as"] == "agrees":
                 del c["row"]
     _, faults = rows.read(world.edit("command", change))
-    assert any("names the `doc` row they do" in f for f in faults)
+    assert any("names the `doc` row they are a verdict on" in f for f in faults)
 
 
 def test_a_dictionary_owes_a_verdict_of_the_emulators_it_has_code_of_only(world: World) -> None:
@@ -123,6 +146,10 @@ def test_one_line_of_an_emulator_may_do_what_several_official_rows_say(world: Wo
     assert result(world).faults == []
 
 
-def test_an_agrees_over_the_decode_of_the_key_is_used_by_it(world: World) -> None:
+def test_an_agrees_over_the_decode_of_the_key_alone_proves_nothing(world: World) -> None:
     world.edit("command", closed_with({"ref": MAME, "lines": "13", "as": "agrees", "row": "1"}))
-    assert result(world).faults == []
+    assert result(world).faults == [
+        "agrees mame:src/devices/machine/chipx.cpp:13 on row 1: its lines hold no effect, only "
+        "key: an `agrees` cites the store, the returned value or the branch body that does the "
+        "row; a call counts when the callee table follows it (`open`) and the verdict cites its "
+        "body"]

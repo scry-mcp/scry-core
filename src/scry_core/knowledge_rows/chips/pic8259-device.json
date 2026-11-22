@@ -1,6 +1,7 @@
 {
  "format": "scry-knowledge/2",
  "dictionary": "pic8259-device",
+ "title": "The 8259A interrupt controller as a chip",
  "kind": "device",
  "scope": "chip",
  "covers": "The 8259A programmable interrupt controller as a chip: its interrupt sequence, its modes, its initialization and the cascade",

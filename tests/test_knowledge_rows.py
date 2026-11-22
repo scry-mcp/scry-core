@@ -93,6 +93,8 @@ QUOTE = {"ref": "mame:src/devices/machine/chipx.cpp", "lines": "10"}
 
 
 @pytest.mark.parametrize(("change", "fault"), [
+    (lambda doc: doc.pop("title"), "`title` names what the dictionary covers"),
+    (set_head(title=" ".join(["word"] * 11)), "`title` names what the dictionary covers"),
     (set_row("1", text=WORDS), "31 words, over 30"),
     (set_row("1", text="tab\there"), "printable ASCII"),
     (set_row("1", text="café"), "printable ASCII"),
@@ -160,7 +162,7 @@ QUOTE = {"ref": "mame:src/devices/machine/chipx.cpp", "lines": "10"}
     (set_entry(closed=[{"ref": "datasheet:chipx.raw.txt", "lines": "10", "as": "agrees",
                         "row": "1"}]), "`agrees` closes lines of an emulator"),
     (set_entry(closed=[{"ref": QUOTE["ref"], "lines": "24", "as": "structure", "row": "1"}]),
-     "`row` goes with `agrees` only"),
+     "`row` goes with `agrees` or `unfollowed` only"),
     (set_entry(closed=[{"ref": QUOTE["ref"], "lines": "24", "as": "layout"}]),
      "`layout` closes a line of an official document"),
     (set_entry(closed=[{"ref": QUOTE["ref"], "lines": "24", "as": "electrical"}]),
@@ -210,8 +212,8 @@ def test_a_file_that_is_not_json_is_a_fault_and_not_a_crash(tmp_path: Path) -> N
 
 def test_an_entry_that_holds_a_placement_field_needs_a_row_on_place() -> None:
     def port(rows_: list[dict[str, Any]]) -> str:
-        return json.dumps({"format": "scry-knowledge/2", "dictionary": "p", "kind": "port",
-                           "scope": "chipx", "covers": "c", "source": "emulator",
+        return json.dumps({"format": "scry-knowledge/2", "dictionary": "p", "title": "t",
+                           "kind": "port", "scope": "chipx", "covers": "c", "source": "emulator",
                            "searched": SEARCHED, "entries": [
                                {"key": "0x20", "name": "port", "address": 32, "rows": rows_}]})
     mine = {"n": "1", "on": "is", "of": "mame", "vs": "extra", "text": "A port.",
@@ -437,7 +439,8 @@ def test_review_names_each_note_with_its_vs_and_the_row_it_is_about(cli: Cli,
 def test_review_shows_an_agrees_with_the_lines_the_row_and_the_rows_lines(
         cli: Cli, world: World) -> None:
     _, out, _ = cli("review", str(world.root / "command.json"))
-    block = out.split("mame agrees with row 3: mame:src/devices/machine/chipx.cpp 24-27\n")[1]
+    block = out.split("mame agrees with row 3, as documented (1 place)\n"
+                      "      mame:src/devices/machine/chipx.cpp 24-27\n")[1]
     assert block.startswith("            24 | if (m_isr & mask)\n")
     assert "            27 | m_base = (level + 1) & 7;\n  row 3  write  of doc" in block
     assert "      datasheet:chipx.raw.txt 13\n            13 | synthetic datasheet line 13" in block
@@ -470,7 +473,8 @@ def test_review_names_the_closures_and_the_callee_decisions(cli: Cli, world: Wor
     _, out, _ = cli("review", str(world.root / "call.json"))
     assert "closed dosbox-x:src/ints/call.cpp 7 as unseen (no program can see the flag)" in out
     assert "callee decisions used:" in out and "create_file shared:dos:call:0x21/0x3C" in out
-    assert "dosbox-x agrees with row 4: dosbox-x:src/ints/call.cpp 12-14" in out
+    assert ("dosbox-x agrees with row 4, as documented (1 place)\n"
+            "      dosbox-x:src/ints/call.cpp 12-14") in out
 
 
 def test_quote_prints_the_lines_with_their_digest_and_no_more(cli: Cli, world: World) -> None:
@@ -559,7 +563,8 @@ def test_stores_that_are_not_a_mapping_of_patterns_are_refused(world: World) -> 
 
 
 def test_a_handler_of_a_key_with_no_numbers_gets_no_value(tmp_path: Path) -> None:
-    doc = {"format": "scry-knowledge/2", "dictionary": "d", "kind": "device", "scope": "chipx",
+    doc = {"format": "scry-knowledge/2", "dictionary": "d", "title": "t", "kind": "device",
+           "scope": "chipx",
            "covers": "c", "source": "emulator", "searched": SEARCHED,
            "handlers": [{"ref": "mame:x.cpp", "function": "f", "value": "v"}],
            "entries": [{"key": "chipx", "name": "chip", "rows": [
@@ -578,7 +583,15 @@ def test_a_dictionary_with_a_fault_prints_it_beside_the_reports(cli: Cli, world:
     assert code == 1 and "- chipx:command:0xE0..0xE7, row 1: `text` is 31 words" in out
 
 
-def test_a_check_without_a_callee_table_leaves_the_calls_open(cli: Cli, world: World) -> None:
+def test_a_check_with_no_callee_table_named_reads_the_one_beside_the_dictionary(
+        cli: Cli, world: World) -> None:
+    code, out, _ = cli("check", str(world.root / "command.json"), callees=False)
+    assert code == 0 and "OPEN" not in out
+
+
+def test_a_check_with_no_callee_table_beside_the_dictionary_leaves_the_calls_open(
+        cli: Cli, world: World) -> None:
+    (world.root / "callees.json").unlink()
     code, out, _ = cli("check", str(world.root / "command.json"), callees=False)
     assert code == 1 and "OPEN mame:src/devices/machine/chipx.cpp:19 call LOG_CMD" in out
 
@@ -594,8 +607,8 @@ def test_migrate_without_an_output_file_prints_the_draft_and_says_the_summary_ap
 
 def test_a_vector_that_holds_an_address_needs_a_row_on_place() -> None:
     def vector(rows_: list[dict[str, Any]]) -> str:
-        return json.dumps({"format": "scry-knowledge/2", "dictionary": "v", "kind": "vector",
-                           "scope": "chipx", "covers": "c", "source": "emulator",
+        return json.dumps({"format": "scry-knowledge/2", "dictionary": "v", "title": "t",
+                           "kind": "vector", "scope": "chipx", "covers": "c", "source": "emulator",
                            "searched": SEARCHED, "entries": [
                                {"key": "0x08", "name": "tick", "address": 8, "length": 4,
                                 "rows": rows_}]})

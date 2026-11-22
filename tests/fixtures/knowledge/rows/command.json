@@ -1,6 +1,7 @@
 {
  "format": "scry-knowledge/2",
  "dictionary": "chipx-commands",
+ "title": "The commands of chip X",
  "kind": "command",
  "scope": "chipx",
  "covers": "a synthetic dictionary for the tests",

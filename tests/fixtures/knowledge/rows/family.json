@@ -1,6 +1,7 @@
 {
  "format": "scry-knowledge/2",
  "dictionary": "video-calls",
+ "title": "A synthetic family of calls",
  "kind": "call",
  "scope": "video",
  "covers": "a synthetic dictionary for the tests",

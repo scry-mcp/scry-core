@@ -759,6 +759,38 @@ def list_function(source: str, name: str, *, case: Iterable[str] = (), preamble:
     return Listing(items, first, last)
 
 
+def _bodies_in(nodes: list[Node], out: list[tuple[int, int]]) -> None:
+    for n in nodes:
+        if n.kind in ("if", "loop", "switch", "block"):
+            out.append((n.line, n.end or n.line))
+        if n.kind == "switch":
+            for k, label in enumerate(n.body):
+                if label.kind != "case":
+                    continue
+                run: list[Node] = []
+                for later in n.body[k + 1:]:
+                    run.append(later)
+                    if _ends(later):
+                        break
+                out.append((label.line, max((x.end or x.line for x in run), default=label.line)))
+        _bodies_in(n.body, out)
+        _bodies_in(n.orelse, out)
+
+
+def bodies(source: str, name: str, *, defined: Iterable[str] = ()) -> list[tuple[int, int]]:
+    """The first and last line of every whole body in the function `name`: the function itself
+    (from its signature or from its brace), each block, branch, loop and switch, and each case
+    from its label to the exit that ends it."""
+    text, _ = one_build(blank(source), set(defined))
+    start, stop = function(text, name)
+    parser = Parser(text, start, stop)
+    opens, closes = parser.line(start), parser.line(stop)
+    signature = text.rfind(name, 0, start)
+    out = [(opens, closes), (parser.line(signature), closes)]
+    _bodies_in(parser.statements(), out)
+    return sorted(set(out))
+
+
 def list_section(lines: list[str], lines_span: str) -> Listing:
     """A section of a list: every line that is not blank is an item."""
     first, last = span(lines_span)

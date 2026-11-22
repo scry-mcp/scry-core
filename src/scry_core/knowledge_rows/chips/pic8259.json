@@ -1,6 +1,7 @@
 {
  "format": "scry-knowledge/2",
  "dictionary": "pic8259",
+ "title": "The 8259A interrupt controller, its two ports",
  "kind": "register",
  "scope": "pic8259",
  "covers": "The two ports of the 8259A: A0 = 0 and A0 = 1, each read and written",

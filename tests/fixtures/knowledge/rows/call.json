@@ -1,6 +1,7 @@
 {
  "format": "scry-knowledge/2",
  "dictionary": "dos-calls",
+ "title": "A synthetic interrupt call",
  "kind": "call",
  "scope": "dos",
  "covers": "a synthetic dictionary for the tests",
@@ -112,8 +113,13 @@
      "quotes": [
       {
        "ref": "dosbox-x:src/ints/call.cpp",
-       "lines": "10-11",
-       "sha": "1507f6c02d8d0ace31438d496ffe42ace63a52efcaebf14483b25bd85544380c"
+       "lines": "9-20",
+       "sha": "c0b57fcdbedcde60eef7c00b2b1a2133f45812f47ff7739d826801a89855f94f"
+      },
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "21-22",
+       "sha": "bd991064990ba41f53a21a49f335a63b294715b89476366c0672a7d1c79b424b"
       }
      ]
     },
@@ -204,6 +210,11 @@
     }
    ],
    "closed": [
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "lines": "10",
+     "as": "build"
+    },
     {
      "ref": "dosbox-x:src/ints/call.cpp",
      "lines": "7",

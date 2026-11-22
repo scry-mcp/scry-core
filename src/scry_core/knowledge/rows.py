@@ -33,6 +33,7 @@ from scry_core.knowledge.quote import (
     Sources,
     span,
     split_ref,
+    table_for,
 )
 
 FORMAT = "scry-knowledge/2"
@@ -46,7 +47,12 @@ SEARCH_PLACES = ("mame-header", "maker", "bitsavers", "archive-org", "index")
 SEARCH_WORDS = 30
 TEXT_WORDS, QUOTES_PER_ROW, LINKS_PER_ROW, UNSEEN_WORDS = 30, 6, 4, 16
 CLOSED_AS = ("log", "structure", "decode", "key", "build", "dead", "see-also", "version",
-             "unseen", "preamble", "parent", "agrees", "layout", "electrical", "elsewhere")
+             "unseen", "preamble", "parent", "agrees", "unfollowed", "layout", "electrical",
+             "elsewhere")
+#: The closures that are an emulator's verdict on a `doc` row: it does what the row says, or the
+#: row's behaviour goes through code the callee table does not follow.
+VERDICT_CLOSURES = ("agrees", "unfollowed")
+TITLE_WORDS = 10
 OWNED = ("preamble", "parent", "elsewhere")
 #: Reasons that close a line of an official document, and the one that closes an emulator's.
 OFFICIAL_ONLY = ("layout", "electrical", "elsewhere")
@@ -57,7 +63,7 @@ PLACEMENT = ("address", "length", "device", "ports", "irq", "dma", "contains", "
 SWEEPING = ("always", "never", "only", "every")
 STATES = ("undetermined",)
 
-_HEADER_FIELDS = {"format", "dictionary", "kind", "scope", "covers", "source", "documents",
+_HEADER_FIELDS = {"format", "dictionary", "title", "kind", "scope", "covers", "source", "documents",
                   "official", "searched", "closed", "handlers", "defines", "stores", "engine",
                   "entries"}
 _ENTRY_FIELDS = {"key", "name", "aliases", "access", "source", "searched", "regions", "rows",
@@ -177,6 +183,7 @@ class Search:
 @dataclass(frozen=True)
 class Header:
     dictionary: str
+    title: str
     kind: str
     scope: str
     covers: str
@@ -359,12 +366,12 @@ def _closure(raw: object, where: str, faults: list[str]) -> Closure | None:
         return None
     why, owner, row = raw.get("reason", ""), raw.get("owner", ""), raw.get("row", "")
     party = PARTY[split_ref(raw["ref"])[0]]
-    if reason == "agrees" and not (party in EMULATORS and isinstance(row, str) and row):
-        faults.append(f"{where}: `agrees` closes lines of an emulator and names the `doc` row "
-                      "they do, as `row`")
+    if reason in VERDICT_CLOSURES and not (party in EMULATORS and isinstance(row, str) and row):
+        faults.append(f"{where}: `{reason}` closes lines of an emulator and names the `doc` row "
+                      "they are a verdict on, as `row`")
         return None
-    if reason != "agrees" and row != "":
-        faults.append(f"{where}: `row` goes with `agrees` only")
+    if reason not in VERDICT_CLOSURES and row != "":
+        faults.append(f"{where}: `row` goes with `agrees` or `unfollowed` only")
         return None
     if party == "doc" and reason not in DOCUMENT_REASONS:
         faults.append(f"{where}: `{reason}` is about an emulator's code; a line of an official "
@@ -542,6 +549,12 @@ def _header(doc: dict[str, Any], faults: list[str]) -> Header | None:
             and isinstance(doc.get("covers"), str)):
         faults.append("`dictionary`, `scope` and `covers` are text")
         return None
+    title = doc.get("title")
+    if not (isinstance(title, str) and title.strip() == title and title.isascii()
+            and title.isprintable() and 0 < len(title.split()) <= TITLE_WORDS):
+        faults.append(f"`title` names what the dictionary covers in 1 to {TITLE_WORDS} words of "
+                      "printable ASCII")
+        title = ""
     source = doc.get("source")
     if source not in SOURCES:
         faults.append(f"`source` is one of {', '.join(SOURCES)}")
@@ -575,8 +588,8 @@ def _header(doc: dict[str, Any], faults: list[str]) -> Header | None:
     if not (isinstance(engine, list) and all(isinstance(e, str) for e in engine)):
         faults.append("`engine` is a list of function names")
         engine = []
-    return Header(doc["dictionary"], kind, scope, doc["covers"], source, documents, official,
-                  searched, closed, tuple(h for h in handlers if h),
+    return Header(doc["dictionary"], str(title), kind, scope, doc["covers"], source, documents,
+                  official, searched, closed, tuple(h for h in handlers if h),
                   {k: tuple(v) for k, v in defines.items()}, dict(stores), tuple(engine))
 
 
@@ -607,13 +620,19 @@ def read(path: Path) -> tuple[Dictionary | None, list[str]]:
 
 
 def _callees(got: argparse.Namespace) -> Callees:
-    if not got.callees:
+    """The table `--callees` names, or the `callees.json` beside the dictionary, or none."""
+    path = got.callees or got.dictionary.parent / "callees.json"
+    if not (got.callees or path.is_file()):
         return Callees()
-    return parse_callees(got.callees.read_text(encoding="utf-8"), got.callees.name)
+    return parse_callees(path.read_text(encoding="utf-8"), path.name)
 
 
 def _sources(got: argparse.Namespace) -> Sources:
-    return Sources(mame=got.mame, dosbox=got.dosbox, rbil=got.rbil, datasheets=got.datasheets)
+    """The pinned sources, and the documents of this package's table and of the table of the
+    package that holds the dictionary."""
+    held = getattr(got, "dictionary", None) or getattr(got, "stamp", None)
+    return Sources(mame=got.mame, dosbox=got.dosbox, rbil=got.rbil, datasheets=got.datasheets,
+                   table=table_for(held) if held else None)
 
 
 def _chosen(dictionary: Dictionary, wanted: Sequence[str]) -> list[Entry]:
@@ -754,7 +773,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     ask.add_argument("--dosbox", type=Path, help="DOSBox-X checkout that holds the pin")
     ask.add_argument("--rbil", type=Path, help="folder of Ralf Brown's list files or archives")
     ask.add_argument("--datasheets", type=Path, help="folder of the datasheet captures")
-    ask.add_argument("--callees", type=Path, help="the callee table, `scry-knowledge-callees/1`")
+    ask.add_argument("--callees", type=Path, help="the callee table, `scry-knowledge-callees/1`; "
+                     "the `callees.json` beside the dictionary when not given")
     commands = ask.add_subparsers(dest="command", required=True)
     quote = commands.add_parser("quote", help="print the lines of a ref with their digest, or "
                                 "stamp the quotes of a dictionary that have none")

@@ -23,6 +23,11 @@ def _of_documents(dictionary: Dictionary, entry: Entry) -> list[Region]:
     return [r for r in dictionary.regions(entry) if split_ref(r.ref)[0] in (DOCUMENT, "rbil61")]
 
 
+def _through(lines: str) -> tuple[int, int]:
+    first, last = span(lines)
+    return first, last + 1
+
+
 def _lines(ranges: Iterable[str]) -> set[int]:
     return {n for r in ranges for n in range(span(r)[0], span(r)[1] + 1)}
 
@@ -30,7 +35,8 @@ def _lines(ranges: Iterable[str]) -> set[int]:
 def entry_faults(dictionary: Dictionary, entry: Entry) -> list[str]:
     """What is wrong with the entry's official side: a region of an official source it has none
     of, a document its dictionary does not name, lines outside the declared programming model, a
-    variant no document describes."""
+    quote outside the entry's official region (its own or the header's), a variant no document
+    describes."""
     out: list[str] = []
     header = dictionary.header
     named = {d.name for d in header.documents}
@@ -48,8 +54,13 @@ def entry_faults(dictionary: Dictionary, entry: Entry) -> list[str]:
             out.append(f"region {r.ref}:{r.lines} is outside the lines of {file} declared as "
                        "its programming model")
     variants = {(d.name, d.variant) for d in header.documents}
+    held = {(r.ref, n) for r in regions if r.lines for n in range(*_through(r.lines))}
     for row in entry.rows:
         for q in row.quotes:
+            if row.of == "doc" and not all((q.ref, n) in held
+                                           for n in range(q.first, q.last + 1)):
+                out.append(f"row {row.n} quotes {q.ref}:{q.lines}, outside the entry's official "
+                           "region: a row states what its own region says")
             scheme, file = split_ref(q.ref)
             if scheme == DOCUMENT and file not in named:
                 out.append(f"row {row.n} quotes {q.ref}, a document the dictionary does not name")

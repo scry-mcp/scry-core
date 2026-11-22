@@ -1,6 +1,7 @@
 {
  "format": "scry-knowledge/2",
  "dictionary": "pic8259-commands",
+ "title": "The 8259A interrupt controller, its commands",
  "kind": "command",
  "scope": "pic8259",
  "covers": "The commands the 8259A takes at A0 = 0: ICW1, the OCW2 end of interrupt and rotate forms, and OCW3",
