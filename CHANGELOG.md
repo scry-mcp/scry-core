@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.121.0
 
 - A server answers what a number is called on its machine, with the source each answer was
   checked against. `knowledge_tool.register` adds the `knowledge_find` tool, and a
