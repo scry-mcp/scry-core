@@ -23,8 +23,8 @@ What a server author notices. A client's view of each server is in that server's
   declarations (`CHIPS`), the cpus named for any system built on them (`CPUS`) and the one pin of
   each emulator's source (`PINS`), and a server loads `knowledge/chips/` and, if it declares those
   cpus, `knowledge/cpus/`.
-  `tools/knowledge_sources.py` writes the index of the sources they cite and takes a checkout of
-  each emulator (`--mame REPO`, `--dosbox REPO`) that holds its pin.
+  `tools/knowledge_sources.py` writes the index of the sources they cite from each emulator's
+  source at its pin (`--mame DIR`, `--dosbox REPO`).
 - `scry_core.decorate` draws the presence layers into a demo's clip from the demo's run, richer
   than the live overlay. It needs the `decorate` extra (`scry-core[decorate]`: Pillow and numpy),
   which a server and its users never load. A moment of the session's video is placed by the frame
