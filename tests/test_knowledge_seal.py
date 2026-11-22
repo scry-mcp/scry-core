@@ -49,7 +49,7 @@ def test_a_check_is_sealed_into_its_file_and_the_lock_and_the_contract_passes(
     assert run(copy.subject()) == set()
     sealed = knowledge.read_lock(copy.lock_path).checked
     assert set(sealed) == {EXIT, GET_CODE}
-    got = copy.subject().base().by_id(GET_CODE)
+    got = copy.subject().base().unfiltered().by_id(GET_CODE)
     assert got is not None and got.checked is not None
     assert got.checked.digest == got.digest == sealed[GET_CODE].digest
     assert sealed[GET_CODE] == lock.Locked(got.digest, "second checker",
@@ -203,7 +203,7 @@ def test_a_check_may_quote_a_part_of_the_indexed_line_and_nothing_else(tmp_path:
         write(copy, lambda d, line=line: entry(d, "0x21/0x4C")["checked"]["against"][0].update(
             line=line))
         assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
-        assert (check.against_sources(copy.subject().base(), copy.subject().sources())
+        assert (check.against_sources(copy.subject().base().unfiltered(), copy.subject().sources())
                 == []) is passes
 
 
@@ -280,10 +280,10 @@ def test_a_first_seal_creates_the_lock(tmp_path: Path) -> None:
 def test_the_lock_says_what_became_of_each_entry(tmp_path: Path) -> None:
     copy = Copy(tmp_path)
     copy.edit("calls", lambda d: entry(d, "0x21/0x4C").pop("checked"))
-    [gone] = check.locked(copy.subject().base(), copy.subject().lock())
+    [gone] = check.locked(copy.subject().base().unfiltered(), copy.subject().lock())
     assert "no longer checked" in gone and lock.COMMAND in gone
     copy.edit("calls", lambda d: d["entries"].remove(entry(d, "0x21/0x4C")))
-    [removed] = check.locked(copy.subject().base(), copy.subject().lock())
+    [removed] = check.locked(copy.subject().base().unfiltered(), copy.subject().lock())
     assert "no entry any more" in removed
 
 

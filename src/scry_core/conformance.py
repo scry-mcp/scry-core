@@ -17,6 +17,7 @@ from scry_core import window as w
 from scry_core.knowledge import (
     Base,
     Confirmation,
+    Found,
     Lock,
     SecondCheck,
     SourceIndex,
@@ -386,24 +387,36 @@ def _whole(subject: KnowledgeSubject) -> Base:
 
 def _asked(served: Base, e: Entry) -> Iterable[tuple[str, list[Entry]]]:
     """What `served` answers to each query shape that would reach `e`: by id, by key and scope,
-    by a range over its number, by its name, by its words, by its device."""
+    by a key alone, by a range over its number, by its name, by its words, by its address, by its
+    device, as a device, as a variant of its call, and the nearest entries each search offers
+    when it finds none."""
     every = len(served) + 1
     shapes: list[tuple[str, list[Entry]]] = [
         ("its id", [x] if (x := served.by_id(e.id)) else []),
         ("its key", [x] if (x := served.get(e.kind, e.key, e.scope, e.access)) else []),
+        ("its name", served.by_alias(e.name))]
+    searches: list[tuple[str, Found]] = [
         ("a search by its key", served.search(kind=e.kind, key=e.key, scopes=(e.scope,),
-                                               limit=every).entries),
-        ("its name", served.by_alias(e.name)),
-        ("a search by its name", served.search(words=e.name, scopes=(e.scope,),
-                                               limit=every).entries)]
+                                              limit=every)),
+        ("a search by its key alone", served.search(key=e.key, scopes=(e.scope,), limit=every)),
+        ("a search by its name", served.search(words=e.name, scopes=(e.scope,), limit=every))]
     if e.lo is not None and e.kind != "call":
         span = e.key if ".." in e.key else f"{e.key}..{e.key}"
-        shapes.append(("a range over its number", served.search(
-            kind=e.kind, key=span, scopes=(e.scope,), limit=every).entries))
+        searches.append(("a range over its number", served.search(
+            kind=e.kind, key=span, scopes=(e.scope,), limit=every)))
     for device in {e.key if e.kind == "device" else e.device, e.scope if e.kind in (
             "register", "command") else ""} - {""}:
-        shapes.append((f"a search by device {device}", served.search(device=device,
-                                                                      limit=every).entries))
+        searches.append((f"a search by device {device}", served.search(device=device,
+                                                                       limit=every)))
+    for how, found in searches:
+        shapes += [(how, found.entries), (f"the nearest of {how}", found.nearest)]
+    if e.a_lo is not None and (at := served.at(e.a_lo, e.scope)):
+        shapes.append(("its address", [at[0]]))
+    if e.kind == "device" and (device_entry := served.device_entry(e.scope, e.key)):
+        shapes.append(("its device entry", [device_entry]))
+    if e.kind == "call" and "=" in e.key:
+        shapes.append(("the variants of its call",
+                       served.variants(e.scope, e.key.rpartition("/")[0])))
     return shapes
 
 

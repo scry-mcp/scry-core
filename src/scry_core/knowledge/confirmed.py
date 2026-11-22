@@ -1,12 +1,8 @@
 """What a reply may serve. An entry is confirmed when its lock holds it sealed at the digest it
-has now and the second check, the one that carried its evidence, recorded it under that same
-digest. Anything else is held back: unsealed, reopened, sealed once only, changed since, or
-recorded under another digest.
+has now and the second check recorded that same digest; anything else is held back.
 
-The second check is one file format for every repository, `scry-knowledge-second-check/1`:
-
-    {"format": "scry-knowledge-second-check/1",
-     "confirmed": [{"id": "<entry id>", "by": "<who>", "digest": "<64 hex digits>"}, ...]}
+The second check is one file format for every repository:
+`{"format": "scry-knowledge-second-check/1", "confirmed": [{"id", "by", "digest"}, ...]}`.
 """
 
 from __future__ import annotations

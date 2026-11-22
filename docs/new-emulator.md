@@ -244,6 +244,21 @@ public source each fact was checked against. A server ships dictionaries and one
   checked by another session and sealed again with `seal`. The contract fails when a
   reopening is recorded for an entry that is sealed at the digest it had, and when a checked
   entry has no lock row.
+- **Confirmed entries**: a reply serves an entry only when it is confirmed, that is when the
+  lock holds it sealed at the digest it has now and the second check, which carried its
+  evidence, recorded that same digest (`scry_core.knowledge.confirmed`). An entry that is
+  unsealed, reopened, sealed once only, changed since it was sealed or recorded under another
+  digest is held back. The second check is one file format for every repository,
+  `scry-knowledge-second-check/1`: `{"format": ..., "confirmed": [{"id", "by", "digest"}, ...]}`,
+  read by `read_second_check`; a file of another shape is refused by name. A server builds
+  `Confirmation.of(locks, second_checks)` from its own lock and second check (and
+  `shared.locks()` and `shared.second_check()` for the shared dictionaries) and passes it to
+  `Base.load(..., confirmation=...)`. That is the one place the filter lives: the namer, the
+  line notes, the summary, the captions and `machine_map`'s rows read a base that cannot hold a
+  held-back entry, a `device` or `contains` that points at one is dropped when the base loads,
+  and `knowledge_find` answers a key whose entry is held back as an entry that exists and is not
+  confirmed, with its id in `unconfirmed`. A server's `status` carries `knowledge_tool.counts`.
+  A base with no second check serves nothing of its own.
 - **The declaration**: `knowledge/support.py` holds one `Support` listing the `Scope`s (a system
   or a cpu, with the kinds it owes; `support="named"` for a cpu the base names and the server
   does not claim to run), the `Device`s and the `Chip`s. Adding one there is the only step; the
@@ -252,7 +267,9 @@ public source each fact was checked against. A server ships dictionaries and one
   `scry_core.knowledge.shared` holds `CHIPS` (their declarations, so
   `Support(chips=shared.CHIPS)` is complete by construction), `CPUS` (cpus named for any
   system built on them, which a server that runs one adds to its `scopes`) and `PINS` (the
-  commit or tag each `dosbox-x:` and `mame:` ref is read at). `knowledge/chips/` is loaded by
+  commit or tag each `dosbox-x:` and `mame:` ref is read at, the one pin of each emulator for
+  every repository: a server takes it from there and the contract fails when it declares
+  another). `knowledge/chips/` is loaded by
   every server and `knowledge/cpus/` only by a server that declares those cpus, as
   `Base.load(<own package>, files("scry_core.knowledge") / "chips")`. A register of a shared
   chip has the id `<chip>:register:<key>` on both servers, and its `reached` names handlers,
@@ -269,9 +286,10 @@ public source each fact was checked against. A server ships dictionaries and one
   digest, and a check's `against` line to the whole `cites`, since a digest cannot say what part
   of a line it came from.
 - **The tests**: a subclass of `conformance.KnowledgeContract` with a `subject` that gives the
-  declaration, the loaded `Base` (`fts5=False` forces the search index of our own), the source
-  index, the lock of the checked entries (`scry_core.knowledge.read_lock`) and the scopes the
-  code depends on. `tests/null_server.py`'s `NullKnowledge` is the
+  declaration, the loaded `Base` as the server serves it (`fts5=False` forces the search index of
+  our own; the contract judges the files on `Base.unfiltered()`), the source index, the lock of
+  the checked entries (`scry_core.knowledge.read_lock`), the second check
+  (`scry_core.knowledge.read_second_check`) and the scopes the code depends on. `tests/null_server.py`'s `NullKnowledge` is the
   model.
 - **The tool**: `knowledge_tool.register(wrap, answer, base, live)`. `live` says what the running
   machine can answer by itself (MAME's inputs and device tags, which a model may give as

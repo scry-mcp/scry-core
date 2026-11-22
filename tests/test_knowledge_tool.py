@@ -433,8 +433,8 @@ def served(tmp_path: Path) -> Base:
 class TestOnlyConfirmedEntriesAreServed:
     def test_a_reply_carries_the_two_counts(self, served: Base) -> None:
         got = ask(served, kind="port", key="0x3C0")
-        assert (got["served"], got["held_back"]) == (5, 6)
-        assert ask(served, id=ibm_id("port", "0x3C0"))["held_back"] == 6
+        assert (got["served"], got["held_back"]) == (9, 8)
+        assert ask(served, id=ibm_id("port", "0x3C0"))["held_back"] == 8
 
     @pytest.mark.parametrize("key", PORTS[1:])
     def test_a_key_whose_entry_is_held_back_says_it_exists_and_is_not_confirmed(
@@ -464,8 +464,17 @@ class TestOnlyConfirmedEntriesAreServed:
         got = ask(served, device="held-dev")
         assert "not confirmed" in got["note"]
 
+    def test_words_that_match_nothing_are_not_blamed_on_the_entries_held_back(
+            self, served: Base) -> None:
+        asked: list[dict[str, Any]] = [{"kind": "port", "text": "zebra"},
+                                       {"kind": "port", "key": "0x3C1", "text": "zebra"}]
+        for arguments in asked:
+            got = ask(served, **arguments)
+            assert "unconfirmed" not in got and "not confirmed" not in got["note"]
+            assert "not confirmed" not in knowledge_tool.summary(arguments, got)
+
     def test_the_counts_are_the_status_block(self, served: Base) -> None:
-        assert knowledge_tool.counts(served) == {"served": 5, "held_back": 6}
+        assert knowledge_tool.counts(served) == {"served": 9, "held_back": 8}
 
     def test_a_question_nothing_matches_is_still_nothing_known(self, served: Base) -> None:
         got = ask(served, kind="port", key="0x999")

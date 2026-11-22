@@ -146,6 +146,7 @@ class Base:
         for source in sources:
             self._read(source)
         if confirmation is not None:
+            self._held_twin_faults()
             self._drop_held_relations()
             self._confirming = None
         if self._fallback is not None:
@@ -255,6 +256,15 @@ class Base:
         else:
             self._fallback.add(n, {k: set(w) for k, w in words.items()})
 
+    def _held_twin_faults(self) -> None:
+        """An id held back that another file serves is a fault of the files, not a held entry."""
+        twins = [i for (i,) in self._db.execute(
+            "SELECT id FROM held WHERE id IN (SELECT id FROM entry) ORDER BY id")]
+        for id_ in twins:
+            self.load_faults.append(f"{id_} is in two files and one of them is held back; "
+                                    "the other is served")
+            self._db.execute("DELETE FROM held WHERE id = ?", (id_,))
+
     def _held_device(self, scope: str, key: str) -> bool:
         """Whether the device `key`, as seen from `scope`, is an entry held back: the resolution
         of `device_entry` over the entries loaded and the entries held back together."""
@@ -299,9 +309,11 @@ class Base:
         clauses, more = [where], list(args)
         number = self._key_clause(kind, key, clauses, more) if key else None
         if device:
-            clauses.append("(device = ? OR (kind = 'device' AND key = ?) OR "
-                           "(kind IN ('register','command') AND scope = ?))")
-            more += [device, device, device]
+            keep = sorted(self._closure(device))
+            marks = ",".join("?" * len(keep))
+            clauses.append(f"(device IN ({marks}) OR (kind IN ('register','command') "
+                           f"AND scope IN ({marks})) OR (kind = 'device' AND key = ?))")
+            more += [*keep, *keep, device]
         return [i for i, k, row_key in self._db.execute(
             f"SELECT id, kind, key FROM held WHERE {' AND '.join(clauses)} ORDER BY id", more)
             if number is None or self._prefix_of(kind, key, k, row_key)]
@@ -622,14 +634,17 @@ class Base:
             used = [self._of(n) for (n,) in self._db.execute(
                 "SELECT DISTINCT n FROM device_port WHERE lo <= ? AND hi >= ?", (e.lo, e.lo))]
         reached: dict[str, tuple[str, ...]] = {}
+        owner = e.scope if e.kind in ("register", "command") else e.device
         for way, value in (e.reached or {}).items():
             names = [value] if isinstance(value, str) else list(value)
-            reached[way] = tuple(i for n in names if (i := self._port_id(device, n)) is not None)
+            reached[way] = tuple(i for n in names
+                                 if (i := self._port_id(owner, n)) is not None)
         return Relations(device, contains, tuple(sorted(used, key=_order)), reached)
 
-    def _port_id(self, device: fmt.Entry | None, name: str) -> str | None:
+    def _port_id(self, owner: str, name: str) -> str | None:
         """The id of the port entry a `reached` word names, else the word (a handler's name), or
-        None when the port is an entry held back."""
+        None when the port is an entry held back: the owner's own port first, as the files
+        read, so a held-back port of the owner is never replaced by another device's."""
         if not name.lower().startswith("0x"):
             return name
         try:
@@ -638,12 +653,16 @@ class Base:
             return name
         hits = self._db.execute("SELECT id, device FROM entry WHERE kind = 'port' AND key = ? "
                                 "ORDER BY n", (wanted,)).fetchall()
-        mine = [i for i, of in hits if device is not None and of == device.key]
-        chosen = mine or [i for i, _ in hits]
-        if not chosen and self._db.execute(
-                "SELECT 1 FROM held WHERE kind = 'port' AND key = ?", (wanted,)).fetchone():
+        mine = [i for i, of in hits if owner and of == owner]
+        if mine:
+            return str(mine[0])
+        held = self._db.execute("SELECT device FROM held WHERE kind = 'port' AND key = ?",
+                                (wanted,)).fetchall()
+        if owner and any(of == owner for (of,) in held):
             return None
-        return chosen[0] if chosen else name
+        if hits:
+            return str(hits[0][0])
+        return None if held else name
 
 
 def _order(e: fmt.Entry) -> tuple[str, str, bool, int, str, str]:

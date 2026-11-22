@@ -4,6 +4,19 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- A server serves only the knowledge entries that are confirmed: sealed in its lock and recorded
+  by the second check under the seal they have now (`knowledge.confirmed`). `Base.load` takes a
+  `Confirmation` and loads those entries only, counts the rest (`Base.held_back`) and drops a
+  `device` or `contains` that points at one; `Base.unfiltered()` is the view the checks of the
+  files take. The second check is one file, `scry-knowledge-second-check/1` (a `confirmed` list of
+  `id`, `by` and `digest`), and another shape is refused by name.
+- `knowledge_find` answers a key, an id or a device whose entry is held back as an entry that
+  exists and is not confirmed, with its id in `unconfirmed` and never its text. Every reply
+  carries `served` and `held_back`, and `knowledge_tool.counts` is the block a server's `status`
+  carries.
+- `conformance.KnowledgeContract` takes the second check from its subject (`second_check()`) and
+  gains cases for the filter and for the emulator pins, which `knowledge.shared.PINS` holds for
+  every repository.
 - A `boundary.CallListener` hears every call, a step of `perform` or `drive` included, as a
   `boundary.Call` (the tool, what it was given, whether it is a step, whether it only reads),
   and hears how it ended: `ok`, or `refused` for anything else. Its methods are now

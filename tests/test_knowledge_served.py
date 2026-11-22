@@ -46,11 +46,21 @@ def fixture(folder: Path) -> tuple[Base, Confirmation]:
         if n in (0, 3, 4, 5) else an_entry(key, f"port {n} timer", description="A timer port.")
         for n, key in enumerate(PORTS)]
     write_dictionary(folder, "ports", "port", "ibm-pc", ports)
-    held_device = an_entry("held-dev", "held device", contains=["seen-dev"])
-    seen_device = an_entry("seen-dev", "seen device")
-    for raw in (held_device, seen_device):
+    devices = [an_entry("held-dev", "held device", contains=["seen-dev"]),
+               an_entry("seen-dev", "seen device"),
+               an_entry("wrapper", "wrapper device", contains=["seen-dev"]),
+               an_entry("probe-dev", "probe device")]
+    for raw in devices:
         checked("ibm-pc", "device", raw)
-    write_dictionary(folder, "devices", "device", "ibm-pc", [held_device, seen_device])
+    write_dictionary(folder, "devices", "device", "ibm-pc", devices)
+    write_dictionary(folder, "seen-more", "register", "seen-dev",
+                     [an_entry("0x20", "held seen reg")])
+    probe = {"index": "0x3D1"}
+    write_dictionary(folder, "probe-regs", "register", "probe-dev", [
+        checked("probe-dev", "register", an_entry("0x00", "probe reg"), probe)], reached=probe)
+    write_dictionary(folder, "probe-ports", "port", "ibm-pc", [
+        checked("ibm-pc", "port", an_entry("0x3D1", "probe write", access="write")),
+        an_entry("0x3D1", "probe read", access="read", device="probe-dev")])
     write_dictionary(folder, "users", "port", "ibm-pc", [
         checked("ibm-pc", "port", an_entry("0x61", "speaker", device="held-dev"))])
     write_dictionary(folder, "regs", "register", "held-dev", [
@@ -74,17 +84,13 @@ def fixture(folder: Path) -> tuple[Base, Confirmation]:
             sealed[e.id] = OTHER
         if kind == confirmed.REOPENED:
             reopened.add(e.id)
-    for kind, key, scope in (("device", "seen-dev", "ibm-pc"), ("port", "0x61", "ibm-pc"),
-                             ("register", "0x10", "seen-dev")):
-        e = loaded.get(kind, key, scope)
-        assert e is not None
-        sealed[e.id] = recorded[e.id] = e.digest
+    special = {ibm_id("port", key) for key in PORTS} | {ibm_id("device", "held-dev")}
+    for e in loaded.entries():
+        if e.checked is not None and e.id not in special:
+            sealed[e.id] = recorded[e.id] = e.digest
     held = loaded.get("device", "held-dev", "ibm-pc")
     assert held is not None
     sealed[held.id] = held.digest  # sealed once: held back
-    reg = loaded.get("register", "0x00", "held-dev")
-    assert reg is not None
-    sealed[reg.id] = recorded[reg.id] = reg.digest
     lock = Lock({i: Locked(d, "checker", ()) for i, d in sealed.items()},
                 tuple(Reopened(i, OTHER, "reopener", "wrong", "checker", ()) for i in reopened))
     return loaded, Confirmation.of([lock], [SecondCheck(
@@ -110,15 +116,15 @@ def test_each_way_to_be_held_back_has_its_own_standing(tmp_path: Path) -> None:
 class TestOnlyConfirmedEntriesAreLoaded:
     def test_the_base_serves_the_confirmed_and_counts_the_rest(self, served: Base) -> None:
         assert [e.key for e in served.entries() if e.kind == "port" and e.key != "0x61"] == [
-            "0x3C0"]
-        assert len(served) == 5 and served.held_back == 6
+            "0x3C0", "0x3D1"]
+        assert len(served) == 9 and served.held_back == 8
 
     def test_a_base_with_no_confirmation_serves_every_entry(self, tmp_path: Path) -> None:
         everything, _ = fixture(tmp_path)
-        assert len(everything) == 11 and everything.held_back == 0
+        assert len(everything) == 17 and everything.held_back == 0
 
     def test_the_unfiltered_view_of_a_served_base_holds_every_entry(self, served: Base) -> None:
-        assert len(served.unfiltered()) == 11
+        assert len(served.unfiltered()) == 17
 
     @pytest.mark.parametrize("key", PORTS[1:])
     def test_a_held_back_entry_is_reached_by_no_query_shape(self, served: Base, key: str) -> None:
@@ -152,6 +158,35 @@ class TestOnlyConfirmedEntriesAreLoaded:
         reg = served.get("register", "0x10", "seen-dev")
         assert reg is not None
         assert served.related(reg).reached == {"index": (), "data": (ibm_id("port", "0x3C0"),)}
+
+    def test_a_held_back_register_of_a_device_inside_another_is_named_for_the_outer_one(
+            self, served: Base) -> None:
+        returned = {e.id for e in served.search(kind="register", device="wrapper", limit=50
+                                                ).entries}
+        assert "seen-dev:register:0x10" in returned
+        assert served.unconfirmed(device="wrapper") == ["seen-dev:register:0x20"]
+        assert not returned & set(served.unconfirmed(device="wrapper"))
+
+    def test_a_port_its_device_owns_that_is_held_back_is_not_replaced_by_another_one(
+            self, served: Base) -> None:
+        reg = served.get("register", "0x00", "probe-dev")
+        assert reg is not None
+        assert served.by_id("ibm-pc:port:0x3D1:write") is not None
+        assert served.related(reg).reached == {"index": ()}
+
+    def test_an_id_in_two_files_with_one_held_back_is_a_fault_and_not_a_held_entry(
+            self, tmp_path: Path) -> None:
+        sure = checked("ibm-pc", "port", an_entry("0x3E0", "twice"))
+        write_dictionary(tmp_path / "a", "a", "port", "ibm-pc", [sure])
+        write_dictionary(tmp_path / "b", "b", "port", "ibm-pc", [an_entry("0x3E0", "twice")])
+        whole = Base.load(tmp_path / "a")
+        e = whole.by_id(ibm_id("port", "0x3E0"))
+        assert e is not None
+        sealed = {e.id: e.digest}
+        for order in ((tmp_path / "a", tmp_path / "b"), (tmp_path / "b", tmp_path / "a")):
+            got = Base.load(*order, confirmation=Confirmation(sealed, frozenset(), sealed))
+            assert got.by_id(e.id) is not None and got.held_back == 0
+            assert any("two files" in fault for fault in got.faults()), got.faults()
 
     def test_a_device_that_contains_a_held_back_one_no_longer_lists_it(
             self, tmp_path: Path) -> None:

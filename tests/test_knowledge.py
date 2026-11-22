@@ -817,7 +817,7 @@ def test_a_declared_device_that_holds_one_with_no_entry_is_told_so() -> None:
     subject = NullKnowledge(declared=Support(
         scopes=(Scope("ibm-pc", written=("call", "port", "device")),),
         devices=(Device("vga-seq", written=("register",), inside=("vga-core",)),)))
-    assert check.owed_dictionaries(subject.base(), subject.support()) == [
+    assert check.owed_dictionaries(subject.base().unfiltered(), subject.support()) == [
         "vga-seq holds vga-core, which has no `device` entry"]
 
 

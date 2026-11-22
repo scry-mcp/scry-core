@@ -251,7 +251,8 @@ def _answer(base: Base, found: Found, live_rows: list[dict[str, Any]], kind: str
     out["examined"] = found.examined
     if total > 1:
         out["how"] = HOW
-    hidden = [] if tagged or not (key or device or (kind and not total)) else base.unconfirmed(
+    hidden = [] if tagged or words or not (key or device or (kind and not total)
+                                           ) else base.unconfirmed(
         kind=kind, key=key, device=device, scopes=scopes)
     if not total:
         out["nearest"] = [e.short() for e in found.nearest]
