@@ -876,6 +876,18 @@ def test_a_moment_between_two_steps_is_cut_from_the_session_s_video_by_the_repli
         "a step that counts no frame stands at the last one counted before it"
 
 
+def test_a_reply_that_names_the_frame_it_ended_at_places_a_moment_as_one_that_counts_frame(
+        tmp_path: Path) -> None:
+    folder = _session_video(tmp_path)
+    demo = _moment_demo(tmp_path, video=lambda run: folder,
+                        moments=(d.Moment("boot", "shot", "It moves."),))
+    run = d.Run(dir=tmp_path, replies=_replies(
+        boot={"frame_before": 90, "frame_after": 100}, shot={"frame_before": 100,
+                                                              "frame_after": 130},
+        film={"note": "counts none"}, end={"frame_before": 140, "frame_after": 150}))
+    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 22, 30)]
+
+
 @pytest.mark.parametrize(("frames", "why"), [
     ({"boot": {"frame": 60}, "shot": {"frame": 100}, "end": {"frame": 150}},
      "which no one file of"),

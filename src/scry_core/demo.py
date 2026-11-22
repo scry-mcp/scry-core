@@ -878,23 +878,23 @@ def _span(demo: Demo, run: Run, moment: Moment) -> tuple[Path, int, int]:
     files = sorted(folder.glob("*.avi"))
     if not files:
         raise Invalid(f"the session wrote no video in {folder}, so there is no moment to cut")
-    counted: dict[str, int] = {}
+    placed: dict[str, int] = {}
     for name, reply in run.replies.items():
-        frame = last_under(reply.data, FRAME_KEY)
-        if frame is not None or counted:
-            counted[name] = frame if frame is not None else list(counted.values())[-1]
-    if lacking := [name for name in (moment.after, moment.until) if name not in counted]:
+        frame = counted(reply)[1]
+        if frame is not None or placed:
+            placed[name] = frame if frame is not None else list(placed.values())[-1]
+    if lacking := [name for name in (moment.after, moment.until) if name not in placed]:
         raise Invalid(f"no reply up to step {lacking[0]!r} counts a `{FRAME_KEY}`, so the moment "
                       "it bounds cannot be found in the video")
-    latest = list(counted.values())[-1]
+    latest = list(placed.values())[-1]
     held = [motion.facts(file)[0] for file in files]
     if sum(held) > latest:
         raise Invalid(f"the session's video holds {sum(held)} frames and the last reply to count "
                       f"one counts frame {latest}: a step after it moved the machine without "
                       "counting, so end the run's last advance with a step whose reply counts "
                       f"its `{FRAME_KEY}`")
-    first = sum(held) - (latest - counted[moment.after])
-    frames = counted[moment.until] - counted[moment.after]
+    first = sum(held) - (latest - placed[moment.after])
+    frames = placed[moment.until] - placed[moment.after]
     before = 0
     for file, n in zip(files, held, strict=True):
         if before <= first and first + frames <= before + n:
