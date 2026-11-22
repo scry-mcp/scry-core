@@ -12,6 +12,8 @@ import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Annotated, Any, Protocol, Required
 
+from typing_extensions import TypedDict
+
 from scry_core import judges, prose
 from scry_core import vocabulary as vocab
 from scry_core.knowledge import KINDS, Base, Entry, Found, KeyFault, sources
@@ -23,8 +25,21 @@ from scry_core.reply_schema import ReplyEnvelope
 TITLE = "What a number is called"
 LIMIT_DEFAULT, LIMIT_MAX = 10, 50
 KEYS_SHOWN = 12
+UNCONFIRMED_SHOWN = 10
 HOW = "give `id` for the whole entry"
 REFERENCE = "Reference: REFERENCE.md, Names for numbers."
+
+
+class Counts(TypedDict):
+    """How many entries a base serves and how many it holds back as not confirmed: the block a
+    server's `status` carries and the two fields every `knowledge_find` reply ends with."""
+
+    served: int
+    held_back: int
+
+
+def counts(base: Base) -> Counts:
+    return {"served": len(base), "held_back": base.held_back}
 
 
 class Live(Protocol):
@@ -108,7 +123,7 @@ def _nearest_ids(base: Base, wanted: str) -> list[str]:
 def _read_scope(base: Base, scope: str) -> tuple[str, str]:
     """`scope` as the base holds it and, when a near miss was read as one (`6809` for `m6809`,
     `M-6809`: the same letters and digits, or a few letters before them), what was read."""
-    held = base.scopes()
+    held = sorted({*base.scopes(), *base.held_scopes()})
     if not scope or scope in held:
         return scope, ""
     plain = re.sub(r"[^a-z0-9]", "", scope.lower())
@@ -157,20 +172,27 @@ def _with_chip(base: Base, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key: str = "",
          text: str = "", device: str = "", scope: str = "",
          limit: int = LIMIT_DEFAULT) -> dict[str, Any]:
-    """The body: the fields of the reply."""
-    live = live or NoLive()
+    """The body: the fields of the reply, and the base's two counts."""
+    return {**_find(base, live or NoLive(), id, kind, key, text, device, scope, limit),
+            **counts(base)}
+
+
+def _find(base: Base, live: Live, id: str, kind: str, key: str, text: str, device: str,
+          scope: str, limit: int) -> dict[str, Any]:
     judge(id, kind, key, text, device, scope, limit)
-    if not len(base):
+    if not len(base) and not base.held_back:
         raise Invalid("no_channel", "this server's knowledge base holds no entries"
                       + (f": {base.faults()[0]}" if base.faults() else ""))
     scope, read = _read_scope(base, scope)
     if id:
         return _by_id(base, id)
-    if kind and kind not in base.kinds() and kind not in live.kinds:
+    if kind and kind not in base.kinds() and kind not in live.kinds and not base.unconfirmed(
+            kind=kind):
         raise Invalid("no_channel", f"this server holds no entries of kind {kind}; it has "
                       f"{', '.join(base.kinds())}", kinds=base.kinds())
     tag = _tag(base, live, kind, key, device)
-    if device and not tag and device not in base.device_keys():
+    if device and not tag and device not in base.device_keys() and not base.unconfirmed(
+            device=device):
         raise Invalid("unknown_ref", f"device {device!r} is not one the base holds; it has "
                       f"{', '.join(base.device_keys())}", nearest=difflib.get_close_matches(
                           device, base.device_keys(), n=5, cutoff=0.0))
@@ -197,6 +219,10 @@ def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key
 
 def _by_id(base: Base, id: str) -> dict[str, Any]:
     got = base.by_id(id)
+    if got is None and (hidden := base.unconfirmed(id=id)):
+        return {"query": {"id": id}, "scope": [], "entries_total": 0, "entries": [],
+                "truncated": False, "examined": len(base),
+                "note": _unconfirmed_note(hidden, 0), "unconfirmed": hidden}
     if got is None:
         raise Invalid("unknown_ref", f"id {id!r} names no entry; the nearest are "
                       f"{', '.join(_nearest_ids(base, id))}", nearest=_nearest_ids(base, id))
@@ -225,13 +251,31 @@ def _answer(base: Base, found: Found, live_rows: list[dict[str, Any]], kind: str
     out["examined"] = found.examined
     if total > 1:
         out["how"] = HOW
+    hidden = [] if tagged or not (key or device or (kind and not total)) else base.unconfirmed(
+        kind=kind, key=key, device=device, scopes=scopes)
     if not total:
         out["nearest"] = [e.short() for e in found.nearest]
-        out["note"] = (f"the running machine has no device at {key or device}: it stays a number"
+        out["note"] = (_unconfirmed_note(hidden, 0) if hidden else
+                       f"the running machine has no device at {key or device}: it stays a number"
                        if tagged else _stays_a_number(base, found, kind, key, words, scopes))
+    elif hidden:
+        out["note"] = _unconfirmed_note(hidden, total)
+    if hidden:
+        out["unconfirmed"] = hidden[:UNCONFIRMED_SHOWN]
     if read:
         out["note"] = f"{read}; {out['note']}" if "note" in out else read
     return out
+
+
+def _unconfirmed_note(hidden: Sequence[str], total: int) -> str:
+    """What the reply says of the entries a question matches and the base holds back."""
+    n = len(hidden)
+    if total:
+        return (f"{n} more {'entry exists' if n == 1 else 'entries exist'} and "
+                f"{'is' if n == 1 else 'are'} not confirmed, so not served")
+    return ("an entry exists and is not confirmed, so it is not served: it stays a number"
+            if n == 1 else f"{n} entries exist and none is confirmed, so none is served: "
+            "they stay numbers")
 
 
 def _stays_a_number(base: Base, found: Found, kind: str, key: str, words: str,
@@ -251,10 +295,13 @@ class KnowledgeFindReply(ReplyEnvelope, total=False):
     entries: Required[list[dict[str, Any]]]
     entries_total: Required[int]
     examined: Required[int]
+    held_back: Required[int]
     nearest: Annotated[list[dict[str, Any]], When("nothing matched")]
     query: Required[dict[str, Any]]
     scope: Required[list[str]]
+    served: Required[int]
     truncated: Required[bool]
+    unconfirmed: Annotated[list[str], When("held back")]
 
 
 def knowledge_find(id: str = "", kind: Annotated[str, vocab.enum(("", *KINDS))] = "",
@@ -271,17 +318,18 @@ def knowledge_find(id: str = "", kind: Annotated[str, vocab.enum(("", *KINDS))] 
     that device. `scope`: the system, cpu or device; empty, the live session's. `limit` 1..50.
 
     Examples: `key=0x3C8`; `kind=port key=0x3C0..0x3CF`; `kind=vector key=0xFFF8 scope=<scope>`;
-    `kind=call key=0x21/0x4C`, and its variant by a register `kind=call key=0x10/0x12/BL=0x36`;
-    a device of the running machine by its tag `kind=device key=:maincpu`; its registers
+    `kind=call key=0x21/0x4C`, its variant by a register `kind=call key=0x10/0x12/BL=0x36`;
+    a running machine's device by tag `kind=device key=:maincpu`; its registers
     `kind=register device=<device>`; `text=palette*`.
 
-    Refused (INVALID): nothing to look up, a bad `key`, or a `scope` it lacks, naming those it has
-    (`bad_argument`; `6809` is read as `m6809`, and the reply says so); an `id` or `device` it
+    Refused (INVALID): nothing to look up, a bad `key`, or a `scope` it lacks
+    (`bad_argument`; `6809` is read as `m6809`); an `id` or `device` it
     lacks (`unknown_ref`); a kind it holds none of (`no_channel`); a tag or live kind with no
     session (`no_session`).
 
-    Reply: `query`, `scope`, `entries_total`, `entries`, `truncated`, `examined`; nothing matched:
-    no entry, `nearest` and a `note`: it stays a number."""
+    Reply: `query`, `scope`, `entries_total`, `entries`, `truncated`, `examined`, `served`,
+    `held_back`; nothing matched: no entry, `nearest` and a `note`: it stays a number.
+    `unconfirmed` lists ids held back."""
     raise NotImplementedError("a server registers `register`'s bound body, not this signature")
 
 
@@ -297,7 +345,8 @@ def summary(args: dict[str, Any], reply: dict[str, Any]) -> str:
     asked = " ".join(f"{k} {v}" for k, v in query.items() if k != "id") or f"id {query['id']}"
     total = reply["entries_total"]
     if not total:
-        return f"{asked}: no entry; {reply.get('note', 'it stays a number')}"
+        return (f"{asked}: no entry served; {reply['note']}" if reply.get("unconfirmed")
+                else f"{asked}: no entry; {reply.get('note', 'it stays a number')}")
     entries = reply["entries"]
     if total == 1:
         return f"{asked}: {entries[0]['name']}"

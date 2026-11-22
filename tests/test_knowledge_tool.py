@@ -11,9 +11,10 @@ from typing import Any
 
 import pytest
 from null_server import NullKnowledge, an_entry, write_dictionary
+from test_knowledge_served import PORTS, fixture, ibm_id
 
 from scry_core import client_cap, knowledge_tool, reply_schema
-from scry_core.knowledge import Base
+from scry_core.knowledge import Base, Confirmation
 from scry_core.reply_contract import Invalid
 
 PINS = {"dosbox-x": "0e900e855"}
@@ -419,3 +420,61 @@ def test_a_range_of_calls_that_runs_downward_is_refused_by_the_judge_and_by_the_
     if "kind" in arguments:
         with pytest.raises(Invalid, match="runs upward"):
             knowledge_tool.judge(**arguments)
+
+
+@pytest.fixture
+def served(tmp_path: Path) -> Base:
+    everything, confirmation = fixture(tmp_path)
+    got = Base.load(tmp_path, confirmation=confirmation)
+    everything.close()
+    return got
+
+
+class TestOnlyConfirmedEntriesAreServed:
+    def test_a_reply_carries_the_two_counts(self, served: Base) -> None:
+        got = ask(served, kind="port", key="0x3C0")
+        assert (got["served"], got["held_back"]) == (5, 6)
+        assert ask(served, id=ibm_id("port", "0x3C0"))["held_back"] == 6
+
+    @pytest.mark.parametrize("key", PORTS[1:])
+    def test_a_key_whose_entry_is_held_back_says_it_exists_and_is_not_confirmed(
+            self, served: Base, key: str) -> None:
+        got = ask(served, kind="port", key=key)
+        assert got["entries"] == [] and got["entries_total"] == 0
+        assert "not confirmed" in got["note"] and got["unconfirmed"] == [ibm_id("port", key)]
+        assert f"port {PORTS.index(key)} timer" not in str(got)
+        assert "not confirmed" in knowledge_tool.summary({}, got)
+
+    def test_an_id_that_is_held_back_says_so_and_does_not_name_it(self, served: Base) -> None:
+        got = ask(served, id=ibm_id("port", "0x3C4"))
+        assert got["entries"] == [] and "not confirmed" in got["note"]
+        assert "timer" not in str(got)
+
+    def test_a_range_serves_the_confirmed_and_says_how_many_it_holds_back(
+            self, served: Base) -> None:
+        got = ask(served, kind="port", key="0x3C0..0x3CF")
+        assert [e["key"] for e in got["entries"]] == ["0x3C0"]
+        assert "5" in got["note"] and "not confirmed" in got["note"]
+
+    def test_a_text_question_never_returns_a_held_back_entry(self, served: Base) -> None:
+        got = ask(served, text="timer*")
+        assert [e["key"] for e in got["entries"]] == ["0x3C0"]
+
+    def test_a_device_whose_entry_is_held_back_is_not_called_unknown(self, served: Base) -> None:
+        got = ask(served, device="held-dev")
+        assert "not confirmed" in got["note"]
+
+    def test_the_counts_are_the_status_block(self, served: Base) -> None:
+        assert knowledge_tool.counts(served) == {"served": 5, "held_back": 6}
+
+    def test_a_question_nothing_matches_is_still_nothing_known(self, served: Base) -> None:
+        got = ask(served, kind="port", key="0x999")
+        assert "stays a number" in got["note"] and "not confirmed" not in got["note"]
+
+    def test_a_base_that_serves_nothing_but_holds_entries_back_says_so(
+            self, tmp_path: Path) -> None:
+        everything, _ = fixture(tmp_path)
+        none = Base.load(tmp_path, confirmation=Confirmation({}, frozenset(), {}))
+        got = ask(none, kind="port", key="0x3C1")
+        assert "not confirmed" in got["note"] and got["served"] == 0
+        everything.close()
