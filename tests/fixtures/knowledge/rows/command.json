@@ -1,0 +1,128 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "chipx-commands",
+ "kind": "command",
+ "scope": "chipx",
+ "covers": "a synthetic dictionary for the tests",
+ "handlers": [
+  {
+   "ref": "mame:src/devices/machine/chipx.cpp",
+   "function": "chipx_device::write",
+   "case": [
+    "0"
+   ],
+   "value": "data"
+  },
+  {
+   "ref": "dosbox-x:src/hardware/chipx.cpp",
+   "function": "write_command",
+   "value": "val"
+  }
+ ],
+ "engine": [
+  "check_after_eoi"
+ ],
+ "entries": [
+  {
+   "key": "0xE0..0xE7",
+   "name": "rotate on specific EOI",
+   "aliases": [
+    "specific rotate"
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": [
+      "mame"
+     ],
+     "text": "MAME takes it on a write at offset 0.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/chipx.cpp",
+       "lines": "10-12",
+       "sha": "46d52227eb7bb0bca061ccd93b0b4763ef5bac27f97811f4ef9d8d35ea94fc2f"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "when",
+     "of": [
+      "mame"
+     ],
+     "text": "MAME acts on it only while its state is READY.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/chipx.cpp",
+       "lines": "17",
+       "sha": "cd115ad5604f1244393990ad8b80e1b5ee65c9a21f080892d3e3e8e790fb3a45"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": [
+      "mame"
+     ],
+     "text": "If the in-service bit of the level in bits 2-0 is set, it is cleared and the base becomes that level plus one, modulo 8.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/chipx.cpp",
+       "lines": "24-27",
+       "sha": "ea21a6953c2e6eaa68124f7487d47eea791aaaf4351f031106ee731fb70b06fd"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": [
+      "dosbox-x"
+     ],
+     "text": "The port written picks the block: 0x20 the first, any other the second.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/chipx.cpp",
+       "lines": "4",
+       "sha": "6b3cb3052f3f8d5d039ba7a48766e6f55dc797fb062b769dc36f1c2b7815f42b"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": [
+      "dosbox-x"
+     ],
+     "text": "It logs that rotation is not supported and clears an in-service bit.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/chipx.cpp",
+       "lines": "10-12",
+       "sha": "3857494205c318a38f33c77d7fc274e6adb0cce3338fddf030285cb4b24bae4d"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "write",
+     "of": [
+      "dosbox-x"
+     ],
+     "text": "The bit to clear is 1 shifted by the value less 0x60, which the source does not establish.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/chipx.cpp",
+       "lines": "11",
+       "sha": "4943bf5508c23e2457d852ea1eaea0879cd41edbead559393f76d16b6f1b4e4d"
+      }
+     ],
+     "state": "undetermined"
+    }
+   ],
+   "closed": []
+  }
+ ]
+}

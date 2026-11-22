@@ -1,0 +1,226 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "dos-calls",
+ "kind": "call",
+ "scope": "dos",
+ "covers": "a synthetic dictionary for the tests",
+ "engine": [],
+ "entries": [
+  {
+   "key": "0x21/0x5A",
+   "name": "create temp file",
+   "regions": [
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "function": "Handler",
+     "case": [
+      "0x5a"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "function": "Handler",
+     "case": [
+      "0x5a"
+     ],
+     "preamble": true
+    },
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "function": "make_temp"
+    },
+    {
+     "ref": "rbil61:INTER.A",
+     "lines": "1-7"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": [
+      "doc",
+      "dosbox-x"
+     ],
+     "text": "Create temporary file: makes a file with a unique name.",
+     "quotes": [
+      {
+       "ref": "rbil61:INTER.A",
+       "lines": "1",
+       "sha": "455ba13a437361e7e2da9e8dd8c1d49f9b5e66f5d2d02162e857f1d9b800a8b5"
+      },
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "9-12",
+       "sha": "776fa0ef6f968990faed17f76eb51da462700c2fadc2f208cc797a0506402dc8"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "in CX",
+     "of": [
+      "doc"
+     ],
+     "text": "CX holds the attribute of the new file.",
+     "quotes": [
+      {
+       "ref": "rbil61:INTER.A",
+       "lines": "3",
+       "sha": "b3a0c61c230890063f26f67e11638166d9fe73a14674221b318c5109e4fcc8af"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "in DS:DX",
+     "of": [
+      "doc"
+     ],
+     "text": "An ASCIZ path ending in a backslash.",
+     "quotes": [
+      {
+       "ref": "rbil61:INTER.A",
+       "lines": "4",
+       "sha": "c8dda26f89ccf879c08a468e50144cddc071c04eac72804670c17dd32b681bd2"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "out CF=0",
+     "of": [
+      "doc",
+      "dosbox-x"
+     ],
+     "text": "On success CF is clear and AX holds the file handle.",
+     "quotes": [
+      {
+       "ref": "rbil61:INTER.A",
+       "lines": "5-6",
+       "sha": "b6933c4374329dd339e6e9ef2f3d3a975c2dd3c96b1f85f0b243ccba9a7c4f5b"
+      },
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "12-14",
+       "sha": "b1b40e9512a6b13681f893e6ee2cce8c8fece196da33c5cd28c9a42ddd451636"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "out CF=1",
+     "of": [
+      "dosbox-x"
+     ],
+     "text": "On failure CF is set and AX holds the DOS error code the create left.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "15-17",
+       "sha": "7d1fa50d17cdba7c5a1bfd96c6acfb2bee3761e1b11588c7b78170b69e3880e9"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "when",
+     "of": [
+      "dosbox-x"
+     ],
+     "text": "A build that defines NOFILES answers with a register change and no file.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "18-20",
+       "sha": "f0baa262349da5adb36ca0d37b8bca35ca540125823352cf4de8e0c660fdf0e4"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "when",
+     "of": [
+      "dosbox-x"
+     ],
+     "text": "AH 06h and 07h return before the dispatch.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "4-6",
+       "sha": "c509e4f7f102e9f17075484d75506e2edf858bfa8e3706a03fba0115d22e19be"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "in DS:DX",
+     "of": [
+      "dosbox-x"
+     ],
+     "text": "An empty path becomes a backslash.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "32-34",
+       "sha": "0e79f422730b99c446a2a90ee5e560e249ba04865d472bfe6201698b1a5bb10e"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "out DS:DX",
+     "of": [
+      "dosbox-x"
+     ],
+     "text": "The name is eight letters drawn at random, and the error code is cleared first.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "35-38",
+       "sha": "2966bc6e57dfcf7a6ea2fe28dfaf1d1379f538d039ffcab532d1777cac1f8b06"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "does",
+     "of": [
+      "dosbox-x"
+     ],
+     "text": "The file is created by the create routine and its result returned.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "39",
+       "sha": "9a2e73945ac8fd7a838359cfd851dde483ef98530d9f071e5ae1fb31a611b5f5"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "lines": "7",
+     "as": "unseen",
+     "reason": "no program can see the flag"
+    },
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "lines": "8",
+     "as": "key"
+    },
+    {
+     "ref": "rbil61:INTER.A",
+     "lines": "2",
+     "as": "key"
+    },
+    {
+     "ref": "rbil61:INTER.A",
+     "lines": "7",
+     "as": "see-also"
+    }
+   ]
+  }
+ ]
+}

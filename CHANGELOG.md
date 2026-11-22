@@ -4,6 +4,11 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- A dictionary can be written as rows that carry their evidence (`scry-knowledge/2`), with
+  `python -m scry_core.knowledge.rows`: `quote` stamps the digest of source lines, `cover` lists
+  what a handler's code owes rows for, `check` proves the quotes and that every item is closed,
+  `review` prints each row with the text of its lines, and `migrate` drafts rows from an old
+  entry and its evidence. Nothing loads the new shape yet; `scry-knowledge/1` is unchanged.
 - A server serves only the knowledge entries that are confirmed: sealed in its lock and recorded
   by the second check under the seal they have now (`knowledge.confirmed`). `Base.load` takes a
   `Confirmation` and loads those entries only, counts the rest (`Base.held_back`) and drops a

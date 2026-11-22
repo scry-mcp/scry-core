@@ -1,0 +1,45 @@
+{
+ "dictionary": "chipx-old",
+ "index": 0,
+ "key": "0xE0..0xE7",
+ "access": "write",
+ "verdict": "CONFIRMED",
+ "statements": [
+  {
+   "field": "behaviour",
+   "text": "The level is cleared and the base moves.",
+   "supported": true,
+   "quotes": [
+    {
+     "file": "src/devices/machine/chipx.cpp",
+     "lines": "24-27",
+     "text": "if (m_isr & mask) { m_isr &= ~mask; m_base = (level + 1) & 7; }"
+    }
+   ],
+   "note": "n"
+  },
+  {
+   "field": "description",
+   "text": "Reads return the status.",
+   "supported": true,
+   "quotes": [
+    {
+     "file": "src/devices/machine/chipx.cpp",
+     "lines": "42-43",
+     "text": "if (offset == 2) return m_status;"
+    }
+   ]
+  }
+ ],
+ "omissions": [
+  {
+   "statement": "The base moves up.",
+   "why": "The base only moves while the bit is set.",
+   "quote": {
+    "file": "src/devices/machine/chipx.cpp",
+    "lines": "26-27",
+    "text": "m_isr &= ~mask; m_base = (level + 1) & 7;"
+   }
+  }
+ ]
+}

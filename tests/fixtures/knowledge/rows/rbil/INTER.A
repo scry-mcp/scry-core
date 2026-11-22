@@ -1,0 +1,7 @@
+INT 21 - SYNTHETIC LIST - CREATE TEMPORARY FILE
+AH = 5Ah
+CX = file attribute
+DS:DX -> ASCIZ path ending with a backslash
+Return: CF clear if successful
+	AX = file handle
+SeeAlso: AH=3Ch

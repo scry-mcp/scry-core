@@ -1,0 +1,130 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "chipx-registers",
+ "kind": "register",
+ "scope": "chipx",
+ "covers": "a synthetic dictionary for the tests",
+ "handlers": [
+  {
+   "ref": "mame:src/devices/machine/chipx.cpp",
+   "function": "chipx_device::read",
+   "value": "offset"
+  }
+ ],
+ "engine": [
+  "chipx_irq",
+  "adjust"
+ ],
+ "entries": [
+  {
+   "key": "0x02",
+   "name": "status",
+   "aliases": [
+    "STAT"
+   ],
+   "regions": [
+    {
+     "ref": "mame:src/devices/machine/chipx.cpp",
+     "function": "chipx_device::start"
+    },
+    {
+     "ref": "mame:src/devices/machine/chipx.cpp",
+     "function": "chipx_device::tick"
+    },
+    {
+     "ref": "mame:src/devices/machine/chipx.cpp",
+     "function": "chipx_device::idle"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": [
+      "doc"
+     ],
+     "text": "The control register holds the mode in bits 3 to 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:chipx.raw.txt",
+       "lines": "4",
+       "sha": "47213646015d820aa41e76e54bbf10000c8a43953cd60f73168f3b7243b65a16"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": [
+      "mame"
+     ],
+     "text": "A read of offset 2 returns the status byte.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/chipx.cpp",
+       "lines": "42-43",
+       "sha": "ce19090150a846bc6ca8cc3f6702195f5bda4b12c03ef6ccfffe3602f893f381"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": [
+      "mame"
+     ],
+     "text": "Starting the chip arms a timer that calls the tick routine.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/chipx.cpp",
+       "lines": "55",
+       "sha": "a5cd9becaa4f51c2c37124e40817f07fcd025c8dee429fad63fe52b4f26710a9"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": [
+      "mame"
+     ],
+     "text": "The tick loads the count and the reload value from its parameter.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/chipx.cpp",
+       "lines": "49",
+       "sha": "e9cf7ad1fe5efd4fe74759d2d988bfaab47fb85b1a7f93cfc9806c54ba7e5cc0"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": [
+      "mame"
+     ],
+     "text": "The idle routine does nothing.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/chipx.cpp",
+       "lines": "58-60",
+       "sha": "2eae8bd6618c99a99981abffd79300067bcf1d5a0adedec527e918508384d80c"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/chipx.cpp",
+     "lines": "41",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:src/devices/machine/chipx.cpp",
+     "lines": "44",
+     "as": "dead"
+    }
+   ]
+  }
+ ]
+}
