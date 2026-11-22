@@ -166,6 +166,14 @@ def test_a_dictionary_of_rows_with_a_fault_fails_the_parse_case(tmp_path: Path) 
     assert ROWS_PARSE in run(rows_copy(tmp_path, fault))
 
 
+def test_a_dictionary_of_rows_that_does_not_parse_fails_the_parse_case_alone(
+        tmp_path: Path) -> None:
+    subject = rows_copy(tmp_path, lambda doc: None)
+    (tmp_path / "rows" / "broken.json").write_text("{", encoding="utf-8")
+    failed = run(subject)
+    assert ROWS_PARSE in failed and FROZEN not in failed
+
+
 def test_a_base_that_loads_without_the_filter_fails_the_cases_that_hold_it() -> None:
     assert run(ServesEverything()) == {SERVES, RETURNS}
 

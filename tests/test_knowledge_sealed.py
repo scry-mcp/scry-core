@@ -87,6 +87,65 @@ def test_a_dictionary_with_a_fault_is_not_sealed(files: tuple[Path, Path]) -> No
         "`rows check` it before it is sealed")
 
 
+def test_a_seal_with_no_reader_or_writer_and_a_reopening_with_no_reason_are_refused(
+        files: tuple[Path, Path]) -> None:
+    dictionary, lock = files
+    for by, writer in ((" ", "w"), ("r", " ")):
+        assert sealed.seal(dictionary, [SEALED], lock, "doc", by, writer) == [
+            "say who read the part and who wrote it: the lock keeps both"]
+    for by, why in ((" ", "why"), ("a", " ")):
+        assert sealed.reopen(dictionary, [SEALED], lock, "doc", [], by, why) == [
+            "say who reopens the part and why: the lock keeps both"]
+    assert not lock.exists()
+
+
+def test_a_part_sealed_again_unchanged_keeps_its_seal(files: tuple[Path, Path]) -> None:
+    dictionary, lock = files
+    assert sealed.seal(dictionary, [SEALED], lock, "doc", "reader", "writer") == []
+    assert sealed.seal(dictionary, [SEALED], lock, "doc", "other", "writer") == []
+    assert sealed.read_lock(lock).sealed[SEALED]["doc"].by == "reader"
+
+
+def test_files_the_commands_cannot_read_or_write_are_refused_by_name(
+        files: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    dictionary, lock = files
+    missing = dictionary.with_name("missing.json")
+    assert sealed.seal(missing, [SEALED], lock, "doc", "r", "w")[0].startswith("missing.json: ")
+    assert sealed.reopen(missing, [SEALED], lock, "doc", [], "a", "why")[0].startswith(
+        "missing.json: ")
+    nowhere = dictionary / "lock.json"
+    assert sealed.seal(dictionary, [SEALED], nowhere, "doc", "r", "w") == [
+        f"the lock goes in {dictionary}, which is no directory"]
+    lock.write_text("{", encoding="utf-8")
+    assert sealed.seal(dictionary, [SEALED], lock, "doc", "r", "w")[0].startswith(
+        "lock.json is not a ")
+    lock.unlink()
+    opened = Path.open
+
+    def refused(self: Path, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+        if self == lock and "w" in mode:
+            raise PermissionError("denied")
+        return opened(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", refused)
+    assert sealed.seal(dictionary, [SEALED], lock, "doc", "r", "w") == [
+        "denied: the lock may be half written; run the command again"]
+
+
+def test_a_lock_that_seals_a_part_with_no_code_or_one_read_by_its_writer_is_frozen(
+        files: tuple[Path, Path]) -> None:
+    dictionary, _ = files
+    got, _ = rows.read(dictionary)
+    assert got is not None
+    entry = next(e for e in got.entries if e.id == SEALED)
+    lock = sealed.Lock({SEALED: {
+        "bochs": sealed.Part("s", "r", "w", {}),
+        "doc": sealed.Part(sealed.seal_of(got, entry, "doc"), "w", "w", {})}})
+    assert sealed.frozen(got, lock) == [
+        f"{SEALED}: the lock seals a part bochs the dictionary has no code of",
+        f"{SEALED} (doc): read by its own writer 'w'"]
+
+
 @pytest.mark.parametrize("change, part", [
     (row("1", text="OCW2 says something else now."), "doc"),
     (row("1", quotes=[{"ref": "datasheet:8259A.raw.txt", "lines": "636-640",
@@ -243,6 +302,9 @@ def test_reopen_with_no_row_names_none_and_keeps_every_row_s_judgement(
     json.dumps({"format": sealed.LOCK_FORMAT, "sealed": {"x": {"doc": {"seal": "s"}}}}),
     json.dumps({"format": sealed.LOCK_FORMAT, "sealed": {}, "reopened": [{"id": "x"}]}),
     json.dumps({"format": sealed.LOCK_FORMAT, "sealed": {}, "reopened": None}),
+    json.dumps({"format": sealed.LOCK_FORMAT, "sealed": {"x": ["doc"]}}),
+    json.dumps({"format": sealed.LOCK_FORMAT, "sealed": {"x": {"doc": {
+        "seal": "s", "by": "b", "writer": "w", "rows": {"1": {"digest": "d"}}}}}}),
 ])
 def test_a_lock_of_another_shape_is_refused_by_name(text: str) -> None:
     with pytest.raises(ValueError, match=f"is not a `{sealed.LOCK_FORMAT}` document"):

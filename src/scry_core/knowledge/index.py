@@ -250,8 +250,6 @@ class Index(Generic[E]):
     def variants(self, scope: str, parent: str) -> list[E]:
         """The variants of the call `parent` (`0x10/0x12`) in `scope`, in load order: the entries
         whose key is the parent's and a selector."""
-        if keys.call_selector("call", parent) is not None:
-            return []
         parts = keys.span("call", parent).parts
         return [self._of(n) for n, key in self._db.execute(
             "SELECT n, key FROM entry WHERE kind = 'call' AND scope = ? AND lo = ? AND key LIKE ? "

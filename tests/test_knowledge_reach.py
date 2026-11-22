@@ -212,6 +212,17 @@ def test_a_constructor_is_named_past_its_initializer_list() -> None:
                      "dmac_device::device_start", "dmac_device::dmac_device", "dmac_device::tick"]
 
 
+def test_a_method_is_named_past_the_words_after_its_parameters() -> None:
+    (got,) = reach.functions("int chip::get() const override { m_x = 1; return m_x; }")
+    assert got.name == "chip::get" and [w.line for w in got.writes] == [1]
+
+
+@pytest.mark.parametrize("text", [
+    "{ m_x = 1; }", "f) { m_x = 1; } tail", "void f() { m_x = 1;"])
+def test_a_brace_that_opens_no_whole_function_names_none(text: str) -> None:
+    assert reach.functions(text) == ()
+
+
 def test_a_fixed_index_is_owed_only_for_the_same_element() -> None:
     assert reached(CLOCK, "clock_device::read", ["0"]) == [
         (21, "state", "m_data[REG_C] written by clock_device::tick", (21,))]

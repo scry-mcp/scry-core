@@ -422,6 +422,21 @@ def test_cover_marks_an_open_item_and_exits_one(cli: Cli, world: World) -> None:
     assert code == 1 and "<- OPEN" in out
 
 
+@pytest.mark.parametrize("command", ["cover", "review"])
+def test_the_commands_that_list_print_each_fault_of_the_file_first(
+        cli: Cli, world: World, command: str) -> None:
+    world.edit("command", set_row("1", of="nobody"))
+    _, out, _ = cli(command, str(world.root / "command.json"))
+    assert out.splitlines()[0] == (
+        "- chipx:command:0xE0..0xE7, row 1: `of` is one party of doc, dosbox-x, mame")
+
+
+def test_a_dictionary_beside_that_does_not_parse_owns_nothing(cli: Cli, world: World) -> None:
+    (world.root / "broken.json").write_text('{"format": "scry-knowledge/2"}', encoding="utf-8")
+    code, out, _ = cli("check", str(world.root / "command.json"), "--partial")
+    assert code == 0 and "broken" not in out
+
+
 def test_review_prints_the_entry_in_the_order_of_a_reply(cli: Cli, world: World) -> None:
     code, out, _ = cli("review", str(world.root / "command.json"))
     assert code == 0

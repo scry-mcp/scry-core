@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import gc
 import json
+import sys
 import tracemalloc
 from pathlib import Path
 from typing import Any
@@ -15,8 +16,10 @@ from null_server import KNOWLEDGE, NullKnowledge
 
 from scry_core import knowledge_tool, reply_schema
 from scry_core.knowledge import base as rows_base
-from scry_core.knowledge import sealed
+from scry_core.knowledge import quote, sealed
 from scry_core.knowledge.base import ROWS_SHOWN, Base
+from scry_core.knowledge.index import Index
+from scry_core.knowledge.sources import SCHEMES
 from scry_core.reply_contract import Invalid
 
 SEALED = "pic8259:command:0xE0..0xE7"
@@ -105,6 +108,71 @@ def test_an_entry_no_official_document_answers_says_whose_source_it_is(tmp_path:
     assert emulator and base.faults() == []
     assert base.whole(emulator[0])["source"].endswith("'s source; no official document found")
     assert all("source" not in base.whole(e) for e in base.entries() if e.source == "official")
+
+
+def _fixture(folder: Path, name: str, **header: Any) -> dict[str, Any]:
+    doc: dict[str, Any] = json.loads((KNOWLEDGE / "rows" / name).read_text(encoding="utf-8"))
+    doc.update(header)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / name).write_text(json.dumps(doc), encoding="utf-8")
+    return doc
+
+
+def test_what_the_loader_cannot_serve_is_a_fault_and_the_rest_is_served(tmp_path: Path) -> None:
+    _fixture(tmp_path / "a", "family.json")
+    _fixture(tmp_path / "b", "family.json")
+    selector = _fixture(tmp_path / "c", "family.json", dictionary="video-selectors")
+    selector["entries"][0]["key"] = "0x10/0x12/BH=0x01"
+    (tmp_path / "c" / "family.json").write_text(json.dumps(selector), encoding="utf-8")
+    (tmp_path / "d").mkdir()
+    (tmp_path / "d" / "broken.json").write_text("{", encoding="utf-8")
+    base = Base((*(tmp_path / f for f in "abcd"), "no_such_package_of_rows"), None)
+    faults = base.faults()
+    assert base.ids() == ["video:call:0x10/0x12/BL=0x31"] and len(faults) == 4, faults
+    assert faults[0].startswith("broken.json: ")
+    assert faults[1].startswith("no_such_package_of_rows: no dictionaries could be read: ")
+    assert faults[2] == ("video-calls: the id video:call:0x10/0x12/BL=0x31 is already an entry; "
+                         "the second is skipped")
+    assert faults[3].startswith("video-selectors: video:call:0x10/0x12/BH=0x01 selects on BH")
+
+
+def test_a_package_with_no_document_table_of_its_own_takes_the_shared_one(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The import outlives the run's folder: drop it with the run, or a rerun reads that folder.
+    monkeypatch.setitem(sys.modules, "rows_only_package", None)
+    monkeypatch.delitem(sys.modules, "rows_only_package")
+    package = tmp_path / "rows_only_package"
+    (package / "knowledge_rows").mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    _fixture(package / "knowledge_rows", "call.json")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    base = Base(("rows_only_package",), None)
+    assert base.faults() == [] and len(base) == 1
+    assert base.documents == quote.default_datasheets()
+
+
+def test_a_quote_of_the_interrupt_list_cites_the_list_and_its_file(tmp_path: Path) -> None:
+    _fixture(tmp_path, "call.json")
+    base = Base((tmp_path,), None)
+    whole = base.whole(_by(base, "dos:call:0x21/0x5A"))
+    cites = [c for r in whole["rows"] for c in r["cites"]]
+    assert {"document": f"{rows_base._RBIL}, INTER.A", "lines": cites[0]["lines"]} == cites[0]
+    assert {"where": f"{rows_base._RBIL}, INTER.A",
+            "url": SCHEMES["rbil61"].opens_at} in whole["sources"]
+
+
+def test_the_variants_of_a_call_are_asked_by_the_call_and_a_variant_has_none(
+        tmp_path: Path) -> None:
+    _fixture(tmp_path, "family.json")
+    base = Base((tmp_path,), None)
+    assert [e.id for e in base.variants("video", "0x10/0x12")] == [
+        "video:call:0x10/0x12/BL=0x31"]
+    assert base.variants("video", "0x10/0x12/BL=0x31") == []
+
+
+def test_the_index_alone_serves_no_entry() -> None:
+    with pytest.raises(NotImplementedError):
+        Index(None, {})._entry(())
 
 
 def test_the_rows_text_is_searched_beside_the_names(pilot: Base) -> None:
