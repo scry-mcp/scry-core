@@ -380,12 +380,25 @@ public source each fact was checked against. A server ships dictionaries and one
   - `rows quote <ref> <lines>` prints the lines and their digest (`--json` for the quote to
     paste); `rows quote --stamp <dictionary>` writes the digest into every quote that has none.
   - `rows cover <dictionary> [<id>...]` lists what each entry's code owes rows for, item by
-    item (`path`, `before`, `branch`, `exit`, `call`, `store`, `key`, `build`, `empty`, `list`),
-    each with what closes it; the `local` and `input` items a verdict may cite are not listed,
-    because no row is owed for them. It reads C++ as text: macros, calls through a pointer or a member
-    and values carried in a variable are named, never followed. An `#if` on a name the file itself
-    defines as `0` or `1`, bare or in parentheses, is decided by that value, so the compiled arm
-    is the one listed.
+    item (`path`, `before`, `branch`, `exit`, `call`, `store`, `key`, `build`, `empty`, `list`,
+    `state`, `lookup`), each with what closes it; the `local` and `input` items a verdict may cite
+    are not listed, because no row is owed for them. It reads C++ as text: macros, calls through a
+    pointer or a member and values carried in a variable are named, never followed. An `#if` on a
+    name the file itself defines as `0` or `1`, bare or in parentheses, is decided by that value,
+    so the compiled arm is the one listed.
+  - Two items reach past the region's own lines, so a fact that lives in the chip's clockwork
+    (a count that wraps to 0xFFFF after terminal count, a flag set only under its enable bit) is
+    owed by the entry whose handler touches it. A `state` item is a member the region stores and
+    code of its file reads outside the region, or a member the region returns and code outside
+    it writes, the handler's other cases included: one item per member and function, carrying
+    every line of that function that does it. A guest register is not state (it is the call's
+    own output), a statement that saves state (`save_item`, `WRITE_POD`) touches nothing, a
+    member only the entry's own regions touch owes nothing, and an arm the key leaves out stores
+    nothing. A `lookup` item is a `const` table the file defines (`name[] = {`) that the region
+    reads at an index computed from something, owed at the table's lines. Each closes like any
+    other item, at any of its lines: a row that quotes one (the wrap, the table's value), a
+    `parent` closure naming the entry whose region holds that line and has a row there, or a
+    reason of the set (`unseen`, with its reason, for a debugger's own listing).
   - `rows check <dictionary> [<id>...]` is the script half of the check: every quote is at the
     pin and gives its digest, every row quotes its own party only, every item is closed by a row,
     the key, a `closed` entry with a reason of the fixed set, or the callee table (`--callees`,

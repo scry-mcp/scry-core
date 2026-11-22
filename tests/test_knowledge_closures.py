@@ -102,9 +102,9 @@ def dictionary() -> dict[str, Any]:
 
 
 def keep_world(tmp_path: Any, change: Change | None = None,
-               callees: dict[str, Any] | None = None) -> World:
+               callees: dict[str, Any] | None = None, source: str = KEEP) -> World:
     world = build(tmp_path)
-    (world.dosbox / "src/ints/keep.cpp").write_text(KEEP, encoding="utf-8")
+    (world.dosbox / "src/ints/keep.cpp").write_text(source, encoding="utf-8")
     (world.rbil / "KEEP.A").write_text(LIST, encoding="utf-8")
     world = World(world.root, git_repo(world.dosbox))
     table = json.loads((world.root / "callees.json").read_text(encoding="utf-8"))
@@ -295,6 +295,79 @@ def test_an_unfollowed_whose_lines_hold_an_effect_of_the_entry_beside_the_call_i
                                           shut("18-20", "3", "unfollowed")))
     assert any(f.startswith(f"unfollowed {REF}:18-20 on row 3: line 18 holds an effect of the "
                             "entry's own code (call)") for f in check(world, "0x77/0x30").faults)
+
+
+# What a region reaches: a member another function reads, a table it indexes.
+
+REACHED = KEEP.replace("\treg_bl = 3;\n}\n", """\treg_bl = 3;
+	memsize = sizes[reg_al & 1];
+}
+
+static void Tick(void) {
+	if (memsize > 0)
+		reg_cx = memsize;
+}
+
+static const int sizes[2] = {
+	1, 2
+};
+""")
+TICK = (32, 33)
+SIZES = (36, 37, 38)
+
+
+def reached(report: closure.Report) -> dict[str, str]:
+    return {r.item.kind: r.by for r in report.results if r.item.kind in ("state", "lookup")}
+
+
+def note(n: str, lines: str) -> Change:
+    row = {"n": n, "on": "out BL", "of": "dosbox-x", "vs": "extra",
+           "text": "The size comes from a table and a later tick reads it.",
+           "quotes": [{"ref": REF, "lines": lines}]}
+    return lambda d: of("0x77/0x10")(d)["rows"].append(row)
+
+
+def test_a_member_another_function_reads_and_a_table_the_region_indexes_are_owed(
+        tmp_path: Any) -> None:
+    faults = check(keep_world(tmp_path, source=REACHED), "0x77/0x10").faults
+    assert f"OPEN {REF}:{TICK[0]} state memsize read by Tick" in faults
+    assert f"OPEN {REF}:{SIZES[0]} lookup sizes[reg_al & 1]" in faults
+
+
+@pytest.mark.parametrize("line", [*TICK, SIZES[1]])
+def test_a_row_over_any_line_of_what_a_region_reaches_closes_it(tmp_path: Any, line: int) -> None:
+    report = check(keep_world(tmp_path, note("6", str(line)), source=REACHED), "0x77/0x10")
+    kind = "lookup" if line in SIZES else "state"
+    assert reached(report)[kind] == "row 6"
+
+
+def test_a_closure_with_a_reason_closes_what_a_region_reaches(tmp_path: Any) -> None:
+    kept = [c for c in dictionary()["entries"][0]["closed"] if c["as"] != "key"]
+    world = keep_world(tmp_path, closures(
+        "0x77/0x10", *kept, {"ref": REF, "lines": "33", "as": "unseen",
+                             "reason": "the tick copies the size into a scratch register"}),
+        source=REACHED)
+    assert reached(check(world, "0x77/0x10"))["state"] == "closed: unseen"
+
+
+def test_a_closure_over_a_later_line_of_an_item_a_row_closes_is_still_used(
+        tmp_path: Any) -> None:
+    kept = [c for c in dictionary()["entries"][0]["closed"] if c["as"] != "key"]
+    unseen = {"ref": REF, "lines": "33", "as": "unseen", "reason": "a scratch copy"}
+
+    def both(doc_: dict[str, Any]) -> None:
+        closures("0x77/0x10", *kept, unseen)(doc_)
+        note("6", "32")(doc_)
+    report = check(keep_world(tmp_path, both, source=REACHED), "0x77/0x10")
+    assert reached(report)["state"] == "row 6"
+    assert not [f for f in report.faults if "closes no listed item" in f]
+
+
+def test_a_member_whose_readers_are_regions_of_the_entry_owes_nothing(tmp_path: Any) -> None:
+    def tick(doc_: dict[str, Any]) -> None:
+        of("0x77/0x10")(doc_)["regions"].insert(0, {"ref": REF, "function": "Tick"})
+    report = check(keep_world(tmp_path, tick, source=REACHED), "0x77/0x10")
+    assert "state" not in reached(report) and "lookup" in reached(report)
 
 
 # An owner that has to be written.

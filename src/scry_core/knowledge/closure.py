@@ -19,7 +19,7 @@ from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from scry_core.knowledge import cited, cover, official, verdict
+from scry_core.knowledge import cited, cover, official, reach, verdict
 from scry_core.knowledge.callees import Callees, Decision, last_name
 from scry_core.knowledge.quote import PARTY, Sources, span, split_ref
 from scry_core.knowledge.rows import OWNED, VERDICT_CLOSURES, Closure, Dictionary, Entry, Region
@@ -59,10 +59,34 @@ def _listing(region: Region, dictionary: Dictionary, sources: Sources) -> cover.
         return cover.list_section(held, region.lines)
     header = dictionary.header
     party = PARTY[split_ref(region.ref)[0]]
-    return cover.list_function(
+    got = cover.list_function(
         "\n".join(held), region.function, case=region.case, preamble=region.preamble,
         key=cover.parse_key(region.value) if region.value else None,
         defined=header.defines.get(party, ()), stores=header.stores.get(party, ""))
+    got.items += reach.state(got.text, got.start, got.region, got.tree, (got.first, got.last))
+    got.items += reach.lookup(got.text, got.region)
+    return got
+
+
+def _reached(listings: list[tuple[Region, cover.Listing]]) -> None:
+    """Drops what a region reaches that the entry's own regions hold: a `state` line inside one
+    of them is the entry's own code. An item two regions reach is listed once."""
+    seen: set[tuple[str, str, str]] = set()
+    for region, listing in listings:
+        spans = [(lg.first, lg.last) for r, lg in listings if r.ref == region.ref]
+        kept = []
+        for item in listing.items:
+            if item.kind in ("state", "lookup"):
+                key = (region.ref, item.kind,
+                       f"{item.text} {item.lines}" if item.kind == "state" else str(item.line))
+                outside = tuple(x for x in item.lines if item.kind == "lookup"
+                                or not any(a <= x <= b for a, b in spans))
+                if key in seen or not outside:
+                    continue
+                seen.add(key)
+                item = cover.Item(outside[0], item.kind, item.text, outside)
+            kept.append(item)
+        listing.items = kept
 
 
 def _claims(entry: Entry) -> dict[str, dict[int, list[str]]]:
@@ -196,9 +220,10 @@ def check(dictionary: Dictionary, entry: Entry, sources: Sources, callees: Calle
     used: set[int] = set()
     listed: list[cited.Listed] = []
     spans: list[tuple[Region, int, int]] = []
-    for region in dictionary.regions(entry):
+    listings = [(r, _listing(r, dictionary, sources)) for r in dictionary.regions(entry)]
+    _reached(listings)
+    for region, listing in listings:
         scheme, file = split_ref(region.ref)
-        listing = _listing(region, dictionary, sources)
         spans.append((region, listing.first, listing.last))
         for item in listing.items:
             how = callees.of(scheme, file, item.text) if item.kind == "call" else None
@@ -211,6 +236,10 @@ def check(dictionary: Dictionary, entry: Entry, sources: Sources, callees: Calle
                 continue
             if item.kind == "key":
                 by = "the key"
+            elif item.lines:
+                settled = [_settled(closures, claims, region.ref, line, used, report, True)
+                           for line in item.lines]
+                by = next((got for got in settled if got != OPEN), OPEN)
             elif by == "callee: virtual":
                 by = _judged(closures, claims, region.ref, item.line)
             elif item.kind != "call" or by == WRITES:

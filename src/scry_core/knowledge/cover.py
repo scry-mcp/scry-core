@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from scry_core.knowledge.quote import Invalid, span, stamp
 
 KINDS = ("path", "before", "branch", "exit", "call", "store", "key", "build", "empty", "list",
-         "local", "input")
+         "state", "lookup", "local", "input")
 #: The kinds that show what the code does without being state a row must account for.
 NOT_OWED = ("local", "input")
 KEYWORDS = {"if", "for", "while", "switch", "return", "sizeof", "case", "defined", "else", "do",
@@ -54,6 +54,9 @@ class Item:
     line: int
     kind: str
     text: str
+    #: Every line that holds what the item names, when it is more than `line`: a row or a
+    #: closure over any of them closes it.
+    lines: tuple[int, ...] = field(default=(), compare=False)
 
     def record(self, file: str, lines: list[str]) -> dict[str, object]:
         """What a committed coverage index keeps of an item: no text of the source."""
@@ -63,11 +66,17 @@ class Item:
 
 @dataclass
 class Listing:
-    """The items of one region, and the lines the region spans."""
+    """The items of one region, the lines the region spans, and for a function's region the
+    blanked text it was read from, where its body opens, its statements and the region's
+    statements the lister read, one by one."""
 
     items: list[Item] = field(default_factory=list)
     first: int = 0
     last: int = 0
+    text: str = ""
+    start: int = 0
+    tree: list[Node] = field(default_factory=list)
+    region: list[Node] = field(default_factory=list)
 
 
 def blank(text: str) -> str:
@@ -622,6 +631,9 @@ class _Reading:
     key: Key | None
     stores: re.Pattern[str] | None
     out: list[Item] = field(default_factory=list)
+    #: The statements read, each once and apart from what it holds: an arm the key leaves out is
+    #: never read.
+    read: list[Node] = field(default_factory=list)
 
     def add(self, line: int, kind: str, text: str) -> None:
         self.out.append(Item(line, kind, text))
@@ -781,6 +793,7 @@ def _items(nodes: list[Node], reading: _Reading, locals_: set[str],
     for n in nodes:
         if n.kind == "pre":
             continue
+        reading.read.append(n)
         got = reading.key.evaluate(n.text) if reading.key and n.kind == "if" else None
         if n.kind == "if" and got is not None:
             took = bool(got)
@@ -901,7 +914,7 @@ def list_function(source: str, name: str, *, case: Iterable[str] = (), preamble:
     items = sorted(set(reading.out))
     if not items:
         raise Invalid(f"{name} lists nothing: the region holds no statement the lister reads")
-    return Listing(items, first, last)
+    return Listing(items, first, last, text, start, tree, reading.read)
 
 
 def _bodies_in(nodes: list[Node], out: list[tuple[int, int]]) -> None:
