@@ -94,6 +94,7 @@ def test_an_argument_named_hex_is_bytes_and_any_other_hex_text_is_text() -> None
     assert ab.caption("write", {"ref": "0x1F00", "data_hex": "3E00C9210000FF"}) == \
         "write 0x1F00 3E 00 C9 21 +3"
     assert ab.caption("write", {"data_hex": "not hex"}) == "write not hex"
+    assert ab.caption("write", {"data_hex": 4096}) == "write 4096"
     assert ab.caption("find", {"pattern": "3E00C9210000FF"}) == "find 3E00C9210000FF"
 
 
