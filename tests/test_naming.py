@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from null_server import an_entry, write_dictionary
+from null_server import an_entry, rows_of, write_dictionary
 from pydantic import TypeAdapter
 
 from scry_core import asks, naming
@@ -266,3 +266,11 @@ def test_a_call_is_named_from_the_registers_the_variant_included(tmp_path: Path)
         "call", "alternate select", "0x10/0x12", id="ibm-pc:call:0x10/0x12")
     assert naming.named_call(base, "ibm-pc", 0x10, {"AH": 0x14}) is None
     assert naming.named_call(base, "other", 0x10, {"AH": 0x12}) is None
+
+
+def test_a_call_is_named_from_a_base_of_rows(tmp_path: Path) -> None:
+    rows = rows_of(tmp_path, "call.json", "family.json")
+    assert naming.named_call(rows, "dos", 0x21, {"AH": 0x5A}) == Named(
+        "call", "create temp file", "0x21/0x5A", id="dos:call:0x21/0x5A")
+    assert naming.named_call(rows, "video", 0x10, {"AH": 0x12, "BL": 0x31}) == Named(
+        "call", "palette loading", "0x10/0x12/BL=0x31", id="video:call:0x10/0x12/BL=0x31")

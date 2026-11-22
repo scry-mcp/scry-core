@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from null_server import an_entry, write_dictionary
+from null_server import an_entry, rows_of, write_dictionary
 
 from scry_core import knowledge
 from scry_core.knowledge import calls
@@ -71,3 +71,12 @@ def test_the_function_of_the_call_is_the_most_specific_entry_the_registers_reach
 def test_a_register_is_read_directly_or_from_the_word_that_holds_it(
         registers: dict[str, int], name: str, value: int | None) -> None:
     assert calls.register_value(registers, name) == value
+
+
+def test_a_base_of_rows_resolves_a_call_and_its_variant(tmp_path: Path) -> None:
+    rows = rows_of(tmp_path, "call.json", "family.json")
+    got = calls.resolve(rows, "dos", 0x21, {"AH": 0x5A})
+    assert got is not None and (got.entry.id, got.selected) == ("dos:call:0x21/0x5A", False)
+    got = calls.resolve(rows, "video", 0x10, {"AH": 0x12, "BL": 0x31})
+    assert got is not None and (got.entry.key, got.selected) == ("0x10/0x12/BL=0x31", True)
+    assert calls.resolve(rows, "video", 0x10, {"AH": 0x12, "BL": 0x32}) is None

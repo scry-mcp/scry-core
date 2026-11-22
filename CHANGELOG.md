@@ -23,6 +23,9 @@ What a server author notices. A client's view of each server is in that server's
   asked by `<entry id>#<n>`, with the URL of each line, and `text` searches the rows' words.
   `KnowledgeContract` holds a server's base of rows to its lock: what it serves, what no query
   returns, and the freeze on a sealed row.
+- `naming.named_call`, `notes.note` and `knowledge.calls.resolve` take a base of rows as well as
+  the dictionaries, so a server on its base of rows names a reply's calls, notes a disassembled
+  line and logs its DOS calls from it.
 - The header field `stores` of `scry-knowledge/2` is gone: the callee table's `writes` says which
   calls write the guest.
 

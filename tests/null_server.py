@@ -245,3 +245,14 @@ def write_dictionary(folder: Path, dictionary: str, kind: str, scope: str,
         "entries": entries, **header}), encoding="utf-8")
     return path
 
+
+def rows_of(folder: Path, *names: str) -> rows_base.Base:
+    """A base of rows holding every entry of the fixtures `names` (`rows/<name>`), copied into
+    `folder`."""
+    folder.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        (folder / name).write_bytes((KNOWLEDGE / "rows" / name).read_bytes())
+    base = rows_base.Base((folder,), None)
+    assert base.faults() == [] and len(base) == len(names)
+    return base
+

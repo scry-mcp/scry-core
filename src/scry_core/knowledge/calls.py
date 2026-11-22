@@ -6,8 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from scry_core.knowledge import keys
-from scry_core.knowledge.database import Base
-from scry_core.knowledge.entry import Entry
+from scry_core.knowledge.index import E, Index, Keyed
 
 #: A word register and the byte registers it holds, high then low.
 _HALVES = {"AX": ("AH", "AL"), "BX": ("BH", "BL"), "CX": ("CH", "CL"), "DX": ("DH", "DL")}
@@ -17,7 +16,7 @@ _HALVES = {"AX": ("AH", "AL"), "BX": ("BH", "BL"), "CX": ("CH", "CL"), "DX": ("D
 class Resolved:
     """The entry, and whether a register's value picked it (a variant)."""
 
-    entry: Entry
+    entry: Keyed
     selected: bool
 
 
@@ -33,7 +32,7 @@ def register_value(registers: Mapping[str, int], name: str) -> int | None:
     return None
 
 
-def _variant(base: Base, scope: str, key: str, registers: Mapping[str, int]) -> Entry | None:
+def _variant(base: Index[E], scope: str, key: str, registers: Mapping[str, int]) -> E | None:
     for entry in base.variants(scope, key):
         picked = keys.span("call", entry.key).selector
         assert picked is not None
@@ -43,7 +42,7 @@ def _variant(base: Base, scope: str, key: str, registers: Mapping[str, int]) -> 
     return None
 
 
-def resolve(base: Base, scope: str, interrupt: int,
+def resolve(base: Index[E], scope: str, interrupt: int,
             registers: Mapping[str, int]) -> Resolved | None:
     """The entry for `INT interrupt` and `registers` (upper-case names): the most specific one they
     reach, a variant before the entry it varies; None when the base names none or AH is unknown."""

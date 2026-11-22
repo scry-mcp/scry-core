@@ -6,10 +6,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from null_server import KNOWLEDGE, an_entry, write_dictionary
+from null_server import KNOWLEDGE, an_entry, rows_of, write_dictionary
 
 from scry_core import notes
 from scry_core.knowledge import Base
+from scry_core.knowledge.index import E, Index
 from scry_core.notes import Note, Operand
 
 
@@ -29,7 +30,7 @@ def base(tmp_path: Path) -> Base:
     return loaded
 
 
-def _note(base: Base, *operands: Operand) -> Note | None:
+def _note(base: Index[E], *operands: Operand) -> Note | None:
     return notes.note(base, "ibm-pc", operands, names_on=True)
 
 
@@ -129,3 +130,12 @@ def test_a_variant_is_named_in_a_note_only_when_the_instruction_at_a_stop_holds_
     assert _note(base, Operand("interrupt", 0x10, function=(0x13,),
                                registers={"AH": 0x12, "BL": 0x36})) == \
         Note("video BIOS (0x10); video refresh (BL=0x36)", True), "the stop's registers win"
+
+
+def test_a_base_of_rows_notes_the_call_a_line_makes(tmp_path: Path) -> None:
+    rows = rows_of(tmp_path, "call.json", "family.json")
+    assert notes.note(rows, "dos", [Operand("interrupt", 0x21, function=(0x5A,))],
+                      names_on=True) == Note("create temp file (0x5A)", False)
+    assert notes.note(rows, "video", [Operand("interrupt", 0x10, function=(0x12,),
+                                              registers={"BL": 0x31})],
+                      names_on=True) == Note("palette loading (BL=0x31)", True)

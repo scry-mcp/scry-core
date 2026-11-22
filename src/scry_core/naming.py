@@ -14,7 +14,8 @@ from typing_extensions import TypedDict
 
 from scry_core import abbreviation
 from scry_core.knowledge import KINDS as BASE_KINDS
-from scry_core.knowledge import Base, calls
+from scry_core.knowledge import calls
+from scry_core.knowledge.index import E, Index
 
 #: What a name can be of: a kind of the base, or a symbol of the program.
 KINDS = (*BASE_KINDS, "symbol")
@@ -191,7 +192,7 @@ def arguments_of(items: object) -> dict[str, Named]:
     return out
 
 
-def named_call(base: Base, scope: str, interrupt: int,
+def named_call(base: Index[E], scope: str, interrupt: int,
                registers: Mapping[str, int]) -> Named | None:
     """What `INT interrupt` is called given a stop's `registers`; the number is the entry's key."""
     got = calls.resolve(base, scope, interrupt, registers)
