@@ -1,0 +1,1709 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "pic8259-device",
+ "kind": "device",
+ "scope": "chip",
+ "covers": "The 8259A programmable interrupt controller as a chip: its interrupt sequence, its modes, its initialization and the cascade",
+ "source": "official",
+ "documents": [
+  {
+   "name": "8259A.raw.txt",
+   "variant": "8259A"
+  }
+ ],
+ "official": {
+  "8259A.raw.txt": [
+   "18-24",
+   "125-166",
+   "205-283",
+   "290-379",
+   "386-403",
+   "489-495",
+   "533-554",
+   "585-599",
+   "740-775",
+   "776-799",
+   "800-813",
+   "815-841"
+  ]
+ },
+ "engine": [
+  "m_in_sp_func",
+  "TIMER_IRQ0Poll",
+  "set_imr",
+  "check_for_irq",
+  "check_after_EOI",
+  "LOG_MSG",
+  "LOG",
+  "LOGICW",
+  "LOGOCW",
+  "adjust",
+  "m_out_int_func",
+  "update_active_irq",
+  "start_irq",
+  "activate",
+  "deactivate",
+  "PIC_AddEvent",
+  "CPU_HW_Interrupt",
+  "CPU_NMI_Interrupt",
+  "CPU_InterruptFlag",
+  "CPU_SyncRegisters",
+  "IRQ_hack_check_cs_equ_ds",
+  "m_read_slave_ack_func",
+  "logerror"
+ ],
+ "entries": [
+  {
+   "key": "pic8259",
+   "name": "8259A interrupt control",
+   "aliases": [
+    "PIC"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "18-24"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "125-166"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "205-283"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "290-379"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "386-403"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "489-495"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "533-554"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "585-599"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "740-775"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "776-799"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "800-813"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "815-841"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "function": "pic8259_device::irq_timer_tick"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "function": "pic8259_device::set_irq_line"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "function": "pic8259_device::acknowledge"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "function": "pic8259_device::device_reset"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "function": "pic8259_device::write",
+     "case": [
+      "0"
+     ],
+     "value": "data=16..31"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "PIC_Controller::check_for_irq"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "PIC_Controller::raise_irq"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "lower_irq"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "PIC_Controller::start_irq"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "slave_startIRQ"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "master_startIRQ"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "PIC_runIRQs"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "write_command",
+     "value": "val=16..31"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The 8259A handles up to eight vectored priority interrupts for the CPU and cascades to 64 without extra circuitry.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "18-20",
+       "sha": "77f9e008f109ee6eed0fda4253e6a618a57f3c8b005ef7957b82e98eee8b8e86"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "It is fully upward compatible with the 8259: software written for the 8259 runs in all its 8259 equivalent modes.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "23-24",
+       "sha": "620671cd9646f54f33827f81a33e9748b2831061443290427acf3db633927dc6"
+      }
+     ]
+    },
+    {
+     "n": "47",
+     "on": "is",
+     "of": "doc",
+     "text": "It is designed to minimise software and real time overhead in handling multi-level priority interrupts, and has several modes.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "21-22",
+       "sha": "883683f9121c7812408de764126d034afeac32be8e5ee896539cbd40a1b35970"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "It manages eight levels, is programmed by software as an I/O peripheral, and its priority modes can change at any time.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "125-131",
+       "sha": "97787e5db2b854fbf801a8e094ced17672dd857dd4f0802f32b92a86532223ba"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "132-138",
+       "sha": "a2ad17280663d3a8a507f6485045f79960768ada0dac5522af344789e12a2eda"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The IRR stores the levels requesting service and the ISR the levels being serviced, two registers in cascade.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "139-146",
+       "sha": "e8fe9d944fbcaccdf53e1e344cc2b9a1086cdf32d7ed56d31d34680bbf808d0a"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The priority resolver picks the highest priority bit set in the IRR and strobes it into the ISR bit during INTA.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "147-151",
+       "sha": "16717770f951c242c6b983781abab6f3aee9307e9c40950710795d1b15c2319c"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "The IMR masks interrupt lines and operates on the IRR; masking a higher priority input does not affect lower ones.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "152-156",
+       "sha": "1cc9429a0034c6f23cbf9645864783620d763ffe98b596b638d07b1cb171e46a"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "INT goes straight to the CPU interrupt input; INTA pulses make the 8259A release vectoring information.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "157-166",
+       "sha": "8f774f774ef9d6e56e92560fe8951002553c72e9be7e8135172386c8862c5392"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "is",
+     "of": "doc",
+     "text": "The cascade buffer stores and compares the IDs of all 8259As; a master sends the interrupting slave's ID on CAS0-2.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "205-215",
+       "sha": "b42813536b0af1834dff2b2beb3f6a6736e039398dd633aced6b3928aa3407c4"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "when",
+     "of": "doc",
+     "text": "MCS-80/85: raised IR lines set IRR bits and INT goes to the CPU; on INTA the highest ISR bit is set, its IRR bit reset and a CALL released.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "216-227",
+       "sha": "cd153c1146f277439f8f54952f8bf0e9c9ee0941f8fe1da8e7a6ee78d6a85ac8"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "228-237",
+       "sha": "d6afe92cc28183ea19db54d332f586369a6af879991b3da0df0fcbd77fe71874"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "when",
+     "of": "doc",
+     "text": "Two more INTA pulses make the 8259A release its preprogrammed routine address, the low byte first and then the high byte.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "238-245",
+       "sha": "f643541f6af9c27c3ffed195775243fa0acdb2d20c22b98a8160b64ec20ea9a8"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "when",
+     "of": "doc",
+     "text": "In AEOI mode the ISR bit is reset at the end of the third INTA pulse; otherwise it stays set until an EOI command.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "246-251",
+       "sha": "176c5b8f0908028ca88e02cd72f5a26ed12c37ddc27d8cca56e777cae573172d"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "when",
+     "of": "doc",
+     "text": "8086: the first INTA sets the highest ISR bit and resets its IRR bit and the 8259A does not drive the data bus.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "252-257",
+       "sha": "40632f9f0e7bb9d34532c1527da52eb766fcdc9e297d8af4c60920032ab074db"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "when",
+     "of": "doc",
+     "text": "8086: the second INTA releases an 8-bit pointer on the data bus, and in AEOI mode the ISR bit is reset at its end.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "258-265",
+       "sha": "a689a994a6b51e676c1bef45d0db53c42fd94f198d8dbd39af00b651bfe253fc"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "when",
+     "of": "doc",
+     "text": "If no request is present at the first INTA because it was too short, the 8259A issues interrupt level 7.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "266-270",
+       "sha": "fb0bee1963b5bda9181c24123e9c87d583e34d0806cd7f771d5a2c4cd41bb351"
+      }
+     ]
+    },
+    {
+     "n": "15",
+     "on": "when",
+     "of": "doc",
+     "text": "A higher priority request between the two INTA pulses makes INT inactive after the second, and active again after an unspecified time.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "271-282",
+       "sha": "a28f33d213fc9117a32505c5d2b520c17d5e5406bd1548b1002df5debe8796ae"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "283",
+       "sha": "dec20c5588b75d6d3f50185121ac73da56a5db7b0b11339caa8ada00c5b1ff2e"
+      }
+     ]
+    },
+    {
+     "n": "16",
+     "on": "when",
+     "of": "doc",
+     "text": "MCS-80/85: the first INTA enables the CALL opcode (11001101) onto the data bus.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "290-297",
+       "sha": "63df3a375d3d43886fa5543365913aab7d561283af79b0f08688df58fbb2b111"
+      }
+     ]
+    },
+    {
+     "n": "17",
+     "on": "when",
+     "of": "doc",
+     "text": "MCS-80/85: the second INTA releases the low address: A7-A5 programmed for interval 4 (A7-A6 for 8) and the level inserted.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "298-304",
+       "sha": "44630111983c041d1126772fb3d6c7ee747b4a47548a17c1c2c417a75e609d98"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "306-316",
+       "sha": "c487f14cccbf4dda852b1096be3c89dca3260c42b5317a0b981fad1142623e06"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "317-326",
+       "sha": "da70ca039739b925ea886c3c19e55adfb0c4f2b683e9d04d31f7bc833c002ff1"
+      }
+     ]
+    },
+    {
+     "n": "18",
+     "on": "when",
+     "of": "doc",
+     "text": "MCS-80/85: the third INTA releases the high address A15-A8, programmed as byte 2 of the initialization sequence.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "327-333",
+       "sha": "b044e929d52f908e2c390fa3dda285467fb9d8f70164b6e3940a26a22eba182b"
+      }
+     ]
+    },
+    {
+     "n": "19",
+     "on": "when",
+     "of": "doc",
+     "text": "8086 mode issues two INTA cycles and no CALL opcode; the first freezes the interrupt state for priority resolution.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "334-345",
+       "sha": "8a87d0698f2a3a369cf1fd8abaa879c98d9dba12e376874d85670030dc075df7"
+      }
+     ]
+    },
+    {
+     "n": "20",
+     "on": "when",
+     "of": "doc",
+     "text": "On the second INTA of an 8086 system the byte sent is T7-T3 from ICW2 with the level in the low three bits.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "346-357",
+       "sha": "cafe722159e23e586495f93a4f177dbaeefbc9ffa7b66b8a1eea008846bf6676"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "358-362",
+       "sha": "dc4d6d132bb4187c04ba3281628415165d4748ead6f25892bb70be1eee8218f6"
+      }
+     ]
+    },
+    {
+     "n": "21",
+     "on": "is",
+     "of": "doc",
+     "text": "The CPU writes ICWs, 2 to 4 bytes that bring each 8259A to a starting point, and OCWs, which select modes at any time after.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "363-371",
+       "sha": "69ee6b48612f31b5483ce4d098d3d92d42a6ae74af6b3abcf9be7cfd852c78d3"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "372-377",
+       "sha": "3f8eca16d7d505e96157c6fc23745c598e406718cff443c0848986bd950a5215"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "378-379",
+       "sha": "1e805b7fd3d7d370a0ab64b2a7cd4baeaf0c7eb41cc5d71b7b85b7895c13b837"
+      }
+     ]
+    },
+    {
+     "n": "23",
+     "on": "reset",
+     "of": "doc",
+     "text": "ICW1 resets the edge sense circuit: an IR input must then make a low-to-high transition to generate an interrupt.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "386-391",
+       "sha": "9249943e310a69cdc5b681cd0910537aef55114f2eb4e4dc1f94f2e8fa6b8701"
+      }
+     ]
+    },
+    {
+     "n": "24",
+     "on": "reset",
+     "of": "doc",
+     "text": "ICW1 clears the interrupt mask register.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "393",
+       "sha": "bb6d8b5f1bfeccc31cc0f8aed4079c9be3f5451e38d9e0f9a47272424d18b023"
+      }
+     ]
+    },
+    {
+     "n": "25",
+     "on": "reset",
+     "of": "doc",
+     "text": "ICW1 assigns priority 7 to the IR7 input and sets the slave mode address to 7.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "394-395",
+       "sha": "02ae84bb14eb63555ac0cda56ee035cdd659969300a5a1c6ee6bf1c5d49ca373"
+      }
+     ]
+    },
+    {
+     "n": "26",
+     "on": "reset",
+     "of": "doc",
+     "text": "ICW1 clears special mask mode and sets status read to the IRR.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "396-397",
+       "sha": "68d6fcf7c6c29617cce958a7897a8017b15196d57c00183c5adc287a3e2da014"
+      }
+     ]
+    },
+    {
+     "n": "27",
+     "on": "reset",
+     "of": "doc",
+     "text": "If IC4 = 0 all ICW4 functions are zero: non-buffered mode, no automatic EOI and an MCS-80/85 system.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "398-403",
+       "sha": "1c937e7340ab50c7a74b72cf2d9c481cc251b45b16d47297da5c9961a3a26833"
+      }
+     ]
+    },
+    {
+     "n": "28",
+     "on": "is",
+     "of": "doc",
+     "text": "After the ICWs the 8259A is ready for interrupt requests, and OCWs select algorithms that put it in various modes.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "489-495",
+       "sha": "2f1176ed0ebfaa826624d26f59373e6b9a22a61fd9f8de1a6027873c4b1c9001"
+      }
+     ]
+    },
+    {
+     "n": "29",
+     "on": "when",
+     "of": "doc",
+     "text": "Fully nested mode follows initialization: IR0 has the highest priority and an acknowledged level's ISR bit blocks the same and lower levels.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "533-544",
+       "sha": "692c358142866a0169c6759fec25a2c6244913f2398a8ce35688cf7c158335f8"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "545-550",
+       "sha": "4f245f0d516468a631952cdc71bbb48a96be482f94e2d9c636229f580edd02da"
+      }
+     ]
+    },
+    {
+     "n": "30",
+     "on": "when",
+     "of": "doc",
+     "text": "After initialization IR0 has the highest priority and IR7 the lowest; rotating priority mode can change this.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "551-554",
+       "sha": "d2a87c804f2761197a843c7445cf7f39b1737d6b3d9d182dbd6ee52d4ecbfdb7"
+      }
+     ]
+    },
+    {
+     "n": "31",
+     "on": "when",
+     "of": "doc",
+     "text": "AEOI mode, set by ICW4, does a non-specific EOI at the trailing edge of the last INTA pulse, until reprogrammed by ICW4.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "585-595",
+       "sha": "5ecdcc6a581102680f469206ebe28ce5f6fb0bbf99628f9cbaa65a1ad0bf4bd4"
+      }
+     ]
+    },
+    {
+     "n": "32",
+     "on": "when",
+     "of": "doc",
+     "text": "AEOI mode can only be used in a master, but parts with a 1985 or later copyright date work as master or slave.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "596-599",
+       "sha": "df39de46662713a8ecff0f0881ee8337d2a5bac623ca30aa8a83d7bbd2e2a35b"
+      }
+     ]
+    },
+    {
+     "n": "33",
+     "on": "when",
+     "of": "doc",
+     "text": "LTIM = 0: a request is recognized by a low-to-high transition on an IR input, which can stay high without a second interrupt.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "740-745",
+       "sha": "d1fc1c28ab381c7a32b5b4930323e28d154937c8f51573662bc4db907d1094f2"
+      }
+     ]
+    },
+    {
+     "n": "34",
+     "on": "when",
+     "of": "doc",
+     "text": "LTIM = 1: a request is recognized by a high level on an IR input and the request must be removed before EOI.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "749-754",
+       "sha": "96367b2fe1ed338fcf5afbbdbfd270650c7ce0f4f5eb2090dcd207207658d6bd"
+      }
+     ]
+    },
+    {
+     "n": "35",
+     "on": "is",
+     "of": "doc",
+     "text": "The priority cell is a conceptual circuit of the level and edge sensitive inputs, with a transparent D type request latch.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "755-758",
+       "sha": "572aec1625e2464d998591bbce80056d716a6da158f3b4348ddef097201b9437"
+      }
+     ]
+    },
+    {
+     "n": "36",
+     "on": "when",
+     "of": "doc",
+     "text": "In both modes the IR inputs must stay high until after the falling edge of the first INTA, or a default IR7 occurs.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "759-763",
+       "sha": "2c88cda8cf61c6c479ea11f5d2c267efdbe0655b2803b320afeca46eee8f2589"
+      }
+     ]
+    },
+    {
+     "n": "37",
+     "on": "when",
+     "of": "doc",
+     "text": "The IR7 routine can serve as clean up for default IR7s caused by noise glitches, simply executing a return instruction.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "764-768",
+       "sha": "7c63de8c53b82ab26c2993ee89eddadc80b25f53692919e42d70d0dcac006c1c"
+      }
+     ]
+    },
+    {
+     "n": "38",
+     "on": "when",
+     "of": "doc",
+     "text": "A default IR7 can be told from a normal one by reading the ISR: a normal IR7 sets its ISR bit and a default one does not.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "768-775",
+       "sha": "e72636f6e683a6077c1ddf14fefe224d7c923dca9b1771102128389a46193c62"
+      }
+     ]
+    },
+    {
+     "n": "39",
+     "on": "when",
+     "of": "doc",
+     "text": "Special fully nested mode, set in the master by ICW4, conserves the priority within each slave in a cascade.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "776-782",
+       "sha": "1f5d6dc479f9eaee70f2679d71d3cb68176ff906e7d46d2693101a4cb6b0b1d1"
+      }
+     ]
+    },
+    {
+     "n": "40",
+     "on": "when",
+     "of": "doc",
+     "text": "In it a slave in service is not locked out of the master priority logic, so higher requests within the slave still interrupt.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "783-791",
+       "sha": "d117bd9a95670dc7ff03f0adbf78a0aede0f167fad2f8c667719df22af316996"
+      }
+     ]
+    },
+    {
+     "n": "41",
+     "on": "when",
+     "of": "doc",
+     "text": "On exit software sends a non-specific EOI to the slave and reads its ISR; if empty it sends a non-specific EOI to the master.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "792-799",
+       "sha": "4bb820d4795a382da81f70d479b571abb4021fad6b17ad9fe2a9f4a852da5deb"
+      }
+     ]
+    },
+    {
+     "n": "42",
+     "on": "when",
+     "of": "doc",
+     "text": "In buffered mode the 8259A sends an enable on SP/EN whenever its data bus outputs are enabled; software tells master from slave.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "800-809",
+       "sha": "3dce3c2de0c0d49061cda431dfcf32941d7143524885557a17a8d61bf3554f64"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "810-813",
+       "sha": "ee3d4115298e050aecb194d765f10b3fdaa1dc65ca07fd56442a3c593e761522"
+      }
+     ]
+    },
+    {
+     "n": "43",
+     "on": "when",
+     "of": "doc",
+     "text": "One master controls up to eight slaves through the 3-line cascade bus, giving up to 64 priority levels.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "815-823",
+       "sha": "15ba61b467f155caca7b2ea9e23ec9f57edf430c13ddc9e4366ebf8e551c3332"
+      }
+     ]
+    },
+    {
+     "n": "44",
+     "on": "when",
+     "of": "doc",
+     "text": "The cascade lines are normally low and carry the slave address code from the trailing edge of the first INTA to that of the third.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "829-832",
+       "sha": "e39865c29147038ebf3c498ef67562787c40a9ff4eff00c79e74cecd2be655ec"
+      }
+     ]
+    },
+    {
+     "n": "45",
+     "on": "when",
+     "of": "doc",
+     "text": "Each 8259A in a cascade follows a separate initialization sequence and can work in a different mode; an EOI goes to master and slave.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "824-828",
+       "sha": "357d1812bfecfdb8e538c90e7752b4b6e867e76d5907e0a958e1ebb0bc426d6a"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "833-838",
+       "sha": "1792a04559e8224a6693e13bc2a3d895b8aecb17cc9d9eec43591c4f472eedf2"
+      }
+     ]
+    },
+    {
+     "n": "46",
+     "on": "when",
+     "of": "doc",
+     "text": "The cascade lines of the master are activated only for slave inputs; non-slave inputs leave them inactive.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "839-841",
+       "sha": "a7e1148ce0aea25d07983765d18a3a7ddc8b15e39dad9139518f6deaee86c40e"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "19",
+     "text": "The INTA of an 8086 system is a single call that returns the vector, so its two cycles are not modelled.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "89-93",
+       "sha": "fc1e66e8db9f3c7b88aaa5334a6ef7ff1387cd9c100d2eca992c8de818bd4f61"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "15",
+     "text": "INT is evaluated again at once after an acknowledge, with no inactive time before it returns.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "104",
+       "sha": "2ca9bde8130938f01d2ae39d06ba1afa689ff742bddaea21a4f5fa26bd7baf4b"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "reset",
+     "of": "mame",
+     "vs": "differs",
+     "row": "25",
+     "text": "ICW1 does not reset the priority base, so IR7 does not become the lowest priority.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "254-255",
+       "sha": "750128ed3b22b4ac1fa0144a474314fd2a4be2503ed27d2785b3770a3d540172"
+      }
+     ]
+    },
+    {
+     "n": "104",
+     "on": "reset",
+     "of": "mame",
+     "vs": "differs",
+     "row": "26",
+     "text": "ICW1 clears the in-service register and slave byte but leaves special mask and the status read selection alone.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "246-247",
+       "sha": "ea62e29d5f67407fc7fbd223dee51290a7bd208fcb32df00050f97be1d2757ce"
+      }
+     ]
+    },
+    {
+     "n": "105",
+     "on": "reset",
+     "of": "mame",
+     "vs": "differs",
+     "row": "27",
+     "text": "With IC4 = 0 the ICW4 functions keep their earlier values instead of becoming zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "251",
+       "sha": "efe23fd9d9ed0f20689ad4d1a5d117bac09709a8a2f95d7c3fca0b4968f6b63d"
+      }
+     ]
+    },
+    {
+     "n": "106",
+     "on": "when",
+     "of": "mame",
+     "vs": "absent",
+     "row": "42",
+     "text": "No enable is driven on SP/EN: the pin is read only at reset to pick the master or slave role.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "455",
+       "sha": "c0b449a8332b6a74a6f224ccc95f0857ba3bc40d6cf1feda40e08185dc2db7f3"
+      }
+     ]
+    },
+    {
+     "n": "107",
+     "on": "when",
+     "of": "mame",
+     "vs": "absent",
+     "row": "44",
+     "text": "No cascade lines exist: a master asks the slave through a callback instead of driving a slave address.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "145-146",
+       "sha": "e8c8cdcf96563a2ec0d0c05510a8020793b43f5b5123c009bc867c75ee64ed13"
+      }
+     ]
+    },
+    {
+     "n": "109",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "30",
+     "text": "After ICW1 the priority base is not reset, so IR0 is the highest only if no earlier command moved it.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "254-255",
+       "sha": "750128ed3b22b4ac1fa0144a474314fd2a4be2503ed27d2785b3770a3d540172"
+      }
+     ]
+    },
+    {
+     "n": "223",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "43",
+     "text": "Only one slave is modelled, started through a function call from the master cascade input.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "535-537",
+       "sha": "3f135d1554a87da2f82acabfaf371fdd8d7823df38e413fd8614391a386d160d"
+      }
+     ]
+    },
+    {
+     "n": "108",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "A read or write at offset 0 or 1 reaches the controller, offset 1 being the mask and data port.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "183-188",
+       "sha": "fb317cd14d78d0b7d5566255358f5e761edacb7ecbc09a25c631679dccd8cb04"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "9",
+     "text": "Starting an interrupt hands the vector straight to the CPU, with no INTA pulses or CALL opcode.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "541-542",
+       "sha": "9984a4324a388e143245d8d1a3c39de0d1d3aff323b31895935df443c254de38"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "10",
+     "text": "No routine address bytes are released: the CPU takes the vector directly, with no INTA pulses.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "541-542",
+       "sha": "9984a4324a388e143245d8d1a3c39de0d1d3aff323b31895935df443c254de38"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "14",
+     "text": "A request that vanishes before dispatch is simply dropped; no default IR7 vector is produced.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "102-103",
+       "sha": "26a80a0e905640417594618ce0a5a47e4cfb74ad761f661cd2b140e8314b96b9"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "15",
+     "text": "Priority is decided once at dispatch, with no INTA pulses between which a request can arrive.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "562-563",
+       "sha": "5f6b7cf5b8a7785c9a0798c2950507df39c6b5ea18d1cb01244525ae5f64c54e"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "16",
+     "text": "No CALL opcode is sent: the CPU takes the vector directly.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "541-542",
+       "sha": "9984a4324a388e143245d8d1a3c39de0d1d3aff323b31895935df443c254de38"
+      }
+     ]
+    },
+    {
+     "n": "206",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "17",
+     "text": "No address bytes are released: the CPU takes the vector directly.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "541-542",
+       "sha": "9984a4324a388e143245d8d1a3c39de0d1d3aff323b31895935df443c254de38"
+      }
+     ]
+    },
+    {
+     "n": "207",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "18",
+     "text": "No high address byte is released, as the CPU takes the vector directly.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "541-542",
+       "sha": "9984a4324a388e143245d8d1a3c39de0d1d3aff323b31895935df443c254de38"
+      }
+     ]
+    },
+    {
+     "n": "208",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "19",
+     "text": "No INTA cycles are issued; the vector is given to the CPU directly.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "541-542",
+       "sha": "9984a4324a388e143245d8d1a3c39de0d1d3aff323b31895935df443c254de38"
+      }
+     ]
+    },
+    {
+     "n": "209",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "23",
+     "text": "ICW1 does not reset the edge sense circuit: edge or level is set per IRQ by a separate call.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "254-256",
+       "sha": "82b017007a09b23a625ec573279415c1c0958922d03041596d34916759ff3339"
+      }
+     ]
+    },
+    {
+     "n": "210",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "25",
+     "text": "ICW1 does not touch the priorities or the slave address, so IR7 does not become the lowest.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "254-256",
+       "sha": "82b017007a09b23a625ec573279415c1c0958922d03041596d34916759ff3339"
+      }
+     ]
+    },
+    {
+     "n": "211",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "26",
+     "text": "ICW1 leaves special mask mode and the status read selection as they were.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "254-256",
+       "sha": "82b017007a09b23a625ec573279415c1c0958922d03041596d34916759ff3339"
+      }
+     ]
+    },
+    {
+     "n": "212",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "27",
+     "text": "With IC4 = 0 the ICW4 functions are kept, as ICW1 only sets how many ICW bytes follow.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "256",
+       "sha": "4dbf3266ad1e7b8392e1b9ef08ce3abbb2f20fac10d904c67f68f64714bcfbab"
+      }
+     ]
+    },
+    {
+     "n": "213",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "33",
+     "text": "Edge filtering is applied per input from an edge mask, not from a mode set by ICW1.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "149",
+       "sha": "a8cddf87147287b5d10d0820652c12e7a029efc80575cedb09b4ab56c0e16f29"
+      }
+     ]
+    },
+    {
+     "n": "214",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "36",
+     "text": "A request dropped before service is just cleared and no default IR7 is raised.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "102-103",
+       "sha": "26a80a0e905640417594618ce0a5a47e4cfb74ad761f661cd2b140e8314b96b9"
+      }
+     ]
+    },
+    {
+     "n": "215",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "37",
+     "text": "No default IR7 is produced, so there is nothing for a clean up routine to ignore.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "102-103",
+       "sha": "26a80a0e905640417594618ce0a5a47e4cfb74ad761f661cd2b140e8314b96b9"
+      }
+     ]
+    },
+    {
+     "n": "216",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "38",
+     "text": "No default IR7 exists, so the ISR never shows one.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "102-103",
+       "sha": "26a80a0e905640417594618ce0a5a47e4cfb74ad761f661cd2b140e8314b96b9"
+      }
+     ]
+    },
+    {
+     "n": "217",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "39",
+     "text": "ICW4 with SFNM = 1 only logs a message, so priority is not kept within a slave.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "330",
+       "sha": "49b4e32fa318f52b58e194fe81d8fa4fca193d381d9dbda819a835633aa857df"
+      }
+     ]
+    },
+    {
+     "n": "218",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "40",
+     "text": "A slave in service stays locked out, as the special fully nested mode is not handled.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "330",
+       "sha": "49b4e32fa318f52b58e194fe81d8fa4fca193d381d9dbda819a835633aa857df"
+      }
+     ]
+    },
+    {
+     "n": "219",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "41",
+     "text": "The special fully nested mode is not handled, so no exit sequence is needed.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "330",
+       "sha": "49b4e32fa318f52b58e194fe81d8fa4fca193d381d9dbda819a835633aa857df"
+      }
+     ]
+    },
+    {
+     "n": "220",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "42",
+     "text": "No SP/EN enable is driven: the buffered mode bit of ICW4 is not decoded.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "316-324",
+       "sha": "434e2c470d757c19b4e35da22f0d89f13abcd03af9ebde64b3f32cb5e18543dd"
+      }
+     ]
+    },
+    {
+     "n": "221",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "44",
+     "text": "No cascade lines exist: the slave signals the master by a function call.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "536",
+       "sha": "0df28d5fc6ca9dc3ed28950d02bf8e415441d22159f82f22e287a2614d093e75"
+      }
+     ]
+    },
+    {
+     "n": "222",
+     "on": "place",
+     "of": "dosbox-x",
+     "vs": "place",
+     "text": "Handlers sit on ports 0x20 and 0x21, and on 0xA0 and 0xA1 when the slave is enabled.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "1088-1099",
+       "sha": "c3898f462c1f0df44f96b896a068a109870f72d0c9d173366e9fda565da9861c"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "305",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "392",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "746-748",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "128-144",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "147-149",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "150-158",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "157",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "159-172",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "164-165",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "94-100",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "107-116",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "118-123",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "115",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "256",
+     "as": "agrees",
+     "row": "23"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "245",
+     "as": "agrees",
+     "row": "24"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "39-43",
+     "as": "agrees",
+     "row": "29"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "101-102",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "101-102",
+     "as": "agrees",
+     "row": "32"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "65-72",
+     "as": "agrees",
+     "row": "33"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "98-99",
+     "as": "agrees",
+     "row": "34"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "73-80",
+     "as": "agrees",
+     "row": "36"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "121-122",
+     "as": "agrees",
+     "row": "37"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "120-123",
+     "as": "agrees",
+     "row": "38"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "54-55",
+     "as": "agrees",
+     "row": "39"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "39-43",
+     "as": "agrees",
+     "row": "40"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "55",
+     "as": "agrees",
+     "row": "41"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "108-111",
+     "as": "agrees",
+     "row": "43"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "432",
+     "as": "agrees",
+     "row": "45"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "107",
+     "as": "agrees",
+     "row": "46"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "154-155",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "104-107",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "218",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "217-225",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "542",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "542",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "253",
+     "as": "agrees",
+     "row": "24"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "128-130",
+     "as": "agrees",
+     "row": "29"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "134-135",
+     "as": "agrees",
+     "row": "30"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "218",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "218",
+     "as": "agrees",
+     "row": "32"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "151-153",
+     "as": "agrees",
+     "row": "34"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "568",
+     "as": "agrees",
+     "row": "45"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "568-571",
+     "as": "agrees",
+     "row": "46"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "46-51",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "57-58",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "126",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "82-83",
+     "as": "unseen",
+     "reason": "defers the INT update while an INTA sequence is running"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "237",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "248-250",
+     "as": "parent",
+     "owner": "pic8259:command:0x10..0x1F"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "252-253",
+     "as": "parent",
+     "owner": "pic8259:register:0x01:write"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "433-454",
+     "as": "unseen",
+     "reason": "power-on defaults, which the datasheet does not state"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "131",
+     "as": "unseen",
+     "reason": "an option for the PC-98 cascade, not chip behaviour"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "138",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "156",
+     "as": "unseen",
+     "reason": "an option for the PC-98 cascade, not chip behaviour"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "101",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "227",
+     "as": "parent",
+     "owner": "pic8259:command:0x80..0x87"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "508-510",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "511-514",
+     "as": "unseen",
+     "reason": "an IRQ hack option for particular games"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "519",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "523-532",
+     "as": "unseen",
+     "reason": "recovers when the cascade line has no slave request"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "556-561",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "564-566",
+     "as": "unseen",
+     "reason": "an IRQ hack option for particular games"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "573",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "546-553",
+     "as": "unseen",
+     "reason": "CPU state checks before an interrupt is delivered"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "577-580",
+     "as": "unseen",
+     "reason": "re-checks requests after an automatic EOI"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "583-587",
+     "as": "unseen",
+     "reason": "schedules the next interrupt check"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "34",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "247",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "250-252",
+     "as": "parent",
+     "owner": "pic8259:command:0x10..0x1F"
+    }
+   ]
+  }
+ ]
+}

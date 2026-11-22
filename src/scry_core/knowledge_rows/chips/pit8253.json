@@ -1,0 +1,2317 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "pit8253",
+ "kind": "register",
+ "scope": "pit8253",
+ "covers": "The registers of the 8253 and 8254 interval timer: the three counters and the control word",
+ "source": "official",
+ "documents": [
+  {
+   "name": "8254.raw.txt",
+   "variant": "8253"
+  },
+  {
+   "name": "8254.raw.txt",
+   "variant": "8254"
+  }
+ ],
+ "official": {
+  "8254.raw.txt": [
+   "44-47",
+   "100-164",
+   "187-514"
+  ]
+ },
+ "handlers": [
+  {
+   "ref": "mame:src/devices/machine/pit8253.cpp",
+   "function": "pit8253_device::write",
+   "value": "offset"
+  },
+  {
+   "ref": "mame:src/devices/machine/pit8253.cpp",
+   "function": "pit8253_device::read",
+   "value": "offset"
+  }
+ ],
+ "engine": [
+  "update",
+  "simulate",
+  "set_output",
+  "adjust_timer",
+  "track_time",
+  "read_counter",
+  "update_output_from_counter",
+  "PIC_RemoveEvents",
+  "PIC_ActivateIRQ",
+  "PIC_DeActivateIRQ",
+  "PCSPEAKER_UpdateType",
+  "PCSPEAKER_SetPITControl",
+  "PIC_FullIndex",
+  "Install",
+  "Uninstall",
+  "GetSection",
+  "Get_string",
+  "Get_int",
+  "Get_bool",
+  "set_next_counter",
+  "latch_next_counter",
+  "reset_count_at",
+  "set_active_counter",
+  "PCSPEAKER_SetCounter",
+  "PCSPEAKER_SetCounter_NoNewMode",
+  "BCD2BIN",
+  "BIN2BCD",
+  "PIC_AddEvent",
+  "pit_any_status",
+  "load_count",
+  "masked_value",
+  "readback",
+  "count_w",
+  "control_w"
+ ],
+ "entries": [
+  {
+   "key": "0x00",
+   "name": "counter 0",
+   "aliases": [
+    "PIT0"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "44"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "110-164"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "231-263"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "309-322"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "365-385"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "482-488"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "490"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "494"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "function": "pit_counter_device::count_w_deferred"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "function": "pit_counter_device::read"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "function": "pit_counter_device::load_count"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "function": "pit_counter_device::masked_value"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "function": "write_latch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "function": "read_latch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "function": "TIMER_OnPowerOn"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address lines A1 A0 = 0 0 select counter 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "44",
+       "sha": "8a7bdb140243380eec5dccd79da82f3b9398c97a3ba17640b31793b56dd1f38b"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "The three counters are identical in operation and fully independent, and each may operate in a different mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "110-116",
+       "sha": "7d53ae6d15ebffd0a3b12f649775ce2dfe1a43c2d375139893082a4f2fb67be2"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "The counting element CE is a 16-bit presettable synchronous down counter that is never read or written directly.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "125-127",
+       "sha": "dd0cacd0f9db2ec6379985281cba537eb51e9859ce0f3b09da7868c092c4ec06"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "145-147",
+       "sha": "219d75b3ffa878692db80811b2b511ff2e056027c3792f61613210385a32c884"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "160-161",
+       "sha": "ca9712224427220f2e617651f3ac01c46589de6fdaa162becfa96b73f3515b43"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "read",
+     "of": "doc",
+     "text": "A read returns the output latch OL, which follows CE until a counter latch command freezes it.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "128-130",
+       "sha": "101b6f335facdba17ae6fa6ebd043dc3ab7f18608adc346efff0fae1f98e7ce0"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "137-144",
+       "sha": "c11f3fc7630cc276c79ec02665678fb0f7556d4ebb4adef5d35aaa24fe956a5b"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "text": "A written count goes to the count register CR and later to CE; CR is cleared on programming, so a one-byte count leaves the other byte zero.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "148-159",
+       "sha": "2f22465b68bcea00fce42e024c7af0d28e389ad856caa119f31f9291822ceddd"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "The control word register is not part of a counter, but its contents determine how the counter operates.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "117-119",
+       "sha": "6bc96f76b5f315adbfe791756f18afa8f203e3e1038f9fcabfbf2664044b6b4b"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "when",
+     "of": "doc",
+     "variant": "8254",
+     "text": "The status register, when latched, holds the control word contents and the output and null count flags.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "120-124",
+       "sha": "b50ca4e8521103e158b1bfcf4d776035ab269355d476228a02d45c0ef1d4aab4"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "write",
+     "of": "doc",
+     "text": "Initial counts are written into the counters, not into the control word register, in the format the control word chose.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "231-235",
+       "sha": "a607a361fb1a25eff3124a6b187bcebe763e9d898dc5b202a38aef0a102c76ff"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "order",
+     "of": "doc",
+     "text": "Write the control word before the initial count and follow the count format it chose; any sequence obeying both is acceptable.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "236-247",
+       "sha": "8ae903ddf19281f012742be88274d4f7bcd645a8b014d1ead03412f463a1a32b"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "248-252",
+       "sha": "4acdf7ec4a3e39ddb11eb0baf7dd75f810b99bae3001bdaca1b5708b8b3a2571"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "write",
+     "of": "doc",
+     "text": "A new initial count may be written at any time without changing the programmed mode, and must follow the programmed format.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "253-257",
+       "sha": "0b93364f314e5225c6bee4151b1b320e253f67d6c7ad9344b9d90578a354ffde"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "order",
+     "of": "doc",
+     "text": "With two-byte counts, control must not pass between the two bytes to a routine that writes the same counter.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "258-263",
+       "sha": "686679120d909c6d282f6ff37121221d6ed6fcbe3cc965ce8c5669c2cba97c82"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "read",
+     "of": "doc",
+     "text": "A simple read returns the count, but the CLK input must first be inhibited by GATE or logic, or the result is undefined.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "309-320",
+       "sha": "8ee150e0a7c3342df1ac572ead66a2e1d94cdcebcef2c46824f0128c1d1f79d3"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "321-322",
+       "sha": "d65a3c8e144d9cd6ffc1f0258a9281531a078fc6cb4d1123add9eef792740872"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "read",
+     "of": "doc",
+     "text": "The count is read in the programmed format, two bytes for a two-byte count, which need not be read one right after the other.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "365-371",
+       "sha": "fd8934ff4dad7189436e643c5ea6939692c3002d04d9c9ac8ca9d2c00b241da6"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "order",
+     "of": "doc",
+     "text": "Reads and writes of one counter may be interleaved: read LSB, write new LSB, read MSB, write new MSB is valid.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "372-379",
+       "sha": "d3185d07915263b080ac60c7e8397e8565ae141974f05263d29609e08c60c6f3"
+      }
+     ]
+    },
+    {
+     "n": "15",
+     "on": "order",
+     "of": "doc",
+     "text": "With two-byte counts, control must not pass between the two reads to a routine that reads the same counter.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "380-385",
+       "sha": "f970101d1a2ef3e18d300d4a91821286c405bce7434547d1c5850e98549c25d2"
+      }
+     ]
+    },
+    {
+     "n": "16",
+     "on": "write",
+     "of": "doc",
+     "text": "With CS low, RD high, WR low and A1 A0 = 00 the CPU writes into counter 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "490",
+       "sha": "b326e6f96894546272b7d69c5773a78957874a230c2b0d14c9636ac3da95eab0"
+      }
+     ]
+    },
+    {
+     "n": "17",
+     "on": "read",
+     "of": "doc",
+     "text": "With CS low, RD low, WR high and A1 A0 = 00 the CPU reads counter 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "494",
+       "sha": "dc7e275de43c97bf6da2e9dfbe39077a9103a36517187cd819d07e66ed983ca6"
+      }
+     ]
+    },
+    {
+     "n": "18",
+     "on": "read",
+     "of": "doc",
+     "variant": "8254",
+     "text": "With count and status latched, the first read of the counter returns status, then one or two reads return the count.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "482-488",
+       "sha": "02c0ffd5e20489b48ef953c59c47f383805ea6200f432321acc30000293a0032"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "extra",
+     "text": "Reading the count in the middle of a two-byte write returns the complement of the byte written first.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "862-863",
+       "sha": "7967bc8e7d97439bcdccfce5964a191e09d921a460f68a54939394f863a37c30"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "write",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A count written between clock edges moves the last update forward by one clock period.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1028",
+       "sha": "ce350fd6ecce41ef4cb4731752f13e8eb98208227a1ae64ec1c03042b3c98bf5"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1040-1041",
+       "sha": "5a77d56eced4da5e80de5780563ed0903a1bde07a1533bb9593ed2585a155d30"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1055-1056",
+       "sha": "5a77d56eced4da5e80de5780563ed0903a1bde07a1533bb9593ed2585a155d30"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1071-1072",
+       "sha": "5a77d56eced4da5e80de5780563ed0903a1bde07a1533bb9593ed2585a155d30"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "With the option set, any read of counters 0 to 2 returns a pending status latch of another counter.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "759-770",
+       "sha": "9b172e178f900ea3982a566562ecf098607bb7a2e2f3137785382d58db02a390"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A count write releases a held latch, so the next read takes a fresh count, as for reprogramming.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "608-612",
+       "sha": "229c29a3e40a9d4943fdb2638ebfae9b3d34b36c408de20894c724266b292c42"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A count written to the speaker counter sets the speaker frequency; counter 0 logs its new rate.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "682-693",
+       "sha": "61add1debe8f811aba7601e8081b7e93e79286e092a67cf77a2b8233723c4d19"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "694-705",
+       "sha": "7f4f6bb6d4d6bbd4b7cada4365e79290452a68ba821b41b7a71e7bc47370f4b8"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A count of 0 is 0x10000 binary or 10000 BCD, and a count of 1 in mode 2 or 3 is 0x10001 or 10001.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "616-627",
+       "sha": "db66710ec997a76f47e372dc369a1d5dcd7ed9cdd13a9dbd3852e95c0899252d"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "131-136",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "162-164",
+     "as": "electrical"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "823-832",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "817-819",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1030-1031",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1030-1034",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1043",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "911",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1090",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "835-861",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "864-870",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "867-868",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "865",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1110-1111",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "890-891",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "814-832",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "779-780",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "774-777",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "583-598",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "583",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "593-598",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "605",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "584-587",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "782-808",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "784-793",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "792",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "790-793",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1190",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1194",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "774-777",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "880",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1097",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "834",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "875",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1032-1036",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1049-1051",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1064-1068",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1079-1080",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1091",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "901-909",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "913-922",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "797-799",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1044-1048",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1059-1063",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1074-1076",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1081-1087",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "811-812",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "569-576",
+     "as": "unseen",
+     "reason": "PC-98 port translation only"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "745-752",
+     "as": "unseen",
+     "reason": "PC-98 port translation only"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "707",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1121-1189",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1199-1225",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "632-662",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "681",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "716-726",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "778",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "628",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "665-672",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "603",
+     "as": "unseen",
+     "reason": "converts a BCD count to binary"
+    }
+   ]
+  },
+  {
+   "key": "0x01",
+   "name": "counter 1",
+   "regions": [
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "45"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "491"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "495"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "function": "TIMER_OnPowerOn"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address lines A1 A0 = 0 1 select counter 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "45",
+       "sha": "291683f9250a58b892b136bab4cf8c40aa172234139549810ac9ab01a3895f12"
+      }
+     ],
+     "links": [
+      "pit8253:register:0x00"
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "With CS low, RD high, WR low and A1 A0 = 01 the CPU writes into counter 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "491",
+       "sha": "8bc1b50f0c7f02f50750dcaa9ba4746902e687a0afdce4dbad01a0788fbd3a7d"
+      }
+     ],
+     "links": [
+      "pit8253:register:0x00"
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "With CS low, RD low, WR high and A1 A0 = 01 the CPU reads counter 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "495",
+       "sha": "7852eeb08084478cc4e51569945f1b24fe79f08d04b82a0080544da95a1119ef"
+      }
+     ],
+     "links": [
+      "pit8253:register:0x00"
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "2",
+     "text": "DOSBox-X installs no write handler for port 0x41, so a write to counter 1 does nothing.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "1191",
+       "sha": "2001e20c54dc4f00e73977a76daebc88e5f81069b3a72b711e6bb9ad95247458"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1110-1111",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "890-891",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "880",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1097",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1195",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1121-1189",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1199-1225",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    }
+   ]
+  },
+  {
+   "key": "0x02",
+   "name": "counter 2",
+   "regions": [
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "46"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "492"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "496"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "function": "TIMER_OnPowerOn"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address lines A1 A0 = 1 0 select counter 2.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "46",
+       "sha": "659162cada9316515a68fb3c13248ae274137a77c081517efc826ca0b38f54fa"
+      }
+     ],
+     "links": [
+      "pit8253:register:0x00"
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "With CS low, RD high, WR low and A1 A0 = 10 the CPU writes into counter 2.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "492",
+       "sha": "be39e378b7e0f0d7876da5d113bfead379b090164ae945668af31f8b6a15b4d6"
+      }
+     ],
+     "links": [
+      "pit8253:register:0x00"
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "With CS low, RD low, WR high and A1 A0 = 10 the CPU reads counter 2.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "496",
+       "sha": "0aaecf9f68e23ca2596241c014962facf762db55a4fbea82bf7ab569d76bc936"
+      }
+     ],
+     "links": [
+      "pit8253:register:0x00"
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1110-1111",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "890-891",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "880",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1097",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1196",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1121-1189",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1199-1225",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1192",
+     "as": "agrees",
+     "row": "2"
+    }
+   ]
+  },
+  {
+   "key": "0x03",
+   "name": "control word",
+   "aliases": [
+    "PIT mode"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "47"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "100-109"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "187-230"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "264-308"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "323-364"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "386-481"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "489"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "493"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "497-514"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "function": "pit_counter_device::control_w_deferred"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "function": "pit_counter_device::readback"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "function": "pit8254_device::readback_command"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "function": "pit8253_device::readback_command"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "function": "write_p43"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "function": "counter_latch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "function": "status_latch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "function": "counter_output"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "function": "TIMER_OnPowerOn"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address lines A1 A0 = 1 1 select the control word register.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "47",
+       "sha": "f5a48f979e01e05521beb0210bec1defd8b9e66d6d0e05b1bb9ef4c3cdab2f8c"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "A write with A1 A0 = 11 stores the data in the control word register, where it is read as a control word.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "100-106",
+       "sha": "c7a164cd7acdaf89b52869d15374c297bc1cc5eca4e26c4e4b15a2b0b5dd7825"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "The control word register can only be written to.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "107",
+       "sha": "80b40154ce150e5d513d0320eb62852cd6cd09d05fc080e1fe16fc5634aa8fb1"
+      }
+     ]
+    },
+    {
+     "n": "32",
+     "on": "read",
+     "of": "doc",
+     "variant": "8254",
+     "text": "Status information is available with the read-back command.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "108-109",
+       "sha": "3b389d5543ac6a87c8248169cdbdd6afb5d8744d67716f7dd0d93a8bed854984"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "order",
+     "of": "doc",
+     "text": "Counters are programmed by a control word, which names the counter it programs, and then an initial count.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "187-193",
+       "sha": "1ba7b718c077643989504d162b9c2ea6040c30bba7e9f064763537c618b4b260"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "text": "A control word is SC1 SC0 RW1 RW0 M2 M1 M0 BCD, written with A1 A0 = 11, CS low, RD high and WR low.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "197-200",
+       "sha": "f4499f56d678c92ee4e8f4fa1d759709e8e581d9bf207c62e977d9aa76a3b789"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bits 7-6",
+     "of": "doc",
+     "text": "SC selects the counter: 00 counter 0, 01 counter 1, 10 counter 2.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "201-205",
+       "sha": "95a3b26cc5486d0e4314e34ad1fa0b73edee6cb8f0cea628032d11c236b1545d"
+      }
+     ]
+    },
+    {
+     "n": "33",
+     "on": "bits 7-6 = 3",
+     "of": "doc",
+     "variant": "8254",
+     "text": "SC = 11 is the read-back command.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "206-207",
+       "sha": "61b92a1d1b0c79076dbaaaaa328d133cca6d837ea9fa5e8f4249a399e1a389b9"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bits 5-4",
+     "of": "doc",
+     "text": "RW selects the access format: 01 LSB only, 10 MSB only, 11 LSB first and then MSB.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "208-209",
+       "sha": "1654c4aaa2e05ef24ebe775c6090d9ee298cc3b2f5943e5200f6e48f973397ad"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "212-215",
+       "sha": "04010b65e6086da71b029667cdfb173d12646e899f3a7641cbbb4df393b000e0"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "bits 3-1",
+     "of": "doc",
+     "text": "M selects mode 0 to 5 (M2 is a don't care in modes 2 and 3); 0 is mode 0 and 1 is mode 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "216-223",
+       "sha": "b17ada91e7102a50234a6ff92397bac97d52646f1eac10ea252b79f7238cb833"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "BCD 0 selects a binary 16-bit counter and 1 a binary coded decimal counter of four decades.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "224-227",
+       "sha": "4754e184243abd7d7747998db628ee92e729b40062a9d79e12a9fe46157e920f"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "when",
+     "of": "doc",
+     "text": "Don't care bits should be 0 to insure compatibility with future Intel products.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "228-229",
+       "sha": "761fdc7d30835af57228ef6154d01a3a51c9d073b046328011876811f1d0878c"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "order",
+     "of": "doc",
+     "text": "Programming sequences are free: any order works if each counter gets its control word, then its LSB and MSB.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "265-276",
+       "sha": "d3ca0f29e2aaf68412fd707146c58e4b029cd98ff4ca58729ce5838375f01efd"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "277-288",
+       "sha": "3ed36390bdb6cea286bfd05116e943a045c2e42a77082bb386e15fac6443b8d7"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "289-300",
+       "sha": "f6053957076b6d2ca09eb58f3d00a0fc46c93766572c9ccebb68f18b3c6ec618"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "301-307",
+       "sha": "cacba5a4190a35cb59ffa737824b06f1939de3c93e1f30cab91e85a988e0d5db"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "bits 5-4 = 0",
+     "of": "doc",
+     "text": "RW = 00 is the counter latch command, written to the control word register like a control word.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "210-211",
+       "sha": "fb6e823d9b15b70448e9b808067f752e57febf9b3345f97dd1e41404c3448f33"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "323-330",
+       "sha": "51d4996fbcfd82bfbc6cdc808b96c409a7403fe066fc2b1eb14819d0ac7187d0"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "write",
+     "of": "doc",
+     "text": "A counter latch command is SC1 SC0 0 0 X X X X: SC1 SC0 pick counter 0, 1 or 2.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "331-341",
+       "sha": "5d9fff74f35aa2909d9862aa51f1cba2d0b5d0bcdcae523b96c1d793e251f192"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "when",
+     "of": "doc",
+     "text": "Don't care bits in a counter latch command should be 0 for compatibility with future Intel products.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "342-344",
+       "sha": "761fdc7d30835af57228ef6154d01a3a51c9d073b046328011876811f1d0878c"
+      }
+     ]
+    },
+    {
+     "n": "15",
+     "on": "when",
+     "of": "doc",
+     "text": "A counter latch command holds the count in the output latch until the CPU reads it or the counter is reprogrammed.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "347-354",
+       "sha": "a446ba730282abd60350f8c28945e6a276bb4bd80e53757359376cd450371cec"
+      }
+     ]
+    },
+    {
+     "n": "16",
+     "on": "when",
+     "of": "doc",
+     "text": "Several counters can be latched; each holds its count until read, and a latch command never changes the programmed mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "355-359",
+       "sha": "869dda1917e62844ac05057b261c574af9b5f8f8ecfbde259b408bafc040c7b7"
+      }
+     ]
+    },
+    {
+     "n": "17",
+     "on": "when",
+     "of": "doc",
+     "text": "A second latch command on a latched counter is ignored: the count read is the one at the first command.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "360-364",
+       "sha": "7d2210d145816fdd4186ae35fe56ee6f9802b692a50890c0f9599db1e039c43a"
+      }
+     ]
+    },
+    {
+     "n": "18",
+     "on": "bits 7-6 = 3",
+     "of": "doc",
+     "variant": "8254",
+     "text": "The read-back command checks the count, mode and OUT and null count states of selected counters; D3 D2 D1 select them.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "386-395",
+       "sha": "3cb071187af4a5f1438051c5a207e57ffb6a9bc95cd3c463bbea0eaca3c87080"
+      }
+     ]
+    },
+    {
+     "n": "19",
+     "on": "write",
+     "of": "doc",
+     "variant": "8254",
+     "text": "Read-back is 1 1 COUNT STATUS CNT2 CNT1 CNT0 0: COUNT 0 latches the count, STATUS 0 latches the status, D0 must be 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "396-405",
+       "sha": "982e975434fc87fdef06be2dd5456a25143a7157d461d59c0c87ba3cc2e5f158"
+      }
+     ]
+    },
+    {
+     "n": "20",
+     "on": "when",
+     "of": "doc",
+     "variant": "8254",
+     "text": "COUNT = 0 latches the count of every selected counter like several latch commands; repeats before a read are ignored.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "406-417",
+       "sha": "636a082432c14cd8b6e07b802960f580b7e07da888ecd0231e73667e01d4237c"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "418-419",
+       "sha": "fb3826bfdc78e3e9ca178557f59bb8d485d08681d4f334f2256eb9893197103c"
+      }
+     ]
+    },
+    {
+     "n": "21",
+     "on": "when",
+     "of": "doc",
+     "variant": "8254",
+     "text": "STATUS = 0 latches the status of the selected counters.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "420-422",
+       "sha": "e7aed7e14ee53dd10b7e20e49359be599e381df143e8978a0a28a58956563437"
+      }
+     ]
+    },
+    {
+     "n": "34",
+     "on": "read",
+     "of": "doc",
+     "variant": "8254",
+     "text": "Status must be latched to be read, and a counter's status is read from that counter.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "422-424",
+       "sha": "630ff1afceda70347e476f77d1f83eea845a9bd1eed2ec9100e3e6b8feaa0927"
+      }
+     ]
+    },
+    {
+     "n": "22",
+     "on": "read",
+     "of": "doc",
+     "variant": "8254",
+     "text": "The status byte holds OUT in bit 7, null count in bit 6 and the mode word as last written in bits 5-0.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "425-436",
+       "sha": "6aaaa2905f57aafd320b3eadd8f86890e10cecad87a2579e48c67b24d6c64200"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "437-443",
+       "sha": "502c460e19cf06daa2b57b4fcf1bc3ebe864281b4a76044c239717b96b8e62f5"
+      }
+     ]
+    },
+    {
+     "n": "23",
+     "on": "when",
+     "of": "doc",
+     "variant": "8254",
+     "text": "Null count says whether the last count written to CR has been loaded into CE; until then the count read is the old one.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "445-454",
+       "sha": "e1d5a7e0dee26b8728c65ab3a834f83d82b9fd4534729331f1845d01ab8b61e3"
+      }
+     ]
+    },
+    {
+     "n": "24",
+     "on": "when",
+     "of": "doc",
+     "variant": "8254",
+     "text": "A control word or count write sets null count (second byte if two bytes) and loading CR into CE clears it; only that counter.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "455-466",
+       "sha": "6f094ea1e5355616d7164a89c003905c62ba7028ba4fcbabaedb3c45ef6c389a"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "467",
+       "sha": "7376b33afde99731e7d7aaaeff488d09be5636367e05e29d742e4c8ddd8081bd"
+      }
+     ]
+    },
+    {
+     "n": "25",
+     "on": "when",
+     "of": "doc",
+     "variant": "8254",
+     "text": "Repeated status latches without a read are ignored: the status read is the one at the first command.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "468-472",
+       "sha": "9e7987e30b514e4b9fcdaa067b5eb7749fe33bb8dbe35c196bcc8ded90b890d5"
+      }
+     ]
+    },
+    {
+     "n": "26",
+     "on": "when",
+     "of": "doc",
+     "variant": "8254",
+     "text": "Count and status can be latched together with COUNT and STATUS both 0; repeats before the reads are ignored.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "473-481",
+       "sha": "ff88e7691cff0d434b97a2620123b8c85369e95421cf3e25f4cf34afd7b93289"
+      }
+     ]
+    },
+    {
+     "n": "28",
+     "on": "write",
+     "of": "doc",
+     "text": "With CS low, RD high, WR low and A1 A0 = 11 the CPU writes a control word.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "489",
+       "sha": "f94d98b62bb5dacc4f2afe21ef5f0bc46c7f95830808d2d6133de64d04e7128b"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "493",
+       "sha": "32e1aae7da73254a0d23e009f467339ca94ee10b398c15a8a2303bc51e4c788e"
+      }
+     ]
+    },
+    {
+     "n": "29",
+     "on": "read",
+     "of": "doc",
+     "text": "A read with A1 A0 = 11 does nothing: the data bus stays in three-state.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "497",
+       "sha": "0415a587707dd0191c4b58f2e91a936f353658805fd890879ab03722a1851d60"
+      }
+     ]
+    },
+    {
+     "n": "30",
+     "on": "when",
+     "of": "doc",
+     "text": "With CS high, or RD and WR both high, nothing happens.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "498-499",
+       "sha": "3ac218ecaf5415ce6b1e5fea263189327241d2c7bf1a1f6d5cf1829af6b6245a"
+      }
+     ]
+    },
+    {
+     "n": "31",
+     "on": "write",
+     "of": "doc",
+     "variant": "8254",
+     "text": "Read-back 11000010 latches count and status of counter 0, 11101100 the status of counters 2 and 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "501-512",
+       "sha": "74ff09f18a06bf3547fe27522116edff6b46ec5c2027127e7c75b5b0cf30d681"
+      },
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "513-514",
+       "sha": "92686636eee6f5372a58301f6d0b26e499f025918bac08665d9aac2c0fb09d02"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "15",
+     "text": "A control word sets null count, byte order and phase but leaves a latched count held until it is read.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1016-1019",
+       "sha": "eb7951e837663328506802da88cb4508558e43a69fcc91e4a1fff0f129ce115c"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "24",
+     "text": "Only the control word write sets null count to 1; the count write path sets nothing there.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1016",
+       "sha": "90e06e0c54c5536c87a95b7a6975f2f13bf7a3091f6c53bcbe71f20e8ef633e5"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1043-1047",
+       "sha": "c4cfc36471a8bc50cff4c1809af46316b4f48c4d186aa25d0b5bacd536e78196"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "29",
+     "text": "A read at offset 3 returns 0 instead of leaving the data bus three-state.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "888",
+       "sha": "6be2e46a3d0765fd4d08def164c35b75afcc481db6fd11cc5118c4e2c20b634d"
+      }
+     ]
+    },
+    {
+     "n": "104",
+     "on": "place",
+     "of": "mame",
+     "vs": "extra",
+     "text": "On the 8253 type the read-back command does nothing.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "978-980",
+       "sha": "37af588c83989f88f52974f14c7b072ad1d8e47fc03ca7d5f82c1a5b5ed75128"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "15",
+     "text": "A control word write leaves a held latch in effect, deliberately, because some games read it later.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "837-848",
+       "sha": "0a6a8770156d3d48b94aa62b870940d38784fa70a999c4762b7403a4706c7fc1"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "17",
+     "text": "A second latch command latches the count again, replacing the first one.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "489-496",
+       "sha": "ce5ea4140c8e53fb3dc9da3bc3c81e2003fdb5540acf715b5800eab9198dc63a"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "21",
+     "text": "Only the lowest counter selected has its status latched.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "910-912",
+       "sha": "23c4bebb113ad71483a3437c48d7bb308498a70a6c984e024c3842b209ab2ad8"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "23",
+     "text": "The null flag is the new mode flag: it clears when a count is written, not when CR loads into CE.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "478",
+       "sha": "55ac11858918c3c5a7147a55d692f75ffbeeb44137bc5dbed70784dfbedd3116"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "24",
+     "text": "The control word sets the null flag and a count write clears it at once.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "891",
+       "sha": "5924be560ec05cc2eb240f642c58906439e78df46b25d3eac93db024b3888265"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "681",
+       "sha": "91ff4cea97bf39e2e98ff8aa917f6e6dbcce039046b58802d8238106157f328b"
+      }
+     ]
+    },
+    {
+     "n": "206",
+     "on": "bit 0",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A BCD control word clamps a larger counter to 9999.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "850-852",
+       "sha": "03e3aa5726aa72456cc03dc50cbf1a608e09e360021f500a5df1a448e560778b"
+      }
+     ]
+    },
+    {
+     "n": "207",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A control word write clears a pending status latch of that counter.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "855-858",
+       "sha": "80945236b65e91956c5bad1fb49a7d5d45e3eb5ce7385dfd444d6df13bb9f481"
+      }
+     ]
+    },
+    {
+     "n": "208",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A control word for the speaker counter tells the speaker emulation.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "892-898",
+       "sha": "f455283443b5580e3487a12fa0f62230202b2672610c4fa15386e56f38667d35"
+      }
+     ]
+    },
+    {
+     "n": "209",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "Latching counter 0 also raises or lowers IRQ 0 from its output.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "499-503",
+       "sha": "33e752f74ec2fb1e69febec8320569f3045809c0429f09df678b65052f0cfbbf"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "194-196",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "444",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "230",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "264",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "308",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "345-346",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "500",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "884-887",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "930-937",
+     "as": "agrees",
+     "row": "32"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1104-1108",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1108",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1105-1106",
+     "as": "agrees",
+     "row": "33"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1104-1108",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1003-1009",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1003-1009",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1003",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "942-971",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "945",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "989-991",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "988-991",
+     "as": "agrees",
+     "row": "19"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "942-970",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "930-934",
+     "as": "agrees",
+     "row": "21"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "936",
+     "as": "agrees",
+     "row": "34"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "935",
+     "as": "agrees",
+     "row": "22"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "935",
+     "as": "agrees",
+     "row": "23"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "933",
+     "as": "agrees",
+     "row": "25"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "930-970",
+     "as": "agrees",
+     "row": "26"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1101",
+     "as": "agrees",
+     "row": "28"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1097",
+     "as": "agrees",
+     "row": "30"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "985-991",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "863-869",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1194-1196",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "908",
+     "as": "agrees",
+     "row": "32"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "813-817",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "863-869",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "813-817",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "901",
+     "as": "agrees",
+     "row": "33"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "863-864",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "865-869",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "849",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "865-867",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "813-817",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "818-820",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "818-820",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "818",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "902-906",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "901-902",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "902-909",
+     "as": "agrees",
+     "row": "19"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "902-906",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "472-477",
+     "as": "agrees",
+     "row": "22"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "463-464",
+     "as": "agrees",
+     "row": "25"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "481-482",
+     "as": "agrees",
+     "row": "34"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "902-908",
+     "as": "agrees",
+     "row": "26"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1193",
+     "as": "agrees",
+     "row": "28"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1194-1196",
+     "as": "agrees",
+     "row": "29"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1190-1196",
+     "as": "agrees",
+     "row": "30"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "901-907",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "880",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1012",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1020",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "821",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "861-862",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "882-890",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "900",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "914",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1121-1189",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1199-1225",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "453",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "456",
+     "as": "parent",
+     "owner": "chip:device:pit8253"
+    }
+   ]
+  }
+ ]
+}
