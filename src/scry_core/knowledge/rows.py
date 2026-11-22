@@ -70,7 +70,7 @@ _ENTRY_FIELDS = {"key", "name", "aliases", "access", "source", "searched", "regi
                  "closed", *PLACEMENT}
 _ROW_FIELDS = {"n", "on", "of", "vs", "row", "variant", "text", "quotes", "state", "links"}
 _REGION_FIELDS = {"ref", "function", "case", "value", "preamble", "lines"}
-_CLOSED_FIELDS = {"ref", "lines", "as", "reason", "owner", "row"}
+_CLOSED_FIELDS = {"ref", "lines", "as", "reason", "owner", "row", "nothing"}
 _LABEL = re.compile(r"[A-Za-z0-9]{1,6}")
 _BITS = r"bits \d+-\d+(?: = \S+)?|bit \d+|value \S+"
 SUBJECTS: dict[str, str] = {
@@ -135,6 +135,9 @@ class Closure:
     why: str = ""
     owner: str = ""
     row: str = ""
+    #: An `agrees` whose whole body does nothing to what the row names: an early exit, an empty
+    #: case, for a row that says something is left unchanged or nothing is returned.
+    nothing: bool = False
 
     @property
     def party(self) -> str:
@@ -373,6 +376,10 @@ def _closure(raw: object, where: str, faults: list[str]) -> Closure | None:
     if reason not in VERDICT_CLOSURES and row != "":
         faults.append(f"{where}: `row` goes with `agrees` or `unfollowed` only")
         return None
+    nothing = raw.get("nothing", False)
+    if nothing is not False and not (nothing is True and reason == "agrees"):
+        faults.append(f"{where}: `nothing` is `true` on an `agrees`, or absent")
+        return None
     if party == "doc" and reason not in DOCUMENT_REASONS:
         faults.append(f"{where}: `{reason}` is about an emulator's code; a line of an official "
                       f"document is closed as {', '.join(DOCUMENT_REASONS)}")
@@ -386,7 +393,7 @@ def _closure(raw: object, where: str, faults: list[str]) -> Closure | None:
     if reason in OWNED and not (isinstance(owner, str) and owner):
         faults.append(f"{where}: `{reason}` names the entry that owns the line, as `owner`")
         return None
-    return Closure(raw["ref"], raw["lines"], reason, str(why), str(owner), str(row))
+    return Closure(raw["ref"], raw["lines"], reason, str(why), str(owner), str(row), nothing)
 
 
 def _entry(raw: object, header: Header, where: str, faults: list[str]) -> Entry | None:
@@ -627,6 +634,26 @@ def _callees(got: argparse.Namespace) -> Callees:
     return parse_callees(path.read_text(encoding="utf-8"), path.name)
 
 
+def _known(dictionary: Dictionary, path: Path) -> tuple[dict[str, Entry], dict[str, Dictionary]]:
+    """The entries an owner may be, this dictionary's and those of the dictionaries beside it (a
+    chip's registers and its device are two files), and the dictionary of each of the others."""
+    known = {e.id: e for e in dictionary.entries}
+    homes: dict[str, Dictionary] = {}
+    for other in sorted(path.parent.glob("*.json")):
+        if other.resolve() == path.resolve():
+            continue
+        text = other.read_text(encoding="utf-8")
+        if f'"{FORMAT}"' not in text:
+            continue
+        beside, _ = parse(text, other.name)
+        if beside is None:
+            continue
+        for e in beside.entries:
+            if e.id not in known:
+                known[e.id], homes[e.id] = e, beside
+    return known, homes
+
+
 def _sources(got: argparse.Namespace) -> Sources:
     """The pinned sources, and the documents of this package's table and of the table of the
     package that holds the dictionary."""
@@ -694,7 +721,7 @@ def _run_cover(got: argparse.Namespace) -> int:
     from scry_core.knowledge import closure
     dictionary, faults = _with_dictionary(got)
     sources, table = _sources(got), _callees(got)
-    known = {e.id: e for e in dictionary.entries}
+    known, homes = _known(dictionary, got.dictionary)
     code = 1 if faults else 0
     chosen = _chosen(dictionary, got.entries)
     if not chosen:
@@ -702,7 +729,8 @@ def _run_cover(got: argparse.Namespace) -> int:
     for fault in faults:
         print(f"- {fault}")
     for entry in chosen:
-        report = closure.check(dictionary, entry, sources, table, known)
+        report = closure.check(dictionary, entry, sources, table, known, partial=True,
+                               homes=homes)
         print(closure.listing(report))
         code = code or (1 if report.faults else 0)
     return code
@@ -712,8 +740,9 @@ def _run_check(got: argparse.Namespace) -> int:
     from scry_core.knowledge import closure, official
     dictionary, faults = _with_dictionary(got)
     sources, table = _sources(got), _callees(got)
-    known = {e.id: e for e in dictionary.entries}
-    reports = [closure.check(dictionary, e, sources, table, known)
+    known, homes = _known(dictionary, got.dictionary)
+    reports = [closure.check(dictionary, e, sources, table, known, partial=got.partial,
+                             homes=homes)
                for e in _chosen(dictionary, got.entries)]
     declared = official.check(dictionary, sources, partial=got.partial)
     for fault in faults:
@@ -737,14 +766,15 @@ def _run_review(got: argparse.Namespace) -> int:
     from scry_core.knowledge import closure, review
     dictionary, faults = _with_dictionary(got)
     sources, table = _sources(got), _callees(got)
-    known = {e.id: e for e in dictionary.entries}
+    known, homes = _known(dictionary, got.dictionary)
     chosen = _chosen(dictionary, got.entries)
     if not chosen:
         raise Invalid("nothing was examined: the dictionary holds no entry")
     for fault in faults:
         print(f"- {fault}")
     for entry in chosen:
-        report = closure.check(dictionary, entry, sources, table, known)
+        report = closure.check(dictionary, entry, sources, table, known, partial=True,
+                               homes=homes)
         print(review.entry_text(dictionary, entry, report, sources))
     return 1 if faults else 0
 
@@ -794,8 +824,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             sub.add_argument("--out", type=Path)
         if name == "check":
             sub.add_argument("--partial", action="store_true", help="the dictionary is not "
-                             "whole: count the official lines no entry holds instead of failing "
-                             "on them")
+                             "whole: count the official lines no entry holds, and the lines "
+                             "closed for an owner not yet written, instead of failing on them")
     got = ask.parse_args(argv)
     run = {"quote": _run_quote, "cover": _run_cover, "check": _run_check,
            "review": _run_review, "migrate": _run_migrate}[got.command]

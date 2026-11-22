@@ -15,14 +15,14 @@ def table(**rows: Any) -> str:
 
 
 @pytest.mark.parametrize("text", [
-    "open", "open:control_w", "engine", "shared:pit8253:register:0x00",
+    "open", "open:control_w", "engine", "writes", "shared:pit8253:register:0x00",
     *(f"none:{r}" for r in callees.NONE_REASONS)])
 def test_every_decision_of_the_set_is_read(text: str) -> None:
     assert callees.decision(text).spelled() == text
 
 
 @pytest.mark.parametrize("text", ["", "none", "none:other", "shared:", "open:", "closed", "Engine",
-                                  "engine:x"])
+                                  "engine:x", "writes:x"])
 def test_a_decision_outside_the_set_is_refused(text: str) -> None:
     with pytest.raises(ValueError, match="no decision"):
         callees.decision(text)

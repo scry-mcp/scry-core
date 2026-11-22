@@ -1,6 +1,7 @@
 """What `rows review` prints for a reader, in the order a reply shows an entry: the `doc` rows as
 the entry, then per emulator its notes with their `vs` and the row each names, then each verdict
-closed on a row (`agrees`, every place it cites together, or `unfollowed`) with the emulator's lines
+closed on a row (`agrees`, every place it cites together, an `agrees` whose whole body does nothing
+of what the row names, or `unfollowed`) with the emulator's lines
 beside the row's text and quoted lines, then the entry's official region
 whole for the notes that are `extra`; and what the reader's other questions need (the closures,
 the callee decisions the entry used).
@@ -75,10 +76,13 @@ def entry_text(dictionary: Dictionary, entry: Entry, report: Report, sources: So
     verdicts: dict[tuple[str, str, str], list[Closure]] = defaultdict(list)
     for c in entry.closed:
         if c.reason in VERDICT_CLOSURES:
-            verdicts[(c.party, c.row, c.reason)].append(c)
+            verdicts[(c.party, c.row, "nothing" if c.nothing else c.reason)].append(c)
     for (party, n, reason), places in verdicts.items():
-        said = (f"{party} agrees with row {n}, as documented" if reason == "agrees" else
-                f"{party} leaves row {n} unfollowed: what it does there was not established")
+        said = {"agrees": f"{party} agrees with row {n}, as documented",
+                "nothing": f"{party} agrees with row {n} by doing nothing: the whole body below "
+                           "stores nothing of what the row names",
+                "unfollowed": f"{party} leaves row {n} unfollowed: what it does there was not "
+                              "established"}[reason]
         out.append(f"{said} ({len(places)} place{'s' if len(places) > 1 else ''})")
         for c in places:
             out.append(f"      {c.ref} {c.lines}")

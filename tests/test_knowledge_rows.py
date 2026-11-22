@@ -57,7 +57,7 @@ def test_each_fixture_entry_closes_with_the_items_the_lister_gives(world: World,
 @pytest.mark.parametrize("name", DICTIONARIES)
 def test_the_command_line_closes_each_fixture_entry_with_exit_zero(cli: Cli, world: World,
                                                                     name: str) -> None:
-    code, out, _ = cli("check", str(world.root / f"{name}.json"))
+    code, out, _ = cli("check", str(world.root / f"{name}.json"), "--partial")
     assert code == 0
     assert f"items {ITEMS[name]}, open 0, faults 0" in out
 
@@ -272,10 +272,18 @@ def test_a_closure_that_closes_no_item_is_a_fault(world: World) -> None:
 def test_an_item_both_claimed_and_closed_is_a_fault(world: World) -> None:
     def extra(doc: dict[str, Any]) -> None:
         entry_doc(doc)["closed"].append({"ref": "mame:src/devices/machine/chipx.cpp",
+                                         "lines": "17", "as": "dead"})
+    world.edit("command", extra)
+    assert ("mame:src/devices/machine/chipx.cpp:17 is claimed by row 5 and closed as dead: "
+            "one of the two") in result(world).faults
+
+
+def test_a_structure_closure_may_lie_over_a_line_a_note_claims(world: World) -> None:
+    def extra(doc: dict[str, Any]) -> None:
+        entry_doc(doc)["closed"].append({"ref": "mame:src/devices/machine/chipx.cpp",
                                          "lines": "17", "as": "structure"})
     world.edit("command", extra)
-    assert ("mame:src/devices/machine/chipx.cpp:17 is claimed by row 5 and closed as structure: "
-            "one of the two") in result(world).faults
+    assert result(world).faults == []
 
 
 def test_a_line_a_closure_covers_is_closed_with_its_reason(world: World) -> None:
@@ -396,7 +404,8 @@ def test_an_entry_the_dictionary_lacks_is_invalid(cli: Cli, world: World) -> Non
 
 
 def test_the_entry_chosen_is_the_one_checked(cli: Cli, world: World) -> None:
-    code, out, _ = cli("check", str(world.root / "command.json"), "chipx:command:0xE0..0xE7")
+    code, out, _ = cli("check", str(world.root / "command.json"), "chipx:command:0xE0..0xE7",
+                       "--partial")
     assert code == 0 and out.count("rows 9") == 1
 
 
@@ -507,7 +516,7 @@ def test_stamp_writes_the_missing_digests_and_leaves_the_held_ones(cli: Cli, wor
     path = world.edit("command", bare)
     code, out, _ = cli("quote", "--stamp", str(path), callees=False)
     assert code == 0 and "stamped 2 quotes, 7 already held a digest" in out
-    code, out, _ = cli("check", str(path))
+    code, out, _ = cli("check", str(path), "--partial")
     assert code == 0
     code, out, _ = cli("quote", "--stamp", str(path), callees=False)
     assert "stamped 0 quotes, 9 already held" in out
@@ -584,7 +593,7 @@ def test_a_dictionary_with_a_fault_prints_it_beside_the_reports(cli: Cli, world:
 
 def test_a_check_with_no_callee_table_named_reads_the_one_beside_the_dictionary(
         cli: Cli, world: World) -> None:
-    code, out, _ = cli("check", str(world.root / "command.json"), callees=False)
+    code, out, _ = cli("check", str(world.root / "command.json"), "--partial", callees=False)
     assert code == 0 and "OPEN" not in out
 
 

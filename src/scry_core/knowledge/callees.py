@@ -2,9 +2,10 @@
 
 A line is `<scheme>:<name>` (or `<scheme>:<file> <name>` where one name means two things in two
 files) and its decision is used by every entry that meets the call: `open` (the callee's body
-joins the caller's region), `shared:<entry id>` (another entry's region holds it), `engine`
-(named in the dictionary's `engine` list, not covered) or `none:<reason>`; a call with several
-bodies (`virtual`) lists each as `<file> <function>`.
+joins the region of the entry that holds it, and the call is owed to that entry in any other),
+`shared:<entry id>`, `engine` (not covered), `writes` (it writes the guest's memory or flags, so
+a call to it is a store) or `none:<reason>`; a call with several bodies lists each as
+`<file> <function>`.
 """
 
 from __future__ import annotations
@@ -17,7 +18,8 @@ from dataclasses import dataclass
 FORMAT = "scry-knowledge-callees/1"
 NONE_REASONS = ("log", "libc", "accessor", "macro", "copy", "assert")
 _DECISION = re.compile(
-    r"open(?::[A-Za-z_][\w:]*)?|engine|shared:\S+|none:(?:" + "|".join(NONE_REASONS) + ")")
+    r"open(?::[A-Za-z_][\w:]*)?|engine|writes|shared:\S+|none:(?:" + "|".join(NONE_REASONS)
+    + ")")
 _KEY = re.compile(r"(mame|dosbox-x):(?:\S+ )?[A-Za-z_][\w:]*")
 _IMPLEMENTATION = re.compile(r"(\S+) ([A-Za-z_][\w:]*)")
 
@@ -29,7 +31,7 @@ def last_name(name: str) -> str:
 
 @dataclass(frozen=True)
 class Decision:
-    kind: str     # open, shared, engine, none or virtual
+    kind: str     # open, shared, engine, writes, none or virtual
     detail: str = ""
     implementations: tuple[tuple[str, str], ...] = ()
 
@@ -40,7 +42,7 @@ class Decision:
 def decision(text: str) -> Decision:
     """A decision from its text, or `ValueError`."""
     if not _DECISION.fullmatch(text):
-        raise ValueError(f"{text!r} is no decision: open, open:<function>, engine, "
+        raise ValueError(f"{text!r} is no decision: open, open:<function>, engine, writes, "
                          f"shared:<entry id> or none:<{'|'.join(NONE_REASONS)}>")
     kind, _, detail = text.partition(":")
     return Decision(kind, detail)

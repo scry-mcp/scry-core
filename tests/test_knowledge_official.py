@@ -156,7 +156,7 @@ def test_the_command_counts_the_lines_it_does_not_own_when_the_dictionary_is_par
 
 def test_a_dictionary_with_no_declared_range_prints_no_official_line(cli: Cli,
                                                                       world: World) -> None:
-    code, out, _ = cli("check", str(world.root / "call.json"))
+    code, out, _ = cli("check", str(world.root / "call.json"), "--partial")
     assert code == 0 and "official:" not in out
 
 

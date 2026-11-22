@@ -117,10 +117,12 @@ def entry_doc(doc: dict[str, Any]) -> dict[str, Any]:
     return entry
 
 
-def result(world: World, name: str = "command") -> closure.Report:
+def result(world: World, name: str = "command", *, partial: bool = True) -> closure.Report:
+    """The first entry's report; the fixtures are parts of a dictionary, so `partial` is the
+    default."""
     dictionary = world.dictionary(name)
     return closure.check(dictionary, dictionary.entries[0], world.sources(), world.callees(),
-                         {e.id: e for e in dictionary.entries})
+                         {e.id: e for e in dictionary.entries}, partial=partial)
 
 
 def drop_row(n: str) -> Callable[[dict[str, Any]], None]:

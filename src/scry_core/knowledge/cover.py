@@ -17,7 +17,7 @@ guest can see, so leaving one out costs nothing; showing one is how an `in` row 
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from scry_core.knowledge.quote import Invalid, span, stamp
@@ -45,7 +45,7 @@ _DECL = re.compile(
     r"^(?:const\s+|static\s+|unsigned\s+)*[A-Za-z_][\w:<>]*[\s*&]+([A-Za-z_]\w*)\s*(?:=|;|\[|$)")
 _NAME = re.compile(r"[A-Za-z_]\w*")
 #: A register of the guest as DOSBox-X's code names it.
-_REGISTER = re.compile(r"(?<![\w.>])reg_(?:[abcd][xlh]|[sd]i|[sb]p|ip|flags)\b")
+REGISTER = re.compile(r"(?<![\w.>])reg_(?:[abcd][xlh]|[sd]i|[sb]p|ip|flags)\b")
 
 
 
@@ -106,19 +106,34 @@ def blank(text: str) -> str:
 _IF = re.compile(r"\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b(.*)")
 
 
-def decide(directive: str, rest: str, defined: set[str]) -> bool | None:
-    """Whether the arm a directive opens is compiled, or None when this reader cannot tell."""
+_BIT_VALUE = re.compile(r"\(\s*([01])\s*\)|([01])")
+_DEFINE_BIT = re.compile(r"\s*#\s*define\s+(\w+)\s+(\(\s*[01]\s*\)|[01])\s*")
+_UNDEF = re.compile(r"\s*#\s*undef\s+(\w+)\s*")
+
+
+def _bit(text: str) -> bool | None:
+    m = _BIT_VALUE.fullmatch(text.strip())
+    return None if m is None else (m.group(1) or m.group(2)) == "1"
+
+
+def decide(directive: str, rest: str, defined: set[str],
+           values: Mapping[str, bool] | None = None) -> bool | None:
+    """Whether the arm a directive opens is compiled, or None when this reader cannot tell;
+    `values` are the names the file itself defines as `0` or `1`, `(0)` or `(1)`."""
     rest = rest.strip()
+    known = set(defined) | set(values or {})
     if directive == "ifdef":
-        return rest in defined
+        return rest in known
     if directive == "ifndef":
-        return rest not in defined
-    if rest in ("0", "1"):
-        return rest == "1"
+        return rest not in known
+    if (bit := _bit(rest)) is not None:
+        return bit
     m = re.fullmatch(r"(!?)\s*defined\s*\(?\s*(\w+)\s*\)?", rest)
     if m:
-        return (m.group(2) in defined) != bool(m.group(1))
+        return (m.group(2) in known) != bool(m.group(1))
     m = re.fullmatch(r"(!?)\s*(\w+)", rest)
+    if m and values and m.group(2) in values:
+        return values[m.group(2)] != bool(m.group(1))
     if m and m.group(2) in defined:
         return not m.group(1)
     return None
@@ -131,15 +146,20 @@ def one_build(text: str, defined: set[str]) -> tuple[str, list[tuple[int, str]]]
     notes: list[tuple[int, str]] = []
     stack: list[dict[str, bool]] = []
     out: list[str] = []
+    values: dict[str, bool] = {}
     for n, line in enumerate(text.split("\n"), 1):
         m = _IF.match(line)
         keep = all(s["live"] for s in stack)
         if not m:
+            if keep and (d := _DEFINE_BIT.fullmatch(line)):
+                values[d.group(1)] = _bit(d.group(2)) is True
+            elif keep and (u := _UNDEF.fullmatch(line)):
+                values.pop(u.group(1), None)
             out.append(line if keep else "")
             continue
         directive, rest = m.group(1), m.group(2)
         if directive in ("if", "ifdef", "ifndef"):
-            got = decide(directive, rest, defined)
+            got = decide(directive, rest, defined, values)
             live = True if got is None else got
             if keep:
                 notes.append((n, f"#{directive} {rest.strip()}: " + (
@@ -148,7 +168,7 @@ def one_build(text: str, defined: set[str]) -> tuple[str, list[tuple[int, str]]]
             stack.append({"taken": live, "live": live, "outer": keep})
         elif directive in ("elif", "else") and stack:
             top = stack[-1]
-            got = None if directive == "else" else decide("if", rest, defined)
+            got = None if directive == "else" else decide("if", rest, defined, values)
             live = not top["taken"] and (True if got is None else got)
             if top["outer"]:
                 notes.append((n, f"#{directive} {rest.strip()}: "
@@ -312,18 +332,52 @@ def _matching(text: str, at: int, opener: str, closer: str) -> int:
     return -1
 
 
-def function(text: str, name: str, definers: Iterable[str] = DEFINERS) -> tuple[int, int]:
-    """Where the body of the definition of `name` opens and closes in the blanked `text`, or
-    `Invalid`: a definition through one of the `definers` macros counts."""
+def _definitions(text: str, name: str, within: tuple[int, int] | None = None
+                 ) -> list[tuple[int, int]]:
+    """The bodies of every definition of `name` in `text`, or in the part `within` it."""
+    lo, hi = within or (0, len(text))
+    found = []
     for m in re.finditer(rf"\b{re.escape(name)}\s*\(", text):
-        after = _matching(text, m.end() - 1, "(", ")")
-        k = after
+        if not lo <= m.start() < hi:
+            continue
+        k = _matching(text, m.end() - 1, "(", ")")
         while 0 <= k < len(text) and (text[k].isspace() or text[k:k + 5] == "const"):
             k += 5 if text[k:k + 5] == "const" else 1
         if 0 <= k < len(text) and text[k] == "{":
             end = _matching(text, k, "{", "}")
             if end > 0:
-                return k + 1, end - 1
+                found.append((k + 1, end - 1))
+    return sorted(set(found))
+
+
+def _members(text: str, name: str) -> list[tuple[int, int]]:
+    """The bodies of `Class::name` written inside the braces of `class`, `struct` or `union`
+    `Class`, the way a header holds a nested class's methods."""
+    owner, _, method = name.rpartition("::")
+    inner = owner.rsplit("::", 1)[-1]
+    found = []
+    for m in re.finditer(rf"\b(?:class|struct|union)\s+{re.escape(inner)}\b[^;{{()]*\{{", text):
+        end = _matching(text, m.end() - 1, "{", "}")
+        if end > 0:
+            found += _definitions(text, method, (m.end(), end))
+    return found
+
+
+def function(text: str, name: str, definers: Iterable[str] = DEFINERS) -> tuple[int, int]:
+    """Where the body of the definition of `name` opens and closes in the blanked `text`, or
+    `Invalid`: a definition through one of the `definers` macros counts, and `Class::name` is
+    also a method written inside the class. A bare name two definitions answer is refused, so a
+    region never reads the wrong one."""
+    found = _definitions(text, name)
+    if not found and "::" in name:
+        found = _members(text, name)
+    if len(found) > 1:
+        lines = ", ".join(str(text.count("\n", 0, a) + 1) for a, _ in found)
+        way = ("overloads the lister cannot tell apart: name the region by its `lines`" if "::"
+               in name else f"name the one meant as `Class::{name}`")
+        raise Invalid(f"{name} has {len(found)} definitions (lines {lines}): {way}")
+    if found:
+        return found[0]
     for macro in definers:
         for m in re.finditer(rf"\b{macro}\s*\(\s*{re.escape(name)}\s*\)\s*\{{", text):
             end = _matching(text, m.end() - 1, "{", "}")
@@ -613,7 +667,7 @@ def _address_of(before: str) -> bool:
 
 def _read_registers(text: str) -> list[tuple[int, str]]:
     """The guest registers a statement reads, not an address taken to be written through."""
-    return [(m.start(), m.group(0)) for m in _REGISTER.finditer(text)
+    return [(m.start(), m.group(0)) for m in REGISTER.finditer(text)
             if not _address_of(text[:m.start()].rstrip())]
 
 
@@ -876,7 +930,7 @@ def bodies(source: str, name: str, *, defined: Iterable[str] = ()) -> list[tuple
     start, stop = function(text, name)
     parser = Parser(text, start, stop)
     opens, closes = parser.line(start), parser.line(stop)
-    signature = text.rfind(name, 0, start)
+    signature = text.rfind(name.rsplit("::", 1)[-1], 0, start)
     out = [(opens, closes), (parser.line(signature), closes)]
     _bodies_in(parser.statements(), out)
     return sorted(set(out))

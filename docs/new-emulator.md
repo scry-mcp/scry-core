@@ -329,12 +329,22 @@ public source each fact was checked against. A server ships dictionaries and one
   - Each emulator the dictionary has code of owes a verdict on each `doc` row whose subject is
     not `is`, of one class: closures `agrees` that together show the row done (a row of two
     halves takes one per half), closures `unfollowed`, or notes `differs` or `absent` (one per part
-    that departs). Two classes on one row are red, an `is` row included. Every item of an
-    emulator's code is claimed by a note, closed by a verdict, or closed with another reason of
-    the fixed set; an `absent` note claims nothing.
+    that departs). Two classes on one row are red, an `is` row included. Advice to the programmer
+    ("the programmer should...", "it is recommended", "AH may be destroyed") is an `is` row: it
+    says what the document asks of a program, no emulator can do it, so it owes no verdict. Every
+    item of an emulator's code is claimed by a note, closed by a verdict, or closed with another
+    reason of the fixed set; an `absent` note claims nothing. A line a note claims may also lie
+    in a verdict of another row or in a `structure` closure, since one statement can do what
+    several rows say; any other closure over it is red.
+  - A closure `elsewhere`, `parent` or `preamble` names its `owner`, which holds those lines by a
+    row or by a closure of its own that is not one of these three (an owner that hands them on in
+    turn holds nothing). The owner may be an entry of any dictionary in the same folder (a chip's
+    registers and its device are two files). An owner no dictionary there holds is counted as owed
+    under `--partial` and is red without it.
   - What a verdict's lines must show, because a line that exists proves nothing by existing: an
-    `agrees` cites an effect, a `store`, a `local`, the return of a value (a DOSBox-X callback's
-    `CBRET_*` is its dispatcher's, not one) or a line of a section; lines that hold only a
+    `agrees` cites an effect, a `store`, a call to a callee the table says `writes`, a `local`, the
+    return of a value (a DOSBox-X callback's `CBRET_*` is its dispatcher's, not one) or a line of a
+    section; lines that hold only a
     condition, a decode, a `switch`, a label or a call fault. A `local` is an assignment to a
     variable the function owns or to a parameter it takes by value, when the value is no call's
     result; it counts as an effect and is owed no row, so a closure over lines that hold only
@@ -349,22 +359,40 @@ public source each fact was checked against. A server ships dictionaries and one
     the row gets a `differs` note per body that departs or a closure `unfollowed` over the call
     (the emulator's behaviour for this row was not established), which `rows review` prints as
     such. `unfollowed` closes only a call the table leaves to another entry, to the engine or to
-    several bodies; a `none` callee does nothing a row is about. An `absent` note cites, in one
-    file, the whole body where the thing would be: the region itself, or a case, a block or a
-    branch the lister reads inside it, or a section of a region of the entry.
+    several bodies; a `none` callee does nothing a row is about; and a line of an `unfollowed`
+    that holds an effect of the entry's own code holds such a call too, because what those lines
+    show is established and is an `agrees` or a note. An `absent` note cites, in one file, the
+    whole body where the thing would be: the region itself, or a case, a block or a branch the
+    lister reads inside it, or a section of a region of the entry.
+  - A row that says a thing is left unchanged or that nothing is returned is closed `agrees` with
+    `"nothing": true`, over that same kind of whole body (an early exit, an empty case) holding no
+    store of a register the row names, or of anything when it names none, and no call that
+    `writes` then. `rows review` prints it as agreeing by doing nothing; a range that is not one
+    whole body is red, as is a body that stores what the row says is kept.
+  - The callee table: `open` follows the callee in an entry that holds its body as a region, and
+    in any other entry the call is owed to the entry that does, as `shared:<that entry>` is, so a
+    function has one line in the table. `writes` marks a helper that writes the guest's memory or
+    flags (`real_writeb`, `mem_writeb`, `CALLBACK_SCF` and their kin): a call to it is an effect
+    for a verdict and is owed a row or a closure, as a store is; a call to a reader is not. A
+    method two classes of one file define (`tone_t::set_period`, `envelope_t::set_period`) is
+    named `Class::name` in a region and in a list of bodies; its bare name is refused there, so
+    a region never reads the other class's body.
   - `rows quote <ref> <lines>` prints the lines and their digest (`--json` for the quote to
     paste); `rows quote --stamp <dictionary>` writes the digest into every quote that has none.
   - `rows cover <dictionary> [<id>...]` lists what each entry's code owes rows for, item by
     item (`path`, `before`, `branch`, `exit`, `call`, `store`, `key`, `build`, `empty`, `list`),
     each with what closes it; the `local` and `input` items a verdict may cite are not listed,
     because no row is owed for them. It reads C++ as text: macros, calls through a pointer or a member
-    and values carried in a variable are named, never followed.
+    and values carried in a variable are named, never followed. An `#if` on a name the file itself
+    defines as `0` or `1`, bare or in parentheses, is decided by that value, so the compiled arm
+    is the one listed.
   - `rows check <dictionary> [<id>...]` is the script half of the check: every quote is at the
     pin and gives its digest, every row quotes its own party only, every item is closed by a row,
     the key, a `closed` entry with a reason of the fixed set, or the callee table (`--callees`,
     `scry-knowledge-callees/1`, one decision a function, the `callees.json` beside the
-    dictionary when not given), and the verdicts and the official ranges hold. A line of a declared range that no entry and no dictionary closure holds is red;
-    `--partial` counts those lines instead, for a dictionary still being written. Exit 0 closed,
+    dictionary when not given), and the verdicts and the official ranges hold. A line of a declared range that no entry and no dictionary closure holds is red,
+    as is a closure for an owner not written; `--partial` counts both instead, for a dictionary
+    still being written. Exit 0 closed,
     1 a fault or an item left open, 3 INVALID (a source or a function not found, a capture that is not
     the document table's, or nothing examined).
   - `rows review <dictionary> [<id>...]` prints the entry in the order a reply shows it: the `doc`
@@ -385,13 +413,25 @@ public source each fact was checked against. A server ships dictionaries and one
       its subject; otherwise it is `differs` or `absent` and names that row.
     - Something a program can observe happening instead (a logged refusal, a fixed answer, a
       success faked) makes the note `differs`, not `absent`.
+    - A row whose emulator half agrees and half departs is not split, since its verdict is one
+      class: the agreeing half goes in the sentence of the `differs` note, or the reader cannot
+      tell what still holds.
+    - An `agrees` whose code does more than the row says gets an `extra` note for the more, or the
+      reader refutes the `agrees` for what it does not say.
+    - A row about what a stored bit is for is closed on the store, and its sentence says the bit
+      is stored: the purpose is the document's, and the code that reads the bit lies outside the
+      entry.
   - Reading a verdict, the test of each in one sentence:
     - `agrees`: the cited lines, read alone, do every part of the row and nothing it excludes.
     - `differs`: the cited lines show the emulator doing something observable that the row's
       text does not say.
     - `absent`: the cited body is where the row's behaviour would be, and nothing in it does it.
-    - `unfollowed`: the cited call is the one the behaviour goes through, and the table does not
-      follow it.
+    - `agrees` marked `nothing`: the cited body is the whole path the row's case takes, and nothing
+      in it changes what the row says is kept.
+    - `agrees` through a call that `writes`: the call writes what the row says, at the place the
+      row names.
+    - `unfollowed`: the cited call is the one the behaviour goes through, the table does not
+      follow it, and no cited line shows the behaviour by itself.
     - `extra`: no line of the entry's official region, read whole, speaks of the subject.
   - `rows migrate <old dictionary> <id> --evidence <file>` drafts an entry from an old-shape one
     and the evidence its check gathered: what quotes an official document becomes a `doc` row, and

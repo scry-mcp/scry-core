@@ -62,6 +62,42 @@ def test_a_region_that_lists_nothing_is_invalid_and_never_an_empty_list() -> Non
         cover.list_function("void f() { int a; }", "f")
 
 
+NESTED = """struct device {
+	struct tone_t {
+		void set_period(int fine)
+		{
+			period = fine;
+		}
+	};
+	struct envelope_t {
+		void set_period(int fine)
+		{
+			period = fine * 2;
+		}
+	};
+};
+"""
+
+
+def test_a_method_written_inside_its_class_is_found_by_class_and_name() -> None:
+    assert items(NESTED, "tone_t::set_period") == [(5, "store", "period =")]
+    assert items(NESTED, "device::envelope_t::set_period") == [(11, "store", "period =")]
+    assert cover.bodies(NESTED, "envelope_t::set_period") == [(9, 12), (10, 12)]
+
+
+def test_a_class_name_two_overloads_answer_is_invalid_and_says_the_way_out() -> None:
+    src = "int Foo::Open(int a)\n{\n\treturn a;\n}\nint Foo::Open(char b)\n{\n\treturn b;\n}\n"
+    with pytest.raises(Invalid, match="overloads the lister cannot tell apart: name the region "
+                                      "by its `lines`"):
+        cover.list_function(src, "Foo::Open")
+
+
+def test_a_bare_name_two_definitions_answer_is_invalid() -> None:
+    with pytest.raises(Invalid, match="set_period has 2 definitions .lines 4, 10.: name the one "
+                                      "meant as `Class::set_period`"):
+        cover.list_function(NESTED, "set_period")
+
+
 def test_a_function_defined_through_a_macro_is_found() -> None:
     assert items(CHIP, "chipx_device::tick") == [
         (49, "store", "m_count ="), (49, "store", "m_reload ="), (50, "call", "chipx_irq")]
@@ -303,6 +339,35 @@ def test_each_way_to_ask_the_preprocessor_is_decided_from_the_defines(
         cond: str, defined: list[str], arm: str) -> None:
     got = items(f"void f() {{\n{cond}\n x = 1;\n#endif\n}}\n", "f", defined=defined)
     assert any(k == "build" and t.endswith(f": {arm}") for _, k, t in got)
+
+
+@pytest.mark.parametrize(("value", "arm"), [("(0)", "not compiled"), ("(1)", "compiled"),
+                                            ("0", "not compiled"), ("( 1 )", "compiled")])
+def test_a_name_the_file_defines_as_zero_or_one_decides_its_arm(value: str, arm: str) -> None:
+    src = (f"#define TEST_ON {value}  // a switch of the file\n"
+           "void f() {\n#if TEST_ON\n x = 1;\n#endif\n}\n")
+    got = items(src, "f")
+    assert (3, "build", f"#if TEST_ON: {arm}") in got
+    assert any(t == f"#if !TEST_ON: {'compiled' if arm != 'compiled' else 'not compiled'}"
+               for _, _, t in items(src.replace("#if TEST_ON", "#if !TEST_ON"), "f"))
+
+
+@pytest.mark.parametrize(("ask", "arm"), [("#ifdef TEST_ON", "compiled"),
+                                          ("#if defined(TEST_ON)", "compiled"),
+                                          ("#ifndef TEST_ON", "not compiled")])
+def test_a_name_the_file_defines_is_defined_whatever_its_value(ask: str, arm: str) -> None:
+    src = f"#define TEST_ON 0\nvoid f() {{\n{ask}\n x = 1;\n#endif\n}}\n"
+    assert any(k == "build" and t.endswith(f": {arm}") for _, k, t in items(src, "f"))
+
+
+def test_a_name_the_file_undefines_decides_nothing_after() -> None:
+    src = "#define TEST_ON 1\n#undef TEST_ON\nvoid f() {\n#if TEST_ON\n x = 1;\n#endif\n}\n"
+    assert (4, "build", "#if TEST_ON: UNDECIDED, first arm read") in items(src, "f")
+
+
+def test_a_define_in_an_arm_that_is_not_compiled_decides_nothing() -> None:
+    src = "#if 0\n#define TEST_ON 1\n#endif\nvoid f() {\n#if TEST_ON\n x = 1;\n#endif\n}\n"
+    assert (5, "build", "#if TEST_ON: UNDECIDED, first arm read") in items(src, "f")
 
 
 def test_an_elif_arm_is_taken_only_when_no_arm_before_it_was() -> None:
