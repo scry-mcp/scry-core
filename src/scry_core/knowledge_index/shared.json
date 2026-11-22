@@ -2,7 +2,7 @@
   "format": "scry-knowledge-sources/1",
   "pins": {
     "dosbox-x": "2a43c7335efd91f87bf5582245abdd5b3f18d5d4",
-    "mame": "mame0289"
+    "mame": "ab06a77f0ffa227a481629d8a6135a786ef5cabe"
   },
   "rows": {
     "dosbox-x:src/hardware/adlib.cpp Chip::Write case 0x02": {
