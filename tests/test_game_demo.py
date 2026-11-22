@@ -13,6 +13,7 @@ from scry_core.game_demo import (
     Binding,
     Press,
     arrived,
+    elapsed,
     exact,
     found,
     heard,
@@ -95,6 +96,14 @@ def test_arrived_needs_the_target_and_a_control_that_counted(tmp_path: Path) -> 
         check(Reply({"verdict": "TIMEOUT", "control_hits": 3}), _run(tmp_path))
     with pytest.raises(StepFailed, match="the control never fired"):
         check(Reply({"verdict": "TARGET", "control_hits": 0}), _run(tmp_path))
+
+
+def test_elapsed_needs_the_run_to_have_run_out_its_time_and_names_what_it_was_for(
+        tmp_path: Path) -> None:
+    check = elapsed("ran 300 frames")
+    assert check(Reply({"verdict": "ELAPSED"}), _run(tmp_path)) == "ran 300 frames"
+    with pytest.raises(StepFailed, match="verdict TARGET"):
+        check(Reply({"verdict": "TARGET"}), _run(tmp_path))
 
 
 def test_the_map_is_loaded_from_a_copy_in_the_run(tmp_path: Path) -> None:

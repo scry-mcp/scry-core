@@ -278,9 +278,16 @@ def _rewritten(text: str, want: _Expected) -> str:
             head += s.after
     if not segments:
         head = head.rstrip("\n") + "\n\n"
-    out = head + "".join(f"{begin_marker(n)}\n{b}\n{end_marker(n)}{after.get(n, chr(10) * 2)}"
+    out = head + "".join(f"{begin_marker(n)}\n{b}\n{end_marker(n)}{_apart(after.get(n, ''))}"
                          for n, b in want.blocks.items())
     return out.rstrip("\n") + "\n"
+
+
+def _apart(after: str) -> str:
+    """The text after a block's end marker, closed by a blank line: the entry ends in
+    `</details>`, an HTML block that only a blank line ends, and without one the next block's
+    heading is swallowed into it and shows as raw text."""
+    return after.rstrip("\n") + "\n\n"
 
 
 # ===================================================================== the comparison
@@ -316,6 +323,9 @@ def drift(reg: Registry) -> list[str]:
         first = path.read_text(encoding="utf-8").split("\n", 1)[0]
         if want.family and first.startswith("# ") and first != want.title:
             found.append(f"{rel}: titled {first!r}, not {want.title!r}")
+        found += [f"{rel}: no blank line between the end of `{s.name}` and the next block, so "
+                  "the next heading shows as raw text" for s in segments[:-1]
+                  if not s.after.endswith("\n\n")]
         held = {s.name: s.block for s in segments}
         for name in named:
             if name not in held:

@@ -25,6 +25,38 @@ What a server author notices. A client's view of each server is in that server's
   returns, and the freeze on a sealed row.
 - The header field `stores` of `scry-knowledge/2` is gone: the callee table's `writes` says which
   calls write the guest.
+
+## 0.121.0
+
+- A server answers what a number is called on its machine, with the source each answer was
+  checked against. `knowledge_tool.register` adds the `knowledge_find` tool, and a
+  `knowledge.Base` loads the server's dictionaries (`scry-knowledge/1` JSON files in
+  `<package>/knowledge/`, declared once in `knowledge/support.py`) and finds an entry by key,
+  address, name, alias, words or device. A register or command key may be a range, an `access`
+  tells a read from a write at one key, and a call's key may end in a register selector
+  (`0x10/0x12/BL=0x36`). A device is asked by its key or by its tag on the running machine, and a
+  scope that is a near miss of one the base holds is read as it. A subclass of
+  `conformance.KnowledgeContract` holds the files to their sources; *The knowledge base* in
+  `docs/new-emulator.md` says how a server writes them.
+- An entry cites a documentation source, an emulator, or both emulators, each by a `ref` in the
+  source index a server commits (`scry-knowledge-sources/1`, `knowledge.sources`; a row may hold
+  the digest of a line instead of the line). A second session's check is sealed into the entry
+  and a lock with `python -m scry_core.knowledge.seal`, and a sealed entry that proves wrong is
+  lifted with `python -m scry_core.knowledge.reopen`, which keeps who lifted it and why.
+- The chips both emulators model are written once, here: `knowledge.shared` gives their
+  declarations (`CHIPS`), the cpus named for any system built on them (`CPUS`) and the one pin of
+  each emulator's source (`PINS`), and a server loads `knowledge/chips/` and, if it declares those
+  cpus, `knowledge/cpus/`.
+  `tools/knowledge_sources.py` writes the index of the sources they cite from each emulator's
+  source at its pin (`--mame DIR`, `--dosbox REPO`).
+- `scry_core.decorate` draws the presence layers into a demo's clip from the demo's run, richer
+  than the live overlay. It needs the `decorate` extra (`scry-core[decorate]`: Pillow and numpy),
+  which a server and its users never load. A moment of the session's video is placed by the frame
+  a reply ended at, so an input sent to a running guest cuts where it happened.
+
+- `knowledge_find` points at the "Knowledge base" section of a server's `REFERENCE.md`
+  (`knowledge_tool.REFERENCE`); a server's reference carries a section of that name.
+
 - A server serves only the knowledge entries that are confirmed: sealed in its lock and recorded
   by the second check under the seal they have now (`knowledge.confirmed`). `Base.load` takes a
   `Confirmation` and loads those entries only, counts the rest (`Base.held_back`) and drops a
@@ -62,6 +94,16 @@ What a server author notices. A client's view of each server is in that server's
   arguments as given and the emulator frame it began and ended at, and the input it fired where
   its step says (`Step.events`, `timeline.key`, `button`, `pointer`). The format is in
   `docs/modules.md`; `timeline.loads` reads it.
+- A demo draws its loop's cuts from its run's timeline when it declares `Demo.decorator`: given
+  the demo, the run and the timeline (`demo.Decoration`), it returns the `motion.Decorator` that
+  `motion.build` draws each cut with, and a missing `decorate` extra refuses the update before the
+  emulator runs. A demo without one builds as before. `demo.beside_transcript` and
+  `demo.last_under` are public, and `committed_run` reads a committed run back (`read`) and says
+  the timeline its steps would write for it (`timeline_of`).
+- The reference generator (`scry_core.reference`) leaves a blank line after every block's end
+  marker, so an entry's closing `</details>` no longer swallows the next tool's heading when a
+  tool is added after the last one of a page, and the drift check names a page whose blocks
+  touch.
 - A sixth overlay layer, `record`: a blinking mark while the session records video or audio,
   on by default (`overlay.Overlay.record`, after `pause` in `overlay.LAYERS`). A server tells the
   presence with `Shown.recording(kind, on)`, `kind` being `video` or `audio`; the payload's

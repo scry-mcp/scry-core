@@ -262,6 +262,11 @@ def narrow(value: Any) -> Any:
     return value
 
 
+#: What a demo draws its loop's cuts with: given the demo, the run and the run's timeline (as
+#: `timeline.loads` reads it), the `motion.Decorator` `motion.build` draws each cut with.
+Decoration = Callable[["Demo", "Run", Mapping[str, Any]], motion.Decorator]
+
+
 @dataclass(frozen=True)
 class Demo:
     """A demo as declared. `offers` names the `OFFERABLE` options it accepts,
@@ -269,7 +274,8 @@ class Demo:
     `run.dir`. `precheck` answers why the demo cannot run, or empty. `host_args` maps argument
     keys that are the host's own to their reasons. `verdict` words the last line. `moments` are
     what the loop shows, `alt` says what moves in it, and `video` is the folder a session that
-    records itself writes its video in."""
+    records itself writes its video in. `decorator`, when given, draws over the loop's cuts from
+    the run's timeline; a demo without one builds its loop as the recordings are."""
 
     name: str
     root: Path
@@ -288,6 +294,7 @@ class Demo:
     alt: str = ""
     video: Callable[[Run], Path] | None = None
     lead: Lead | None = None
+    decorator: Decoration | None = None
 
 
 def flow_begin(name: str) -> str:
@@ -840,20 +847,20 @@ def counted(reply: Reply | None) -> tuple[int | None, int | None]:
         return None, None
     begun, ended = reply.get("frame_before"), reply.get("frame_after")
     return (begun if type(begun) is int else None,
-            ended if type(ended) is int else _last(reply.data, FRAME_KEY))
+            ended if type(ended) is int else last_under(reply.data, FRAME_KEY))
 
 
-def _last(value: Any, key: str) -> int | None:
+def last_under(value: Any, key: str) -> int | None:
     """The last whole number under `key` anywhere in `value`, in the order it was written."""
     found = None
     if isinstance(value, Mapping):
         for k, v in value.items():
             inner = v if k == key and isinstance(v, int) and not isinstance(v, bool) \
-                else _last(v, key)
+                else last_under(v, key)
             found = inner if inner is not None else found
     elif isinstance(value, list | tuple):
         for v in value:
-            inner = _last(v, key)
+            inner = last_under(v, key)
             found = inner if inner is not None else found
     return found
 
@@ -871,23 +878,23 @@ def _span(demo: Demo, run: Run, moment: Moment) -> tuple[Path, int, int]:
     files = sorted(folder.glob("*.avi"))
     if not files:
         raise Invalid(f"the session wrote no video in {folder}, so there is no moment to cut")
-    counted: dict[str, int] = {}
+    placed: dict[str, int] = {}
     for name, reply in run.replies.items():
-        frame = _last(reply.data, FRAME_KEY)
-        if frame is not None or counted:
-            counted[name] = frame if frame is not None else list(counted.values())[-1]
-    if lacking := [name for name in (moment.after, moment.until) if name not in counted]:
+        frame = counted(reply)[1]
+        if frame is not None or placed:
+            placed[name] = frame if frame is not None else list(placed.values())[-1]
+    if lacking := [name for name in (moment.after, moment.until) if name not in placed]:
         raise Invalid(f"no reply up to step {lacking[0]!r} counts a `{FRAME_KEY}`, so the moment "
                       "it bounds cannot be found in the video")
-    latest = list(counted.values())[-1]
+    latest = list(placed.values())[-1]
     held = [motion.facts(file)[0] for file in files]
     if sum(held) > latest:
         raise Invalid(f"the session's video holds {sum(held)} frames and the last reply to count "
                       f"one counts frame {latest}: a step after it moved the machine without "
                       "counting, so end the run's last advance with a step whose reply counts "
                       f"its `{FRAME_KEY}`")
-    first = sum(held) - (latest - counted[moment.after])
-    frames = counted[moment.until] - counted[moment.after]
+    first = sum(held) - (latest - placed[moment.after])
+    frames = placed[moment.until] - placed[moment.after]
     before = 0
     for file, n in zip(files, held, strict=True):
         if before <= first and first + frames <= before + n:
@@ -1038,6 +1045,8 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
         if demo.moments:
             block_span(demo.readme.read_text(encoding="utf-8"), MOTION_BEGIN, MOTION_END)
             motion.programs()
+            if demo.decorator is not None:
+                _drawing_installed()
         if demo.front is not None:
             block_span(demo.front.read_text(encoding="utf-8"), flow_begin(demo.name),
                        flow_end(demo.name))
@@ -1053,7 +1062,7 @@ def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False)
         capture.unlink(missing_ok=True)  # only this run's picture may reach the README
     norm = Normaliser(demo.root.resolve(), Path.home().resolve(),
                       {**VOLATILE, **demo.volatile}, demo.host_args)
-    files = _beside(transcript)
+    files = beside_transcript(transcript)
     for stale_file in (files.flow, files.examples, files.motion, files.lead, files.timeline):
         stale_file.unlink(missing_ok=True)  # only this run's may reach a README
     out = asyncio.run(_drive(demo, run, run.dir / "server.stderr", norm))
@@ -1110,12 +1119,13 @@ class Beside:
     timeline: Path
 
 
-def _beside(transcript: Path) -> Beside:
+def beside_transcript(transcript: Path) -> Beside:
+    """The files a run writes beside `transcript`, named from its stem."""
     stem = file_names.word(transcript.stem, "transcript")
-    def beside(part: str) -> Path:
+    def named(part: str) -> Path:
         return transcript.with_name(file_names.name(stem, part, extension="md"))
-    return Beside(beside("normalised"), beside("flow"), beside("examples"), beside("motion"),
-                  beside("lead"), beside("timeline").with_suffix(".json"))
+    return Beside(named("normalised"), named("flow"), named("examples"), named("motion"),
+                  named("lead"), named("timeline").with_suffix(".json"))
 
 
 def _whole(entries: list[str]) -> str:
@@ -1129,7 +1139,7 @@ def _whole(entries: list[str]) -> str:
 def stale(demo: Demo, run_dir: Path) -> list[str]:
     """How the committed README blocks, whole run, flow and picture depart from the run in
     `run_dir`, one line each, or empty."""
-    files = _beside(run_dir / "transcript.md")
+    files = beside_transcript(run_dir / "transcript.md")
     needed = ([files.examples, files.normalised] if demo.readme is not None else []) + (
         [files.flow] if demo.front is not None else []) + (
         [files.motion] if demo.readme is not None and demo.moments else []) + (
@@ -1169,6 +1179,18 @@ def stale(demo: Demo, run_dir: Path) -> list[str]:
     return found
 
 
+def _drawing_installed() -> None:
+    """`Invalid` naming the extra a decorated loop needs, when it is not installed: before the
+    emulator runs, not after."""
+    try:
+        importlib.import_module("scry_core.decorate")
+    except ModuleNotFoundError as e:
+        if e.name not in ("PIL", "numpy"):
+            raise
+        raise Invalid("a demo's loop is decorated with Pillow and numpy, scry-core's `decorate` "
+                      "extra: install it (`uv sync --extra decorate`)") from e
+
+
 def _no_readme(demo: Demo) -> Invalid:
     return Invalid(f"the demo {demo.name} has no README block to update")
 
@@ -1196,11 +1218,12 @@ def _update_readmes(demo: Demo, run: Run, readme: Path, capture: Path, files: Be
     if demo.front is not None:
         opened(demo.front, "flow", files.flow, flow_begin(demo.name), flow_end(demo.name))
     if demo.lead is not None:
-        if not files.lead.is_file():
-            raise Invalid(f"the run wrote no exchange for the lead of {demo.name}, so the "
-                          "READMEs were left as they were")
         opened(demo.lead.front, "lead", files.lead, lead_begin(demo.name), lead_end(demo.name))
-    built = motion.build(shown, run.dir / "loop") if shown else None
+    built = None
+    if shown:
+        draw = () if demo.decorator is None else (
+            demo.decorator(demo, run, timeline.loads(files.timeline.read_text(encoding="utf-8"))),)
+        built = motion.build(shown, run.dir / "loop", *draw)
     picture = capture.read_bytes()
     picture = motion.still(picture, built.kept if built is not None else motion.whole(picture))
     readme.with_name("screen.png").write_bytes(picture)

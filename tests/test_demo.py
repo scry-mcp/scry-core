@@ -5,11 +5,14 @@ the README block and the normalisation."""
 from __future__ import annotations
 
 import dataclasses
+import importlib
 import json
 import os
 import shutil
 import sys
-from collections.abc import Mapping
+import types
+from collections.abc import Mapping, Sequence
+from fractions import Fraction
 from pathlib import Path
 from typing import Any, cast
 
@@ -546,6 +549,84 @@ def test_update_readme_makes_the_loop_beside_the_capture_and_writes_the_motion_b
         in capsys.readouterr().out
 
 
+def _spied_build(monkeypatch: pytest.MonkeyPatch) -> list[tuple[Any, ...]]:
+    """`motion.build` as it is, noting the extra arguments each call was given."""
+    seen: list[tuple[Any, ...]] = []
+    real = motion.build
+
+    def spy(cuts: Any, work: Path, *rest: Any) -> motion.Built:
+        seen.append(rest)
+        return real(cuts, work, *rest)
+
+    monkeypatch.setattr(motion, "build", spy)
+    return seen
+
+
+def _without_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pillow cannot be imported, and `scry_core.decorate` is imported afresh."""
+    monkeypatch.delitem(sys.modules, "scry_core.decorate", raising=False)
+    monkeypatch.setitem(sys.modules, "PIL", None)
+
+
+def _same_pictures(n: int, numbers: Sequence[int], pictures: Sequence[motion.Picture],
+                   rate: Fraction, box: motion.Box) -> list[motion.Picture]:
+    return list(pictures)
+
+
+@needs_loop_programs
+def test_a_demo_s_decorator_is_given_the_demo_the_run_and_its_timeline_and_draws_its_loop(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen = _spied_build(monkeypatch)
+    monkeypatch.setitem(sys.modules, "scry_core.decorate", types.ModuleType("scry_core.decorate"))
+    given: list[tuple[d.Demo, d.Run, dict[str, Any]]] = []
+
+    def decorator(demo: d.Demo, run: d.Run, document: Mapping[str, Any]) -> motion.Decorator:
+        given.append((demo, run, dict(document)))
+        return _same_pictures
+
+    demo = _moment_demo(tmp_path, decorator=decorator)
+    assert _run(demo, tmp_path, "--update-readme") == verdict.EXIT_PASS
+    assert seen == [(_same_pictures,)], "the loop was not built with the demo's decorator"
+    (there, run, document), = given
+    assert there is demo and run.dir.is_dir()
+    assert document["demo"] == "x"
+    assert [call["step"] for call in document["calls"]] == ["boot", "shot", "film", "end"]
+
+
+@needs_loop_programs
+def test_a_demo_with_no_decorator_builds_its_loop_with_nothing_to_draw(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen = _spied_build(monkeypatch)
+    _without_the_extra(monkeypatch)
+    assert _run(_moment_demo(tmp_path), tmp_path, "--update-readme") == verdict.EXIT_PASS
+    assert seen == [()]
+
+
+def test_a_decorate_module_that_fails_for_another_reason_is_not_blamed_on_the_extra(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    def broken(name: str) -> types.ModuleType:
+        raise ModuleNotFoundError("No module named 'scry_core.gone'", name="scry_core.gone")
+
+    monkeypatch.setattr(importlib, "import_module", broken)
+    monkeypatch.setattr(motion, "programs", lambda: {"ffmpeg": "ffmpeg", "img2webp": "img2webp"})
+    demo = _moment_demo(tmp_path, decorator=lambda demo, run, document: _same_pictures)
+    assert _run(demo, tmp_path, "--update-readme") == EXIT_INVALID
+    said = capsys.readouterr().out
+    assert "scry_core.gone" in said and "`decorate` extra" not in said, said
+
+
+def test_a_decorated_demo_without_the_extra_is_invalid_before_the_emulator_runs(
+        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    _without_the_extra(monkeypatch)
+    monkeypatch.setattr(motion, "programs", lambda: {"ffmpeg": "ffmpeg", "img2webp": "img2webp"})
+    demo = _moment_demo(tmp_path, decorator=lambda demo, run, document: _same_pictures)
+    assert _run(demo, tmp_path, "--update-readme") == EXIT_INVALID
+    assert "`decorate` extra" in capsys.readouterr().out
+    assert _calls(log) == [], "the emulator ran for a loop that could not be drawn"
+
+
 @needs_loop_programs
 def test_a_loop_past_its_budget_is_invalid_naming_its_bytes(
         tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch,
@@ -793,6 +874,18 @@ def test_a_moment_between_two_steps_is_cut_from_the_session_s_video_by_the_repli
         boot={"frame": 100}, shot={"read": "a step that moved nothing"}, film={"frame": 150},
         end={"note": "nor this one"}))) == [motion.Cut(folder / "x_001.avi", 22, 50)], \
         "a step that counts no frame stands at the last one counted before it"
+
+
+def test_a_reply_that_names_the_frame_it_ended_at_places_a_moment_as_one_that_counts_frame(
+        tmp_path: Path) -> None:
+    folder = _session_video(tmp_path)
+    demo = _moment_demo(tmp_path, video=lambda run: folder,
+                        moments=(d.Moment("boot", "shot", "It moves."),))
+    run = d.Run(dir=tmp_path, replies=_replies(
+        boot={"frame_before": 90, "frame_after": 100}, shot={"frame_before": 100,
+                                                              "frame_after": 130},
+        film={"note": "counts none"}, end={"frame_before": 140, "frame_after": 150}))
+    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 22, 30)]
 
 
 @pytest.mark.parametrize(("frames", "why"), [
@@ -1306,6 +1399,21 @@ def test_the_exchange_s_call_is_one_line_with_its_long_values_cut(
     assert f'<code>start(value=7, binary="{"b" * ends}…{"b" * ends}")</code>' in \
         (tmp_path / "out" / "transcript-lead.md").read_text(encoding="utf-8"), \
         "a phone cannot hold it whole"
+
+
+def test_narrow_cuts_a_long_string_wherever_the_call_holds_it() -> None:
+    ends = d.LEAD_STRING_ENDS
+    long, cut = "b" * 40, f"{'b' * ends}…{'b' * ends}"
+    assert d.narrow({"a": long, "n": 7, "keys": [long, ("F1", long)]}) == {
+        "a": cut, "n": 7, "keys": [cut, ["F1", cut]]}
+    assert d.narrow("short") == "short"
+
+
+def test_a_transcript_with_no_lead_has_no_answer_to_give(tmp_path: Path) -> None:
+    transcripts = d.Transcripts(d.Normaliser(tmp_path, Path("/home/nobody-here"), {}))
+    with pytest.raises(ValueError, match="step boot is no lead's"):
+        transcripts.answered(d.Step("boot", "start", {}, _said("value")),
+                             d.Reply({"status": "ok", "value": 7}))
 
 
 def test_a_lead_outside_the_folder_its_readme_opens_is_refused_before_a_call(

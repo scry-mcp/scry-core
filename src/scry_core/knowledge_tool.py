@@ -28,7 +28,7 @@ LIMIT_DEFAULT, LIMIT_MAX = 10, 50
 KEYS_SHOWN = 12
 UNCONFIRMED_SHOWN = 10
 HOW = "give `id` for the whole entry"
-REFERENCE = "Reference: REFERENCE.md, Names for numbers."
+REFERENCE = "Reference: REFERENCE.md, Knowledge base."
 
 
 class Answers(Protocol):

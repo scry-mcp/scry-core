@@ -77,6 +77,12 @@ def test_a_running_machine_whose_first_stop_is_past_walked_nothing() -> None:
     assert isinstance(ended, sequence.Stop) and ended.code == "bad_argument", ended
 
 
+def test_a_window_expires_when_its_seconds_are_spent(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert fw.Window(12, start=10, blind=False, progress=no_progress).expired() is False
+    monkeypatch.setattr(fw, "UNTIL_SECONDS_MAX", 0.0)
+    assert fw.Window(12, start=10, blind=False, progress=no_progress).expired() is True
+
+
 def test_a_window_left_short_is_a_timeout_naming_the_last_frame() -> None:
     window = fw.Window(50, start=None, blind=True, progress=no_progress)
     assert window.after(_stop(20), 1, "step 1") is False

@@ -10,6 +10,7 @@ cut.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
@@ -25,6 +26,8 @@ DEPTH_SHOWN = 3
 CUT = ".."
 HEX_SUFFIX = "_hex"
 _HOMES = frozenset({"users", "home", "documents and settings"})
+_WINDOWS_PATH = re.compile(r"(?<![\w\\])(?:[A-Za-z]:[\\/]|\\\\)")
+_REGEX_ESCAPE = re.compile(r"\\(?:[.()\[\]{}*+?^$|]|[dDwWsSbB](?!\w))")
 _ESCAPES = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
 
 
@@ -96,12 +99,16 @@ def _text(v: object, depth: int) -> str:
 
 
 def _basename(s: str) -> str:
-    """The last component; a home (a name after `_HOMES`, or `~name`) is `~`."""
-    if s.startswith("~") and "/" not in s and "\\" not in s:
+    """The last component; a home (a name after `_HOMES`, or `~name`) is `~`. A backslash
+    separates unless the text is a regular expression (`\\.`, `\\d+`) and no drive or UNC
+    root says it is a path."""
+    separates = _WINDOWS_PATH.search(s) or not _REGEX_ESCAPE.search(s)
+    text = s.replace("\\", "/") if separates else s
+    if text.startswith("~") and "/" not in text:
         return "~"
-    if "/" not in s and "\\" not in s:
+    if "/" not in text:
         return s
-    parts = [p for p in s.replace("\\", "/").split("/") if p]
+    parts = [p for p in text.split("/") if p]
     if not parts:
         return s
     if len(parts) == 1 and parts[0].startswith("~") or (
