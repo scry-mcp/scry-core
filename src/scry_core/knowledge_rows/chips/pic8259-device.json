@@ -457,7 +457,7 @@
      "n": "20",
      "on": "when",
      "of": "doc",
-     "text": "On the second INTA of an 8086 system the byte sent is T7-T3 from ICW2 with the level in the low three bits.",
+     "text": "On the second INTA of an 8086 system the byte sent is T7-T3 with the level in the low three bits.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
@@ -734,19 +734,6 @@
      ]
     },
     {
-     "n": "41",
-     "on": "when",
-     "of": "doc",
-     "text": "On exit software sends a non-specific EOI to the slave and reads its ISR; if empty it sends a non-specific EOI to the master.",
-     "quotes": [
-      {
-       "ref": "datasheet:8259A.raw.txt",
-       "lines": "792-799",
-       "sha": "4bb820d4795a382da81f70d479b571abb4021fad6b17ad9fe2a9f4a852da5deb"
-      }
-     ]
-    },
-    {
      "n": "42",
      "on": "when",
      "of": "doc",
@@ -827,12 +814,17 @@
      "of": "mame",
      "vs": "differs",
      "row": "19",
-     "text": "The INTA of an 8086 system is a single call that returns the vector, so its two cycles are not modelled.",
+     "text": "In 8086 mode one acknowledge call returns the vector, so two INTA cycles are not modelled.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "89-93",
-       "sha": "fc1e66e8db9f3c7b88aaa5334a6ef7ff1387cd9c100d2eca992c8de818bd4f61"
+       "lines": "89",
+       "sha": "0007875bc52071a0226de4126396ac41f3fc523a29594c6bb59d6f2dd7202f92"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "92-93",
+       "sha": "0a8bb8657990c5d95436ae6d14918424f59fcfa0e33ae8aaa2fcf87cfd5ee5ba"
       }
      ]
     },
@@ -857,7 +849,7 @@
      "of": "mame",
      "vs": "differs",
      "row": "25",
-     "text": "ICW1 does not reset the priority base, so IR7 does not become the lowest priority.",
+     "text": "ICW1 resets the current level and the INTA sequence, not the priority base.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -900,9 +892,9 @@
      "n": "106",
      "on": "when",
      "of": "mame",
-     "vs": "absent",
+     "vs": "differs",
      "row": "42",
-     "text": "No enable is driven on SP/EN: the pin is read only at reset to pick the master or slave role.",
+     "text": "The SP/EN pin is read as an input that picks master or slave at reset.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -915,9 +907,9 @@
      "n": "107",
      "on": "when",
      "of": "mame",
-     "vs": "absent",
+     "vs": "differs",
      "row": "44",
-     "text": "No cascade lines exist: a master asks the slave through a callback instead of driving a slave address.",
+     "text": "A slave is asked through a callback with the level, so no address code is carried on cascade lines.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -961,7 +953,7 @@
      "on": "place",
      "of": "mame",
      "vs": "place",
-     "text": "A read or write at offset 0 or 1 reaches the controller, offset 1 being the mask and data port.",
+     "text": "A read takes an offset and switches on it.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -1004,9 +996,9 @@
      "n": "203",
      "on": "when",
      "of": "dosbox-x",
-     "vs": "absent",
+     "vs": "differs",
      "row": "14",
-     "text": "A request that vanishes before dispatch is simply dropped; no default IR7 vector is produced.",
+     "text": "A request that vanishes before dispatch is cleared and no default IR7 vector is produced.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1027,6 +1019,11 @@
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "562-563",
        "sha": "5f6b7cf5b8a7785c9a0798c2950507df39c6b5ea18d1cb01244525ae5f64c54e"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "573",
+       "sha": "42af036c740443455b79633c4ad8b5b729798d3a7a26ae1ca2f96dda0e1d266f"
       }
      ]
     },
@@ -1096,7 +1093,7 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "23",
-     "text": "ICW1 does not reset the edge sense circuit: edge or level is set per IRQ by a separate call.",
+     "text": "ICW1 does not reset an edge sense circuit: it only sets how many ICW bytes follow.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1111,7 +1108,7 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "25",
-     "text": "ICW1 does not touch the priorities or the slave address, so IR7 does not become the lowest.",
+     "text": "ICW1 stores no slave address: the controller keeps none.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1171,7 +1168,7 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "36",
-     "text": "A request dropped before service is just cleared and no default IR7 is raised.",
+     "text": "A request dropped before service is cleared and no default IR7 is raised.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1184,9 +1181,9 @@
      "n": "215",
      "on": "when",
      "of": "dosbox-x",
-     "vs": "absent",
+     "vs": "differs",
      "row": "37",
-     "text": "No default IR7 is produced, so there is nothing for a clean up routine to ignore.",
+     "text": "No default IR7 is produced, so a clean up routine has none to ignore.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1199,9 +1196,9 @@
      "n": "216",
      "on": "when",
      "of": "dosbox-x",
-     "vs": "absent",
+     "vs": "differs",
      "row": "38",
-     "text": "No default IR7 exists, so the ISR never shows one.",
+     "text": "No default IR7 is produced, so the ISR never shows one.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1214,9 +1211,9 @@
      "n": "217",
      "on": "when",
      "of": "dosbox-x",
-     "vs": "absent",
+     "vs": "differs",
      "row": "39",
-     "text": "ICW4 with SFNM = 1 only logs a message, so priority is not kept within a slave.",
+     "text": "ICW4 with SFNM = 1 only logs a message, and the normal nested mode runs instead.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1229,29 +1226,19 @@
      "n": "218",
      "on": "when",
      "of": "dosbox-x",
-     "vs": "absent",
+     "vs": "differs",
      "row": "40",
-     "text": "A slave in service stays locked out, as the special fully nested mode is not handled.",
+     "text": "A slave in service locks out requests unless the ignore-cascade option is set, as the special fully nested mode is not handled.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "330",
        "sha": "49b4e32fa318f52b58e194fe81d8fa4fca193d381d9dbda819a835633aa857df"
-      }
-     ]
-    },
-    {
-     "n": "219",
-     "on": "when",
-     "of": "dosbox-x",
-     "vs": "absent",
-     "row": "41",
-     "text": "The special fully nested mode is not handled, so no exit sequence is needed.",
-     "quotes": [
+      },
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "330",
-       "sha": "49b4e32fa318f52b58e194fe81d8fa4fca193d381d9dbda819a835633aa857df"
+       "lines": "559-560",
+       "sha": "c3dfa8c44edec253b2bd1a267adfeac79c49124eaca08a58a9338b5e290b080e"
       }
      ]
     },
@@ -1259,9 +1246,9 @@
      "n": "220",
      "on": "when",
      "of": "dosbox-x",
-     "vs": "absent",
+     "vs": "differs",
      "row": "42",
-     "text": "No SP/EN enable is driven: the buffered mode bit of ICW4 is not decoded.",
+     "text": "The buffered mode bit of ICW4 is not decoded, so no SP/EN enable is driven.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1274,9 +1261,9 @@
      "n": "221",
      "on": "when",
      "of": "dosbox-x",
-     "vs": "absent",
+     "vs": "differs",
      "row": "44",
-     "text": "No cascade lines exist: the slave signals the master by a function call.",
+     "text": "The slave signals the master by a function call, so no cascade lines carry an address code.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1296,6 +1283,111 @@
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "1088-1099",
        "sha": "c3898f462c1f0df44f96b896a068a109870f72d0c9d173366e9fda565da9861c"
+      }
+     ]
+    },
+    {
+     "n": "111",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "36",
+     "text": "A line that drops before the acknowledge clears its request, so INT may go low and no default IR7 follows.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "73-80",
+       "sha": "970eece4cd119bdc63789f68630d91bf39c4e390a1abb51484f5fe46b9a7dfe5"
+      }
+     ]
+    },
+    {
+     "n": "113",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "17",
+     "text": "With call interval 8 the A5 bit kept from ICW1 stays in the low address, and the level is added to it.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "157",
+       "sha": "14b8bbfdcee568b6a95cc422f0341a51a53da8679c236c6afe027a34eb67307c"
+      }
+     ]
+    },
+    {
+     "n": "110",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "43",
+     "text": "A master reaches the slave through a callback with the level, not through three cascade lines.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "108-109",
+       "sha": "4b86a05e35ab309b04a223a0658d721d8e267febcc572c46cd875aea65cdc29a"
+      }
+     ]
+    },
+    {
+     "n": "224",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "11",
+     "text": "In AEOI mode the ISR bit is never set when the interrupt starts, so a third INTA has none to reset.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "218",
+       "sha": "08c93d41d939ae9bf3c679eb5304c6754bf79225ad58e1701725c6ca31cbeb33"
+      }
+     ]
+    },
+    {
+     "n": "225",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "31",
+     "text": "In AEOI mode the ISR bit is never set when the interrupt starts, so no EOI is done at an INTA.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "218",
+       "sha": "08c93d41d939ae9bf3c679eb5304c6754bf79225ad58e1701725c6ca31cbeb33"
+      }
+     ]
+    },
+    {
+     "n": "226",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "30",
+     "text": "Rotating priority is not handled: rotate on auto EOI only logs a message.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "228",
+       "sha": "87ea45a5a4d417017edee1ce42451350fe7c2fe604b725283d327999870d3065"
+      }
+     ]
+    },
+    {
+     "n": "227",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "34",
+     "text": "Level triggered mode is not handled: ICW1 with LTIM = 1 only logs a message.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "251",
+       "sha": "38c044274b9a32b454c23d30e2acc9b1c3fba4b1032ec19227874620d10bb1b9"
       }
      ]
     }
@@ -1318,66 +1410,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "128-144",
-     "as": "agrees",
-     "row": "9"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "147-149",
-     "as": "agrees",
-     "row": "16"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "150-158",
-     "as": "agrees",
-     "row": "10"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "157",
-     "as": "agrees",
-     "row": "17"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "159-172",
-     "as": "agrees",
-     "row": "18"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "164-165",
-     "as": "agrees",
-     "row": "11"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "94-100",
-     "as": "agrees",
-     "row": "12"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "107-116",
-     "as": "agrees",
-     "row": "13"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "118-123",
-     "as": "agrees",
-     "row": "14"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "115",
-     "as": "agrees",
-     "row": "20"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "256",
      "as": "agrees",
      "row": "23"
@@ -1390,24 +1422,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "39-43",
-     "as": "agrees",
-     "row": "29"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "101-102",
-     "as": "agrees",
-     "row": "31"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "101-102",
-     "as": "agrees",
-     "row": "32"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "65-72",
      "as": "agrees",
      "row": "33"
@@ -1417,156 +1431,6 @@
      "lines": "98-99",
      "as": "agrees",
      "row": "34"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "73-80",
-     "as": "agrees",
-     "row": "36"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "121-122",
-     "as": "agrees",
-     "row": "37"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "120-123",
-     "as": "agrees",
-     "row": "38"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "54-55",
-     "as": "agrees",
-     "row": "39"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "39-43",
-     "as": "agrees",
-     "row": "40"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "55",
-     "as": "agrees",
-     "row": "41"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "108-111",
-     "as": "agrees",
-     "row": "43"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "432",
-     "as": "agrees",
-     "row": "45"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "107",
-     "as": "agrees",
-     "row": "46"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "154-155",
-     "as": "agrees",
-     "row": "5"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "104-107",
-     "as": "agrees",
-     "row": "6"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "218",
-     "as": "agrees",
-     "row": "11"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "217-225",
-     "as": "agrees",
-     "row": "12"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "542",
-     "as": "agrees",
-     "row": "13"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "542",
-     "as": "agrees",
-     "row": "20"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "253",
-     "as": "agrees",
-     "row": "24"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "128-130",
-     "as": "agrees",
-     "row": "29"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "134-135",
-     "as": "agrees",
-     "row": "30"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "218",
-     "as": "agrees",
-     "row": "31"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "218",
-     "as": "agrees",
-     "row": "32"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "151-153",
-     "as": "agrees",
-     "row": "34"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "568",
-     "as": "agrees",
-     "row": "45"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "568-571",
-     "as": "agrees",
-     "row": "46"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "46-51",
-     "as": "agrees",
-     "row": "7"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "57-58",
-     "as": "agrees",
-     "row": "7"
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -1632,12 +1496,6 @@
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "508-510",
-     "as": "agrees",
-     "row": "5"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "511-514",
      "as": "unseen",
      "reason": "an IRQ hack option for particular games"
@@ -1655,32 +1513,15 @@
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "556-561",
-     "as": "agrees",
-     "row": "5"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "564-566",
      "as": "unseen",
      "reason": "an IRQ hack option for particular games"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "573",
-     "as": "structure"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "546-553",
      "as": "unseen",
      "reason": "CPU state checks before an interrupt is delivered"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "577-580",
-     "as": "unseen",
-     "reason": "re-checks requests after an automatic EOI"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1699,8 +1540,324 @@
      "as": "decode"
     },
     {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "46-51",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "57-58",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "114-116",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "70-71",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "49-50",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "128-139",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "147-148",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "150-156",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "168-171",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "164-165",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "94-102",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "101-102",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "113-116",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "120-123",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "141-143",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "147-148",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "160-171",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "115",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "34-43",
+     "as": "agrees",
+     "row": "29"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "101-102",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "164-165",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "101-102",
+     "as": "agrees",
+     "row": "32"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "164-165",
+     "as": "agrees",
+     "row": "32"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "54-55",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "122",
+     "as": "agrees",
+     "row": "37"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "101-102",
+     "as": "agrees",
+     "row": "38"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "118-123",
+     "as": "agrees",
+     "row": "38"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "39-50",
+     "as": "agrees",
+     "row": "39"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "39-50",
+     "as": "agrees",
+     "row": "40"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "792-799",
+     "as": "see-also"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "432-440",
+     "as": "agrees",
+     "row": "45"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "445-449",
+     "as": "agrees",
+     "row": "45"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "107-116",
+     "as": "agrees",
+     "row": "46"
+    },
+    {
      "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "250-252",
+     "lines": "223-225",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "508-510",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "127-128",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "151-155",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "555-556",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "104-108",
+     "as": "unseen",
+     "reason": "re-checks the pending requests after a line drops"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "217",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "223-225",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "541-542",
+     "as": "unfollowed",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "542",
+     "as": "unfollowed",
+     "row": "20"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "253",
+     "as": "unfollowed",
+     "row": "24"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "128-135",
+     "as": "agrees",
+     "row": "29"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "577-580",
+     "as": "unfollowed",
+     "row": "32"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "535-536",
+     "as": "agrees",
+     "row": "45"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "217",
+     "as": "agrees",
+     "row": "45"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "568-572",
+     "as": "agrees",
+     "row": "46"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "518-519",
+     "as": "agrees",
+     "row": "46"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "541-542",
+     "as": "agrees",
+     "row": "46"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "217",
+     "as": "agrees",
+     "row": "46"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "219-222",
+     "as": "unseen",
+     "reason": "an option that never marks the cascade input in service"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "250",
      "as": "parent",
      "owner": "pic8259:command:0x10..0x1F"
     }

@@ -81,7 +81,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "A read returns the IRR or the ISR, as chosen by OCW3, or the poll word.",
+     "text": "A read returns the IRR or the ISR, as chosen by OCW3, or the word enabled onto the data bus during RD.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
@@ -169,7 +169,7 @@
      "n": "7",
      "on": "read",
      "of": "doc",
-     "text": "In a poll read the data bus holds I in bit 7, the binary code W2 W1 W0 of the highest requesting level in bits 2-0.",
+     "text": "The word enabled onto the data bus during RD holds I in bit 7 and the binary code W2 W1 W0 of the highest requesting level in bits 2-0.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
@@ -289,24 +289,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "215",
-     "as": "agrees",
-     "row": "4"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "344",
-     "as": "agrees",
-     "row": "4"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "191",
-     "as": "agrees",
-     "row": "6"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "194-196",
      "as": "agrees",
      "row": "7"
@@ -351,6 +333,30 @@
      "ref": "datasheet:8259A.raw.txt",
      "lines": "699-708",
      "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "215-219",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "344-345",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "354",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "191-196",
+     "as": "agrees",
+     "row": "6"
     }
    ]
   },
@@ -529,42 +535,6 @@
    "closed": [
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "240",
-     "as": "agrees",
-     "row": "2"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "249",
-     "as": "agrees",
-     "row": "2"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "274",
-     "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "270",
-     "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "261",
-     "as": "agrees",
-     "row": "4"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "257",
-     "as": "agrees",
-     "row": "4"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "237",
      "as": "structure"
     },
@@ -679,6 +649,42 @@
      "ref": "datasheet:8259A.raw.txt",
      "lines": "498",
      "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "240-245",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "249-256",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "274-277",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "270-274",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "261-272",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "257-265",
+     "as": "agrees",
+     "row": "4"
     }
    ]
   },
@@ -727,7 +733,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "A write with A0 = 1 sets OCW1 or the ICW2, ICW3 and ICW4 bytes of an initialization.",
+     "text": "A write with A0 = 1 sets the mask byte OCW1.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
@@ -751,19 +757,6 @@
        "ref": "datasheet:8259A.raw.txt",
        "lines": "413-418",
        "sha": "899e153731d141a73dfb16c256acef77a51d40f3e60c472215ad3ce69c72a536"
-      }
-     ]
-    },
-    {
-     "n": "3",
-     "on": "when",
-     "of": "doc",
-     "text": "The 8-byte interval keeps compatibility with current software, and the 4-byte interval is best for a compact jump table.",
-     "quotes": [
-      {
-       "ref": "datasheet:8259A.raw.txt",
-       "lines": "419-421",
-       "sha": "6add0cf0257284b259fe533ae9d0a293fb1e9302a4f976c2a0207229edf92842"
       }
      ]
     },
@@ -934,9 +927,9 @@
      "n": "102",
      "on": "bit 3",
      "of": "mame",
-     "vs": "absent",
+     "vs": "differs",
      "row": "9",
-     "text": "The buffered mode bits of ICW4 are stored in a mode field that nothing reads, so buffering does nothing.",
+     "text": "The buffered mode bits of ICW4 are stored in a mode field and nothing else in that case acts on them.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -949,14 +942,19 @@
      "n": "103",
      "on": "bit 2",
      "of": "mame",
-     "vs": "absent",
+     "vs": "differs",
      "row": "10",
-     "text": "The master or slave bit of ICW4 is stored in a mode field that nothing reads; the role comes from the SP pin.",
+     "text": "The master or slave bit of ICW4 is stored in the mode field; the role comes from the SP pin read at reset.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
        "lines": "369",
        "sha": "d35c85e1f454f62b86162e758f77d27d47c55876839f190d6685ac143a9d08f4"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "455",
+       "sha": "c0b449a8332b6a74a6f224ccc95f0857ba3bc40d6cf1feda40e08185dc2db7f3"
       }
      ]
     },
@@ -996,7 +994,7 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "6",
-     "text": "ICW3 is accepted and logged, but its value is not stored, so a master releases no slave bytes.",
+     "text": "ICW3 is accepted and logged, but its value is not stored, so no slave bits are kept.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1047,6 +1045,11 @@
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "316-324",
        "sha": "434e2c470d757c19b4e35da22f0d89f13abcd03af9ebde64b3f32cb5e18543dd"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "325-333",
+       "sha": "822fadcfaaf347cb0bfa16cf116d32ef3376d3fa86822e8f5e914a8756a98288"
       }
      ]
     },
@@ -1062,6 +1065,11 @@
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "316-324",
        "sha": "434e2c470d757c19b4e35da22f0d89f13abcd03af9ebde64b3f32cb5e18543dd"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "325-333",
+       "sha": "822fadcfaaf347cb0bfa16cf116d32ef3376d3fa86822e8f5e914a8756a98288"
       }
      ]
     },
@@ -1084,51 +1092,15 @@
    "closed": [
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "335",
-     "as": "agrees",
-     "row": "1"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "302-311",
-     "as": "agrees",
-     "row": "1"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "345",
      "as": "agrees",
      "row": "2"
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "345",
-     "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "308",
-     "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "344",
      "as": "agrees",
      "row": "4"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "308",
-     "as": "agrees",
-     "row": "4"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "346-352",
-     "as": "agrees",
-     "row": "5"
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -1165,24 +1137,6 @@
      "lines": "380",
      "as": "agrees",
      "row": "13"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "303-304",
-     "as": "agrees",
-     "row": "13"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "380",
-     "as": "agrees",
-     "row": "14"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "304",
-     "as": "agrees",
-     "row": "14"
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -1291,6 +1245,74 @@
      "ref": "datasheet:8259A.raw.txt",
      "lines": "476-485",
      "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "380",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "303-305",
+     "as": "unfollowed",
+     "row": "1"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "419-421",
+     "as": "see-also"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "346-353",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "360",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "335",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "302",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "306-311",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "380",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "303-304",
+     "as": "unfollowed",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "304",
+     "as": "unfollowed",
+     "row": "14"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "316",
+     "as": "structure"
     }
    ]
   }

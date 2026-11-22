@@ -244,7 +244,7 @@
    "regions": [
     {
      "ref": "datasheet:8259A.raw.txt",
-     "lines": "623"
+     "lines": "622-623"
     }
    ],
    "rows": [
@@ -422,8 +422,13 @@
      "of": "mame",
      "vs": "differs",
      "row": "6",
-     "text": "A non-specific EOI clears the highest in-service bit even when masked, with no special mask mode check.",
+     "text": "A non-specific EOI scans from the priority base and tests only the in-service bits, never the mask bits, so a masked in-service bit is cleared too.",
      "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "288",
+       "sha": "fd7a83fa35885c8b9aeb83311bf2bb51a488c1be1f832c7d9b26d11540464419"
+      },
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
        "lines": "290",
@@ -437,12 +442,12 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "6",
-     "text": "A non-specific EOI clears the active in-service bit without looking at the mask or the special mask mode.",
+     "text": "A non-specific EOI is carried out whenever a level is in service; the condition does not look at the mask or the special mask mode.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "279-280",
-       "sha": "704020e4b55f6777ca4917204173df1e27ecfd6c3da6d4c92ef838457ebb3e4b"
+       "lines": "279",
+       "sha": "af5f7248bfd8d2dcd26eb727db09fe0acc7517b96e21766dca84dff227050fa1"
       }
      ]
     },
@@ -465,27 +470,9 @@
    "closed": [
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "288",
-     "as": "agrees",
-     "row": "2"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "282",
-     "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "292",
      "as": "agrees",
      "row": "4"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "259",
-     "as": "agrees",
-     "row": "5"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -524,6 +511,30 @@
      "ref": "datasheet:8259A.raw.txt",
      "lines": "521-522",
      "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "292",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "276-283",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "292",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "259",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
     }
    ]
   },
@@ -606,7 +617,7 @@
    "regions": [
     {
      "ref": "datasheet:8259A.raw.txt",
-     "lines": "621-622"
+     "lines": "621"
     }
    ],
    "rows": [
@@ -614,12 +625,12 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Rotate in automatic EOI mode is the second way to rotate priority automatically.",
+     "text": "Rotate in automatic EOI mode is a mode that OCW2 sets.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
-       "lines": "618-621",
-       "sha": "ca335bd335b37d696124983fe7c1140dbf61b6a9ab3a43bd7c515f335d34fca0"
+       "lines": "621",
+       "sha": "64cb5ab4c54f6f4a08a197a153f001754de94992cd2a66822956fbfc1f861488"
       }
      ]
     },
@@ -627,12 +638,12 @@
      "n": "2",
      "on": "write",
      "of": "doc",
-     "text": "Rotate in automatic EOI mode is set by OCW2 with R = 1, SL = 0 and EOI = 0.",
+     "text": "Rotate in automatic EOI mode is set by OCW2 with R = 1.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
-       "lines": "621-622",
-       "sha": "b9c5d8006725dcff53fcfae7bcc7f093b80f24e6dab94fbe3af2e7dc1ddc08a8"
+       "lines": "621",
+       "sha": "64cb5ab4c54f6f4a08a197a153f001754de94992cd2a66822956fbfc1f861488"
       }
      ]
     },
@@ -873,8 +884,8 @@
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "291-292",
-       "sha": "55f015e6a14cf61e5867fed22a8ca627e55bdcdb9f63c3ea8c3efbf1643c9cff"
+       "lines": "291-293",
+       "sha": "1fd00bcfe1855e897e7a8c2fc5902d47a25fa62bc1dc118bcb094f29387835d3"
       }
      ]
     },
@@ -888,8 +899,8 @@
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "291-292",
-       "sha": "55f015e6a14cf61e5867fed22a8ca627e55bdcdb9f63c3ea8c3efbf1643c9cff"
+       "lines": "291-293",
+       "sha": "1fd00bcfe1855e897e7a8c2fc5902d47a25fa62bc1dc118bcb094f29387835d3"
       }
      ]
     }
@@ -1167,7 +1178,7 @@
     },
     {
      "ref": "datasheet:8259A.raw.txt",
-     "lines": "648-669"
+     "lines": "648-668"
     }
    ],
    "rows": [
@@ -1188,12 +1199,12 @@
      "n": "2",
      "on": "write",
      "of": "doc",
-     "text": "OCW3 with ESMM = 1 and SMM = 1 sets the special mask mode.",
+     "text": "The special mask mode is set by OCW3.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
-       "lines": "668-669",
-       "sha": "a0b005b9312ac631075a28b6f4649e50597db7a61043ee87c99f644e5d410b2d"
+       "lines": "668",
+       "sha": "870df0e9d127948e2b75235652f4f4bce5db9874b0c74a83ec1deabbc08fab9f"
       }
      ]
     },
@@ -1233,6 +1244,11 @@
        "ref": "datasheet:8259A.raw.txt",
        "lines": "649-660",
        "sha": "a3a01243ade0b4a4b54d96dac0c5223e43206d330d665ff3877095c6b45c8407"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "661-665",
+       "sha": "45df4fa7da67c586a360b74fb3f58cdfd18de157d16bb57fd7caf9f719782c39"
       }
      ]
     },
@@ -1240,14 +1256,14 @@
      "n": "101",
      "on": "write",
      "of": "mame",
-     "vs": "absent",
+     "vs": "differs",
      "row": "2",
-     "text": "OCW3 with ESMM and SMM set stores the SMM bit, which nothing reads, so special mask mode never starts.",
+     "text": "OCW3 with ESMM = 1 and SMM = 1 does not start a special mask mode: a TODO comment marks it as not done.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "272",
-       "sha": "b919addade67e80bb9f4a9ce48092f5438ed8070af6b1e550f2041c608fd457f"
+       "lines": "270",
+       "sha": "fe3ec7b07b8f2d33971878afdea39d4138bba178750ee6fa14cafaa10ed92356"
       }
      ]
     },
@@ -1255,14 +1271,14 @@
      "n": "102",
      "on": "when",
      "of": "mame",
-     "vs": "absent",
+     "vs": "differs",
      "row": "4",
-     "text": "Special mask mode is never entered, as the stored SMM bit is not used by any priority decision.",
+     "text": "Special mask mode is not entered: the OCW3 code carries a TODO for it.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "271-272",
-       "sha": "7094839c23224287dad8f7bc9c3205b16d5d27e348ff13352a66149bcf64624c"
+       "lines": "270",
+       "sha": "fe3ec7b07b8f2d33971878afdea39d4138bba178750ee6fa14cafaa10ed92356"
       }
      ]
     },
@@ -1270,49 +1286,19 @@
      "n": "103",
      "on": "when",
      "of": "mame",
-     "vs": "absent",
+     "vs": "differs",
      "row": "5",
-     "text": "No request is enabled by the mode, as it has no effect on the priority decision.",
+     "text": "The mode enables no request: the OCW3 code carries a TODO for special mask mode.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "272",
-       "sha": "b919addade67e80bb9f4a9ce48092f5438ed8070af6b1e550f2041c608fd457f"
+       "lines": "270",
+       "sha": "fe3ec7b07b8f2d33971878afdea39d4138bba178750ee6fa14cafaa10ed92356"
       }
      ]
     }
    ],
    "closed": [
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "271",
-     "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "263-267",
-     "as": "agrees",
-     "row": "2"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "263",
-     "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "264",
-     "as": "agrees",
-     "row": "4"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "267",
-     "as": "agrees",
-     "row": "5"
-    },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "237",
@@ -1355,6 +1341,36 @@
      "ref": "datasheet:8259A.raw.txt",
      "lines": "648",
      "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "271-272",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "263-267",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "263-266",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "263-265",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "267",
+     "as": "unfollowed",
+     "row": "5"
     }
    ]
   },
@@ -1364,7 +1380,7 @@
    "regions": [
     {
      "ref": "datasheet:8259A.raw.txt",
-     "lines": "670"
+     "lines": "669-670"
     }
    ],
    "rows": [
@@ -1398,14 +1414,14 @@
      "n": "101",
      "on": "write",
      "of": "mame",
-     "vs": "absent",
+     "vs": "differs",
      "row": "2",
-     "text": "The stored SMM bit is cleared, but as nothing reads it normal mask mode is the only behaviour.",
+     "text": "OCW3 with ESMM = 1 and SMM = 0 does not return to a normal mask mode: a TODO comment marks special mask mode as not done.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "272",
-       "sha": "b919addade67e80bb9f4a9ce48092f5438ed8070af6b1e550f2041c608fd457f"
+       "lines": "270",
+       "sha": "fe3ec7b07b8f2d33971878afdea39d4138bba178750ee6fa14cafaa10ed92356"
       }
      ]
     }
@@ -1449,6 +1465,12 @@
      "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "268",
      "as": "log"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "271-272",
+     "as": "unseen",
+     "reason": "stores the SMM bit, shared with the special mask on entry"
     }
    ]
   }

@@ -73,15 +73,17 @@
  ],
  "entries": [
   {
-   "key": "0x00",
-   "name": "counter 0",
+   "key": "0x00..0x02",
+   "name": "counters 0 to 2",
    "aliases": [
-    "PIT0"
+    "PIT0",
+    "PIT1",
+    "PIT2"
    ],
    "regions": [
     {
      "ref": "datasheet:8254.raw.txt",
-     "lines": "44"
+     "lines": "44-46"
     },
     {
      "ref": "datasheet:8254.raw.txt",
@@ -105,11 +107,11 @@
     },
     {
      "ref": "datasheet:8254.raw.txt",
-     "lines": "490"
+     "lines": "490-492"
     },
     {
      "ref": "datasheet:8254.raw.txt",
-     "lines": "494"
+     "lines": "494-496"
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
@@ -145,12 +147,12 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Address lines A1 A0 = 0 0 select counter 0.",
+     "text": "Address lines A1 A0 = 0 0, 0 1 and 1 0 select counter 0, 1 and 2.",
      "quotes": [
       {
        "ref": "datasheet:8254.raw.txt",
-       "lines": "44",
-       "sha": "8a7bdb140243380eec5dccd79da82f3b9398c97a3ba17640b31793b56dd1f38b"
+       "lines": "44-46",
+       "sha": "0235e46d5837804fd76c2b5835f9ec9fdfe1bcb9da1dd84795c680a38b9642ed"
       }
      ]
     },
@@ -212,12 +214,25 @@
      "n": "5",
      "on": "write",
      "of": "doc",
-     "text": "A written count goes to the count register CR and later to CE; CR is cleared on programming, so a one-byte count leaves the other byte zero.",
+     "text": "A written count is stored in the count register CR and later transferred to CE.",
      "quotes": [
       {
        "ref": "datasheet:8254.raw.txt",
-       "lines": "148-159",
-       "sha": "2f22465b68bcea00fce42e024c7af0d28e389ad856caa119f31f9291822ceddd"
+       "lines": "148-155",
+       "sha": "d94402293a86b326628f5efbcef8bc86b237dd47fe7c8a6077ec8c0537461b67"
+      }
+     ]
+    },
+    {
+     "n": "37",
+     "on": "write",
+     "of": "doc",
+     "text": "CRM and CRL are cleared when the counter is programmed, so a one-byte count leaves the other byte zero.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "155-159",
+       "sha": "8ac759110c05c7c51612f04c8e4018f2992cbecf0bd45518f43aecfc6fb96aca"
       }
      ]
     },
@@ -231,20 +246,6 @@
        "ref": "datasheet:8254.raw.txt",
        "lines": "117-119",
        "sha": "6bc96f76b5f315adbfe791756f18afa8f203e3e1038f9fcabfbf2664044b6b4b"
-      }
-     ]
-    },
-    {
-     "n": "7",
-     "on": "when",
-     "of": "doc",
-     "variant": "8254",
-     "text": "The status register, when latched, holds the control word contents and the output and null count flags.",
-     "quotes": [
-      {
-       "ref": "datasheet:8254.raw.txt",
-       "lines": "120-124",
-       "sha": "b50ca4e8521103e158b1bfcf4d776035ab269355d476228a02d45c0ef1d4aab4"
       }
      ]
     },
@@ -376,15 +377,41 @@
      ]
     },
     {
-     "n": "17",
-     "on": "read",
+     "n": "35",
+     "on": "write",
      "of": "doc",
-     "text": "With CS low, RD low, WR high and A1 A0 = 00 the CPU reads counter 0.",
+     "text": "With CS low, RD high, WR low and A1 A0 = 01 the CPU writes into counter 1.",
      "quotes": [
       {
        "ref": "datasheet:8254.raw.txt",
-       "lines": "494",
-       "sha": "dc7e275de43c97bf6da2e9dfbe39077a9103a36517187cd819d07e66ed983ca6"
+       "lines": "491",
+       "sha": "8bc1b50f0c7f02f50750dcaa9ba4746902e687a0afdce4dbad01a0788fbd3a7d"
+      }
+     ]
+    },
+    {
+     "n": "36",
+     "on": "write",
+     "of": "doc",
+     "text": "With CS low, RD high, WR low and A1 A0 = 10 the CPU writes into counter 2.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "492",
+       "sha": "be39e378b7e0f0d7876da5d113bfead379b090164ae945668af31f8b6a15b4d6"
+      }
+     ]
+    },
+    {
+     "n": "17",
+     "on": "read",
+     "of": "doc",
+     "text": "With CS low, RD low, WR high and A1 A0 = 00, 01 or 10 the CPU reads counter 0, 1 or 2.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "494-496",
+       "sha": "83d3c417d91ab58b66a478978adc650d23a0613fb4b0699563a38f80eb1c7879"
       }
      ]
     },
@@ -406,7 +433,7 @@
      "n": "101",
      "on": "read",
      "of": "mame",
-     "vs": "extra",
+     "vs": "differs",
      "text": "Reading the count in the middle of a two-byte write returns the complement of the byte written first.",
      "quotes": [
       {
@@ -414,7 +441,8 @@
        "lines": "862-863",
        "sha": "7967bc8e7d97439bcdccfce5964a191e09d921a460f68a54939394f863a37c30"
       }
-     ]
+     ],
+     "row": "14"
     },
     {
      "n": "102",
@@ -442,34 +470,6 @@
        "ref": "mame:src/devices/machine/pit8253.cpp",
        "lines": "1071-1072",
        "sha": "5a77d56eced4da5e80de5780563ed0903a1bde07a1533bb9593ed2585a155d30"
-      }
-     ]
-    },
-    {
-     "n": "201",
-     "on": "read",
-     "of": "dosbox-x",
-     "vs": "extra",
-     "text": "With the option set, any read of counters 0 to 2 returns a pending status latch of another counter.",
-     "quotes": [
-      {
-       "ref": "dosbox-x:src/hardware/timer.cpp",
-       "lines": "759-770",
-       "sha": "9b172e178f900ea3982a566562ecf098607bb7a2e2f3137785382d58db02a390"
-      }
-     ]
-    },
-    {
-     "n": "203",
-     "on": "write",
-     "of": "dosbox-x",
-     "vs": "extra",
-     "text": "A count write releases a held latch, so the next read takes a fresh count, as for reprogramming.",
-     "quotes": [
-      {
-       "ref": "dosbox-x:src/hardware/timer.cpp",
-       "lines": "608-612",
-       "sha": "229c29a3e40a9d4943fdb2638ebfae9b3d34b36c408de20894c724266b292c42"
       }
      ]
     },
@@ -505,6 +505,21 @@
        "sha": "db66710ec997a76f47e372dc369a1d5dcd7ed9cdd13a9dbd3852e95c0899252d"
       }
      ]
+    },
+    {
+     "n": "205",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "35",
+     "text": "On the IBM PC DOSBox-X installs no write handler for port 0x41, so a write to counter 1 is not handled.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "1189-1197",
+       "sha": "ff6cc01e1eef5ce1f80b05c7f464670cc7d92b65f2e5c8c01c4bf304432b2099"
+      }
+     ]
     }
    ],
    "closed": [
@@ -517,184 +532,6 @@
      "ref": "datasheet:8254.raw.txt",
      "lines": "162-164",
      "as": "electrical"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "823-832",
-     "as": "agrees",
-     "row": "4"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "817-819",
-     "as": "agrees",
-     "row": "7"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1030-1031",
-     "as": "agrees",
-     "row": "8"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1030-1034",
-     "as": "agrees",
-     "row": "9"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1043",
-     "as": "agrees",
-     "row": "5"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "911",
-     "as": "agrees",
-     "row": "10"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1090",
-     "as": "agrees",
-     "row": "11"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "835-861",
-     "as": "agrees",
-     "row": "12"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "864-870",
-     "as": "agrees",
-     "row": "13"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "867-868",
-     "as": "agrees",
-     "row": "14"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "865",
-     "as": "agrees",
-     "row": "15"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1110-1111",
-     "as": "agrees",
-     "row": "16"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "890-891",
-     "as": "agrees",
-     "row": "17"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "814-832",
-     "as": "agrees",
-     "row": "18"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "779-780",
-     "as": "agrees",
-     "row": "4"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "774-777",
-     "as": "agrees",
-     "row": "7"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "583-598",
-     "as": "agrees",
-     "row": "8"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "583",
-     "as": "agrees",
-     "row": "9"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "593-598",
-     "as": "agrees",
-     "row": "5"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "605",
-     "as": "agrees",
-     "row": "10"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "584-587",
-     "as": "agrees",
-     "row": "11"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "782-808",
-     "as": "agrees",
-     "row": "12"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "784-793",
-     "as": "agrees",
-     "row": "13"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "792",
-     "as": "agrees",
-     "row": "14"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "790-793",
-     "as": "agrees",
-     "row": "15"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1190",
-     "as": "agrees",
-     "row": "16"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1194",
-     "as": "agrees",
-     "row": "17"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "774-777",
-     "as": "agrees",
-     "row": "18"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "880",
-     "as": "decode"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1097",
-     "as": "decode"
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
@@ -847,255 +684,516 @@
      "lines": "603",
      "as": "unseen",
      "reason": "converts a BCD count to binary"
-    }
-   ]
-  },
-  {
-   "key": "0x01",
-   "name": "counter 1",
-   "regions": [
-    {
-     "ref": "datasheet:8254.raw.txt",
-     "lines": "45"
     },
     {
      "ref": "datasheet:8254.raw.txt",
-     "lines": "491"
+     "lines": "120-124",
+     "as": "see-also"
     },
     {
-     "ref": "datasheet:8254.raw.txt",
-     "lines": "495"
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "823-831",
+     "as": "agrees",
+     "row": "4"
     },
     {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "function": "TIMER_OnPowerOn"
-    }
-   ],
-   "rows": [
-    {
-     "n": "1",
-     "on": "is",
-     "of": "doc",
-     "text": "Address lines A1 A0 = 0 1 select counter 1.",
-     "quotes": [
-      {
-       "ref": "datasheet:8254.raw.txt",
-       "lines": "45",
-       "sha": "291683f9250a58b892b136bab4cf8c40aa172234139549810ac9ab01a3895f12"
-      }
-     ],
-     "links": [
-      "pit8253:register:0x00"
-     ]
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "846-849",
+     "as": "agrees",
+     "row": "4"
     },
     {
-     "n": "2",
-     "on": "write",
-     "of": "doc",
-     "text": "With CS low, RD high, WR low and A1 A0 = 01 the CPU writes into counter 1.",
-     "quotes": [
-      {
-       "ref": "datasheet:8254.raw.txt",
-       "lines": "491",
-       "sha": "8bc1b50f0c7f02f50750dcaa9ba4746902e687a0afdce4dbad01a0788fbd3a7d"
-      }
-     ],
-     "links": [
-      "pit8253:register:0x00"
-     ]
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "851-854",
+     "as": "agrees",
+     "row": "4"
     },
     {
-     "n": "3",
-     "on": "read",
-     "of": "doc",
-     "text": "With CS low, RD low, WR high and A1 A0 = 01 the CPU reads counter 1.",
-     "quotes": [
-      {
-       "ref": "datasheet:8254.raw.txt",
-       "lines": "495",
-       "sha": "7852eeb08084478cc4e51569945f1b24fe79f08d04b82a0080544da95a1119ef"
-      }
-     ],
-     "links": [
-      "pit8253:register:0x00"
-     ]
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "864-865",
+     "as": "agrees",
+     "row": "4"
     },
     {
-     "n": "201",
-     "on": "write",
-     "of": "dosbox-x",
-     "vs": "absent",
-     "row": "2",
-     "text": "DOSBox-X installs no write handler for port 0x41, so a write to counter 1 does nothing.",
-     "quotes": [
-      {
-       "ref": "dosbox-x:src/hardware/timer.cpp",
-       "lines": "1191",
-       "sha": "2001e20c54dc4f00e73977a76daebc88e5f81069b3a72b711e6bb9ad95247458"
-      }
-     ]
-    }
-   ],
-   "closed": [
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "797-799",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1043",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1058",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1074",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "911",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1043",
+     "as": "agrees",
+     "row": "37"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1058",
+     "as": "agrees",
+     "row": "37"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "911",
+     "as": "agrees",
+     "row": "37"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1043",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1058",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1074",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1080",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "911",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1043",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1058",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1074",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1080",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "911",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1043",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1058",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1074",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1080",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "911",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1074",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1080",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1090",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "911",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "846-849",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "851-854",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "864-865",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "846-854",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "864-868",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "864-868",
+     "as": "agrees",
+     "row": "15"
+    },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
      "lines": "1110-1111",
-     "as": "agrees",
-     "row": "2"
+     "as": "unfollowed",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1110-1111",
+     "as": "unfollowed",
+     "row": "35"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1110-1111",
+     "as": "unfollowed",
+     "row": "36"
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
      "lines": "890-891",
      "as": "agrees",
-     "row": "3"
+     "row": "17"
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "880",
-     "as": "decode"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1097",
-     "as": "decode"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1195",
+     "lines": "814-819",
      "as": "agrees",
-     "row": "3"
+     "row": "18"
     },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1121-1189",
-     "as": "parent",
-     "owner": "chip:device:pit8253"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1199-1225",
-     "as": "parent",
-     "owner": "chip:device:pit8253"
-    }
-   ]
-  },
-  {
-   "key": "0x02",
-   "name": "counter 2",
-   "regions": [
-    {
-     "ref": "datasheet:8254.raw.txt",
-     "lines": "46"
-    },
-    {
-     "ref": "datasheet:8254.raw.txt",
-     "lines": "492"
-    },
-    {
-     "ref": "datasheet:8254.raw.txt",
-     "lines": "496"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "function": "TIMER_OnPowerOn"
-    }
-   ],
-   "rows": [
-    {
-     "n": "1",
-     "on": "is",
-     "of": "doc",
-     "text": "Address lines A1 A0 = 1 0 select counter 2.",
-     "quotes": [
-      {
-       "ref": "datasheet:8254.raw.txt",
-       "lines": "46",
-       "sha": "659162cada9316515a68fb3c13248ae274137a77c081517efc826ca0b38f54fa"
-      }
-     ],
-     "links": [
-      "pit8253:register:0x00"
-     ]
-    },
-    {
-     "n": "2",
-     "on": "write",
-     "of": "doc",
-     "text": "With CS low, RD high, WR low and A1 A0 = 10 the CPU writes into counter 2.",
-     "quotes": [
-      {
-       "ref": "datasheet:8254.raw.txt",
-       "lines": "492",
-       "sha": "be39e378b7e0f0d7876da5d113bfead379b090164ae945668af31f8b6a15b4d6"
-      }
-     ],
-     "links": [
-      "pit8253:register:0x00"
-     ]
-    },
-    {
-     "n": "3",
-     "on": "read",
-     "of": "doc",
-     "text": "With CS low, RD low, WR high and A1 A0 = 10 the CPU reads counter 2.",
-     "quotes": [
-      {
-       "ref": "datasheet:8254.raw.txt",
-       "lines": "496",
-       "sha": "0aaecf9f68e23ca2596241c014962facf762db55a4fbea82bf7ab569d76bc936"
-      }
-     ],
-     "links": [
-      "pit8253:register:0x00"
-     ]
-    }
-   ],
-   "closed": [
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1110-1111",
+     "lines": "823-831",
      "as": "agrees",
-     "row": "2"
+     "row": "18"
     },
     {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "890-891",
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "779-788",
      "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "880",
-     "as": "decode"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1097",
-     "as": "decode"
+     "row": "4"
     },
     {
      "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1196",
+     "lines": "790-801",
      "as": "agrees",
-     "row": "3"
+     "row": "4"
     },
     {
      "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1121-1189",
-     "as": "parent",
-     "owner": "chip:device:pit8253"
+     "lines": "806-808",
+     "as": "agrees",
+     "row": "4"
     },
     {
      "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1199-1225",
-     "as": "parent",
-     "owner": "chip:device:pit8253"
+     "lines": "584-587",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "588-592",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "593-595",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "596-598",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "593-598",
+     "as": "agrees",
+     "row": "37"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "584-587",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "588-592",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "593-595",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "596-598",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "584-587",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "588-592",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "593-595",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "596-598",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "605-614",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "584-592",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "784-793",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "806-808",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "784-793",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "794-801",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "584-592",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "790-793",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "785-793",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1190",
+     "as": "unfollowed",
+     "row": "16"
     },
     {
      "ref": "dosbox-x:src/hardware/timer.cpp",
      "lines": "1192",
+     "as": "unfollowed",
+     "row": "36"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1194-1196",
+     "as": "unfollowed",
+     "row": "17"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "774-777",
      "as": "agrees",
-     "row": "2"
+     "row": "18"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "779-788",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "790-793",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "759-770",
+     "as": "parent",
+     "owner": "pit8253:register:0x03"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "822",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "838",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "840",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "841",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "844",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "856",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "869",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1030",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "583",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "802",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "804",
+     "as": "structure"
     }
    ]
   },
@@ -1177,6 +1275,10 @@
     {
      "ref": "dosbox-x:src/hardware/timer.cpp",
      "function": "TIMER_OnPowerOn"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "204-206"
     }
    ],
    "rows": [
@@ -1347,7 +1449,7 @@
      "n": "11",
      "on": "order",
      "of": "doc",
-     "text": "Programming sequences are free: any order works if each counter gets its control word, then its LSB and MSB.",
+     "text": "The datasheet shows four programming sequences that give each counter its control word, then its LSB and MSB, in different orders; they are only four of many possible.",
      "quotes": [
       {
        "ref": "datasheet:8254.raw.txt",
@@ -1676,14 +1778,14 @@
      "n": "101",
      "on": "when",
      "of": "mame",
-     "vs": "differs",
+     "vs": "absent",
      "row": "15",
-     "text": "A control word sets null count, byte order and phase but leaves a latched count held until it is read.",
+     "text": "A control word write leaves a latched count held: nothing in the control word branch releases it.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pit8253.cpp",
-       "lines": "1016-1019",
-       "sha": "eb7951e837663328506802da88cb4508558e43a69fcc91e4a1fff0f129ce115c"
+       "lines": "1012-1021",
+       "sha": "578725667cdeddb1fcba8be27b6646481c229ea01ee9e2f5931470334df9a462"
       }
      ]
     },
@@ -1717,8 +1819,8 @@
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pit8253.cpp",
-       "lines": "888",
-       "sha": "6be2e46a3d0765fd4d08def164c35b75afcc481db6fd11cc5118c4e2c20b634d"
+       "lines": "885-887",
+       "sha": "b594abb6aefc7d65a5200164cbc68c81135e5fe67867ed6cfd03270bd194bc13"
       }
      ]
     },
@@ -1742,12 +1844,22 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "15",
-     "text": "A control word write leaves a held latch in effect, deliberately, because some games read it later.",
+     "text": "A control word write leaves a latched count held, on purpose because Lemmings reads it later; only a count write releases it.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/timer.cpp",
-       "lines": "837-848",
-       "sha": "0a6a8770156d3d48b94aa62b870940d38784fa70a999c4762b7403a4706c7fc1"
+       "lines": "822-823",
+       "sha": "3f7786ee18863af445c29ee4563b3ee588e9a1bfe30eb30bd39c39705a791fea"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "837-842",
+       "sha": "327001b8b4a0ad289dbde491a5f77a5942e841d19714cb12d51c0d5fe2690fc8"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "608-612",
+       "sha": "229c29a3e40a9d4943fdb2638ebfae9b3d34b36c408de20894c724266b292c42"
       }
      ]
     },
@@ -1761,8 +1873,13 @@
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/timer.cpp",
-       "lines": "489-496",
-       "sha": "ce5ea4140c8e53fb3dc9da3bc3c81e2003fdb5540acf715b5800eab9198dc63a"
+       "lines": "491",
+       "sha": "c6507324d71209c4fab26c3b65135fcda0781da08856b00a304dcdd4fb8dd8e9"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "494-497",
+       "sha": "b7e151eb79a4b9ae65820c56b31ddc4cfaf152a2fd475b9b83052b4160df3a92"
       }
      ]
     },
@@ -1787,12 +1904,17 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "23",
-     "text": "The null flag is the new mode flag: it clears when a count is written, not when CR loads into CE.",
+     "text": "The status null flag is the new-mode flag, which a count write clears, not the load of CR into CE.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/timer.cpp",
        "lines": "478",
        "sha": "55ac11858918c3c5a7147a55d692f75ffbeeb44137bc5dbed70784dfbedd3116"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "681",
+       "sha": "91ff4cea97bf39e2e98ff8aa917f6e6dbcce039046b58802d8238106157f328b"
       }
      ]
     },
@@ -1871,6 +1993,114 @@
        "sha": "33e752f74ec2fb1e69febec8320569f3045809c0429f09df678b65052f0cfbbf"
       }
      ]
+    },
+    {
+     "n": "106",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A read-back count command is ignored when the counter is halfway through a two-byte read.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "940-942",
+       "sha": "7731734ad0fa60ca07f303c943d9843e43b9acd01dd93dd4cdab70351b24703f"
+      }
+     ]
+    },
+    {
+     "n": "105",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A control word write clears both byte flip-flops.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1017",
+       "sha": "d59ff415688660041d5f1d7254dc881eabecadc3bdf05ab908c7db3c1b757b7c"
+      }
+     ]
+    },
+    {
+     "n": "210",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "20",
+     "text": "A read-back with COUNT 0 latches each selected counter again, replacing a count latched before.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "494-497",
+       "sha": "b7e151eb79a4b9ae65820c56b31ddc4cfaf152a2fd475b9b83052b4160df3a92"
+      }
+     ]
+    },
+    {
+     "n": "211",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "26",
+     "text": "A read-back with COUNT 0 latches the selected counts again even when one is already latched.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "494-497",
+       "sha": "b7e151eb79a4b9ae65820c56b31ddc4cfaf152a2fd475b9b83052b4160df3a92"
+      }
+     ]
+    },
+    {
+     "n": "212",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "31",
+     "text": "Read-back 11101100 latches the status of counter 1 only, because only the lowest selected counter has its status latched.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "910-912",
+       "sha": "23c4bebb113ad71483a3437c48d7bb308498a70a6c984e024c3842b209ab2ad8"
+      }
+     ]
+    },
+    {
+     "n": "213",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "22",
+     "text": "A mode of 6 or 7 written is stored as 2 or 3, so the status byte reports that mode, not the one written.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "472-477",
+       "sha": "f93a97788bf04901cd6a91ce88b4918458baedb467ebcdf9d35c1aef82e8eed5"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "867",
+       "sha": "b77850a077ddf79edd0122cf2a9382cd665a004469ddf1d45467cd24a6d13b68"
+      }
+     ]
+    },
+    {
+     "n": "214",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "34",
+     "text": "With the option set, a read of any counter returns the status another counter latched, as if its own status had been latched.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "759-770",
+       "sha": "9b172e178f900ea3982a566562ecf098607bb7a2e2f3137785382d58db02a390"
+      }
+     ]
     }
    ],
    "closed": [
@@ -1908,347 +2138,6 @@
      "ref": "datasheet:8254.raw.txt",
      "lines": "500",
      "as": "layout"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1015",
-     "as": "agrees",
-     "row": "2"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "884-887",
-     "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "930-937",
-     "as": "agrees",
-     "row": "32"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1104-1108",
-     "as": "agrees",
-     "row": "4"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1015",
-     "as": "agrees",
-     "row": "5"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1108",
-     "as": "agrees",
-     "row": "6"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1105-1106",
-     "as": "agrees",
-     "row": "33"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1015",
-     "as": "agrees",
-     "row": "7"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1015",
-     "as": "agrees",
-     "row": "8"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1015",
-     "as": "agrees",
-     "row": "9"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1015",
-     "as": "agrees",
-     "row": "10"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1104-1108",
-     "as": "agrees",
-     "row": "11"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1003-1009",
-     "as": "agrees",
-     "row": "12"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1003-1009",
-     "as": "agrees",
-     "row": "13"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1003",
-     "as": "agrees",
-     "row": "14"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "942-971",
-     "as": "agrees",
-     "row": "16"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "945",
-     "as": "agrees",
-     "row": "17"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "989-991",
-     "as": "agrees",
-     "row": "18"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "988-991",
-     "as": "agrees",
-     "row": "19"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "942-970",
-     "as": "agrees",
-     "row": "20"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "930-934",
-     "as": "agrees",
-     "row": "21"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "936",
-     "as": "agrees",
-     "row": "34"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "935",
-     "as": "agrees",
-     "row": "22"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "935",
-     "as": "agrees",
-     "row": "23"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "933",
-     "as": "agrees",
-     "row": "25"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "930-970",
-     "as": "agrees",
-     "row": "26"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1101",
-     "as": "agrees",
-     "row": "28"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1097",
-     "as": "agrees",
-     "row": "30"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "985-991",
-     "as": "agrees",
-     "row": "31"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "863-869",
-     "as": "agrees",
-     "row": "2"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1194-1196",
-     "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "908",
-     "as": "agrees",
-     "row": "32"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "813-817",
-     "as": "agrees",
-     "row": "4"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "863-869",
-     "as": "agrees",
-     "row": "5"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "813-817",
-     "as": "agrees",
-     "row": "6"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "901",
-     "as": "agrees",
-     "row": "33"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "863-864",
-     "as": "agrees",
-     "row": "7"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "865-869",
-     "as": "agrees",
-     "row": "8"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "849",
-     "as": "agrees",
-     "row": "9"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "865-867",
-     "as": "agrees",
-     "row": "10"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "813-817",
-     "as": "agrees",
-     "row": "11"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "818-820",
-     "as": "agrees",
-     "row": "12"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "818-820",
-     "as": "agrees",
-     "row": "13"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "818",
-     "as": "agrees",
-     "row": "14"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "902-906",
-     "as": "agrees",
-     "row": "16"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "901-902",
-     "as": "agrees",
-     "row": "18"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "902-909",
-     "as": "agrees",
-     "row": "19"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "902-906",
-     "as": "agrees",
-     "row": "20"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "472-477",
-     "as": "agrees",
-     "row": "22"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "463-464",
-     "as": "agrees",
-     "row": "25"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "481-482",
-     "as": "agrees",
-     "row": "34"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "902-908",
-     "as": "agrees",
-     "row": "26"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1193",
-     "as": "agrees",
-     "row": "28"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1194-1196",
-     "as": "agrees",
-     "row": "29"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "1190-1196",
-     "as": "agrees",
-     "row": "30"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "901-907",
-     "as": "agrees",
-     "row": "31"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "880",
-     "as": "decode"
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
@@ -2311,6 +2200,492 @@
      "lines": "456",
      "as": "parent",
      "owner": "chip:device:pit8253"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "888",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "933-937",
+     "as": "agrees",
+     "row": "32"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1104-1108",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1104-1108",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1104-1108",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1105-1106",
+     "as": "unfollowed",
+     "row": "33"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1003-1009",
+     "as": "unfollowed",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1003-1009",
+     "as": "unfollowed",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1003-1009",
+     "as": "unfollowed",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "956-958",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "966-970",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "945-956",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "960-964",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "966-970",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "988-991",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "935",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "956-958",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "988-991",
+     "as": "agrees",
+     "row": "19"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "930-937",
+     "as": "agrees",
+     "row": "19"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "954-958",
+     "as": "agrees",
+     "row": "19"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "988-991",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "945-956",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "960-964",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "966-970",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "933-937",
+     "as": "agrees",
+     "row": "21"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "935",
+     "as": "agrees",
+     "row": "22"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "935",
+     "as": "agrees",
+     "row": "23"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "933-937",
+     "as": "agrees",
+     "row": "25"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "988-991",
+     "as": "agrees",
+     "row": "26"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "933-937",
+     "as": "agrees",
+     "row": "26"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "945-956",
+     "as": "agrees",
+     "row": "26"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "960-964",
+     "as": "agrees",
+     "row": "26"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "966-970",
+     "as": "agrees",
+     "row": "26"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1104-1108",
+     "as": "agrees",
+     "row": "28"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1108",
+     "as": "unfollowed",
+     "row": "30"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "988-991",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "933-937",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "945-956",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "936",
+     "as": "agrees",
+     "row": "34"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "849",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "863-869",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1194-1196",
+     "as": "unfollowed",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "479-482",
+     "as": "agrees",
+     "row": "32"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "813-820",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "863-864",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "813-820",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "849",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "863-869",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "813-817",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "863-864",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "901-905",
+     "as": "unfollowed",
+     "row": "33"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "863-864",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "865-869",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "849",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "865-867",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "863-869",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "813-820",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "813-820",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "813-820",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "903-905",
+     "as": "unfollowed",
+     "row": "16"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "902-909",
+     "as": "unfollowed",
+     "row": "18"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "903-905",
+     "as": "unfollowed",
+     "row": "19"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "463-464",
+     "as": "agrees",
+     "row": "25"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1193",
+     "as": "unfollowed",
+     "row": "28"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1194-1196",
+     "as": "unfollowed",
+     "row": "29"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "1190-1196",
+     "as": "unfollowed",
+     "row": "30"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "204",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "954-958",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "960-964",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "966-970",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "205",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1019-1020",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "206",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1015",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "205",
+     "as": "agrees",
+     "row": "10"
     }
    ]
   }
