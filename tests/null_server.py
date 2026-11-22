@@ -22,7 +22,9 @@ from scry_core.knowledge import (
     read_index,
     read_lock,
     read_second_check,
+    sealed,
 )
+from scry_core.knowledge import base as rows_base
 from scry_core.reply_contract import Invalid
 
 PID = 4242
@@ -174,17 +176,20 @@ class StatusDeniesASession(NullServer):
 class NullKnowledge:
     """Six fixture entries, each citing a real line of DOSBox-X's source, the index captured from
     those lines, the lock of the one checked entry and the second check that confirmed it, so the
-    base serves one and holds five back. `root`, `sources`, `lock` and `second` name copies, for
-    variants that break one rule."""
+    base serves one and holds five back; and two entries written as rows, one sealed in all its
+    parts and served, the other held back. `root`, `sources`, `lock`, `second`, `rows` and
+    `rows_locked` name copies, for variants that break one rule."""
 
     def __init__(self, root: Path = KNOWLEDGE / "null",
                  sources: Path = KNOWLEDGE / "null-sources.json",
                  lock: Path = KNOWLEDGE / "null-lock.json",
                  declared: Support | None = None,
                  code: Iterable[str] = ("ibm-pc",),
-                 second: Path = KNOWLEDGE / "null-second-check.json") -> None:
+                 second: Path = KNOWLEDGE / "null-second-check.json",
+                 rows: Path = KNOWLEDGE / "null-rows",
+                 rows_locked: Path = KNOWLEDGE / "null-rows-lock.json") -> None:
         self.root, self.index, self.locked, self.code = root, sources, lock, tuple(code)
-        self.second = second
+        self.second, self.rows, self.rows_locked = second, rows, rows_locked
         self.declared = declared or Support(
             scopes=(Scope("ibm-pc", written=("call", "port", "device")),),
             devices=(Device("vga-seq", written=("register",)),))
@@ -207,6 +212,15 @@ class NullKnowledge:
 
     def code_scopes(self) -> Iterable[str]:
         return self.code
+
+    def rows_base(self, fts5: bool | None = None) -> rows_base.Base:
+        return rows_base.Base.load(*self.rows_sources(), lock=self.rows_lock(), fts5=fts5)
+
+    def rows_sources(self) -> tuple[Path, ...]:
+        return (self.rows,)
+
+    def rows_lock(self) -> sealed.Lock:
+        return sealed.read_lock(self.rows_locked)
 
 
 EXIT_REF = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"

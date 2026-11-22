@@ -205,11 +205,6 @@ def test_a_register_only_tested_or_written_is_no_input(body: str) -> None:
     assert not [i for i in got if i[1] == "input"]
 
 
-def test_a_call_the_stores_pattern_names_is_a_store() -> None:
-    got = kinds("void f() { real_writeb(a, b, c); }", "f", stores="real_writeb")
-    assert got == [(1, "call"), (1, "store")]
-
-
 def test_the_statements_before_the_dispatch_are_the_handlers_own_region() -> None:
     got = items(DOS, "Handler", case=["0x5a"], preamble=True)
     assert got == [

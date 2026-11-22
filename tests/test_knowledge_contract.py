@@ -26,6 +26,7 @@ from scry_core.knowledge import (
     shared,
     text,
 )
+from scry_core.knowledge import base as rows_base
 
 CASES = sorted(n for n in dir(conformance.KnowledgeContract) if n.startswith("test_"))
 OWED = "test_every_declared_scope_device_and_chip_has_the_dictionaries_it_owes"
@@ -44,6 +45,10 @@ EXAMINED = "test_the_check_examined_something"
 SERVES = "test_the_base_serves_the_confirmed_entries_and_counts_the_rest"
 RETURNS = "test_no_query_shape_returns_an_entry_the_base_holds_back"
 PINNED = "test_each_emulator_is_pinned_where_scry_core_pins_it"
+ROWS_PARSE = "test_every_dictionary_of_rows_parses_and_ids_are_unique"
+FROZEN = "test_a_sealed_row_is_never_reworded"
+ROWS_SERVED = "test_the_base_serves_the_sealed_entries_and_holds_the_rest_back"
+ROWS_RETURNED = "test_no_query_shape_returns_an_entry_of_rows_held_back"
 EXIT = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
 EXIT_ID = "ibm-pc:call:0x21/0x4C"
 SEQ_PORT = "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ 0x3c4"
@@ -107,7 +112,7 @@ def entry(doc: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def test_the_fixture_base_passes_every_case_and_the_runner_can_tell_a_failure() -> None:
-    assert len(CASES) == 18 and run(NullKnowledge()) == set()
+    assert len(CASES) == 22 and run(NullKnowledge()) == set()
     assert run(NullKnowledge(declared=Support())) == {EXAMINED, UNDECLARED}
 
 
@@ -123,6 +128,42 @@ class ServesWhatItIsGiven(NullKnowledge):
 
     def base(self, fts5: bool | None = None) -> Base:
         return Base.load(self.root, fts5=fts5, confirmation=Confirmation({}, frozenset(), {}))
+
+
+class ServesEveryRow(NullKnowledge):
+    """Loads its dictionaries of rows with no lock, so every entry answers."""
+
+    def rows_base(self, fts5: bool | None = None) -> rows_base.Base:
+        return rows_base.Base((self.rows,), None, fts5)
+
+
+def rows_copy(tmp_path: Path, change: Callable[[dict[str, Any]], None]) -> NullKnowledge:
+    """The null subject over a copy of its dictionary of rows, changed by `change`."""
+    folder = tmp_path / "rows"
+    folder.mkdir()
+    name = "pic8259-commands.json"
+    doc = json.loads((KNOWLEDGE / "null-rows" / name).read_text(encoding="utf-8"))
+    change(doc)
+    (folder / name).write_text(json.dumps(doc, indent=1), encoding="utf-8")
+    return NullKnowledge(rows=folder)
+
+
+def test_a_base_of_rows_served_with_no_lock_fails_the_cases_that_hold_it() -> None:
+    assert run(ServesEveryRow()) == {ROWS_SERVED, ROWS_RETURNED}
+
+
+def test_a_sealed_row_reworded_is_held_back_and_fails_the_freeze_case(tmp_path: Path) -> None:
+    def reword(doc: dict[str, Any]) -> None:
+        entry(doc, "0xE0..0xE7")["rows"][0]["text"] += " Reworded."
+    subject = rows_copy(tmp_path, reword)
+    assert run(subject) == {FROZEN}
+    assert subject.rows_base().by_id("pic8259:command:0xE0..0xE7") is None
+
+
+def test_a_dictionary_of_rows_with_a_fault_fails_the_parse_case(tmp_path: Path) -> None:
+    def fault(doc: dict[str, Any]) -> None:
+        entry(doc, "0x20..0x27")["rows"][0]["of"] = "nobody"
+    assert ROWS_PARSE in run(rows_copy(tmp_path, fault))
 
 
 def test_a_base_that_loads_without_the_filter_fails_the_cases_that_hold_it() -> None:

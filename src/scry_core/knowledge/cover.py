@@ -629,7 +629,6 @@ def parse_key(text: str) -> Key:
 @dataclass
 class _Reading:
     key: Key | None
-    stores: re.Pattern[str] | None
     out: list[Item] = field(default_factory=list)
     #: The statements read, each once and apart from what it holds: an arm the key leaves out is
     #: never read.
@@ -734,9 +733,6 @@ def _stores(text: str, line: int, locals_: set[str], reading: _Reading) -> None:
                 reading.add(line, "input", f"{register} into {mine}")
         else:
             reading.add(line, "store", f"{left} {op}")
-    if reading.stores and reading.stores.search(text) and not any(
-            i.line == line and i.kind == "store" for i in reading.out):
-        reading.add(line, "store", text[:80])
 
 
 def _parameters(text: str, body: int) -> set[str]:
@@ -865,21 +861,20 @@ def _span_of(nodes: list[Node], parser: Parser, start: int) -> tuple[int, int]:
 
 
 def list_function(source: str, name: str, *, case: Iterable[str] = (), preamble: bool = False,
-                  key: Key | None = None, defined: Iterable[str] = (),
-                  stores: str = "") -> Listing:
+                  key: Key | None = None, defined: Iterable[str] = ()) -> Listing:
     """The items the code of `name` owes rows for.
 
     With `case`, the region is the case reached by that path of switch labels, with the
     conditions that enclose it and the conditional exits that come before it; with `preamble`
     too, it is the statements that run before the dispatch instead. With neither, it is the
-    whole function. `key` decides the tests of the key's own value, `defined` is what the build
-    defines and `stores` names the calls that write to the guest.
+    whole function. `key` decides the tests of the key's own value and `defined` is what the
+    build defines.
     """
     text, build = one_build(blank(source), set(defined))
     start, stop = function(text, name)
     parser = Parser(text, start, stop)
     tree = parser.statements()
-    reading = _Reading(key, re.compile(stores) if stores else None)
+    reading = _Reading(key)
     region, before, path = tree, [], []
     lead: list[Node] = []
     opens = parser.line(start)

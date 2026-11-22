@@ -79,7 +79,7 @@ def parent_with_variants(tmp_path: Path) -> knowledge.Base:
     return got
 
 
-def ids(found: knowledge.Found) -> list[str]:
+def ids(found: knowledge.Found[knowledge.Entry]) -> list[str]:
     return [e.key for e in found.entries]
 
 

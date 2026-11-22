@@ -64,7 +64,7 @@ SWEEPING = ("always", "never", "only", "every")
 STATES = ("undetermined",)
 
 _HEADER_FIELDS = {"format", "dictionary", "title", "kind", "scope", "covers", "source", "documents",
-                  "official", "searched", "closed", "handlers", "defines", "stores", "engine",
+                  "official", "searched", "closed", "handlers", "defines", "engine",
                   "entries"}
 _ENTRY_FIELDS = {"key", "name", "aliases", "access", "source", "searched", "regions", "rows",
                  "closed", *PLACEMENT}
@@ -197,7 +197,6 @@ class Header:
     closed: tuple[Closure, ...]
     handlers: tuple[Region, ...]
     defines: Mapping[str, tuple[str, ...]]
-    stores: Mapping[str, str]
     engine: tuple[str, ...]
 
 
@@ -577,27 +576,18 @@ def _header(doc: dict[str, Any], faults: list[str]) -> Header | None:
                           "official document")
     handlers = [_region(h, f"handler {i + 1}", faults)
                 for i, h in enumerate(_listed(doc, "handlers", "header", faults))]
-    defines, stores = doc.get("defines", {}), doc.get("stores", {})
+    defines = doc.get("defines", {})
     engine = doc.get("engine", [])
     if not (isinstance(defines, dict) and set(defines) <= set(PARTIES)
             and all(isinstance(v, list) for v in defines.values())):
         faults.append("`defines` maps a party to the names its build defines")
         defines = {}
-    if not (isinstance(stores, dict) and set(stores) <= set(PARTIES)):
-        faults.append("`stores` maps a party to a pattern of the calls that write")
-        stores = {}
-    for who, pattern in list(stores.items()):
-        try:
-            re.compile(pattern)
-        except (re.error, TypeError) as bad:
-            faults.append(f"`stores` of {who} is no pattern: {bad}")
-            del stores[who]
     if not (isinstance(engine, list) and all(isinstance(e, str) for e in engine)):
         faults.append("`engine` is a list of function names")
         engine = []
     return Header(doc["dictionary"], str(title), kind, scope, doc["covers"], source, documents,
                   official, searched, closed, tuple(h for h in handlers if h),
-                  {k: tuple(v) for k, v in defines.items()}, dict(stores), tuple(engine))
+                  {k: tuple(v) for k, v in defines.items()}, tuple(engine))
 
 
 def parse(text: str, where: str = "dictionary") -> tuple[Dictionary | None, list[str]]:
@@ -793,11 +783,27 @@ def _run_migrate(got: argparse.Namespace) -> int:
     return 0
 
 
+def _run_seal(got: argparse.Namespace) -> int:
+    from scry_core.knowledge import sealed
+    if got.command == "seal":
+        faults = sealed.seal(got.dictionary, got.entries, got.lock, got.part, got.by, got.writer)
+    else:
+        faults = sealed.reopen(got.dictionary, got.entries, got.lock, got.part, got.row or (),
+                               got.by, got.why)
+    for fault in faults:
+        print(f"- {fault}")
+    if not faults:
+        done = "sealed" if got.command == "seal" else "reopened"
+        print(f"{done} {got.part} of {len(got.entries)} in {got.lock.name}")
+    return 1 if faults else 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     ask = argparse.ArgumentParser(
         prog="rows", description="Stamp, list, check and read the rows of a dictionary "
         f"({FORMAT}).",
-        epilog="Exit 0 done, 1 a fault or an item left open, 2 a bad option, 3 a source, "
+        epilog="Exit 0 done, 1 a fault, an item left open or a seal refused (nothing is "
+               "written), 2 a bad option, 3 a source, "
                "function or run that could not be read or examined nothing (INVALID).")
     ask.add_argument("--mame", type=Path, help="tree of MAME files at the pinned tag")
     ask.add_argument("--dosbox", type=Path, help="DOSBox-X checkout that holds the pin")
@@ -815,20 +821,39 @@ def main(argv: Sequence[str] | None = None) -> int:
     for name, text in (("cover", "list what the entries owe, and what closes each item"),
                        ("check", "prove the quotes and the closure of every item"),
                        ("review", "print each row with the text of its lines"),
-                       ("migrate", "draft rows from an old-shape entry and its evidence")):
+                       ("migrate", "draft rows from an old-shape entry and its evidence"),
+                       ("seal", "seal a part of entries a reader judged, in the lock"),
+                       ("reopen", "lift the seal of a part, naming the rows at fault")):
         sub = commands.add_parser(name, help=text)
         sub.add_argument("dictionary", type=Path)
-        sub.add_argument("entries", nargs="*", help="entry ids; all of them when none is given")
+        sub.add_argument("entries", nargs="+" if name in ("seal", "reopen") else "*",
+                         help="entry ids" + ("" if name in ("seal", "reopen")
+                                             else "; all of them when none is given"))
         if name == "migrate":
             sub.add_argument("--evidence", type=Path, required=True)
             sub.add_argument("--out", type=Path)
+        if name in ("seal", "reopen"):
+            sub.add_argument("--lock", type=Path, required=True, help="the lock of the "
+                             "repository's rows, `scry-knowledge-rows-lock/1`")
+            sub.add_argument("--part", required=True, help="`doc`, the official part, or the "
+                             "emulator whose notes and verdicts are sealed")
+            sub.add_argument("--by", required=True, help="who read the part" if name == "seal"
+                             else "who reopens it")
+        if name == "seal":
+            sub.add_argument("--writer", required=True, help="who wrote the part: another "
+                             "session than the reader")
+        if name == "reopen":
+            sub.add_argument("--row", action="append", help="a row at fault (repeat it); none "
+                             "when the fault is in the part's closures, regions or names")
+            sub.add_argument("--why", required=True, help="what is wrong with them")
         if name == "check":
             sub.add_argument("--partial", action="store_true", help="the dictionary is not "
                              "whole: count the official lines no entry holds, and the lines "
                              "closed for an owner not yet written, instead of failing on them")
     got = ask.parse_args(argv)
     run = {"quote": _run_quote, "cover": _run_cover, "check": _run_check,
-           "review": _run_review, "migrate": _run_migrate}[got.command]
+           "review": _run_review, "migrate": _run_migrate, "seal": _run_seal,
+           "reopen": _run_seal}[got.command]
     try:
         return run(got)
     except (Invalid, ValueError, OSError) as bad:

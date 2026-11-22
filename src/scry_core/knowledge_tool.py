@@ -9,15 +9,16 @@ import difflib
 import functools
 import inspect
 import re
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Annotated, Any, Protocol, Required
 
 from typing_extensions import TypedDict
 
 from scry_core import judges, prose
 from scry_core import vocabulary as vocab
-from scry_core.knowledge import KINDS, Base, Entry, Found, KeyFault, sources
+from scry_core.knowledge import KINDS, KeyFault
 from scry_core.knowledge import keys as keyspelling
+from scry_core.knowledge.index import Found
 from scry_core.knowledge.text import terms
 from scry_core.reply_contract import Invalid, When
 from scry_core.reply_schema import ReplyEnvelope
@@ -30,6 +31,30 @@ HOW = "give `id` for the whole entry"
 REFERENCE = "Reference: REFERENCE.md, Names for numbers."
 
 
+class Answers(Protocol):
+    """What the tool asks of a base: its lookups (`scry_core.knowledge.index`), an entry whole and
+    a row by `<entry id>#<n>`."""
+
+    pins: Mapping[str, str]
+
+    def __len__(self) -> int: ...
+    @property
+    def held_back(self) -> int: ...
+    def faults(self) -> list[str]: ...
+    def ids(self) -> list[str]: ...
+    def scopes(self, kind: str = "") -> list[str]: ...
+    def held_scopes(self) -> list[str]: ...
+    def kinds(self, scope: str = "") -> list[str]: ...
+    def device_keys(self) -> list[str]: ...
+    def unconfirmed(self, id: str = "", kind: str = "", key: str = "", device: str = "",
+                    scopes: Iterable[str] = ()) -> list[str]: ...
+    def search(self, kind: str = "", key: str = "", words: str = "", device: str = "",
+               scopes: Iterable[str] = (), limit: int = 10) -> Found[Any]: ...
+    def by_id(self, id: str) -> Any: ...
+    def whole(self, e: Any) -> Mapping[str, Any]: ...
+    def row(self, id: str) -> Mapping[str, Any] | None: ...
+
+
 class Counts(TypedDict):
     """How many entries a base serves and how many it holds back as not confirmed: the block a
     server's `status` carries and the two fields every `knowledge_find` reply ends with."""
@@ -38,7 +63,7 @@ class Counts(TypedDict):
     held_back: int
 
 
-def counts(base: Base) -> Counts:
+def counts(base: Answers) -> Counts:
     return {"served": len(base), "held_back": base.held_back}
 
 
@@ -92,35 +117,12 @@ def judge(id: Any = "", kind: Any = "", key: Any = "", text: Any = "", device: A
                       f"1..{LIMIT_MAX}")
 
 
-def whole(base: Base, e: Entry, pins: Mapping[str, str]) -> dict[str, Any]:
-    """An entry whole: its fields, each source with its `url`, and what ties it to hardware."""
-    related = base.related(e)
-    out: dict[str, Any] = {**e.short()}
-    for name, value in (
-            ("aliases", list(e.aliases)), ("description", e.description),
-            ("behaviour", e.behaviour), ("differs", e.differs),
-            ("address", f"0x{e.address:06X}" if e.address is not None else ""),
-            ("length", e.length or 0), ("access", e.access),
-            ("ports", [{"base": f"0x{b:02X}", "length": n} for b, n in e.ports]),
-            ("irq", list(e.irq)), ("dma", list(e.dma)), ("contains", list(e.contains)),
-            ("classes", list(e.classes)), ("handlers", dict(e.handlers or {})),
-            ("reached", {k: list(v) for k, v in related.reached.items()}),
-            ("used_by", [u.id for u in related.used_by]),
-            ("checked", e.checked is not None)):
-        if value:
-            out[name] = value
-    out["sources"] = [{"role": s.role, "ref": s.ref, "cites": s.cites,
-                       **({"url": u} if (u := sources.url(s.ref, pins)) else {})}
-                      for s in e.sources]
-    return out
-
-
-def _nearest_ids(base: Base, wanted: str) -> list[str]:
-    ids = [e.id for e in base.entries()]
+def _nearest_ids(base: Answers, wanted: str) -> list[str]:
+    ids = base.ids()
     return difflib.get_close_matches(wanted, ids, n=5, cutoff=0.0)
 
 
-def _read_scope(base: Base, scope: str) -> tuple[str, str]:
+def _read_scope(base: Answers, scope: str) -> tuple[str, str]:
     """`scope` as the base holds it and, when a near miss was read as one (`6809` for `m6809`,
     `M-6809`: the same letters and digits, or a few letters before them), what was read."""
     held = sorted({*base.scopes(), *base.held_scopes()})
@@ -140,7 +142,7 @@ def _live_rows(live: Live, kind: str, key: str, device: str) -> list[dict[str, A
     return None if got is None else [{**r, "live": True} for r in got]
 
 
-def _tag(base: Base, live: Live, kind: str, key: str, device: str) -> str:
+def _tag(base: Answers, live: Live, kind: str, key: str, device: str) -> str:
     """The tag of the running machine a question names, with its colon, or empty: `device=":t"`,
     or a device `key` that is `:t` or is no key of the base and the server's machine has devices."""
     if device.startswith(":"):
@@ -153,7 +155,7 @@ def _tag(base: Base, live: Live, kind: str, key: str, device: str) -> str:
     return "" if key in base.device_keys() or "device" not in live.kinds else f":{key}"
 
 
-def _no_machine(base: Base, tag: str) -> Invalid:
+def _no_machine(base: Answers, tag: str) -> Invalid:
     keys = base.device_keys()
     shown = ", ".join(keys[:KEYS_SHOWN]) + (f" and {len(keys) - KEYS_SHOWN} more"
                                             if len(keys) > KEYS_SHOWN else "")
@@ -162,14 +164,14 @@ def _no_machine(base: Base, tag: str) -> Invalid:
                    f"{shown or 'none'}")
 
 
-def _with_chip(base: Base, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _with_chip(base: Answers, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """The one row of a tag, with what the base knows of its chip, when the row names one."""
     if len(rows) != 1 or not (chip := base.by_id(str(rows[0].get("chip", "")))):
         return rows
-    return [{**rows[0], "chip_entry": whole(base, chip, base.pins)}]
+    return [{**rows[0], "chip_entry": dict(base.whole(chip))}]
 
 
-def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key: str = "",
+def find(base: Answers, live: Live | None = None, id: str = "", kind: str = "", key: str = "",
          text: str = "", device: str = "", scope: str = "",
          limit: int = LIMIT_DEFAULT) -> dict[str, Any]:
     """The body: the fields of the reply, and the base's two counts."""
@@ -177,7 +179,7 @@ def find(base: Base, live: Live | None = None, id: str = "", kind: str = "", key
             **counts(base)}
 
 
-def _find(base: Base, live: Live, id: str, kind: str, key: str, text: str, device: str,
+def _find(base: Answers, live: Live, id: str, kind: str, key: str, text: str, device: str,
           scope: str, limit: int) -> dict[str, Any]:
     judge(id, kind, key, text, device, scope, limit)
     if not len(base) and not base.held_back:
@@ -210,14 +212,17 @@ def _find(base: Base, live: Live, id: str, kind: str, key: str, text: str, devic
                 "live: call `start`")
         live_rows = _with_chip(base, got) if tag else got
     try:
-        found = base.search(kind, key, text, device, scopes, limit) if not tag else Found()
+        found = base.search(kind, key, text, device, scopes, limit) if not tag else Found[Any]()
     except KeyFault as bad:
         raise Invalid("bad_argument", f"key={key!r} is no key: {bad}") from bad
     return _answer(base, found, live_rows, kind, tag if tag and not device else key, text, device,
                    scopes, limit, read, bool(tag))
 
 
-def _by_id(base: Base, id: str) -> dict[str, Any]:
+def _by_id(base: Answers, id: str) -> dict[str, Any]:
+    if "#" in id and (one := base.row(id)) is not None:
+        return {"query": {"id": id}, "scope": [one["scope"]], "entries_total": 1,
+                "entries": [dict(one)], "truncated": False, "examined": len(base)}
     got = base.by_id(id)
     if got is None and (hidden := base.unconfirmed(id=id)):
         return {"query": {"id": id}, "scope": [], "entries_total": 0, "entries": [],
@@ -227,10 +232,10 @@ def _by_id(base: Base, id: str) -> dict[str, Any]:
         raise Invalid("unknown_ref", f"id {id!r} names no entry; the nearest are "
                       f"{', '.join(_nearest_ids(base, id))}", nearest=_nearest_ids(base, id))
     return {"query": {"id": id}, "scope": [got.scope], "entries_total": 1,
-            "entries": [whole(base, got, base.pins)], "truncated": False, "examined": len(base)}
+            "entries": [dict(base.whole(got))], "truncated": False, "examined": len(base)}
 
 
-def _answer(base: Base, found: Found, live_rows: list[dict[str, Any]], kind: str, key: str,
+def _answer(base: Answers, found: Found[Any], live_rows: list[dict[str, Any]], kind: str, key: str,
             words: str, device: str, scopes: Sequence[str], limit: int,
             read: str = "", tagged: bool = False) -> dict[str, Any]:
     query: dict[str, Any] = {}
@@ -244,7 +249,7 @@ def _answer(base: Base, found: Found, live_rows: list[dict[str, Any]], kind: str
     out: dict[str, Any] = {"query": query, "scope": list(scopes) or base.scopes(kind),
                            "entries_total": total}
     if total == 1 and found.entries:
-        out["entries"] = [whole(base, found.entries[0], base.pins)]
+        out["entries"] = [dict(base.whole(found.entries[0]))]
     else:
         out["entries"] = rows[:limit]
     out["truncated"] = total > len(out["entries"])
@@ -279,7 +284,7 @@ def _unconfirmed_note(hidden: Sequence[str], total: int) -> str:
             "they stay numbers")
 
 
-def _stays_a_number(base: Base, found: Found, kind: str, key: str, words: str,
+def _stays_a_number(base: Answers, found: Found[Any], kind: str, key: str, words: str,
                     scopes: Sequence[str]) -> str:
     noun = prose.counted(found.examined, kind) if kind else prose.counted(
         found.examined, "entry", "entries")
@@ -308,19 +313,20 @@ class KnowledgeFindReply(ReplyEnvelope, total=False):
 def knowledge_find(id: str = "", kind: Annotated[str, vocab.enum(("", *KINDS))] = "",
                    key: str = "", text: str = "", device: str = "", scope: str = "",
                    limit: int = LIMIT_DEFAULT) -> dict[str, Any]:
-    """What a number is called on this machine, and what the base knows of it: a port, interrupt
-    vector, DOS or BIOS call, IRQ, memory address, input, device, its registers and commands. One
-    match, or an `id`, answers the whole entry (`description`, `behaviour`, `sources`); more,
-    rows. No session is needed except for a device by tag, inputs and memory.
+    """What a number is called on the machine and what the base knows of it: a port, vector,
+    DOS or BIOS call, IRQ, memory address, input, device, register or command. One match, or an
+    `id`, answers the entry: its `rows`, the document's first with each emulator's `verdicts`,
+    then the emulators' notes (`vs`); `id=<id>#<n>`: a row, with URLs. More: a list. No session
+    is needed except for a device by tag, inputs and memory.
 
     `id`: an entry's id. `kind`: `vector`, `call`, `error`, `port`, `irq`, `memory`, `input`,
     `device`, `register` or `command`; empty searches all. `key`: the number as a reply prints it,
-    or a range. `text`: words in names, aliases, descriptions; `*` ends a prefix. `device`: all of
+    or a range. `text`: words in names, aliases, rows; `*` ends a prefix. `device`: all of
     that device. `scope`: the system, cpu or device; empty, the live session's. `limit` 1..50.
 
-    Examples: `key=0x3C8`; `kind=port key=0x3C0..0x3CF`; `kind=vector key=0xFFF8 scope=<scope>`;
-    `kind=call key=0x21/0x4C`, its variant by a register `kind=call key=0x10/0x12/BL=0x36`;
-    a running machine's device by tag `kind=device key=:maincpu`; its registers
+    Examples: `key=0x3C8`; `kind=vector key=0xFFF8 scope=<scope>`; `kind=call key=0x21/0x4C`,
+    a variant `kind=call key=0x10/0x12/BL=0x36`;
+    a live device by tag `kind=device key=:maincpu`; its registers
     `kind=register device=<device>`; `text=palette*`.
 
     Refused (INVALID): nothing to look up, a bad `key`, or a `scope` it lacks
@@ -357,7 +363,7 @@ def summary(args: dict[str, Any], reply: dict[str, Any]) -> str:
 
 
 def register(wrap: Callable[..., Callable[[Callable[..., Any]], Any]],
-             answer: Callable[[dict[str, Any]], dict[str, Any]], base: Base,
+             answer: Callable[[dict[str, Any]], dict[str, Any]], base: Answers,
              live: Live | None = None) -> Any:
     """Register `knowledge_find` through the server's own decorator: read-only, with the
     description above and the body bound to this server's `base` and `live`."""

@@ -1,0 +1,39 @@
+{
+ "format": "scry-knowledge-rows-lock/1",
+ "sealed": {
+  "pic8259:command:0xE0..0xE7": {
+   "doc": {
+    "seal": "2eabc91966facdcf7158a71294e5e636b0ca8b474f4b96dbbf00533797874335",
+    "by": "reader",
+    "writer": "writer",
+    "rows": {
+     "1": {
+      "digest": "08b96d32c7b439a3a5214f3497a828751b09aa9e51e135664833b7358caca777",
+      "by": "reader"
+     },
+     "2": {
+      "digest": "182b5024f989890b4fc6776870509b1c42abbca96beab9c9d7027702bf96d8a6",
+      "by": "reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "5b9a7268ad03e98574faa92c493dfcdc5f6201413fc77a9618350e518099a345",
+    "by": "reader",
+    "writer": "writer",
+    "rows": {
+     "201": {
+      "digest": "5b819803f84a362fe6f31b8fc310f1de571c345eadb91a1efa77680c1a33738e",
+      "by": "reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "a01fbc46db77be650e548dfcacdd85608d88df5018f0465b76609a45949d09da",
+    "by": "reader",
+    "writer": "writer",
+    "rows": {}
+   }
+  }
+ }
+}

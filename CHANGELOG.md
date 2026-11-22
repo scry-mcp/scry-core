@@ -11,7 +11,20 @@ What a server author notices. A client's view of each server is in that server's
   handler's code owes rows for, `check` proves the quotes, that every line of the official region
   and every item of the code is closed, and that each emulator judged each official row, `review`
   prints the entry in the order a reply shows it, and `migrate` drafts rows from an old entry and
-  its evidence. Nothing loads the new shape yet; `scry-knowledge/1` is unchanged.
+  its evidence.
+- A base of rows serves the dictionaries of a package's `knowledge_rows/` (`knowledge.base.Base`):
+  an entry is served once a reader who did not write it sealed its official part and each
+  emulator's part, at the seal it gives now, so a sealed row reworded is held back until it is
+  read again. `rows seal` writes the seal of a part to the lock (`scry-knowledge-rows-lock/1`), and
+  `rows reopen --row` lifts it naming the rows at fault: a rewritten row is judged again, never
+  by the reader whose judgement was overturned. `knowledge_find` over it answers an entry with
+  its rows, the document's first with each emulator's verdict (as documented, differs, absent,
+  unfollowed) and then the emulators' notes, each citation saying where its lines are; a row is
+  asked by `<entry id>#<n>`, with the URL of each line, and `text` searches the rows' words.
+  `KnowledgeContract` holds a server's base of rows to its lock: what it serves, what no query
+  returns, and the freeze on a sealed row.
+- The header field `stores` of `scry-knowledge/2` is gone: the callee table's `writes` says which
+  calls write the guest.
 - A server serves only the knowledge entries that are confirmed: sealed in its lock and recorded
   by the second check under the seal they have now (`knowledge.confirmed`). `Base.load` takes a
   `Confirmation` and loads those entries only, counts the rest (`Base.held_back`) and drops a
