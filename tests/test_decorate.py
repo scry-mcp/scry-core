@@ -9,7 +9,8 @@ import runpy
 import shutil
 import subprocess
 import sys
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 from fractions import Fraction
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,7 @@ import pytest
 
 from scry_core import abbreviation as ab
 from scry_core import decorate as dc
-from scry_core import motion, placement, timeline
+from scry_core import motion, placement, presence, timeline
 from scry_core import overlay as ov
 from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
 
@@ -79,6 +80,74 @@ def test_keycaps_sit_in_the_corner_the_caption_band_leaves_free_and_never_overla
             for b in rects[i + 1:]:
                 apart = a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
                 assert apart, (place, a, b)
+
+
+def test_a_button_down_at_a_frame_is_a_mark_on_the_top_row_from_that_frame() -> None:
+    """From the frame it went down on, and never inside the band the captions take."""
+    made = timeline.Builder("b")
+    made.add("boot", "start", {}, "ok", (None, 100))
+    made.add("click", "send_mouse", {"button": "left"}, "ok", (100, 119),
+             [timeline.button("left", True, 105)])
+    run = timeline.loads(made.dumps())
+    drawn = dc.decorate(run, _clip(frames=20), dc.Style(layers=("keys",)))
+    edge = dc.decorate(run, _clip(frames=20), dc.Style(layers=()))
+    band = range(SIZE[1] - 40, SIZE[1])
+
+    def changed(n: int, rows: range) -> bool:
+        return any(_pixel(drawn[n], x, y) != _pixel(edge[n], x, y)
+                   for x in range(SIZE[0]) for y in rows)
+
+    assert not changed(4, range(SIZE[1])), "frame 104 is before the button went down"
+    assert changed(5, range(0, 40)), "frame 105 carries its mark"
+    assert changed(19, range(0, 40)), "it is held, so it stays"
+    assert not changed(5, band) and not changed(19, band)
+
+
+def test_two_buttons_and_a_key_are_three_marks_on_one_row_and_the_oldest_makes_room() -> None:
+    made = timeline.Builder("m")
+    made.add("boot", "start", {}, "ok", (None, 100))
+    made.add("hold", "perform", {}, "ok", (100, 190),
+             [timeline.key("Enter", True, 101), timeline.button("left", True, 102),
+              timeline.button("right", True, 103)])
+    clipped = _clip(first=100, frames=40)
+    painter = dc._Painter(clipped, dc.Style(layers=("keys",)),
+                          dc._plan(timeline.loads(made.dumps()), clipped))
+    painter._feed(0.1)
+    marks = painter.keycaps.shown(0.1)
+    assert marks == ("Enter", "LMB", "RMB")
+    boxes = painter._keycap_boxes(list(marks))
+    assert [name for name, _ in boxes] == ["RMB", "LMB", "Enter"], "the newest has the left"
+    assert len({box[1] for _, box in boxes}) == 1, "one row"
+    rects = [box for _, box in boxes]
+    for i, a in enumerate(rects):
+        for b in rects[i + 1:]:
+            assert a[2] <= b[0] or b[2] <= a[0], (a, b)
+    asked = [*marks, *"ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
+    full = [name for name, _ in painter._keycap_boxes(asked)]
+    assert full[0] == "Z" and "Enter" not in full and len(full) < len(asked)
+
+
+def test_the_mark_the_clip_draws_is_the_text_the_live_payload_carries() -> None:
+    """One map in the core: what the clip draws on the top row and what the live payload carries
+    are the same text for the same button."""
+    made = timeline.Builder("m")
+    made.add("boot", "start", {}, "ok", (None, 100))
+    made.add("click", "send_mouse", {"button": "left"}, "ok", (100, 110),
+             [timeline.button("left", True, 101)])
+    clip = _clip()
+    plan = dc._plan(timeline.loads(made.dumps()), clip)
+
+    class Null:
+        def show(self, state: presence.State, payload: presence.Payload) -> None: ...
+        def repaint(self, still: Callable[[], bool]) -> None: ...
+        def wake(self) -> None: ...
+
+    held = presence.Presence(Null(), ())
+    held.button("left", True)
+    with held._cv:
+        live = held._payload(time.monotonic()).keys
+    assert live == ("LMB",)
+    assert [name for _, name, _ in plan.marks] == list(live)
 
 
 def test_a_clip_decorated_twice_is_the_same_pixels() -> None:
@@ -359,7 +428,7 @@ def test_a_server_with_no_pointer_layer_draws_no_pointer_from_the_same_timeline(
     with_events = dc.decorate(_run(), _clip(), style)
     run = _run()
     for call in run["calls"]:
-        call["events"] = [e for e in call["events"] if e["kind"] == "key"]
+        call["events"] = [e for e in call["events"] if e["kind"] != "pointer"]
     assert [p.rgb for p in with_events] == [p.rgb for p in dc.decorate(run, _clip(), style)]
 
 

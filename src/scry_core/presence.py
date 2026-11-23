@@ -1,7 +1,7 @@
 """The emulator's window marked while a session holds it: `held` (dim), `acting` (bright) during
 a driving call, fading back over `Look.fade_s`; and over that edge the layers of `overlay`,
-carried by each delivery's `Payload`: a caption per call, the keys held, the pointer, a mark
-while the machine is held stopped, a blinking mark while it records.
+carried by each delivery's `Payload`: a caption per call, the keys and buttons held, the pointer, a
+mark while the machine is held stopped, a blinking mark while it records.
 
 One writer per session sends only the latest state and payload, off the call's path, and wakes
 on its own when a caption or a keycap is due to change. A driving call that ended before the
@@ -86,6 +86,15 @@ class Pointer:
     x: int
     y: int
     buttons: tuple[str, ...] = ()
+
+
+BUTTON_MARKS = {"left": "LMB", "right": "RMB", "middle": "MMB"}
+
+
+def mark_of(name: str) -> str:
+    """A pointer button or a wheel event as the top row marks it: `LMB`, `RMB` or `MMB` for the
+    three buttons; any other name keeps its own spelling."""
+    return BUTTON_MARKS.get(name, name)
 
 
 @dataclass(frozen=True)
@@ -220,13 +229,17 @@ class Presence:
             self._cv.notify()
 
     def button(self, name: str, down: bool) -> None:
-        """A pointer button went down or up; nothing until the pointer has moved."""
+        """A pointer button went down or up: its mark, and the buttons the pointer holds."""
+        mark, now = mark_of(name), time.monotonic()
         with self._cv:
-            if self._pointer is None:
-                return
-            rest = tuple(b for b in self._pointer.buttons if b != name)
-            self._pointer = Pointer(self._pointer.x, self._pointer.y,
-                                    (*rest, name) if down else rest)
+            if down:
+                self._keys.down(mark, now)
+            else:
+                self._keys.up(mark, now)
+            if self._pointer is not None:
+                rest = tuple(b for b in self._pointer.buttons if b != name)
+                self._pointer = Pointer(self._pointer.x, self._pointer.y,
+                                        (*rest, name) if down else rest)
             self._cv.notify()
 
     def paused(self, stopped: bool) -> None:

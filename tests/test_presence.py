@@ -1,7 +1,7 @@
 """`scry_core.presence`: the states a session's calls set, the one writer that delivers only the
 latest (a quick call still shown, a failed delivery sent again), a delivery that fails said in
-`reply` and never in a call's own reply, and the declaration of which tools drive held against a
-registry."""
+`reply` and never in a call's own reply, the mark a mouse button raises, and the declaration of
+which tools drive held against a registry."""
 
 from __future__ import annotations
 
@@ -454,7 +454,7 @@ def test_the_keys_pointer_and_pause_reported_reach_the_payload() -> None:
     p.key("Enter", True)
     p.key("Enter", False)
     _until(a, lambda pl: pl.keys == ("Enter",))
-    p.button("left", True)                       # no pointer yet: nothing to press
+    p.button("left", True)                       # no pointer yet: the mark, and no ripple
     p.moved(10, 20)
     p.button("left", True)
     p.button("right", True)
@@ -559,3 +559,23 @@ def test_a_session_without_presence_takes_input_reports_and_does_nothing() -> No
     held.paused(True)
     _until(a, lambda pl: pl.keys == ("A",) and pl.paused)
     held.close()
+
+
+def test_a_mouse_button_raises_its_mark_and_releasing_it_lowers_it_like_a_key() -> None:
+    a = _Adapter()
+    p = _open(a, look=presence.Look(keycap_min_s=0.05))
+    p.button("left", True)
+    _until(a, lambda pl: pl.keys == ("LMB",))
+    after = len(a.payloads)
+    p.button("left", False)
+    lowered = _until(a, lambda pl: pl.keys == (), after=after)
+    assert lowered.layers == overlay.OVERLAY.asked(), "nothing came: the writer woke on its own"
+    p.close()
+
+
+def test_the_mark_map_names_the_three_buttons_and_leaves_any_other_name_alone() -> None:
+    """A wheel's own names are not ours to invent, so they keep the spelling they came with."""
+    assert [presence.mark_of(name) for name in ("left", "right", "middle")] == [
+        "LMB", "RMB", "MMB"]
+    assert [presence.mark_of(name) for name in ("wheel up", "wheel down")] == [
+        "wheel up", "wheel down"]

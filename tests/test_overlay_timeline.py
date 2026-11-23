@@ -1,8 +1,8 @@
 """`scry_core.overlay_timeline`: a call captioned at the instant it begins with nothing queued, a
 later call replacing it at once, one of the same tool joining it (`x<n>`) while it is up, a
 call's inner calls captioned one by one and the wrapper never, the span a renderer fits a scroll
-in, the tint by kind and outcome, the exit after the hold, and a keycap kept for its minimum
-time; all with time passed in."""
+in, the tint by kind and outcome, the exit after the hold, and a keycap or a button's mark kept
+for its minimum time; all with time passed in."""
 
 from __future__ import annotations
 
@@ -162,6 +162,15 @@ def test_a_key_released_at_once_is_kept_for_its_minimum_and_one_held_until_relea
     assert k.shown(0.4) == ("LShift",) and k.next_change(0.4) is None
     k.up("LShift", 5.0)
     assert k.shown(5.0) == ()
+
+
+def test_a_button_s_mark_is_kept_for_its_minimum_like_a_key() -> None:
+    """A click's mark is up for `min_s` even when the button was released sooner, so it is seen."""
+    k = tl.Keycaps(0.4)
+    k.down("LMB", 0.0)
+    k.up("LMB", 0.01)
+    assert k.shown(0.2) == ("LMB",) and k.next_change(0.2) == 0.4
+    assert k.shown(0.4) == ()
 
 
 def test_a_call_that_ends_with_nothing_open_shows_nothing() -> None:

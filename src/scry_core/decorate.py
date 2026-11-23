@@ -43,7 +43,7 @@ from scry_core import motion, placement, timeline
 from scry_core import overlay as ov
 from scry_core import overlay_timeline as tl
 from scry_core.demo import RECORD_TOOL
-from scry_core.presence import LOOK, Look
+from scry_core.presence import LOOK, Look, mark_of
 from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
 
 #: The seconds a pointer takes over the last stretch to a new position; before that it waits.
@@ -131,7 +131,8 @@ class _Plan:
     """What the clip's timeline says, in the clip's seconds."""
 
     calls: list[_Call] = field(default_factory=list)
-    keys: list[tuple[float, str, bool]] = field(default_factory=list)
+    #: Keys and pointer buttons, as the top row draws them, in the order they went down or up.
+    marks: list[tuple[float, str, bool]] = field(default_factory=list)
     points: list[tuple[float, float, float]] = field(default_factory=list)
     presses: list[tuple[float, float, float]] = field(default_factory=list)
 
@@ -194,12 +195,14 @@ def _plan(document: Mapping[str, Any], clip: Clip) -> _Plan:
         for event in call["events"]:
             when = at(event["frame"])
             if event["kind"] == "key":
-                plan.keys.append((when, event["name"], event["down"]))
+                plan.marks.append((when, event["name"], event["down"]))
             elif event["kind"] == "pointer":
                 x, y = _shown(clip.box, clip.pictures[0], event["x"], event["y"])
                 plan.points = [p for p in plan.points if p[0] < when] + [(when, x, y)]
-            elif event["down"]:
-                pressed.append(when)
+            elif event["kind"] == "button":
+                plan.marks.append((when, mark_of(event["name"]), event["down"]))
+                if event["down"]:
+                    pressed.append(when)
     for when in pressed:
         if (where := pointer_at(plan.points, when)) is not None:
             plan.presses.append((when, *where))
@@ -274,7 +277,7 @@ class _Painter:
         self.edge = _edge_mask(*self.size, self.look)
         self.captions = tl.Captions(self.look.tints, self.look.caption_hold_s)
         self.keycaps = tl.Keycaps(self.look.keycap_min_s)
-        self.fed_calls, self.fed_keys, self.ended = 0, 0, 0
+        self.fed_calls, self.fed_marks, self.ended = 0, 0, 0
         self.pending_ends: list[float] = []
         self.band: placement.Band = style.place
         self.serial, self.serial_at = 0, 0.0
@@ -315,9 +318,9 @@ class _Painter:
                     self.captions.began(call.tool, {}, call.tint == "read", False, call.begin,
                                         text=call.text, span=call.end - call.begin)
                 self.pending_ends.append(call.end)
-        while self.fed_keys < len(self.plan.keys) and self.plan.keys[self.fed_keys][0] <= t:
-            when, name, down = self.plan.keys[self.fed_keys]
-            self.fed_keys += 1
+        while self.fed_marks < len(self.plan.marks) and self.plan.marks[self.fed_marks][0] <= t:
+            when, name, down = self.plan.marks[self.fed_marks]
+            self.fed_marks += 1
             (self.keycaps.down if down else self.keycaps.up)(name, when)
 
     def _acting(self, t: float) -> float:
