@@ -347,6 +347,17 @@ def _busy_bottom_clip(frames: int) -> dc.Clip:
     return dc.Clip(list(range(100, 100 + frames)), [picture] * frames, BOX, RATE)
 
 
+def test_a_look_that_asks_a_larger_share_draws_a_larger_font() -> None:
+    """The text's height is the look's share of the picture, so a look asking more of it draws
+    a larger font on the same clip."""
+    clip = _clip()
+    plan = dc._plan(_run(), clip)
+    plain = dc._Painter(clip, dc.Style(), plan)
+    larger = dc._Painter(clip, dc.Style(look=presence.Look(
+        font_share=2 * presence.LOOK.font_share)), plan)
+    assert larger.font.height > plain.font.height
+
+
 @pytest.mark.parametrize("place", ["top", "bottom"])
 def test_a_style_with_a_place_never_samples_the_picture(place: placement.Band) -> None:
     """The band is the style's place at every second of the clip, whatever the picture holds: a

@@ -60,8 +60,6 @@ GHOSTS = 5
 BLUR_FROM_PX = 6.0
 CAPTION_IN_S = 0.15
 ZOOM_S = 0.8
-#: Display pixels per bitmap-font pixel, per this many display rows.
-ROWS_PER_SCALE = 240
 SINE_AMPLITUDE = 0.25
 SINE_WAVES = 1.5
 SINE_HZ = 0.8
@@ -273,7 +271,7 @@ class _Painter:
         first = clip.pictures[0]
         self.size = (first.width, first.height)
         self.style, self.look, self.plan, self.clip = style, style.look, plan, clip
-        self.font = _Font(max(1, first.height // ROWS_PER_SCALE))
+        self.font = _Font(max(1, round(first.height * self.look.font_share / _Font(1).height)))
         self.edge = _edge_mask(*self.size, self.look)
         self.captions = tl.Captions(self.look.tints, self.look.caption_hold_s)
         self.keycaps = tl.Keycaps(self.look.keycap_min_s)

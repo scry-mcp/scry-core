@@ -33,7 +33,8 @@ class Look:
     """Colours are 0xRRGGBB; alphas 0 to 1. A caption is tinted by its call: a call that can
     change the machine `write_rgb`, a reader `read_rgb`, one that did not answer `ok`
     `refused_rgb`. A caption wider than its band scrolls at `scroll_cps` characters a second.
-    The recording mark is `record_rgb` and blinks once every `record_blink_s` seconds."""
+    The record mark is `record_rgb`, blinking every `record_blink_s` s. Text is `font_share`
+    of the picture's height."""
 
     rgb: int = 0xFF8C00
     edge: float = 0.025
@@ -53,6 +54,7 @@ class Look:
     keycap_min_s: float = 0.4
     record_rgb: int = 0xFF3B30
     record_blink_s: float = 1.0
+    font_share: float = 1 / 24
 
     @property
     def held_alpha(self) -> float:
@@ -92,8 +94,8 @@ BUTTON_MARKS = {"left": "LMB", "right": "RMB", "middle": "MMB"}
 
 
 def mark_of(name: str) -> str:
-    """A pointer button or a wheel event as the top row marks it: `LMB`, `RMB` or `MMB` for the
-    three buttons; any other name keeps its own spelling."""
+    """A pointer button or a wheel event as the top row marks it: `LMB`, `RMB` or `MMB`; any
+    other name keeps its spelling."""
     return BUTTON_MARKS.get(name, name)
 
 
