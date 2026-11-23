@@ -338,7 +338,7 @@
      "n": "12",
      "on": "when",
      "of": "doc",
-     "text": "8086: the first INTA sets the highest ISR bit and resets its IRR bit and the 8259A does not drive the data bus.",
+     "text": "8086: the first INTA sets the highest ISR bit and resets its IRR bit.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
@@ -618,7 +618,7 @@
     },
     {
      "n": "32",
-     "on": "when",
+     "on": "is",
      "of": "doc",
      "text": "AEOI mode can only be used in a master, but parts with a 1985 or later copyright date work as master or slave.",
      "quotes": [
@@ -683,7 +683,7 @@
     },
     {
      "n": "37",
-     "on": "when",
+     "on": "is",
      "of": "doc",
      "text": "The IR7 routine can serve as clean up for default IR7s caused by noise glitches, simply executing a return instruction.",
      "quotes": [
@@ -698,7 +698,7 @@
      "n": "38",
      "on": "when",
      "of": "doc",
-     "text": "A default IR7 can be told from a normal one by reading the ISR: a normal IR7 sets its ISR bit and a default one does not.",
+     "text": "A normal IR7 sets its ISR bit and a default IR7 does not, so the ISR tells them apart, except during a normal IR7 routine.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
@@ -779,7 +779,7 @@
     },
     {
      "n": "45",
-     "on": "when",
+     "on": "is",
      "of": "doc",
      "text": "Each 8259A in a cascade follows a separate initialization sequence and can work in a different mode; an EOI goes to master and slave.",
      "quotes": [
@@ -818,13 +818,18 @@
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "89",
-       "sha": "0007875bc52071a0226de4126396ac41f3fc523a29594c6bb59d6f2dd7202f92"
+       "lines": "89-100",
+       "sha": "1fc7f1c25289595f8d68afdb68753dd79bb85cdadda758f0332f88ffd0786ccd"
       },
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "92-93",
-       "sha": "0a8bb8657990c5d95436ae6d14918424f59fcfa0e33ae8aaa2fcf87cfd5ee5ba"
+       "lines": "101-112",
+       "sha": "17e263ed27b09166fc7081d941e032e3a1051b038d8bb7e3b2da2224ec00c22b"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "113-124",
+       "sha": "a05ca86729a4bdbbc45090d0a1db5d5c3f127393c5aec6f46257acedcac5cb31"
       }
      ]
     },
@@ -849,12 +854,17 @@
      "of": "mame",
      "vs": "differs",
      "row": "25",
-     "text": "ICW1 resets the current level and the INTA sequence, not the priority base.",
+     "text": "ICW1 sets the current level to -1 and the INTA sequence to 0, and the branch stores nothing to the priority base.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "254-255",
-       "sha": "750128ed3b22b4ac1fa0144a474314fd2a4be2503ed27d2785b3770a3d540172"
+       "lines": "245-251",
+       "sha": "fc157e1de2ca78e0793fdf59d2516b90dc9bd0236b115469838add03d49a2796"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "252-257",
+       "sha": "58e6c70b42f1e6f54b939c81e220344d272e34ed5e04384ea87632ba593c8274"
       }
      ]
     },
@@ -864,12 +874,17 @@
      "of": "mame",
      "vs": "differs",
      "row": "26",
-     "text": "ICW1 clears the in-service register and slave byte but leaves special mask and the status read selection alone.",
+     "text": "ICW1 clears the in-service register and slave byte, and the branch stores nothing to special mask or the status read selection.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "246-247",
-       "sha": "ea62e29d5f67407fc7fbd223dee51290a7bd208fcb32df00050f97be1d2757ce"
+       "lines": "245-251",
+       "sha": "fc157e1de2ca78e0793fdf59d2516b90dc9bd0236b115469838add03d49a2796"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "252-257",
+       "sha": "58e6c70b42f1e6f54b939c81e220344d272e34ed5e04384ea87632ba593c8274"
       }
      ]
     },
@@ -879,12 +894,17 @@
      "of": "mame",
      "vs": "differs",
      "row": "27",
-     "text": "With IC4 = 0 the ICW4 functions keep their earlier values instead of becoming zero.",
+     "text": "ICW1 stores IC4 as m_icw4_needed, and the branch resets none of the ICW4 fields.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "251",
-       "sha": "efe23fd9d9ed0f20689ad4d1a5d117bac09709a8a2f95d7c3fca0b4968f6b63d"
+       "lines": "245-251",
+       "sha": "fc157e1de2ca78e0793fdf59d2516b90dc9bd0236b115469838add03d49a2796"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "252-257",
+       "sha": "58e6c70b42f1e6f54b939c81e220344d272e34ed5e04384ea87632ba593c8274"
       }
      ]
     },
@@ -924,12 +944,17 @@
      "of": "mame",
      "vs": "differs",
      "row": "30",
-     "text": "After ICW1 the priority base is not reset, so IR0 is the highest only if no earlier command moved it.",
+     "text": "The ICW1 branch stores nothing to the priority base, so IR0 is the highest only if no earlier command moved it.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "254-255",
-       "sha": "750128ed3b22b4ac1fa0144a474314fd2a4be2503ed27d2785b3770a3d540172"
+       "lines": "245-251",
+       "sha": "fc157e1de2ca78e0793fdf59d2516b90dc9bd0236b115469838add03d49a2796"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "252-257",
+       "sha": "58e6c70b42f1e6f54b939c81e220344d272e34ed5e04384ea87632ba593c8274"
       }
      ]
     },
@@ -939,7 +964,7 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "43",
-     "text": "Only one slave is modelled, started through a function call from the master cascade input.",
+     "text": "A slave is started through a function call from the master cascade input.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -998,12 +1023,12 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "14",
-     "text": "A request that vanishes before dispatch is cleared and no default IR7 vector is produced.",
+     "text": "A request dropped before service is cleared from the IRR and the pending requests are rechecked; lower_irq starts no interrupt, so no default IR7 follows.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "102-103",
-       "sha": "26a80a0e905640417594618ce0a5a47e4cfb74ad761f661cd2b140e8314b96b9"
+       "lines": "99-110",
+       "sha": "be93f37e50515fd8ba5779c9a1e77e2bc74dbf1141e75b4e0a7eca33229a8f6a"
       }
      ]
     },
@@ -1093,12 +1118,12 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "23",
-     "text": "ICW1 does not reset an edge sense circuit: it only sets how many ICW bytes follow.",
+     "text": "The ICW1 branch sets how many ICW bytes follow and the mask, and stores no edge sense state.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "254-256",
-       "sha": "82b017007a09b23a625ec573279415c1c0958922d03041596d34916759ff3339"
+       "lines": "249-256",
+       "sha": "60da514da6ca74abedbf2a3aff60a7ae57a4755dfb8563610247d0fb3a7ed383"
       }
      ]
     },
@@ -1108,12 +1133,12 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "25",
-     "text": "ICW1 stores no slave address: the controller keeps none.",
+     "text": "The ICW1 branch stores no slave address.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "254-256",
-       "sha": "82b017007a09b23a625ec573279415c1c0958922d03041596d34916759ff3339"
+       "lines": "249-256",
+       "sha": "60da514da6ca74abedbf2a3aff60a7ae57a4755dfb8563610247d0fb3a7ed383"
       }
      ]
     },
@@ -1123,12 +1148,12 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "26",
-     "text": "ICW1 leaves special mask mode and the status read selection as they were.",
+     "text": "The ICW1 branch stores nothing to special mask mode or the status read selection.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "254-256",
-       "sha": "82b017007a09b23a625ec573279415c1c0958922d03041596d34916759ff3339"
+       "lines": "249-256",
+       "sha": "60da514da6ca74abedbf2a3aff60a7ae57a4755dfb8563610247d0fb3a7ed383"
       }
      ]
     },
@@ -1138,12 +1163,12 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "27",
-     "text": "With IC4 = 0 the ICW4 functions are kept, as ICW1 only sets how many ICW bytes follow.",
+     "text": "With IC4 = 0 the ICW1 branch writes no ICW4 field: it only sets the number of ICW words.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "256",
-       "sha": "4dbf3266ad1e7b8392e1b9ef08ce3abbb2f20fac10d904c67f68f64714bcfbab"
+       "lines": "249-256",
+       "sha": "60da514da6ca74abedbf2a3aff60a7ae57a4755dfb8563610247d0fb3a7ed383"
       }
      ]
     },
@@ -1153,12 +1178,17 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "33",
-     "text": "Edge filtering is applied per input from an edge mask, not from a mode set by ICW1.",
+     "text": "Edge filtering is per input, from an edge mask: raise_irq ignores a still-high input and lower_irq clears that input bit.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "149",
        "sha": "a8cddf87147287b5d10d0820652c12e7a029efc80575cedb09b4ab56c0e16f29"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "101",
+       "sha": "5b4f4a4bbfa06aabcf10040466abe77555820c9f13fb9f3109b42cd2f6edae9f"
       }
      ]
     },
@@ -1168,27 +1198,12 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "36",
-     "text": "A request dropped before service is cleared and no default IR7 is raised.",
+     "text": "A request dropped before service is cleared from the IRR and the pending requests are rechecked; lower_irq starts no interrupt, so no default IR7 follows.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "102-103",
-       "sha": "26a80a0e905640417594618ce0a5a47e4cfb74ad761f661cd2b140e8314b96b9"
-      }
-     ]
-    },
-    {
-     "n": "215",
-     "on": "when",
-     "of": "dosbox-x",
-     "vs": "differs",
-     "row": "37",
-     "text": "No default IR7 is produced, so a clean up routine has none to ignore.",
-     "quotes": [
-      {
-       "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "102-103",
-       "sha": "26a80a0e905640417594618ce0a5a47e4cfb74ad761f661cd2b140e8314b96b9"
+       "lines": "99-110",
+       "sha": "be93f37e50515fd8ba5779c9a1e77e2bc74dbf1141e75b4e0a7eca33229a8f6a"
       }
      ]
     },
@@ -1198,12 +1213,12 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "38",
-     "text": "No default IR7 is produced, so the ISR never shows one.",
+     "text": "A dropped request is cleared from the IRR and the pending requests are rechecked; lower_irq starts no interrupt, so no default IR7 follows.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "102-103",
-       "sha": "26a80a0e905640417594618ce0a5a47e4cfb74ad761f661cd2b140e8314b96b9"
+       "lines": "99-110",
+       "sha": "be93f37e50515fd8ba5779c9a1e77e2bc74dbf1141e75b4e0a7eca33229a8f6a"
       }
      ]
     },
@@ -1213,12 +1228,17 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "39",
-     "text": "ICW4 with SFNM = 1 only logs a message, and the normal nested mode runs instead.",
+     "text": "ICW4 with SFNM = 1 only logs a message: the ICW4 case stores only AEOI and the ICW index, nothing for special fully nested mode.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "330",
-       "sha": "49b4e32fa318f52b58e194fe81d8fa4fca193d381d9dbda819a835633aa857df"
+       "lines": "316-324",
+       "sha": "434e2c470d757c19b4e35da22f0d89f13abcd03af9ebde64b3f32cb5e18543dd"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "325-333",
+       "sha": "822fadcfaaf347cb0bfa16cf116d32ef3376d3fa86822e8f5e914a8756a98288"
       }
      ]
     },
@@ -1246,14 +1266,14 @@
      "n": "220",
      "on": "when",
      "of": "dosbox-x",
-     "vs": "differs",
+     "vs": "absent",
      "row": "42",
-     "text": "The buffered mode bit of ICW4 is not decoded, so no SP/EN enable is driven.",
+     "text": "No SP/EN enable is driven: master_startIRQ only starts the interrupt and gives the vector to the CPU.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "316-324",
-       "sha": "434e2c470d757c19b4e35da22f0d89f13abcd03af9ebde64b3f32cb5e18543dd"
+       "lines": "540-543",
+       "sha": "0ee7d0ef9c3443331803ea335558205365e3ec5bcbc2441e01c25069ed7be668"
       }
      ]
     },
@@ -1292,7 +1312,7 @@
      "of": "mame",
      "vs": "differs",
      "row": "36",
-     "text": "A line that drops before the acknowledge clears its request, so INT may go low and no default IR7 follows.",
+     "text": "A line that drops clears its IRR bit at once, so no request remains for an acknowledge to turn into a default IR7.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -1313,6 +1333,85 @@
        "ref": "mame:src/devices/machine/pic8259.cpp",
        "lines": "157",
        "sha": "14b8bbfdcee568b6a95cc422f0341a51a53da8679c236c6afe027a34eb67307c"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "252",
+       "sha": "f25d580d46222b686efde807c2d61c0b31f10929d7bba60a8e748214e3759370"
+      }
+     ]
+    },
+    {
+     "n": "114",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "13",
+     "text": "In 8086 mode one acknowledge returns the vector; the ISR bit is set only when AEOI is off, so with AEOI nothing sets it and nothing needs resetting.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "101-102",
+       "sha": "3b1a2a5bcc891e4976fe48d18f2fbe4f21cd3d68d7c8ea4e80ee9da3fd373934"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "113-116",
+       "sha": "8192450634d7ad89c3df83b524bb7279498977978de1fe55b085fb42970052b2"
+      }
+     ]
+    },
+    {
+     "n": "115",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "46",
+     "text": "A slave input is answered through the m_read_slave_ack_func callback and no cascade line is activated; other inputs return the vector directly.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "107-116",
+       "sha": "4accb6a1de9478bde245d4667f8efa373b408bbdf29abb1031341104fb0f9ae9"
+      }
+     ]
+    },
+    {
+     "n": "116",
+     "on": "reset",
+     "of": "mame",
+     "vs": "extra",
+     "text": "device_reset sets the state to READY, so the controller raises interrupts without ICWs; irq_timer_tick needs that state.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "432",
+       "sha": "5629060f875a8e263e0615a537288d08e8953f0192fed0d6ab2648cbcdd1369b"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "46",
+       "sha": "c53a57cb20c598c590ed1c38258ba7d44589be3149961267d0f9c796ec1b0ae2"
+      }
+     ]
+    },
+    {
+     "n": "117",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "31",
+     "text": "In 8080/85 mode AEOI resets the ISR bit at the third INTA; in 8086 mode the ISR bit is set only when AEOI is off.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "101-102",
+       "sha": "3b1a2a5bcc891e4976fe48d18f2fbe4f21cd3d68d7c8ea4e80ee9da3fd373934"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "164-165",
+       "sha": "c2a8eeffe7e565a9a7f61b04491802880420510fb4ccd4c84fc9e7729d706f20"
       }
      ]
     },
@@ -1326,8 +1425,8 @@
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "108-109",
-       "sha": "4b86a05e35ab309b04a223a0658d721d8e267febcc572c46cd875aea65cdc29a"
+       "lines": "107-111",
+       "sha": "8aef04e2a8f2bb67f2524b26f913e4a24f607b37f03412ce62125df6e5c2fe52"
       }
      ]
     },
@@ -1337,12 +1436,17 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "11",
-     "text": "In AEOI mode the ISR bit is never set when the interrupt starts, so a third INTA has none to reset.",
+     "text": "The ISR bit is set when the interrupt starts only inside the non-AEOI branch, so in AEOI mode a third INTA has none to reset.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "218",
        "sha": "08c93d41d939ae9bf3c679eb5304c6754bf79225ad58e1701725c6ca31cbeb33"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "224",
+       "sha": "8374f673a694930254cdf559ba772eb84035051ab4b391d7224f166ce5192467"
       }
      ]
     },
@@ -1352,12 +1456,17 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "31",
-     "text": "In AEOI mode the ISR bit is never set when the interrupt starts, so no EOI is done at an INTA.",
+     "text": "The ISR bit is set when the interrupt starts only inside the non-AEOI branch, so in AEOI mode no EOI is done at an INTA.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "218",
        "sha": "08c93d41d939ae9bf3c679eb5304c6754bf79225ad58e1701725c6ca31cbeb33"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "224",
+       "sha": "8374f673a694930254cdf559ba772eb84035051ab4b391d7224f166ce5192467"
       }
      ]
     },
@@ -1367,12 +1476,12 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "30",
-     "text": "Rotating priority is not handled: rotate on auto EOI only logs a message.",
+     "text": "Rotate on auto EOI only logs that it is not handled.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "228",
-       "sha": "87ea45a5a4d417017edee1ce42451350fe7c2fe604b725283d327999870d3065"
+       "lines": "227-228",
+       "sha": "1e4f24f6408c15552ff44bcf10af0d38e5e991e29a5c16f67a7812b3de554cb8"
       }
      ]
     },
@@ -1388,6 +1497,39 @@
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "251",
        "sha": "38c044274b9a32b454c23d30e2acc9b1c3fba4b1032ec19227874620d10bb1b9"
+      }
+     ]
+    },
+    {
+     "n": "48",
+     "on": "is",
+     "of": "doc",
+     "text": "In an 8086 system the 8259A does not drive the data bus during the first INTA.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "256-257",
+       "sha": "21986d96c0a71516bde00ac7fd8ac9707f257ea821195e30a94d01ee61042af8"
+      }
+     ]
+    },
+    {
+     "n": "228",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "46",
+     "text": "The master reaches a slave input by calling slave_startIRQ and no cascade line is activated; other inputs go to master_startIRQ.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "568-572",
+       "sha": "feffee94c2d595fd13e27bf5b99ffbc9664ac773af850d87572f433b155f6e05"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "518-519",
+       "sha": "7cafd4ef0eb0b3d834342eb2988bd8e4678b8b5c6af0fcc3233d4680f6e267c2"
       }
      ]
     }
@@ -1450,18 +1592,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "248-250",
-     "as": "parent",
-     "owner": "pic8259:command:0x10..0x1F"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "252-253",
-     "as": "parent",
-     "owner": "pic8259:register:0x01:write"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "433-454",
      "as": "unseen",
      "reason": "power-on defaults, which the datasheet does not state"
@@ -1482,17 +1612,6 @@
      "lines": "156",
      "as": "unseen",
      "reason": "an option for the PC-98 cascade, not chip behaviour"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "101",
-     "as": "structure"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "227",
-     "as": "parent",
-     "owner": "pic8259:command:0x80..0x87"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1583,12 +1702,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "150-156",
-     "as": "agrees",
-     "row": "10"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "168-171",
      "as": "agrees",
      "row": "10"
@@ -1604,18 +1717,6 @@
      "lines": "94-102",
      "as": "agrees",
      "row": "12"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "101-102",
-     "as": "agrees",
-     "row": "13"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "113-116",
-     "as": "agrees",
-     "row": "13"
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -1655,38 +1756,8 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "101-102",
-     "as": "agrees",
-     "row": "31"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "164-165",
-     "as": "agrees",
-     "row": "31"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "101-102",
-     "as": "agrees",
-     "row": "32"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "164-165",
-     "as": "agrees",
-     "row": "32"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "54-55",
      "as": "structure"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "122",
-     "as": "agrees",
-     "row": "37"
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -1718,24 +1789,6 @@
      "as": "see-also"
     },
     {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "432-440",
-     "as": "agrees",
-     "row": "45"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "445-449",
-     "as": "agrees",
-     "row": "45"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "107-116",
-     "as": "agrees",
-     "row": "46"
-    },
-    {
      "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "223-225",
      "as": "agrees",
@@ -1764,12 +1817,6 @@
      "lines": "555-556",
      "as": "agrees",
      "row": "6"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "104-108",
-     "as": "unseen",
-     "reason": "re-checks the pending requests after a line drops"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1809,57 +1856,39 @@
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "577-580",
-     "as": "unfollowed",
-     "row": "32"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "535-536",
-     "as": "agrees",
-     "row": "45"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "217",
-     "as": "agrees",
-     "row": "45"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "568-572",
-     "as": "agrees",
-     "row": "46"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "518-519",
-     "as": "agrees",
-     "row": "46"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "541-542",
-     "as": "agrees",
-     "row": "46"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "217",
-     "as": "agrees",
-     "row": "46"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "219-222",
      "as": "unseen",
      "reason": "an option that never marks the cascade input in service"
     },
     {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "65-72",
+     "as": "agrees",
+     "row": "23"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "150-158",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
      "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "250",
+     "lines": "577-580",
+     "as": "unfollowed",
+     "row": "32"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "344",
      "as": "parent",
-     "owner": "pic8259:command:0x10..0x1F"
+     "owner": "pic8259:register:0x01:write"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "345",
+     "as": "parent",
+     "owner": "pic8259:register:0x01:write"
     }
    ]
   }

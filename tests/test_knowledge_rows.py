@@ -232,6 +232,22 @@ def test_a_row_removed_leaves_its_item_open(world: World) -> None:
         in report.faults
 
 
+def test_an_absent_note_cites_a_whole_body_over_twelve_lines(world: World) -> None:
+    path = world.edit("command", set_row("1", of="mame", vs="absent", row="2",
+                                        quotes=[{**QUOTE, "lines": "1-17", "sha": "a" * 64}]))
+    dictionary, faults = rows.read(path)
+    assert not [f for f in faults if "lines, over" in f]
+    assert dictionary is not None
+    note = [r for r in dictionary.entries[0].rows if r.vs == "absent"][0]
+    assert note.quotes[0].lines == "1-17"
+
+
+def test_an_absent_note_over_sixty_lines_is_still_a_fault(world: World) -> None:
+    world.edit("command", set_row("1", of="mame", vs="absent", row="2",
+                                  quotes=[{**QUOTE, "lines": "1-61", "sha": "a" * 64}]))
+    assert any("over 60" in f for f in rows.read(world.root / "command.json")[1])
+
+
 def test_lines_outside_the_file_are_a_fault(world: World) -> None:
     world.edit("command", set_row("2", quotes=[{**QUOTE, "lines": "900", "sha": "a" * 64}]))
     assert any("outside the file" in f for f in result(world).faults)

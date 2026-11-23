@@ -26,6 +26,7 @@ from scry_core.knowledge.callees import Callees
 from scry_core.knowledge.callees import parse as parse_callees
 from scry_core.knowledge.entry import ALIAS_MAX, ALIASES_MAX, NAME_MAX, entry_id
 from scry_core.knowledge.quote import (
+    BODY_LINES,
     PARTY,
     QUOTE_LINES,
     Invalid,
@@ -266,7 +267,7 @@ def _region(raw: object, where: str, faults: list[str]) -> Region | None:
                   bool(raw.get("preamble", False)), str(raw.get("lines", "")))
 
 
-def _quote(raw: object, where: str, faults: list[str]) -> Quote | None:
+def _quote(raw: object, where: str, faults: list[str], limit: int = QUOTE_LINES) -> Quote | None:
     if not (isinstance(raw, dict) and set(raw) <= {"ref", "lines", "sha"}
             and isinstance(raw.get("ref"), str) and isinstance(raw.get("lines"), str)):
         faults.append(f"{where} is `ref`, `lines` and `sha`")
@@ -277,8 +278,8 @@ def _quote(raw: object, where: str, faults: list[str]) -> Quote | None:
     except ValueError as bad:
         faults.append(f"{where}: {bad}")
         return None
-    if last - first + 1 > QUOTE_LINES:
-        faults.append(f"{where}: {raw['lines']} is {last - first + 1} lines, over {QUOTE_LINES}")
+    if last - first + 1 > limit:
+        faults.append(f"{where}: {raw['lines']} is {last - first + 1} lines, over {limit}")
     return Quote(raw["ref"], raw["lines"], str(raw.get("sha", "")))
 
 
@@ -341,7 +342,9 @@ def _row(raw: object, kind: str, where: str, faults: list[str]) -> Row | None:
     if not (isinstance(raw_quotes, list) and 1 <= len(raw_quotes) <= QUOTES_PER_ROW):
         faults.append(f"{where}: 1 to {QUOTES_PER_ROW} `quotes`")
     else:
-        got = (_quote(q, f"{where}, quote {i + 1}", faults) for i, q in enumerate(raw_quotes))
+        limit = BODY_LINES if vs == "absent" else QUOTE_LINES
+        got = (_quote(q, f"{where}, quote {i + 1}", faults, limit)
+               for i, q in enumerate(raw_quotes))
         quotes = [q for q in got if q]
     if len(faults) != mine:
         return None

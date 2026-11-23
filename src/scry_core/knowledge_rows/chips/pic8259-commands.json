@@ -169,6 +169,25 @@
        "sha": "ffe5f08b894dc68d8a1e73a69bab976dd91cb531aeaacf06d895ee54f3c5d621"
       }
      ]
+    },
+    {
+     "n": "103",
+     "on": "write",
+     "of": "mame",
+     "vs": "extra",
+     "text": "ICW1 stores its bits 7 to 5 as the low part of the vector address and makes the next write to port 0x01 an ICW2.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "252-253",
+       "sha": "39eb7116a2f20eeee946e08b2953f88d08f40623d52f747944d3accf1868f002"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "334-345",
+       "sha": "cd3efb2d7e6727966e74d428d75a8f60e1bb0bac79fb8933553bda4ae1b5bf44"
+      }
+     ]
     }
    ],
    "closed": [
@@ -226,13 +245,7 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "252",
-     "as": "parent",
-     "owner": "pic8259:register:0x01:write"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "253-257",
+     "lines": "254-257",
      "as": "parent",
      "owner": "chip:device:pic8259"
     }
@@ -306,7 +319,7 @@
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "259",
      "as": "parent",
-     "owner": "chip:device:pic8259"
+     "owner": "pic8259:register:0x00:write"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -381,7 +394,7 @@
      "n": "4",
      "on": "when",
      "of": "doc",
-     "text": "The in-service bit is reset by an EOI command issued before returning from a service routine, or automatically in AEOI mode.",
+     "text": "The in-service bit is reset by an EOI command issued before returning from a service routine.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
@@ -392,7 +405,7 @@
     },
     {
      "n": "5",
-     "on": "when",
+     "on": "is",
      "of": "doc",
      "text": "In cascade mode an EOI command must be issued twice, once for the master and once for the corresponding slave.",
      "quotes": [
@@ -422,17 +435,12 @@
      "of": "mame",
      "vs": "differs",
      "row": "6",
-     "text": "A non-specific EOI scans from the priority base and tests only the in-service bits, never the mask bits, so a masked in-service bit is cleared too.",
+     "text": "A non-specific EOI scans from the priority base and clears the first in-service bit found, whether or not that level is masked.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "288",
-       "sha": "fd7a83fa35885c8b9aeb83311bf2bb51a488c1be1f832c7d9b26d11540464419"
-      },
-      {
-       "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "290",
-       "sha": "1655dccbccbb4d8970e6f2e9836c6dc8ab39e416db4aee2c777fcf480b9e281f"
+       "lines": "288-295",
+       "sha": "9daf2ce7373c79b31fe23fcc50e24d83895de04ae3671fc0bad1037b57dcd9d1"
       }
      ]
     },
@@ -461,8 +469,31 @@
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "272",
-       "sha": "72e6eddd766f5a7f81925bc2b8be7fa1c3f4e8aa09ebff9e04e80760657444c3"
+       "lines": "271-272",
+       "sha": "95ddace2e4b9592cf327cb053fc9fda6b86da02e232ce4faa45b653cbf360b32"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "273-277",
+       "sha": "400c1b381f1f03a64d7a046b707f09ddfbf7b6263e8b4fa6e87f669477af2cde"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "278-286",
+       "sha": "798b9ae0dbfe079a03c1a812f1faaf7df5f1406b69c1198a2fe2d6894027c4e8"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "The in-service bit is also reset automatically after the last INTA pulse when the AEOI bit is set.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "556-559",
+       "sha": "00108c3f7ea55b2e4251dbe72d62132184529337107fb65f9d60d51c68ca2328"
       }
      ]
     }
@@ -485,12 +516,6 @@
      "lines": "281-282",
      "as": "agrees",
      "row": "4"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "247",
-     "as": "agrees",
-     "row": "5"
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -526,15 +551,14 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "292",
-     "as": "agrees",
-     "row": "5"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "259",
      "as": "parent",
-     "owner": "chip:device:pic8259"
+     "owner": "pic8259:register:0x00:write"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "247",
+     "as": "decode"
     }
    ]
   },
@@ -597,7 +621,7 @@
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "259",
      "as": "parent",
-     "owner": "chip:device:pic8259"
+     "owner": "pic8259:register:0x00:write"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -679,7 +703,7 @@
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "259",
      "as": "parent",
-     "owner": "chip:device:pic8259"
+     "owner": "pic8259:register:0x00:write"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -747,8 +771,8 @@
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "314",
-       "sha": "3385ba1ef47b75841aed17febcbb388f69e8d12c335746514dcbbc2219ed1af1"
+       "lines": "309-315",
+       "sha": "dbe6444c57904a9c833d4fdd3d0a4bd5feb02de90e345566a2ae5396b7f7c8b2"
       }
      ]
     },
@@ -783,30 +807,12 @@
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "259",
      "as": "parent",
-     "owner": "chip:device:pic8259"
+     "owner": "pic8259:register:0x00:write"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "247",
      "as": "decode"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "309",
-     "as": "unseen",
-     "reason": "scans from the priority base for the highest in-service bit"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "311",
-     "as": "unseen",
-     "reason": "scans from the priority base for the highest in-service bit"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "313",
-     "as": "unseen",
-     "reason": "scans from the priority base for the highest in-service bit"
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -878,7 +884,7 @@
      "n": "201",
      "on": "write",
      "of": "dosbox-x",
-     "vs": "absent",
+     "vs": "differs",
      "row": "2",
      "text": "The set priority command is not handled: it only logs a message and the priority is unchanged.",
      "quotes": [
@@ -893,9 +899,9 @@
      "n": "202",
      "on": "when",
      "of": "dosbox-x",
-     "vs": "absent",
+     "vs": "differs",
      "row": "3",
-     "text": "No priority is set by the command, so internal status stays as it was.",
+     "text": "The command only logs that set priority is not handled, so internal status stays as it was.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -914,12 +920,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "320",
-     "as": "agrees",
-     "row": "3"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "237",
      "as": "structure"
     },
@@ -927,7 +927,7 @@
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "259",
      "as": "parent",
-     "owner": "chip:device:pic8259"
+     "owner": "pic8259:register:0x00:write"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -938,6 +938,12 @@
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "321",
      "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "319-321",
+     "as": "agrees",
+     "row": "3"
     }
    ]
   },
@@ -1014,7 +1020,7 @@
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "259",
      "as": "parent",
-     "owner": "chip:device:pic8259"
+     "owner": "pic8259:register:0x00:write"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1072,12 +1078,12 @@
      "n": "3",
      "on": "when",
      "of": "doc",
-     "text": "After a poll command the next RD pulse is treated as an interrupt acknowledge: the in-service bit is set if there is a request.",
+     "text": "After a poll command the next RD pulse is treated as an interrupt acknowledge.",
      "quotes": [
       {
        "ref": "datasheet:8259A.raw.txt",
-       "lines": "680-684",
-       "sha": "df6e47a429bc06ff109cefcdd450b78022883dca70e4ae8d0dcd1134c42d782f"
+       "lines": "680-682",
+       "sha": "03a44e763498f11447db83d899aaf16d60fa6131cc82de975f827bc913d30656"
       }
      ]
     },
@@ -1115,12 +1121,25 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "3",
-     "text": "A read after a poll command returns the plain register, as the poll command is not handled.",
+     "text": "The poll command is only logged as not handled, so nothing at this write makes the next read an acknowledge.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "258",
        "sha": "36fef93f7067a184ceb4f8949a6ab06fa3fd6d895a5c0aa243d4ba4bdce4ffac"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The acknowledge sets the appropriate IS bit if there is a request and reads the priority level; the interrupt is frozen from WR to RD.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "682-684",
+       "sha": "4a5244ab1c28a538d1a62476d958b4b007148e6c774f96711de77802c8a82a39"
       }
      ]
     }
@@ -1159,7 +1178,7 @@
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "259",
      "as": "parent",
-     "owner": "chip:device:pic8259"
+     "owner": "pic8259:register:0x00:write"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1256,14 +1275,14 @@
      "n": "101",
      "on": "write",
      "of": "mame",
-     "vs": "differs",
+     "vs": "absent",
      "row": "2",
-     "text": "OCW3 with ESMM = 1 and SMM = 1 does not start a special mask mode: a TODO comment marks it as not done.",
+     "text": "The OCW3 branch has only a TODO for special mask mode and stores the SMM bit; ESMM = 1 and SMM = 1 start nothing.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "270",
-       "sha": "fe3ec7b07b8f2d33971878afdea39d4138bba178750ee6fa14cafaa10ed92356"
+       "lines": "262-273",
+       "sha": "2956572591115164f3ea13e8f3118f372bc34470bc245c661c84cb519f0f3ce9"
       }
      ]
     },
@@ -1271,14 +1290,14 @@
      "n": "102",
      "on": "when",
      "of": "mame",
-     "vs": "differs",
+     "vs": "absent",
      "row": "4",
-     "text": "Special mask mode is not entered: the OCW3 code carries a TODO for it.",
+     "text": "A TODO in the OCW3 branch marks special mask mode as not done; the branch only stores the SMM bit.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "270",
-       "sha": "fe3ec7b07b8f2d33971878afdea39d4138bba178750ee6fa14cafaa10ed92356"
+       "lines": "262-273",
+       "sha": "2956572591115164f3ea13e8f3118f372bc34470bc245c661c84cb519f0f3ce9"
       }
      ]
     },
@@ -1286,14 +1305,14 @@
      "n": "103",
      "on": "when",
      "of": "mame",
-     "vs": "differs",
+     "vs": "absent",
      "row": "5",
-     "text": "The mode enables no request: the OCW3 code carries a TODO for special mask mode.",
+     "text": "The OCW3 branch has only a TODO where the special mask mode would act on requests.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "270",
-       "sha": "fe3ec7b07b8f2d33971878afdea39d4138bba178750ee6fa14cafaa10ed92356"
+       "lines": "262-273",
+       "sha": "2956572591115164f3ea13e8f3118f372bc34470bc245c661c84cb519f0f3ce9"
       }
      ]
     }
@@ -1308,24 +1327,12 @@
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "259",
      "as": "parent",
-     "owner": "chip:device:pic8259"
+     "owner": "pic8259:register:0x00:write"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "247",
      "as": "decode"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "266-269",
-     "as": "unseen",
-     "reason": "OCW3 bits for polling and reading belong to entry 0x08..0x0F"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "258-261",
-     "as": "unseen",
-     "reason": "OCW3 bits for polling and reading belong to entry 0x08..0x0F"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1371,6 +1378,18 @@
      "lines": "267",
      "as": "unfollowed",
      "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "266-269",
+     "as": "parent",
+     "owner": "pic8259:command:0x08..0x0F"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "258-261",
+     "as": "parent",
+     "owner": "pic8259:command:0x08..0x0F"
     }
    ]
   },
@@ -1414,14 +1433,14 @@
      "n": "101",
      "on": "write",
      "of": "mame",
-     "vs": "differs",
+     "vs": "absent",
      "row": "2",
-     "text": "OCW3 with ESMM = 1 and SMM = 0 does not return to a normal mask mode: a TODO comment marks special mask mode as not done.",
+     "text": "The OCW3 branch has only a TODO for special mask mode and stores the SMM bit; ESMM = 1 and SMM = 0 end nothing.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "270",
-       "sha": "fe3ec7b07b8f2d33971878afdea39d4138bba178750ee6fa14cafaa10ed92356"
+       "lines": "262-273",
+       "sha": "2956572591115164f3ea13e8f3118f372bc34470bc245c661c84cb519f0f3ce9"
       }
      ]
     }
@@ -1442,24 +1461,12 @@
      "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "259",
      "as": "parent",
-     "owner": "chip:device:pic8259"
+     "owner": "pic8259:register:0x00:write"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "247",
      "as": "decode"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "266-269",
-     "as": "unseen",
-     "reason": "OCW3 bits for polling and reading belong to entry 0x08..0x0F"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "258-261",
-     "as": "unseen",
-     "reason": "OCW3 bits for polling and reading belong to entry 0x08..0x0F"
     },
     {
      "ref": "dosbox-x:src/hardware/pic.cpp",
@@ -1468,9 +1475,128 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "266-269",
+     "as": "parent",
+     "owner": "pic8259:command:0x08..0x0F"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "258-261",
+     "as": "parent",
+     "owner": "pic8259:command:0x08..0x0F"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "271-272",
-     "as": "unseen",
-     "reason": "stores the SMM bit, shared with the special mask on entry"
+     "as": "parent",
+     "owner": "pic8259:command:0x68..0x6F"
+    }
+   ]
+  },
+  {
+   "key": "0x40..0x47",
+   "name": "OCW2 no operation",
+   "aliases": [
+    "NOP"
+   ],
+   "source": "emulator",
+   "searched": [
+    {
+     "where": "mame-header",
+     "gave": "Header describes ICWs and OCWs in general terms and cites no document; it says nothing of this command."
+    },
+    {
+     "where": "maker",
+     "gave": "Intel 8259A datasheet in the document table: its OCW2 chart is a figure image, and no text line names a no-operation form."
+    },
+    {
+     "where": "bitsavers",
+     "gave": "A web search found no bitsavers copy of the 8259A datasheet; the directory was not listed."
+    },
+    {
+     "where": "archive-org",
+     "gave": "Only a saved copy of the same Intel 8259A datasheet already in the table; no other maker document."
+    },
+    {
+     "where": "index",
+     "gave": "University copies of the same Intel datasheet; an Intel 386 manual lists 010 as no operation, which is another product."
+    }
+   ],
+   "regions": [],
+   "rows": [
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "extra",
+     "text": "An OCW2 write with bits 7 to 5 equal to 010 reaches case 0x40, which is only a break.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "297-298",
+       "sha": "9237f36297a04a2a28c559c13d9f71979fe7d0c91af5f3a5efba66e5adea7c8e"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "is",
+     "of": "mame",
+     "vs": "extra",
+     "text": "The switch on bits 7 to 5 of the command has a case of its own for 0x40.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "297",
+       "sha": "63217afe24b7519d5972521de42cab694f0a686f60120aec58d703bbad03b3ec"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "is",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A comment on the end of the OCW2 branch names the form with bits 7 to 5 equal to 010 a NOP command.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "287-293",
+       "sha": "76be44ac0e9328abf9cde60d65d0e8785c01b756b38d859fd103d89c53bf67dd"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "An OCW2 write with bits 7 to 5 equal to 010 passes neither the rotate-in-AEOI test nor the set-priority test of the branch.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "288-293",
+       "sha": "19ff420ef2cc636720965546b0670f0fb05fa5f032e0beb1ac06214b3a8f4a30"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "237",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "259",
+     "as": "parent",
+     "owner": "pic8259:register:0x00:write"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "247",
+     "as": "decode"
     }
    ]
   }

@@ -23,6 +23,7 @@ from scry_core.knowledge.shared import PINS
 
 PARTY = {"mame": "mame", "dosbox-x": "dosbox-x", "rbil61": "doc", "datasheet": "doc"}
 QUOTE_LINES = 12
+BODY_LINES = 60
 DATASHEETS_FORMAT = "scry-knowledge-datasheets/1"
 DOCUMENT_CLASSES = ("maker-datasheet", "maker-guide", "second-source")
 DOCUMENT_TEXTS = ("layer", "ocr")
@@ -276,7 +277,7 @@ class Sources:
         draft = Quote(ref, lines)
         return Quote(ref, lines, stamp(self.read(draft)))
 
-    def faults(self, quote: Quote) -> list[str]:
+    def faults(self, quote: Quote, limit: int = QUOTE_LINES) -> list[str]:
         """What is wrong with `quote`: lines the file lacks, blank or too many, or a digest that
         is not the lines'."""
         where = f"{quote.ref}:{quote.lines}"
@@ -288,8 +289,8 @@ class Sources:
         except Outside as bad:
             return [str(bad)]
         out = []
-        if last - first + 1 > QUOTE_LINES:
-            out.append(f"{where} is {last - first + 1} lines, over {QUOTE_LINES}")
+        if last - first + 1 > limit:
+            out.append(f"{where} is {last - first + 1} lines, over {limit}")
         if not any(line.strip() for line in held):
             out.append(f"{where} is blank")
         if not _SHA.fullmatch(quote.sha):

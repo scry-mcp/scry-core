@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from scry_core.knowledge import cited, cover, official, reach, verdict
 from scry_core.knowledge.callees import Callees, Decision, last_name
-from scry_core.knowledge.quote import PARTY, Sources, span, split_ref
+from scry_core.knowledge.quote import BODY_LINES, PARTY, QUOTE_LINES, Sources, span, split_ref
 from scry_core.knowledge.rows import OWNED, VERDICT_CLOSURES, Closure, Dictionary, Entry, Region
 
 OPEN = "OPEN"
@@ -115,7 +115,9 @@ def _check_rows(entry: Entry, sources: Sources, known: Mapping[str, Entry], scop
         where = f"row {row.n}"
         for q in row.quotes:
             report.quotes += 1
-            report.faults += [f"{where}: {f}" for f in sources.faults(q)]
+            report.faults += [f"{where}: {f}"
+                              for f in sources.faults(q, BODY_LINES if row.vs == "absent"
+                                                      else QUOTE_LINES)]
             if q.party != row.of:
                 report.faults.append(f"{where} speaks for {row.of} and quotes {q.party}: a row "
                                      "quotes its own party only")

@@ -1,0 +1,360 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "mc146818-device",
+ "title": "The MC146818 real-time clock as a chip",
+ "kind": "device",
+ "scope": "chip",
+ "covers": "The MC146818 real-time clock plus RAM as a chip: what it provides and what its RESET input leaves in its registers",
+ "source": "official",
+ "documents": [
+  {
+   "name": "MC146818A.raw.txt",
+   "variant": "146818"
+  }
+ ],
+ "official": {
+  "MC146818A.raw.txt": [
+   "4-11",
+   "480-493"
+  ]
+ },
+ "defines": {
+  "dosbox-x": []
+ },
+ "engine": [
+  "m_write_sqw",
+  "Install",
+  "Uninstall",
+  "MEM_TotalPages",
+  "PIC_FullIndex"
+ ],
+ "entries": [
+  {
+   "key": "mc146818",
+   "name": "MC146818 RTC",
+   "aliases": [
+    "MC146818A"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "4-11"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "480-493"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::device_reset"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "CMOS_Reset"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The MC146818A combines a time-of-day clock with alarm and a one hundred year calendar, a programmable periodic interrupt and square-wave generator, and 50 bytes of static RAM.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "4-11",
+       "sha": "d9e4e2ea35c4e73e1e4d2725abdc3bd2e6da6678f67e256cfda1752fe6d3bb97"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "reset",
+     "of": "doc",
+     "text": "When RESET is low the Periodic Interrupt Enable bit is cleared to zero.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "480-482",
+       "sha": "11187937e3c8a3d14d311f6f0d177aae57524c9578fdc6dfec36c75c87e9a2f7"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "reset",
+     "of": "doc",
+     "text": "When RESET is low the Alarm Interrupt Enable bit is cleared to zero.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "483",
+       "sha": "88ab1d08fcf7de0261d60607dd864ca3c136bb3331d20fd42c79313d1b1ce4b8"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "reset",
+     "of": "doc",
+     "text": "Item c) of the RESET list, which the capture repeats as Alarm Interrupt Enable, is cleared to zero when RESET is low.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "484",
+       "sha": "8b9e0fb6fe43fe5ee2f1f35645ffdf11a189314e85410dae434193dd599effa7"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "reset",
+     "of": "doc",
+     "text": "When RESET is low the Update ended Interrupt Flag is cleared to zero.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "485",
+       "sha": "da4f10220425f3f7e1fba7a1f0411ed03c5606e241539847197136c6e418b7d3"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "reset",
+     "of": "doc",
+     "text": "When RESET is low the Interrupt Request status Flag is cleared to zero.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "486-487",
+       "sha": "e285ac04def056eb4900d8174172640e67f70019e5006445f482068158c07b2c"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "reset",
+     "of": "doc",
+     "text": "When RESET is low the Periodic Interrupt Flag is cleared to zero.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "488",
+       "sha": "ef60b326af19c2154ff7d51bec253b94bcd49bd93bdf926cadb47a1dbc7fc9ff"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "reset",
+     "of": "doc",
+     "text": "When RESET is low the Alarm Interrupt Flag is cleared to zero.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "490",
+       "sha": "1f9f9f9898e3e6d9014e3445f79d1542c04d024f3c70010a29000e5460612802"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "reset",
+     "of": "doc",
+     "text": "When RESET is low the Square Wave output Enable bit is cleared to zero.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "492-493",
+       "sha": "22d678ff43a006f42f1c7ed45d092e2987ab056a4e01d2255222f423f3c65a90"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "Reset also writes register 0x0A with 0x26 through cmos_writereg.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "584-585",
+       "sha": "5fae996c0d2684b2fa72a390f360c796bfbbb80ec3cf838c8f736241bceb2344"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "Reset sets register 0x0D to 0x80 and stores base and extended memory sizes in the CMOS RAM.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "589",
+       "sha": "fe417674ec9d834de1710fa1efb1608e71a1fb789c1ad39a64437cc2fc0a01ab"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "591-593",
+       "sha": "db5aaa9050924fa760fe25a6ab916c11429f30c325c956f57da1bf203d37b65b"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "595-602",
+       "sha": "4ff2375f3d1c8eff326b48f65a49ea02600204dbf2d346b54aa8e475a76e627a"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "reset",
+     "of": "mame",
+     "vs": "extra",
+     "text": "Reset also drives the square-wave output low when its state was high.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "105-106",
+       "sha": "f613864ec1b98fa11f2a822244f45079987ace3eaaa380a0a73de3bc6ff744c9"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "489",
+     "as": "electrical"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "491",
+     "as": "electrical"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "101",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "101",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "101",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "101",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "102",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "102",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "102",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "102",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "587",
+     "as": "unfollowed",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "587",
+     "as": "unfollowed",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "587",
+     "as": "unfollowed",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "587",
+     "as": "unfollowed",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "588",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "588",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "588",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "588",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "576-577",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "579",
+     "as": "unseen",
+     "reason": "sets the end of the last update one second before now"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "583",
+     "as": "unseen",
+     "reason": "lets the first timer event raise IRQ 8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "586",
+     "as": "unseen",
+     "reason": "selects register 0x0B for the write on the next line"
+    }
+   ]
+  }
+ ]
+}

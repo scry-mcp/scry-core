@@ -1,0 +1,1571 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "z80-vectors",
+ "title": "Z80 reset, restart and interrupt vectors",
+ "kind": "vector",
+ "scope": "z80",
+ "covers": "The Z80's fixed vectors: reset, the eight restart addresses (the last also the mode 1 interrupt) and the non-maskable interrupt",
+ "source": "official",
+ "documents": [
+  {
+   "name": "z80cpu_um.raw.txt",
+   "variant": "Z80"
+  }
+ ],
+ "official": {
+  "z80cpu_um.raw.txt": [
+   "694-697",
+   "701-704",
+   "904-908",
+   "1046-1048",
+   "1051-1052",
+   "1080-1084",
+   "1100-1105",
+   "3269-3276",
+   "8606-8624",
+   "8625-8633"
+  ]
+ },
+ "closed": [],
+ "engine": [
+  "leave_halt",
+  "set_service_attention"
+ ],
+ "entries": [
+  {
+   "key": "0x00",
+   "name": "reset, RST 00h",
+   "aliases": [
+    "RESET",
+    "RST 0"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "701-704"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "3269"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8606-8624"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8625-8626"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.cpp",
+     "function": "z80_device::device_reset"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "6894-6895"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "287-290"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "92-94"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "43-45"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "38-40"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "does",
+     "of": "doc",
+     "text": "Op code C7, RST 0, calls address 0000h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "3269",
+       "sha": "998f65dc6d18bd5cfaf758bea04c5243c8ad414e5af0a5f267109b4ae92f017b"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "does",
+     "of": "doc",
+     "text": "RST pushes the Program Counter on the stack: SP is decremented and the high-order byte stored, then SP is decremented again and the low-order byte stored.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8608",
+       "sha": "45929b1e07d20b7bcdacdb22506ec26991db80960db9edb517ba234623fc02e0"
+      },
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8614",
+       "sha": "086f1f6a8238bf5c42beed8c352bac10e9e0d3b2b8af4e4e1fec7179a0e81fd6"
+      },
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8616-8619",
+       "sha": "5faea1770287322fcf79ba27134765918d520f325956f731d661715279c5d80d"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "does",
+     "of": "doc",
+     "text": "RST 00h loads the Program Counter with 0000h: the high-order byte is 00h and the low-order byte is the p value 00h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8608",
+       "sha": "45929b1e07d20b7bcdacdb22506ec26991db80960db9edb517ba234623fc02e0"
+      },
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8615",
+       "sha": "0ec474018234005be59e9c8d023df297ecf357243d843315d75871fba7f08ea0"
+      },
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8622-8624",
+       "sha": "8f3ae8f566014a4ea6346672e4262c0f6dc4593053fc666dd7575322e9dedadb"
+      },
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8626",
+       "sha": "4edc61bbd4d92a7bcf875df10efda79f5c69e9c7a09d2b6dac0a56846a6c6867"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "Program execution then begins with the op code at the address now pointed to by the Program Counter.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8615-8616",
+       "sha": "a28799c60d40c6ff3419b20cfe3efa96aa4c5fa2da09856957b59031f14883f7"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The Restart instruction allows a jump to one of eight addresses, indicated in the table that follows.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8619-8620",
+       "sha": "9128e2abd91cf3d49d035c583c72127522252655cba73c1d7ccd759d6560cfdb"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "when",
+     "of": "doc",
+     "text": "RESET clears the Program Counter.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "701-702",
+       "sha": "0d7945f6b733df0ed9f1996b4faeff7c0bb11e0512da417ed2a6040c9955f0c7"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "when",
+     "of": "doc",
+     "text": "RESET resets the interrupt enable flip-flop.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "701-702",
+       "sha": "0d7945f6b733df0ed9f1996b4faeff7c0bb11e0512da417ed2a6040c9955f0c7"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "when",
+     "of": "doc",
+     "text": "RESET clears registers I and R.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "702",
+       "sha": "ea18e56963a092c75e231fd1a0952d835282fb7f3ee151d8ef20d351c541b1c2"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "when",
+     "of": "doc",
+     "text": "RESET sets the interrupt status to Mode 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "702-703",
+       "sha": "36461923b4af8df5e642d358a7e0dce0a6758ef37ca78654ad91a3ec04d4f049"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "is",
+     "of": "doc",
+     "text": "The operand p is assembled into the op code using the corresponding t value; in the table of p and t values, 00h is paired with 000.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8620-8621",
+       "sha": "c6e5efabdb7ea8963f309c9a3240dec3e46ae0598469097f637e17bdf4d0d0ec"
+      },
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8625-8626",
+       "sha": "0b83917e41ad058e4941181f5f8c00b0e4540e5be05ac63507474426ef4f2e71"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "text": "device_reset stores nothing to the interrupt mode, so the mode set before the reset stays; device_start stores 0 to it.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.cpp",
+       "lines": "761-772",
+       "sha": "7926e664f9766c2c49164d6460b622bb0d5df4ec34ee737f44d759cfeac05d3c"
+      },
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.cpp",
+       "lines": "773-777",
+       "sha": "8c965280c48042e183881ed9866ddff304da61a40d6e2265112f5fac6a9340da"
+      },
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.cpp",
+       "lines": "643",
+       "sha": "e6b0ea398c19dc6b82293b0a344143d27c814069345d42dfe49841c72aa12959"
+      },
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.cpp",
+       "lines": "704",
+       "sha": "487a2cdfb41fe17b3a1144c797dc41251ec07c046430fa944ffca630faa077a7"
+      }
+     ],
+     "row": "9"
+    },
+    {
+     "n": "102",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "device_reset also calls leave_halt, sets WZ to PC, stores 0xffff00 in m_ref, and calls set_service_attention with 0 for the NMI-pending, after-EI and after-LD A,I flags.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.cpp",
+       "lines": "763",
+       "sha": "4fa65fbce7986ef3bc64887dd3002e1a4e8fe84f8c1311567fb3f8d10584d1e9"
+      },
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.cpp",
+       "lines": "765",
+       "sha": "abd1eff73714a1f5972782a95dd03ce82b596c271052d09129279104b254b279"
+      },
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.cpp",
+       "lines": "767",
+       "sha": "a592e9eaf5e2d6e9052fba74df0ecc48e0af221761e07d513d0f26aef9df1167"
+      },
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.cpp",
+       "lines": "774-776",
+       "sha": "02276b8d8e35683d6253c5a6832162e7eba48c26b8bcbd8c453daab618d89d5e"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "Op code C7 is the list entry that runs the rst macro with address 0x00.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "6894-6895",
+       "sha": "88b919f6b25d6d1f8d771036178e9b798269341007efcbdc3324faf937c31c5a"
+      }
+     ]
+    },
+    {
+     "n": "104",
+     "on": "does",
+     "of": "mame",
+     "vs": "extra",
+     "text": "The rst macro also copies the new Program Counter into WZ.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "290",
+       "sha": "a592e9eaf5e2d6e9052fba74df0ecc48e0af221761e07d513d0f26aef9df1167"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.cpp",
+     "lines": "766",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.cpp",
+     "lines": "771-772",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.cpp",
+     "lines": "768-770",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "289",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "6894-6895",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "94",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "44-45",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "39-40",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "289",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "6895",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "287",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "92",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "43",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "38",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "93",
+     "as": "unseen",
+     "reason": "timing: a bus callback and one wait cycle before the push"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "704",
+     "as": "electrical"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8606-8607",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8609-8613",
+     "as": "layout"
+    }
+   ]
+  },
+  {
+   "key": "0x08",
+   "name": "RST 08h",
+   "aliases": [
+    "RST 8"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "3270"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8627"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "6922-6923"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288-289"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "does",
+     "of": "doc",
+     "text": "Op code CF, RST 8, calls address 0008h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "3270",
+       "sha": "4b2f556084d63a62793f7fee074042d45ae314ace80cbd28a6ecf467da68824f"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "In the table of p and t values, 08h is paired with 001.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8627",
+       "sha": "91990384c7a7f87db7612da935f1e450b636a3def8a2776b845644a3bc142361"
+      }
+     ],
+     "links": [
+      "z80:vector:0x00"
+     ]
+    },
+    {
+     "n": "101",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "Op code CF is the list entry that runs the rst macro with address 0x08.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "6922-6923",
+       "sha": "f24d1cb0484def565987c4d29567b4e46b07cab4c8ffb986ec59e9801685b31b"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "6922-6923",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "289",
+     "as": "agrees",
+     "row": "1"
+    }
+   ]
+  },
+  {
+   "key": "0x10",
+   "name": "RST 10h",
+   "aliases": [
+    "RST 16"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "3271"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8628"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "6953-6954"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288-289"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "does",
+     "of": "doc",
+     "text": "Op code D7, RST 16, calls address 0010h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "3271",
+       "sha": "9def108d88ee27f41b44eea58b70391ec3e80c546dd5653e49bdbed0608b6a63"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "In the table of p and t values, 10h is paired with 010.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8628",
+       "sha": "7d9dce1519b4199a5ae2fd32d65a69538bdb20e2f587d9e7052c31b1d9406a91"
+      }
+     ],
+     "links": [
+      "z80:vector:0x00"
+     ]
+    },
+    {
+     "n": "101",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "Op code D7 is the list entry that runs the rst macro with address 0x10.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "6953-6954",
+       "sha": "432186cf59cdd78579a074df34699c0612c9c7ed4108eb4b0dbc2c1342285bc4"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "6953-6954",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "289",
+     "as": "agrees",
+     "row": "1"
+    }
+   ]
+  },
+  {
+   "key": "0x18",
+   "name": "RST 18h",
+   "aliases": [
+    "RST 24"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "3272"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8629"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "6983-6984"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288-289"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "does",
+     "of": "doc",
+     "text": "Op code DF, RST 24, calls address 0018h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "3272",
+       "sha": "c93b80417704bc9cd7169f9c066da235f32ce65b9b468410716c3aaa71c9a5aa"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "In the table of p and t values, 18h is paired with 011.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8629",
+       "sha": "3953487a99030cf0fc1ee93ae350e9894ddc67b20f2c253456c178b692282796"
+      }
+     ],
+     "links": [
+      "z80:vector:0x00"
+     ]
+    },
+    {
+     "n": "101",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "Op code DF is the list entry that runs the rst macro with address 0x18.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "6983-6984",
+       "sha": "e4c5261a16a08078632eabbb2eb615d02185d675b635034f5f85d95437ad72f3"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "6983-6984",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "289",
+     "as": "agrees",
+     "row": "1"
+    }
+   ]
+  },
+  {
+   "key": "0x20",
+   "name": "RST 20h",
+   "aliases": [
+    "RST 32"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "3273"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8630"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "7009-7010"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288-289"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "does",
+     "of": "doc",
+     "text": "Op code E7, RST 32, calls address 0020h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "3273",
+       "sha": "d64e659d56d158ff11ba4fa7a97bf27f2f9d56fcefcd63d5bfe87113c4dc3d0a"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "In the table of p and t values, 20h is paired with 100.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8630",
+       "sha": "53062c2f5fa60cc5ba9eb967745a38a1afc822e2533854474e5ef65c46608469"
+      }
+     ],
+     "links": [
+      "z80:vector:0x00"
+     ]
+    },
+    {
+     "n": "101",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "Op code E7 is the list entry that runs the rst macro with address 0x20.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "7009-7010",
+       "sha": "bd41ecb390a738fad22284637371ae5e8e14d3f30c5afedbf954dee834a537eb"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "7009-7010",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "289",
+     "as": "agrees",
+     "row": "1"
+    }
+   ]
+  },
+  {
+   "key": "0x28",
+   "name": "RST 28h",
+   "aliases": [
+    "RST 40"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "3274"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8631"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "7036-7037"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288-289"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "does",
+     "of": "doc",
+     "text": "Op code EF, RST 40, calls address 0028h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "3274",
+       "sha": "44a1daf27576bc1b8fc55a47ff8171699c267a251ce330e69e23c605e7aa7837"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "In the table of p and t values, 28h is paired with 101.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8631",
+       "sha": "01552a7b48cfac5b48f46a23c25f0d841aebbd93a3399a50a3c862c00d86c664"
+      }
+     ],
+     "links": [
+      "z80:vector:0x00"
+     ]
+    },
+    {
+     "n": "101",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "Op code EF is the list entry that runs the rst macro with address 0x28.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "7036-7037",
+       "sha": "c67a52a9b539fb5863ab62c03c60139468e06beeddb40112fab7f66c1ed7bd19"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "7036-7037",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "289",
+     "as": "agrees",
+     "row": "1"
+    }
+   ]
+  },
+  {
+   "key": "0x30",
+   "name": "RST 30h",
+   "aliases": [
+    "RST 48"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "3275"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8632"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "7065-7066"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288-289"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "does",
+     "of": "doc",
+     "text": "Op code F7, RST 48, calls address 0030h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "3275",
+       "sha": "93e5dacecfad6c424878a28a79d803e0279e163c4b4f94f5d0e9b3f910a715df"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "In the table of p and t values, 30h is paired with 110.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8632",
+       "sha": "4eab46e999265a31f596154024a32ade866b0f86e099f0db83992036f7b0048a"
+      }
+     ],
+     "links": [
+      "z80:vector:0x00"
+     ]
+    },
+    {
+     "n": "101",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "Op code F7 is the list entry that runs the rst macro with address 0x30.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "7065-7066",
+       "sha": "735379f4727240b4759fe5e32b5ddc01ce72fe66f9ccee6999aa6b1f69e86d75"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "7065-7066",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "289",
+     "as": "agrees",
+     "row": "1"
+    }
+   ]
+  },
+  {
+   "key": "0x38",
+   "name": "RST 38h, IM 1 interrupt",
+   "aliases": [
+    "RST 56",
+    "IM 1"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "3276"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "8633"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "7092-7093"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288-289"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "1046-1048"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "1100-1105"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "1021-1022"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "975-981"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "955"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "43-45"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "38-40"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "does",
+     "of": "doc",
+     "text": "Op code FF, RST 56, calls address 0038h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "3276",
+       "sha": "8141ad29e25c5954d2e2c49ce0b5c1958754171fab02f61c845d80a617bb4d4c"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "In the table of p and t values, 38h is paired with 111.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "8633",
+       "sha": "4616c417e35fa20277caa3eabdced5e1bd980334cb2d8e5604df9bd9d03aadfc"
+      }
+     ],
+     "links": [
+      "z80:vector:0x00"
+     ]
+    },
+    {
+     "n": "3",
+     "on": "when",
+     "of": "doc",
+     "text": "In interrupt mode 1 the CPU responds to an interrupt by executing a restart at address 0038h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "1101-1102",
+       "sha": "6f51466cba53229124cc871f38f0e41cffa7f0a88cf179b16b6ab81e6160eca9"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The mode 1 response is identical to that of a nonmaskable interrupt except that the call location is 0038h instead of 0066h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "1102-1103",
+       "sha": "927de266d6de48e20b6151e0bcb7fb56e0fbb05e21d8a0d33cb563cf2e3505c4"
+      }
+     ],
+     "links": [
+      "z80:vector:0x66"
+     ]
+    },
+    {
+     "n": "5",
+     "on": "does",
+     "of": "doc",
+     "text": "Accepting a maskable interrupt resets both IFF1 and IFF2; the manual says this inhibits further interrupts until the programmer issues a new EI.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "1046-1048",
+       "sha": "49abda7d20e13ee4f70de2ef91b8134a5a7c0dde49cf1c973f0c538cc78dfc3a"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "The EI instruction sets both IFF1 and IFF2 to the enable state.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "1046",
+       "sha": "f0450db3cafd9639d25bf24cc55be63a31319833c823d925c8d422a49e5e7a95"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "Op code FF is the list entry that runs the rst macro with address 0x38.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "7092-7093",
+       "sha": "1e039a6427964618da7756712627acee2ea3d22fdf89f61b6865de121c89a24b"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "check_interrupts runs take_interrupt when the INT line is asserted, IFF1 is set and the after-EI flag is clear.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "1021-1022",
+       "sha": "fda469cdad700147914a8cef21fa4080c1dc3dd8ba7abf32a9e29071ca253981"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "7092-7093",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "288",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "289",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "975",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "980-981",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "44-45",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "39-40",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "955",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "976",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "978",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "977",
+     "as": "log"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "979",
+     "as": "unseen",
+     "reason": "timing: five cycles added for the restart"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "43",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "38",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "1100",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "1104-1105",
+     "as": "electrical"
+    }
+   ]
+  },
+  {
+   "key": "0x66",
+   "name": "NMI",
+   "aliases": [
+    "non-maskable interrupt"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "694-697"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "904-908"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "1051-1052"
+    },
+    {
+     "ref": "datasheet:z80cpu_um.raw.txt",
+     "lines": "1080-1084"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.cpp",
+     "function": "z80_device::execute_set_input",
+     "case": [
+      "INPUT_LINE_NMI"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "890-902"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "1018-1023"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "43-45"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "38-40"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "NMI is the Nonmaskable Interrupt input.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "694",
+       "sha": "45f8aee51ce194cd98aa1bfa00620899eb4c7640186f8e1bf85fa52b04ff0530"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "when",
+     "of": "doc",
+     "text": "The NMI input is negative edge-triggered.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "694",
+       "sha": "45f8aee51ce194cd98aa1bfa00620899eb4c7640186f8e1bf85fa52b04ff0530"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "when",
+     "of": "doc",
+     "text": "NMI has a higher priority than INT.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "694-695",
+       "sha": "de0fbabf991dc36c07f4e5da434620a262725a0292d8dbfcb50833e4d709f75f"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "when",
+     "of": "doc",
+     "text": "NMI is accepted regardless of the status of the interrupt enable flip-flop.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "695-696",
+       "sha": "6a19a621ebba3aeba6932a4d655693745ae0c8e53144e874f8a8b10fb143dc77"
+      },
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "1080",
+       "sha": "bbba0647293cb3fb664127f61fce6ce677e67aa4dd60f2a9a3dec68bded7d7eb"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "does",
+     "of": "doc",
+     "text": "An accepted NMI makes the CPU restart at address 0066h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "696-697",
+       "sha": "5f738e75508161a736d23b3bcd27a984860d5f9df05bdc424ef7ff0df9e203b6"
+      },
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "1081-1082",
+       "sha": "e8cd40e75c9e5c7ad83d265aed9c0187db33881fa56989bf705389be5a654563"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "The NMI restart is like a restart instruction to a location outside the eight software restart locations; a restart is a call to an address in Page 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "1082-1084",
+       "sha": "2f9ccdcd1d9b86606dc4741a3cb3d723dcc29f1ec3bad6890f37c1291ffcd0fb"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "does",
+     "of": "doc",
+     "text": "The NMI response stores the Program Counter in the external stack and jumps to address 0066h.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "905-906",
+       "sha": "b165d2f2dd8f44e1f1f6de5a35bb03d53accdd30e1dfb1cffb1084dc034d77b5"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "is",
+     "of": "doc",
+     "text": "The service routine for the nonmaskable interrupt must begin at address 0066h if this interrupt is used.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "906-908",
+       "sha": "b0dca0b760eb4bbb5074d31c264a5b599d5c4dee6a19cb5642528a2b6ed986f8"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "does",
+     "of": "doc",
+     "text": "Accepting an NMI resets IFF1; the manual says this prevents further interrupts until the programmer re-enables them.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "1051-1052",
+       "sha": "58080e667903967d8b2d12685b07d896495d3a47435e14e54290b53947e0a256"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "is",
+     "of": "doc",
+     "text": "The CPU response to an NMI is similar to a normal memory read; the contents of the data bus are ignored.",
+     "quotes": [
+      {
+       "ref": "datasheet:z80cpu_um.raw.txt",
+       "lines": "904-905",
+       "sha": "7b5291eb6d0b3064a5f842406df8f2439b8f3e1839a0cd18144f0121b59fa6f4"
+      }
+     ]
+    },
+    {
+     "n": "111",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "text": "MAME marks an NMI pending when the line goes from clear to asserted, but only if total_cycles() is not zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.cpp",
+       "lines": "798-801",
+       "sha": "f2051160f3ad275185771612f2583c63a8f7e9fa820df32fb4801fc622d30dd6"
+      }
+     ],
+     "row": "2"
+    },
+    {
+     "n": "112",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "check_interrupts runs take_nmi when the NMI-pending flag is set.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "1019-1020",
+       "sha": "ec0b620b2eefe4b1507fee6ea6bb77550e590ee5d002617713a81459801b3431"
+      }
+     ]
+    },
+    {
+     "n": "113",
+     "on": "does",
+     "of": "mame",
+     "vs": "extra",
+     "text": "take_nmi calls leave_halt, increments R, has a `+ 5` step, copies PC to WZ, sets NMI pending to 0; if HAS_LDAIR_QUIRK and the after-LD A,I flag are set, sets pv_val.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "892-895",
+       "sha": "8d6103a242dd604d7b15ea17d2c0f43ad6142e83a8801713088bc29680c2ac3f"
+      },
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "897-898",
+       "sha": "6b66ed514d2564b755175cd17da9ccdd6105919641587152bb49a5e69472d62b"
+      },
+      {
+       "ref": "mame:src/devices/cpu/z80/z80.lst",
+       "lines": "901-902",
+       "sha": "60074eba028874c7c6af8c8c180475725ae629c2040376f82d0144db82995bd1"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "1019-1022",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "1019-1022",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "900",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "899-900",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "44-45",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "39-40",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "896",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "890",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "891",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "1018",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "1023",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "43",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.lst",
+     "lines": "38",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/cpu/z80/z80.cpp",
+     "lines": "789",
+     "as": "decode"
+    }
+   ]
+  }
+ ]
+}

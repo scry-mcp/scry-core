@@ -1,0 +1,5533 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "mc6845",
+ "title": "The MC6845 CRT controller, its registers",
+ "kind": "register",
+ "scope": "mc6845",
+ "covers": "The registers R0 to R17 of the MC6845 CRT controller: the horizontal and vertical timing, interlace, cursor, start address and light pen registers; and R18, R19 and R31 of the 6545 family, the update address registers and the dummy location that signals a transparent update",
+ "source": "official",
+ "documents": [
+  {
+   "name": "MC6845.raw.txt",
+   "variant": "6845"
+  },
+  {
+   "name": "SY6545.raw.txt",
+   "variant": "6545"
+  }
+ ],
+ "official": {
+  "MC6845.raw.txt": [
+   "561-565",
+   "586-606",
+   "637-657",
+   "672-748",
+   "865-927"
+  ],
+  "SY6545.raw.txt": [
+   "354-356",
+   "473-477",
+   "530-532",
+   "628-631",
+   "632-640",
+   "643-648"
+  ]
+ },
+ "entries": [
+  {
+   "key": "0x00",
+   "name": "R0 horizontal total",
+   "aliases": [
+    "R0 horizontal total",
+    "horizontal total"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "586"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "561-565"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x00"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x00"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "245-246"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R0 as Horizontal Total, in character units, with Read No and Write Yes (the capture garbles the name; its line also lists the address register).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "586",
+       "sha": "c344e21119148fdfb67f5ca8ac082f7bd8d57c75bdfdd989317684afd86ca577"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R0 is an 8-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "561-562",
+       "sha": "716ab4b9b1e34b712acc5374c7eb4d85b62030ccaf926a4c304bc6d4a62a6192"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R0 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "561-562",
+       "sha": "716ab4b9b1e34b712acc5374c7eb4d85b62030ccaf926a4c304bc6d4a62a6192"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R0 is stored as the horizontal total, which determines the HS frequency by defining the HS period in character times: displayed plus non-displayed characters minus one.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "561-565",
+       "sha": "a506ab572f8568f6e739813f3dda9120a922d2e042343da972c033ca2d94a076"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x00 returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x00 returns the stored horizontal total byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "245-246",
+       "sha": "e02fa5d14b6230904cc325f3da6c0f9be5292022a8596b17067d201400e07f65"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A write that changes the value calls VGA_StartResize before storing it.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "74",
+       "sha": "6e74d2d61feac0fe375854ddb270a5f216a811fe4674a886b5cf5014601e6f13"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "226",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "226",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "75",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "75",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x01",
+   "name": "R1 horizontal displayed",
+   "aliases": [
+    "R1 horizontal displayed",
+    "horizontal displayed"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "587"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "637-640"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x01"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x01"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "247-248"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R1 as Horizontal Displayed, in characters, with Read No and Write Yes (the capture garbles the name).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "587",
+       "sha": "55beb4992097f3e68dc2e382fefcf407813e2b55ac6426264a2471e181966cc0"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R1 is a 8-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "637-638",
+       "sha": "724e59d6b1f82dff9686e12b9ed64f44f6a4b1c66dddbd4863076d4506ba5427"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R1 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "637-638",
+       "sha": "724e59d6b1f82dff9686e12b9ed64f44f6a4b1c66dddbd4863076d4506ba5427"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R1 is stored as the number of displayed characters per line.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "638-639",
+       "sha": "6bbbad9ea195d36cda423a8877b94607f94607f39afdcce2c70490a8ebffeeb0"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x01 returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x01 returns the stored byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "247-248",
+       "sha": "6788b000f7a857cc190e0ac08d512dc7d20ec76f819ed18566e948c79b3b41f5"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "Any 8-bit number may be programmed as long as the contents of R0 are greater than the contents of R1.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "639-640",
+       "sha": "11adde091d90f84041ff0205412975b85248d0489f39039ed307df1e412b34e5"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A write that changes the value calls VGA_StartResize before storing it.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "78",
+       "sha": "5a978024a2fc1fed15bbff177c75fc07fc094f4b8ce0bf594a8a6ef002cd910b"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "227",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "227",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "79",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "79",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x02",
+   "name": "R2 horizontal sync pos",
+   "aliases": [
+    "R2 horizontal sync position",
+    "horizontal sync position"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "588"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "641-650"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x02"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x02"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "249-250"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R2 as H. Sync Position, in characters, with Read No and Write Yes (the capture garbles the name).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "588",
+       "sha": "573d2f6c02e2d27630c5f6f47eef69e1e9ed2718a502a2fcd9da6948367ed585"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R2 is a 8-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "641-642",
+       "sha": "3fcfe35e8fe97850faf628dff61072ddc12754995bd8b18d44f685980f03693a"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R2 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "641-642",
+       "sha": "3fcfe35e8fe97850faf628dff61072ddc12754995bd8b18d44f685980f03693a"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R2 is stored as the HS position, which defines the horizontal sync delay (front porch) and the horizontal scan delay (back porch).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "642-644",
+       "sha": "803a15d3159d1761eda50124319815a719791b2efac6c1ced4121c5d993a8096"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x02 returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x02 returns the stored byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "249-250",
+       "sha": "fe001e516799b463fc019ae0da55888557c0582a71c37a670b2c494d9601b690"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "Raising the programmed value of R2 shifts the display on the CRT screen to the left, and lowering it shifts the display to the right.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "644-647",
+       "sha": "075b559c7510c5dd18c4edc5bb5c033070e00d9064a09884dc90c67c8e309cba"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "Any 8-bit number may be programmed as long as the sum of R2 and R3 is less than R0; R2 must be greater than R1.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "647-650",
+       "sha": "7713d1d640e724e5ff9e931625b840f2b95326c06c7e95acfebdbaab3034187d"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "228",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "228",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "82",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "82",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x03",
+   "name": "R3 sync widths",
+   "aliases": [
+    "R3 sync width",
+    "sync width"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "589"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "651-657"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x03"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "314-318"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "327"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "329"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "689"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "939"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x03"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "251-254"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_draw.cpp",
+     "lines": "7668"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R3 as Sync Width, with Read No and Write Yes (the capture garbles the line).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "589",
+       "sha": "12a3770596333cb24f7e72d07ddacf6c3aa39db9824ecd03435b8a4f5bc843c8"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R3 is a 8-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "651-652",
+       "sha": "ee6e455bdc287ddfc17aef716c62f8675b40cfd674f2321e8fc2b89e91a96f35"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R3 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "651-652",
+       "sha": "ee6e455bdc287ddfc17aef716c62f8675b40cfd674f2321e8fc2b89e91a96f35"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R3 is stored as the width of the horizontal sync (HS) pulse.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "652",
+       "sha": "375ecb1e5dc5c7af9e2f899ad1b375381351806978ed5c4850d000520cd5ab15"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x03 returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "The low four bits are stored as the HS width; the high four bits are the VS width on the Tandy type; other types set the VS width to 16.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "85-87",
+       "sha": "9d8a743ec42ca0074cdde70e4046dd41088ed56cdaa260ac5061b8ec64be4920"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x03 returns the stored HS width, with the stored VS width in bits 7 to 4 on the Tandy machine type.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "251-254",
+       "sha": "e298c74025dd7babd66adb5fa72e5a7cf19c74af4fe5e23717b7ff800fb47f97"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "text": "The vertical sync pulse width is fixed at 16 scan-line times.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "652-653",
+       "sha": "bae5618c6ef038b1e359f872f9357821db8f6de377f53beda83f5f3510432051"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "write",
+     "of": "doc",
+     "text": "The HS pulse width may be programmed from 1 to 15 character clock periods, allowing compatibility with the HS pulse width specifications of many monitors.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "654-656",
+       "sha": "d0c35f4a50ef90b3e28f31c7a8ee0d2e0f672499cdd3fe2616c2602849482cc4"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "write",
+     "of": "doc",
+     "text": "If zero is written into this register then no HS is provided.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "657",
+       "sha": "11404501698d93aa59a69cc780dba62a32e5d1d31f94b060174184c404716a60"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "On the Tandy machine type the VS width is stored from bits 7 to 4 of the byte; on the other types it is set to 16.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "85-86",
+       "sha": "98b11d9a181d5581c31b63df857862f6b06f3b2c1767afff71bdaa50095bfea0"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "7",
+     "text": "A stored width of 0 is turned into 16 character times, in recompute_parameters and in hsync_on.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "317-318",
+       "sha": "ffa856e89c865d8fbb552ca203f7adf92991c58ffe7c6964f8410bd8c0dcf9b0"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "689",
+       "sha": "34928d77b544c16f2e3c7d06e9ab302af1a54ce56056aa881fc4e99b6bc1093e"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "7",
+     "text": "A width of 0 is stored in hsyncw, so hrend equals hrstart; the Hercules and MDA status read sets its retrace bit from hrstart to hrend inclusive.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "87",
+       "sha": "10bb94a28f71c15411ad03f84918f8fb7cb39bfcfa4859feb194d283ae4a80de"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_draw.cpp",
+       "lines": "7667-7668",
+       "sha": "80ef1ea08c468cbfea1544f529f27fb846bc8e7b63a8f135e86eb603dd1438ae"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_draw.cpp",
+       "lines": "7815-7816",
+       "sha": "7ab88949c31b8eaa17e860c06fcef26c24c3e96fd7f24e0d861088771db18a81"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "1273-1275",
+       "sha": "f8453aeadd69d9210e629ff129a37c777272eeb836d7e9225a5a5adddf4296d8"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "229",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "229",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "87",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "315",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "329",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "939",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "314",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "327",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "87",
+     "as": "agrees",
+     "row": "6"
+    }
+   ]
+  },
+  {
+   "key": "0x04",
+   "name": "R4 vertical total",
+   "aliases": [
+    "R4 vertical total",
+    "vertical total"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "590"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "672-678"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x04"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x04"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "255-256"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R4 as Vertical Total, in character rows, with Read No and Write Yes (the capture garbles the name).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "590",
+       "sha": "7f7abfd74bf725ed441cdcf3bb51e975758073664126e9adc069d4d698aed7b2"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R4 is a 7-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "677-678",
+       "sha": "2b7b8fa1f8c73d5810a130803d3bceeead148abdf630079537afc1701eff8195"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R4 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "677-678",
+       "sha": "2b7b8fa1f8c73d5810a130803d3bceeead148abdf630079537afc1701eff8195"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R4 is stored as the integer number of character row times minus one.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "676-678",
+       "sha": "ee1d016ca3599605477562250db6bbbab51f07a813430f6a09f92756cade3b85"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x04 returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "The Tandy machine type stores all 8 bits of the byte; the other types store its low 7 bits.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "91-94",
+       "sha": "544c2976e61e72cf6f063a7f66939799eb8078a4ca485020e948558a9fed04ed"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x04 returns the stored byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "255-256",
+       "sha": "41e5a48e7472bfd39496e2694036095b96b81ae2ff495e706adc4a46c8a538cd"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The frequency of VS is determined by both R4 and R5; the character row times calculated are usually an integer plus a fraction, to get exactly 50 or 60 Hz.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "672-676",
+       "sha": "f6ddc977b031de822b86fe489a17900ac3424b7e794581c77ba68d5311d94712"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A write that changes the value calls VGA_StartResize before storing it.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "90",
+       "sha": "d66cf747eed559b9b23ea6130b82308558faa5a2b34c6c05bbce3be9f13e47ae"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "230",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "230",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "92",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "94",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x05",
+   "name": "R5 vertical total adjust",
+   "aliases": [
+    "R5 vertical total adjust",
+    "vertical total adjust"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "591"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "679-680"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x05"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x05"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "257-258"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R5 as V. Total Adjust, in scan lines; the same capture line lists R6 as Vertical Displayed, in character rows; both Read No and Write Yes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "591",
+       "sha": "7ccf81f24d0a4c859f66e1caa37562cd2a120ab003c51f5dd335038bca934689"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R5 is a 5-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "679-680",
+       "sha": "e3b90bdc8944621c55203a531b5df885d9996351f2290f5d1f83cf798678113b"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R5 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "679-680",
+       "sha": "e3b90bdc8944621c55203a531b5df885d9996351f2290f5d1f83cf798678113b"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R5, the vertical total adjust register, is stored as a number of scan lines.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "679-680",
+       "sha": "e3b90bdc8944621c55203a531b5df885d9996351f2290f5d1f83cf798678113b"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x05 returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "The byte is stored with all 8 bits, with no mask.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "98",
+       "sha": "f21bf25b5132fdab2dfe7b82af41df5b0bd5814cc4b9caf035b1d178dcdadcd4"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x05 returns the stored byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "257-258",
+       "sha": "4eef367aee9527249de62ad13bc8de10da0333108b829772e89f68d9a5dec20b"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A write that changes the value calls VGA_StartResize before storing it.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "97",
+       "sha": "117fd1a3d1a5aeaedf83edecc0fe281d5f123b55b607e239e949ca03699415dd"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "231",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "231",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "98",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x06",
+   "name": "R6 vertical displayed",
+   "aliases": [
+    "R6 vertical displayed",
+    "vertical displayed"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "681-685"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x06"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x06"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "259-260"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "write",
+     "of": "doc",
+     "text": "R6 is a 7-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "681-682",
+       "sha": "41c76e3761567f51ea5abfd38e31a67528a1f01ec5e18c7a7760e2ee6be81883"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "R6 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "681-682",
+       "sha": "41c76e3761567f51ea5abfd38e31a67528a1f01ec5e18c7a7760e2ee6be81883"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "R6 is stored as the number of displayed character rows on the CRT screen, in character row times.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "682-683",
+       "sha": "0c9430156931f554155142e42f6f4c26298b37b5e6b0e3ead0ee835e6c4f7d6d"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "2",
+     "text": "A read of register 0x06 returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "1",
+     "text": "The Tandy machine type stores all 8 bits of the byte; the other types store its low 7 bits.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "102-105",
+       "sha": "8c284dcdf3ff67f53d7fe2deec88d2709e43824da5b9e332a526f8eecce26d0a"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A read of register 0x06 returns the stored byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "259-260",
+       "sha": "5bc9bb38d5ce63664d8436b80c8f38dde8ddbc974f8c526bd2887ae7c14486cb"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "Any number smaller than the contents of R4 may be programmed into R6.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "683-685",
+       "sha": "12229e7a30b709ecb7dd0f4da4be08eccc1a1c8bb0db5f2bd56c5b1c35a1599d"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A write that changes the value calls VGA_StartResize before storing it.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "101",
+       "sha": "a45948a3c5b2ff006085bbd56cbff2b5478bfeafccd5673253611cae86192880"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "232",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "232",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "103",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "105",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x07",
+   "name": "R7 vertical sync pos",
+   "aliases": [
+    "R7 vertical sync position",
+    "vertical sync position"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "592"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "686-694"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x07"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x07"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "261-262"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R7 as V. Sync Position, in character rows, with Read No and Write Yes (the capture garbles the name).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "592",
+       "sha": "1dd41f92638636f5a217663c6f998f4fe5b5498ff04ff193105cde786decb6b8"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R7 is a 7-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "686-687",
+       "sha": "319591b517726b43aeed3b1117be384b361adb733ca9a351979264f393c4a517"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R7 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "686-687",
+       "sha": "319591b517726b43aeed3b1117be384b361adb733ca9a351979264f393c4a517"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R7 is stored as the position of vertical sync with respect to the reference, in character row times.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "687-688",
+       "sha": "2c98a31573557625eb25af3856826daeb55248f273dd0f633249b36f8fd28597"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x07 returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "The byte is stored with all 8 bits, with no mask.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "108",
+       "sha": "c774ab0a39db05cdb0e13a9583938330f7c70393688fd313b893879f62d7e6a3"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x07 returns the stored byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "261-262",
+       "sha": "bdb2cb86092f04edb4b2d36f365803ceeb4f09ce3316b4fc3066acaa462622a5"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "Raising the programmed value of R7 shifts the display position on the CRT screen up, and lowering it shifts the display down.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "688-692",
+       "sha": "c1cd48e10d08b89271ad0c6aad9912a1f456d2a09cf7b0401a1209bfb2c66e40"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "Any number equal to or less than the vertical total R4 and greater than or equal to the vertical displayed R6 may be used.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "692-694",
+       "sha": "555040c4d4545deeaa9e40ec3df0e636a07d977b291751fca3e7bdabc3510e80"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "233",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "233",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "108",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x08",
+   "name": "R8 interlace and skew",
+   "aliases": [
+    "R8 interlace mode and skew",
+    "interlace mode"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "593"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "605"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "695-748"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x08"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "81"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "301"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "238-240"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "289-293"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R8 as Interlace Mode and Skew, with Note 1, Read No and Write Yes (the capture garbles the line).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "593",
+       "sha": "29fe7c3fd884d3e6265dad2dd6f444924ce6512c64410dd8519170f989a0fff9"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R8 is a 6-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "699-700",
+       "sha": "255d48f0115334b58c43bb2110182e857a53e85fe753e5bf48d5958474a4c95b"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R8 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "699-700",
+       "sha": "255d48f0115334b58c43bb2110182e857a53e85fe753e5bf48d5958474a4c95b"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "The MC6845 only allows control of the interlace modes, as programmed by the low order two bits of R8.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "695-697",
+       "sha": "86446160148267d0a4b863024b1268239d7009fa7c271ebeac7fd7637897926f"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "bits 0-1",
+     "of": "doc",
+     "text": "Table 3: bits 1 and 0 of R8 give Normal Sync (non-interlace) at 00, Interlace Sync at 01 and Interlace Sync and Video (bits damaged in the capture).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "698-706",
+       "sha": "02a164b2294e544006708325656f9bf10308fb4f879a1338f3b66f054a570177"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "Note 1 of Table 2 says that the interlace is shown in Table 3.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "605",
+       "sha": "29d884ec243d1d26f0079df4b69f6abab886ad19e0f11263d7128f8f1a7f737e"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "In the normal sync mode (non-interlace) only one field is available, and each scan line is refreshed at the VS frequency, for example 50 or 60 Hz.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "707-709",
+       "sha": "4133a8505ea1286b5c7ca3e51991208369b74721caf4e20b40eda3139a866688"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "is",
+     "of": "doc",
+     "text": "The two interlace modes divide the frame time between even and odd alternating fields; VS delayed by half a scan line time displaces the odd field's scan lines.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "710-715",
+       "sha": "039fe2d4eb2ceaf9cef2dc50f284d9244e75c4b39df44014142fbc42dd350190"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "is",
+     "of": "doc",
+     "text": "In the interlace sync mode the same information is painted in both fields, which is useful for filling in a character to enhance readability.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "716-718",
+       "sha": "c9c030cbc991613ce2fa65b83be4fb901760a98e3f959bdb09a660383a323c86"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "is",
+     "of": "doc",
+     "text": "In the interlace sync and video mode alternating lines of the character are displayed in the even and the odd field, which doubles the given bandwidth of the CRT monitor.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "719-722",
+       "sha": "d03f3ac9136d480f8e51f0938bbc04a510269dff106a8a7bef039921ee45fbb6"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "is",
+     "of": "doc",
+     "text": "Care must be taken with either interlace mode to avoid an apparent flicker effect, since the refresh time of all scan lines doubles; proper monitor design can minimize it.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "723-727",
+       "sha": "e85cc3377718f84bc643dcebe3eeb5a10ccc5ff82c1c3f60b6331b68142cf18b"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "is",
+     "of": "doc",
+     "text": "For interlace operation the horizontal total R0 must be odd, that is an even number of character times (the capture damages the glyphs).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "728-731",
+       "sha": "d470b1ce90ad17a76955c6d83e17be631bdddd81f2006a3c3c8dfad5247431cb"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "is",
+     "of": "doc",
+     "text": "For interlace sync and video mode only, the maximum scan-line address R9 must be odd, that is an even number of scan lines.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "732-734",
+       "sha": "c08c8af1b8996e8f42534ad794b3d39d5d5ad0f8f09a7e7d8e3f93f6660b432e"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "is",
+     "of": "doc",
+     "text": "For interlace sync and video mode only, the number programmed into the vertical displayed register R6 must be one half of the actual number required.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "735-740",
+       "sha": "848708b6874ffd559eba4db4bb54df39325e7c2724020411396249a39495ef85"
+      }
+     ]
+    },
+    {
+     "n": "15",
+     "on": "is",
+     "of": "doc",
+     "text": "For interlace sync and video mode only, R10 and R11 must both be even or both odd; a full block cursor shows in both fields when R11 exceeds R9.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "741-748",
+       "sha": "aa0f00425037fe86f9d2c30ca7e85fe9bab5c969dc5738e4be55525a91860681"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "2",
+     "text": "The byte is stored with all 8 bits; a value of 3 in its two low bits selects interlace and video, which adds m_interlace_adjust to the character height.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "234",
+       "sha": "41428518a6d2d8f6cb723c1afea36c4b021c77b2eb1b7e748201739429b42261"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "81",
+       "sha": "4de5078020b38551fb23d3533b8b85ea93d47109745aaf458a04c2de2243f890"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "301",
+       "sha": "f15753d13eafe6a0de775e52bac54dfad0f809df2eddd96745420e00daae8fdb"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "4",
+     "text": "Besides the two low bits (3 selects interlace and video), bit 0x04 of the stored byte selects row and column addressing when a row is drawn.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "234",
+       "sha": "41428518a6d2d8f6cb723c1afea36c4b021c77b2eb1b7e748201739429b42261"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "80-81",
+       "sha": "6f731d93d55efc5c1caa865e6faa3ba9c31fcaaedb2a06eef2f673da0a9d1ca1"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "825-836",
+       "sha": "36cfdd36f7752b259b923a4eb431d6d122f863783859ea83d5f74e30bb2b081d"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "5",
+     "text": "Only the value 3 in the two low bits is tested (interlace and video); any other value, 1 included, takes the non-interlace adjustment in the character height.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "73-81",
+       "sha": "48f07ff42dd4a4a9c1b310d367fc14985f39b9343579802783c9105b7693a709"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "301",
+       "sha": "f15753d13eafe6a0de775e52bac54dfad0f809df2eddd96745420e00daae8fdb"
+      }
+     ]
+    },
+    {
+     "n": "104",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x08 returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A write of register 0x08 reaches the default arm, which logs a write to an illegal index.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "107-110",
+       "sha": "b6597599d8608bd0f45bf1c7b5db963b92a5d63c5b23616bf2a8125084ed1127"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "238-240",
+       "sha": "2b52b879ea830c2ca1caf24225c6ae7dad2032261c6fafd424bfbdd63bc364aa"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "4",
+     "text": "A write of register 0x08 reaches the default arm, which logs a write to an illegal index.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "107-110",
+       "sha": "b6597599d8608bd0f45bf1c7b5db963b92a5d63c5b23616bf2a8125084ed1127"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "238-240",
+       "sha": "2b52b879ea830c2ca1caf24225c6ae7dad2032261c6fafd424bfbdd63bc364aa"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "A write of register 0x08 reaches the default arm, which logs a write to an illegal index.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "107-110",
+       "sha": "b6597599d8608bd0f45bf1c7b5db963b92a5d63c5b23616bf2a8125084ed1127"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "238-240",
+       "sha": "2b52b879ea830c2ca1caf24225c6ae7dad2032261c6fafd424bfbdd63bc364aa"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x08 logs a read from an illegal index and returns all ones.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "261-264",
+       "sha": "080c36e704906888efb762104fe86d3ade18ef287d8b54afd936a49969b88981"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "289-293",
+       "sha": "ab870ec6b68918674ec25b56b2bf5e87aec22e143533fe12d336076f73686954"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x09",
+   "name": "R9 maximum raster",
+   "aliases": [
+    "R9 maximum scan line address",
+    "maximum scan line address"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "594"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "865-870"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x09"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "301"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "971-972"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x09"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "263-264"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_draw.cpp",
+     "lines": "7670"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R9 as Max Scan Line Address, in scan lines, with Read No and Write Yes (the capture garbles the line).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "594",
+       "sha": "89f41690fe7427061779661f0ec59c7daea4349d67345d9c3dae02630562d55d"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R9 is a 5-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "865-866",
+       "sha": "844fce7af1082367b58c65f99bdeb4361ed192e0825b06da4dd8ff5ef1d9086d"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R9 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "865-866",
+       "sha": "844fce7af1082367b58c65f99bdeb4361ed192e0825b06da4dd8ff5ef1d9086d"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R9 is stored to determine the number of scan lines per character row including the spacing, which controls the row address counter.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "866-868",
+       "sha": "d62ec49a0d682f474c57fa8d00bf8807609251d64a19521332e75dd0ab4c4f7c"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x09 returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x09 returns the stored byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "263-264",
+       "sha": "0cc5ecf1475eb24924dc9c8606fd0c274ef8ef358b3f98f4f17c4ac380cc2457"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "text": "The programmed value of R9 is a maximum address and is one less than the number of scan lines.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "868-870",
+       "sha": "8c1a2a443eff991d4c398043c766e3b024a606fe41f024014f6378e09961ac81"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A write that changes the value calls VGA_StartResize before storing it.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "112",
+       "sha": "12af576d827fbe9ab96bcdf658ea808bf3949eb81ea103ba34c88c1c4095f06f"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "235",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "235",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "111-113",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "111-113",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "301",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "971-972",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_draw.cpp",
+     "lines": "7670",
+     "as": "agrees",
+     "row": "5"
+    }
+   ]
+  },
+  {
+   "key": "0x0A",
+   "name": "R10 cursor start",
+   "aliases": [
+    "R10 cursor start raster",
+    "cursor start"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "595"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "604"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "606"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "871"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "872-879"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "882-902"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x0a"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "782-801"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x0A"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "265-266"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R10 as Cursor Start, in scan lines, with Read No and Write Yes (the capture garbles the name); its Note 2 is claimed below.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "595",
+       "sha": "9c63776ab62161ced7eb3f177d96f75c393a1165b3370b64d6395ae7fd37069f"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R10 is a 7-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "875-876",
+       "sha": "98de4455b70535bfe47e4a7a607594ae38c7b42e39ee6dbbfdcb03be8dd8c022"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R10 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "875-876",
+       "sha": "98de4455b70535bfe47e4a7a607594ae38c7b42e39ee6dbbfdcb03be8dd8c022"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R10 is stored to define the start scan line and the cursor blink rate.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "876",
+       "sha": "4f8f454daefa92894289cd88cfbff598917b79189231c6f9671071ed6a132aa3"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x0A returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A write stores the low six bits of the byte, so bit 6 is not kept.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "116",
+       "sha": "3c946b0e5666c8e425551cb71690fa3b1dbd81273c6be44ffb58aef3eb7fe719"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x0A returns the stored byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "265-266",
+       "sha": "42e51199cf74b1cfdb39f60b22d32ed2022d38099227efa233590c5a00caea43"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "4",
+     "text": "A write stores the low six bits: the low five bits give the start scan line, and bit 6 is not kept.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "116-117",
+       "sha": "0ea13f9828cb783552613c9c2d3034b4befc45a54f74471d5be417cdeb3adcec"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "bits 5-6",
+     "of": "doc",
+     "text": "Bits 5 and 6 of the cursor start register control the cursor operation as shown in Table 4.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "876-878",
+       "sha": "ddc323aa4997138f43dcaa23cd9f6761bc340897bfd92fcf2974df2c8ed21283"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bits 5-6",
+     "of": "doc",
+     "text": "Table 4: bits 6 and 5 give Non-Blink at 00, Cursor Non-Display at 01, Blink at 1/16 field rate at 10 and Blink at 1/32 field rate at 11.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "883-887",
+       "sha": "30b6a60ae18ae795211fbbf1ddcc2da09c2fa653759d5671839172bb52331fc2"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "The cursor can be up to 32 scan lines high and be placed on any scan line of the character block, as shown in Figure 15.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "872-875",
+       "sha": "cae8571266f866878800f44e07a57535674d4a2ecea4f95e1d4a0c1ff6d3a4a8"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "is",
+     "of": "doc",
+     "text": "Non-display, display, and two blink modes (16 or 32 times the field period) are available.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "878-879",
+       "sha": "3977ef006e6f2cb435a998b067bc6789467dc458d68ba97bd1a16a602caa8a30"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "bits 5-6",
+     "of": "doc",
+     "text": "Note 2 of Table 2: bit 5 of the cursor start register is used for blink period control, and bit 6 is used to select blink or no blink.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "606",
+       "sha": "59cce9305d3e2858a2343820ff8cb7b1e36cde1b842b86e434d6bb3cc94dfc80"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "is",
+     "of": "doc",
+     "text": "When an external blink feature on characters is required, it may be necessary to perform cursor blink externally so that both blink rates are synchronized.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "889-891",
+       "sha": "c0fc5f7c622531be576f43e5136ca98dd67620e53f76b3e307b7ac9114369b64"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "is",
+     "of": "doc",
+     "text": "An invert or non-invert cursor is easily implemented by programming the CRTC for a blinking cursor and inverting the video signal externally with an exclusive-OR gate.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "900-902",
+       "sha": "f592e3d0d1425a68f3e18dd4fc4a3ba2918402e3decb9983e708875582ee6172"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "bits 5-6",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "A write stores the low six bits and sets the cursor enabled flag to false only when bits 6 and 5 equal 01.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "116-118",
+       "sha": "b3c06b06f38513529ad58d54741dbc1250fd5236bd87384bb36ab7b7f2a56dc8"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "bits 5-6",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "6",
+     "text": "A write stores the low six bits and sets the cursor enabled flag to false only when bits 6 and 5 equal 01.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "116-118",
+       "sha": "b3c06b06f38513529ad58d54741dbc1250fd5236bd87384bb36ab7b7f2a56dc8"
+      }
+     ]
+    },
+    {
+     "n": "206",
+     "on": "bits 5-6",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "9",
+     "text": "A write stores the low six bits, so bit 6 is not kept, and bit 5 is tested with bit 6 for the cursor enabled flag.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "116-118",
+       "sha": "b3c06b06f38513529ad58d54741dbc1250fd5236bd87384bb36ab7b7f2a56dc8"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "bits 5-6",
+     "of": "mame",
+     "vs": "differs",
+     "row": "6",
+     "text": "Modes 10 and 11 flip the cursor state every 16 or 32 calls of update_cursor_state, made when the vertical adjust cycle ends; 00 is always on, 01 always off.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "616-618",
+       "sha": "599b4f26517ab1470247ebd7f49e4c22a8316d79b71462d2f57f707819e8f9fe"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "631",
+       "sha": "80b2f4fcb11a2e79d723a64b37f36305da5b229cfa84ab527d48fb7f506de54b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "778-779",
+       "sha": "155b6d26e9244de5a842c36a84f0db0ada473565d41a308ab48bd7f6ef88e628"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "782-789",
+       "sha": "e231679c714f1182f691467a2332300361547d30a1c5995d3b6ca98551e151d0"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "791-801",
+       "sha": "c2cb4a0b383bff4445647c0b2b96693d55a4cab1975095b165ad30430cf01d50"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "236",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "236",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "236",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "782-789",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "236",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "791-801",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "888",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "882",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "892-899",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "604",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "871",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "782-789",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "791-801",
+     "as": "agrees",
+     "row": "5"
+    }
+   ]
+  },
+  {
+   "key": "0x0B",
+   "name": "R11 cursor end",
+   "aliases": [
+    "R11 cursor end raster",
+    "cursor end"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "596"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "597"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "880-881"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x0b"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "200-201"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x0B"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "267-268"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R11 as Cursor End, in scan lines, with Read No and Write Yes (the capture garbles the name).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "596",
+       "sha": "bba7163cb8b6ec3528635cad037c4dc65056dd0b153be9ce22c6bddd5e1ae131"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R11 is a 5-bit register that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "880-881",
+       "sha": "84fcd95077b8ad47368d95d7d81616314c957a2e2363428f24054025fdcf2931"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R11 is a write-only register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "880-881",
+       "sha": "84fcd95077b8ad47368d95d7d81616314c957a2e2363428f24054025fdcf2931"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R11 is stored to define the last scan line of the cursor.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "880-881",
+       "sha": "84fcd95077b8ad47368d95d7d81616314c957a2e2363428f24054025fdcf2931"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x0B returns 0: no case of the switch names it, and the default case leaves the returned byte at its initial zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189-198",
+       "sha": "6e2638834786fff0c593c0aa9a12718abd0bb9cbd7a0f9045588476a17dbb40b"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "200-201",
+       "sha": "60f278bb949f209e2b7e8430d7b857a50af7f45b0f511ac626b2bea256f76d0a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x0B returns the stored byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "267-268",
+       "sha": "50031f35906ac40d27763fe47050966bb65708b3a6efa14357da8cedc95a5ecd"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "237",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "237",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "121",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "122",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "121",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "122",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "597",
+     "as": "layout"
+    }
+   ]
+  },
+  {
+   "key": "0x0C",
+   "name": "R12 start address high",
+   "aliases": [
+    "R12 start address high",
+    "start address"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "598"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "909"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "910-917"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x0c"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x0d"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_r",
+     "case": [
+      "0x0c"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_r",
+     "case": [
+      "0x0d"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "938"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x0C"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x0D"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "read_crtc_data_other",
+     "case": [
+      "0x0C"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "read_crtc_data_other",
+     "case": [
+      "0x0D"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R12 as Start Address (H), with Read No and Write Yes; the capture line ends with 0 0, whose column meaning is unclear.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "598",
+       "sha": "b374d48ceec54d5c603db44e8f356ace1f6eea4e31676be687b4d169263a44b3"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R12 and R13 form a 14-bit register pair that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "910-911",
+       "sha": "197cb589abbbc50207b28ec57dcc5bfba235233b7e7b89e41173ddf5bcb076a3"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "The start address register pair is write-only.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "910-911",
+       "sha": "197cb589abbbc50207b28ec57dcc5bfba235233b7e7b89e41173ddf5bcb076a3"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "The pair is stored as the first address output by the CRTC after vertical blanking.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "911-912",
+       "sha": "bf19be0c9c60c1fec1b688c1dc406ac9012ccebac12bfbc8b303cbb627efbd63"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "text": "The pair consists of an 8-bit low-order register, MA0-MA7, and a 6-bit high-order register, MA8-MA13.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "912-914",
+       "sha": "4cf1172cb35755438ade7aca300e68944d34a055fdd263e5482feca0ea156beb"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "write",
+     "of": "doc",
+     "text": "The start address register is stored; per the document it determines which portion of the refresh RAM is displayed on the CRT screen.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "914-915",
+       "sha": "20b0ec0126da4031dfbeab31633dc735931b9b8606669e8315156565dd441da4"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "Hardware scrolling by character or page may be accomplished by modifying the contents of this register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "916-917",
+       "sha": "778ea9607383dff1582b985e5ad766040e3a682ce7eda693ba90fd8855d48b94"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "The MCGA, Olivetti and 3270PC machine types store all 8 bits of the high register, so the pair is 16 bits wide there; the others store 14 bits.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "127-130",
+       "sha": "aa43b47c79056c390af4778468de45484622fe80a0f4bbcd68172dc5a581260e"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "133",
+       "sha": "dd77b1443adc77c21580194621f622476a6ff8adb0b82394603748824a9de420"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "The MCGA, Olivetti and 3270PC machine types store all 8 bits of the high register; the others store its low 6 bits; the low register stores 8 bits.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "127-130",
+       "sha": "aa43b47c79056c390af4778468de45484622fe80a0f4bbcd68172dc5a581260e"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "133",
+       "sha": "dd77b1443adc77c21580194621f622476a6ff8adb0b82394603748824a9de420"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "Registers 0x0C and 0x0D read 0, because device_start sets m_supports_disp_start_addr_r to false.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "191-192",
+       "sha": "d151ff0fcfb875f22d1cec1cdf8f02bde8a5dd51fb2c1b5f7e524db31c0149c6"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "938",
+       "sha": "6186e0288ed4387ad2827a898fccacc1fa2aa5bba0d17eab4e5c66ebb4193ba0"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "Reads of registers 0x0C and 0x0D return the high and low bytes of the stored start address.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "269-272",
+       "sha": "5d37a20b097fc83a10701d22e629aab8d29820b17b9af95dc92d3c17562ae1e5"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "238",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "239",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "238",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "239",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "238",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "239",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "128",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "130",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "133",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "128",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "130",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "133",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "238",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "239",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "189",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "244",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "970",
+     "as": "unseen",
+     "reason": "initial value stored by device_start before any register write"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1068",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1090",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1112",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1134",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1156",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1178",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1205",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1353",
+     "as": "unseen",
+     "reason": "register handler of the HD6345 variant, not covered here"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "909",
+     "as": "layout"
+    }
+   ]
+  },
+  {
+   "key": "0x0D",
+   "name": "R13 start address low",
+   "aliases": [
+    "R13 start address low"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "599"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x0d"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_r",
+     "case": [
+      "0x0d"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "938"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x0D"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "read_crtc_data_other",
+     "case": [
+      "0x0D"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R13 as Start Address (L), with Read No and Write Yes (the capture garbles the line).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "599",
+       "sha": "2219d0cc779be5d7754c3a97a309f2c101b4aed548b85fff6844ba29bee9eb6f"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R13 can be written, as Table 2 marks it Write Yes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "599",
+       "sha": "2219d0cc779be5d7754c3a97a309f2c101b4aed548b85fff6844ba29bee9eb6f"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R13 cannot be read, as Table 2 marks it Read No.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "599",
+       "sha": "2219d0cc779be5d7754c3a97a309f2c101b4aed548b85fff6844ba29bee9eb6f"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x0D returns 0, because device_start sets m_supports_disp_start_addr_r to false.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "192",
+       "sha": "f0dd815341cd72cae569e5df2eff6811b586fe2145d670cc5702efc9bc3ed105"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "938",
+       "sha": "6186e0288ed4387ad2827a898fccacc1fa2aa5bba0d17eab4e5c66ebb4193ba0"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A read of register 0x0D returns the low byte of the stored start address.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "271-272",
+       "sha": "362d5a012523dd31d385ecaf6e90251441407d62e563787880b9571d659aadaf"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "239",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "133",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "189",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "244",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "970",
+     "as": "unseen",
+     "reason": "initial value stored by device_start before any register write"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1068",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1090",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1112",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1134",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1156",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1178",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1205",
+     "as": "unseen",
+     "reason": "device_start of a chip variant, which these entries do not cover"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1353",
+     "as": "unseen",
+     "reason": "register handler of the HD6345 variant, not covered here"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "238",
+     "as": "parent",
+     "owner": "mc6845:register:0x0C"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "128",
+     "as": "parent",
+     "owner": "mc6845:register:0x0C"
+    }
+   ]
+  },
+  {
+   "key": "0x0E",
+   "name": "R14 cursor high",
+   "aliases": [
+    "R14 cursor high",
+    "cursor address"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "600"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "903-906"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "908"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x0e"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x0f"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_r",
+     "case": [
+      "0x0e"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_r",
+     "case": [
+      "0x0f"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x0E"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x0F"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "read_crtc_data_other",
+     "case": [
+      "0x0E"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "read_crtc_data_other",
+     "case": [
+      "0x0F"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R14 as Cursor (H), with Read Yes and Write Yes; the capture line ends with 0 0, whose column meaning is unclear.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "600",
+       "sha": "095844fa2fdf3dcef652b531defaf395947ee5cf62faacaef4717f6efd35a17d"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R14 and R15 form a 14-bit register pair that the processor writes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "903-904",
+       "sha": "fc8d36b122529e4679e274879ee5fc8746472eb5c766c05f11376504bedf79a3"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R14 and R15 form a 14-bit register pair that the processor reads.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "903-904",
+       "sha": "fc8d36b122529e4679e274879ee5fc8746472eb5c766c05f11376504bedf79a3"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "The pair is stored; per the document it positions the cursor anywhere in the refresh RAM area, allowing hardware paging and scrolling without losing the original cursor position.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "904-906",
+       "sha": "17e254fee0767f9d6cff5406e479b31c0b3929681a88d178ee8b49d831902396"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "text": "R14 is the 6-bit high-order register of the pair, MA8-MA13.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "908",
+       "sha": "cecdbef57ccd9a8bc0403375b2097445e6f94e6160af07c8d5f81bed9dbf4cc7"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A write of register 0x0E stores all 8 bits in the high half, so the pair is 16 bits wide.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "136-137",
+       "sha": "b122b9084d41a3c5aa1e6a5731325eab8ecbc0bb5961cf99e9f101bc5e1631b4"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "A write of register 0x0E stores all 8 bits of the byte in the high half of the cursor location.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "136-137",
+       "sha": "b122b9084d41a3c5aa1e6a5731325eab8ecbc0bb5961cf99e9f101bc5e1631b4"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "Reads of registers 0x0E and 0x0F return the high and low bytes of the cursor location, all 8 bits of each, so the pair read is 16 bits wide.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "274",
+       "sha": "ae1942e9d1ca8207c1161a6b129adad6f4c74c7899ec78b45f948f75b144631f"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "276",
+       "sha": "583ca26ffce02d5f39ac7b46b22bcd0ccac43b26ff654b25484afe89833354b3"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "240",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "241",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "240",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "241",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "240",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "193",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "194",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "136-137",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "140-141",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "189",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "244",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "964",
+     "as": "unseen",
+     "reason": "initial value stored by device_start before any register write"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1355",
+     "as": "unseen",
+     "reason": "register handler of the HD6345 variant, not covered here"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1037",
+     "as": "parent",
+     "owner": "chip:device:mc6845"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "240",
+     "as": "agrees",
+     "row": "3"
+    }
+   ]
+  },
+  {
+   "key": "0x0F",
+   "name": "R15 cursor low",
+   "aliases": [
+    "R15 cursor low"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "601"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "907"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x0f"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_r",
+     "case": [
+      "0x0f"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x0F"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "read_crtc_data_other",
+     "case": [
+      "0x0F"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R15 as Cursor (L), with Read Yes and Write Yes (the capture garbles the line).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "601",
+       "sha": "8a89e11521d739a781e23b53fa8666b4818dffa3f5be3bfd7229ad0371ea2f64"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "R15 can be written, as Table 2 marks it Write Yes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "601",
+       "sha": "8a89e11521d739a781e23b53fa8666b4818dffa3f5be3bfd7229ad0371ea2f64"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "R15 can be read, as Table 2 marks it Read Yes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "601",
+       "sha": "8a89e11521d739a781e23b53fa8666b4818dffa3f5be3bfd7229ad0371ea2f64"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "R15 is the 8-bit low-order register of the cursor pair (the capture damages the MA range).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "907",
+       "sha": "8aaa885380fdc85abf700f377bee57c06e41104a782ade885c5d970760a3f6a8"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "241",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "241",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "194",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "140-141",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "140-141",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "276",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "189",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "244",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "964",
+     "as": "unseen",
+     "reason": "initial value stored by device_start before any register write"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1355",
+     "as": "unseen",
+     "reason": "register handler of the HD6345 variant, not covered here"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1037",
+     "as": "parent",
+     "owner": "chip:device:mc6845"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "240",
+     "as": "parent",
+     "owner": "mc6845:register:0x0E"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "136",
+     "as": "parent",
+     "owner": "mc6845:register:0x0E"
+    }
+   ]
+  },
+  {
+   "key": "0x10",
+   "name": "R16 light pen high",
+   "aliases": [
+    "R16 light pen high",
+    "light pen address"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "602"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "918-927"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x10"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x11"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_r",
+     "case": [
+      "0x10"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_r",
+     "case": [
+      "0x11"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "703-707"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "746-751"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "755-759"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "736"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "385-395"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x10"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x11"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "read_crtc_data_other",
+     "case": [
+      "0x10"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "read_crtc_data_other",
+     "case": [
+      "0x11"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R16 as Light Pen (H), with Read Yes and Write No; the capture line ends with 0 0, whose column meaning is unclear.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "602",
+       "sha": "6600a6f2a5e9a05ef1cb4335ce4da6353490278e4381dcacdb2ed2f14bd2dbd4"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "R16 and R17 form a 14-bit register pair that the processor reads.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "918-919",
+       "sha": "efdb744f305dd4e22a63e7670d1f19591e8441a4cb051d3a37860611c5001088"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "The light pen register pair is read-only.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "918-919",
+       "sha": "efdb744f305dd4e22a63e7670d1f19591e8441a4cb051d3a37860611c5001088"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "read",
+     "of": "doc",
+     "text": "The pair captures the refresh address output by the CRTC on the positive edge of a pulse input to the LPSTB pin.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "919-921",
+       "sha": "d928b9fcad2120a6a4a9ea52b8bf4be764d93f875a8f6b78587750eba019bcb1"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "read",
+     "of": "doc",
+     "text": "The pair consists of an 8-bit low-order register, MA0-MA7, and a 6-bit high-order register, MA8-MA13.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "921-922",
+       "sha": "be79c32416703d824830ec71c195bf57aff8f335e97dc6973286027105614b9e"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "The light pen pulse is asynchronous with respect to refresh address timing, so an internal synchronizer is designed into the CRTC.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "922-924",
+       "sha": "dcade20c9d37f4a0aeae04a9e9c510813e1a38d3011aa0c89aa4379eee67bc2a"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "Due to delays in this circuit (Figure 5), the values of R16 and R17 need to be corrected in software.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "924-926",
+       "sha": "ee5aa9890fbb2b2e7e0ee20e90f4fc0248c004d7a1a611f9ba9dc91819596c81"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "is",
+     "of": "doc",
+     "text": "Figure 16 shows an interrupt driven approach although a polling routine could be used.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "926-927",
+       "sha": "868afd8350f0d96685aecc98d689ddbaa60a141820511e025a9aba3db502776a"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "Reads of registers 0x10 and 0x11 return the light pen value shifted right by 8 and its low byte, with no mask to 6 bits on the high byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "278",
+       "sha": "b2f75820acf3d422f8ab8526584b29630db3af1b4dfda44153f41d9bf3031c72"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "280",
+       "sha": "173933dd75af5c50059fdaf98f1b90d54dedb9e75594764178425b8aa0fe886d"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write of register 0x10 stores its low 6 bits in the high half of the light pen value, and 0x11 stores a byte in the low half.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "143-151",
+       "sha": "a06f247cc4c2862d22abac64d07611069181ccd8f9bdc059d862b5bac27487f7"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "4",
+     "text": "On CGA, Olivetti, Tandy, Hercules and MDA types, writing port 0x3DC with the latch untriggered stores a beam-position light pen value; registers 0x10 and 0x11 can be written too.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "385-395",
+       "sha": "4b756bb1ef0261d0110223152d54e719cc52b1610ebd7045911fa42e1bbca32c"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "1346-1348",
+       "sha": "27c8b648003ae9de4c1c3d7875cc8af370b6acb5766f50b6058c11c25865a52a"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "143-151",
+       "sha": "a06f247cc4c2862d22abac64d07611069181ccd8f9bdc059d862b5bac27487f7"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "A write of register 0x10 keeps 6 bits of the high half; the value computed for port 0x3DC is stored as 16 bits and read back unmasked.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "145-146",
+       "sha": "989bac3ccb124bd1e5f835de3c7776cb00500bb4e2a7d88545289fefd5d6d571"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "385-395",
+       "sha": "4b756bb1ef0261d0110223152d54e719cc52b1610ebd7045911fa42e1bbca32c"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "278",
+       "sha": "b2f75820acf3d422f8ab8526584b29630db3af1b4dfda44153f41d9bf3031c72"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A read of register 0x10 also clears the light pen latched flag.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "196",
+       "sha": "b5d15a3392fa9cda92b2a70020d14e747ab1f1cdb7fd058559b9c8a19146249b"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "4",
+     "text": "assert_light_pen_input() arms a timer whose callback stores the get_ma address and sets the latched flag; a second overload stores a caller-supplied address and sets that flag.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "703-707",
+       "sha": "3f21ebe2d78dd7bf4408ff9f71133640b93963b3fb3bd1aa9a9f9dab61409d3e"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "746-751",
+       "sha": "4c0cea55a64674e42fb0c5f0c288a4ae23597b2803a40fcc64ed660739b2ce8d"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "755-759",
+       "sha": "4b10137e959c6f91d0938f3c23c1996a1d2a1703ba578144d4eb29a9edb331f6"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "196",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "197",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "242",
+     "as": "agrees",
+     "row": "3",
+     "nothing": true
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "243",
+     "as": "agrees",
+     "row": "3",
+     "nothing": true
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "196",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "197",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "736",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1045",
+     "as": "parent",
+     "owner": "chip:device:mc6845"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "189",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "244",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "736",
+     "as": "agrees",
+     "row": "2"
+    }
+   ]
+  },
+  {
+   "key": "0x11",
+   "name": "R17 light pen low",
+   "aliases": [
+    "R17 light pen low"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "603"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x11"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_r",
+     "case": [
+      "0x11"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "0x11"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "read_crtc_data_other",
+     "case": [
+      "0x11"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 2 lists R17 as Light Pen (L), with Read Yes and Write No (the capture garbles the line).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "603",
+       "sha": "72c647ceb2bd6c4c7e8afad98145289cf6a9e7205af835711360a543fba316c6"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "R17 can be read, as Table 2 marks it Read Yes.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "603",
+       "sha": "72c647ceb2bd6c4c7e8afad98145289cf6a9e7205af835711360a543fba316c6"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "R17 cannot be written, as Table 2 marks it Write No.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "603",
+       "sha": "72c647ceb2bd6c4c7e8afad98145289cf6a9e7205af835711360a543fba316c6"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write of register 0x11 stores the byte in the low half of the light pen value.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "149-150",
+       "sha": "5a84147d78f53e9c61a6687f88f338e6af53caa1a1a968240918e8ce03416343"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A read of register 0x11 also clears the light pen latched flag.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "197",
+       "sha": "793d74f23ec8e5ba61f645ec25fd22b58d2e98dc1d196deca3d3e69517419df1"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "197",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "280",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "243",
+     "as": "agrees",
+     "row": "3",
+     "nothing": true
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "705",
+     "as": "parent",
+     "owner": "mc6845:register:0x10"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "757",
+     "as": "parent",
+     "owner": "mc6845:register:0x10"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "1045",
+     "as": "parent",
+     "owner": "chip:device:mc6845"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "145",
+     "as": "parent",
+     "owner": "mc6845:register:0x10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "393",
+     "as": "parent",
+     "owner": "mc6845:register:0x10"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "189",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "244",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x12",
+   "name": "R18 update addr high",
+   "aliases": [
+    "R18 update addr high",
+    "update address high"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SY6545.raw.txt",
+     "lines": "473-474"
+    },
+    {
+     "ref": "datasheet:SY6545.raw.txt",
+     "lines": "628"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x12"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x13"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "default"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "variant": "6545",
+     "text": "Figure 3 lists R18 as the Update Address Register (high), at register-select code 0 1 1 0 0 1 0 (the capture reads Reg IHI).",
+     "quotes": [
+      {
+       "ref": "datasheet:SY6545.raw.txt",
+       "lines": "473-474",
+       "sha": "28386ccf763614e7fb8c4143e04814fd49bf3c59d42427e552a4967d306c7ede"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "variant": "6545",
+     "text": "R18 is the high register of the update address; R19 is the low register.",
+     "quotes": [
+      {
+       "ref": "datasheet:SY6545.raw.txt",
+       "lines": "628",
+       "sha": "f576d13790336877daade56ee74cb4d46c5c148b42628c792663cbe7c627462f"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A write of register 0x12 reaches the default arm, which logs a write to an illegal index.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "148-152",
+       "sha": "d2721c22d667e9188189fe131ac858e0f0ceace9a98146aa94231690499b63ad"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "238-240",
+       "sha": "2b52b879ea830c2ca1caf24225c6ae7dad2032261c6fafd424bfbdd63bc364aa"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "247",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "255",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "245",
+     "as": "parent",
+     "owner": "mc6845:register:0x13"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "248",
+     "as": "parent",
+     "owner": "mc6845:register:0x13"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "253",
+     "as": "parent",
+     "owner": "mc6845:register:0x13"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "256",
+     "as": "parent",
+     "owner": "mc6845:register:0x13"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x13",
+   "name": "R19 update addr low",
+   "aliases": [
+    "R19 update addr low",
+    "update address low"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SY6545.raw.txt",
+     "lines": "475-476"
+    },
+    {
+     "ref": "datasheet:SY6545.raw.txt",
+     "lines": "629-631"
+    },
+    {
+     "ref": "datasheet:SY6545.raw.txt",
+     "lines": "643-648"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x12"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x13"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "default"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "variant": "6545",
+     "text": "Figure 3 lists R19 as the Update Address Register (low), at register-select code 0 1 1 0 0 1 1 (the capture reads Reg ILl).",
+     "quotes": [
+      {
+       "ref": "datasheet:SY6545.raw.txt",
+       "lines": "475-476",
+       "sha": "5a1d885bc0b964d862aa9b154b07ecdf84f6687179d2c15d1c1e3636cda7853d"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "variant": "6545",
+     "text": "R18 and R19 together are stored as one 14-bit register, the memory address at which the next read or update will occur, for transparent address mode only.",
+     "quotes": [
+      {
+       "ref": "datasheet:SY6545.raw.txt",
+       "lines": "629-631",
+       "sha": "e8e45b9a7c69569b177e22d1cacefd1f61dc9b13944de3ccd12a86dca6f9ec45"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "variant": "6545",
+     "text": "Pair R18/R19 is straight binary if bit 2 of R8 is 0, row/column if 1 (low byte column, high byte row); the capture reads R8 as RS, R18 as R1S.",
+     "quotes": [
+      {
+       "ref": "datasheet:SY6545.raw.txt",
+       "lines": "643-648",
+       "sha": "3e153adb1d6f0b00e6615905e5a51fe68d9189ebda752e6c8410fe2196419581"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "2",
+     "text": "A write of 0x12 or 0x13 stores into m_update_addr whenever the variant supports transparent addressing; only the call to call_on_update_address depends on the 0x88 mode bits.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "73-81",
+       "sha": "48f07ff42dd4a4a9c1b310d367fc14985f39b9343579802783c9105b7693a709"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "244-251",
+       "sha": "6598bbc65971f64a6575de148e2e567baf44e43993e35359f0ee6b358e44bc05"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "252-259",
+       "sha": "9b0a6277aebf32d1daaa1ef2ef5d34e5c7a8badd7917df77d3eee66da49edd91"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "Neither case 0x12 nor case 0x13 tests MODE_ROW_COLUMN_ADDRESSING; they store 6 and 8 bits of the byte into the high and low parts of m_update_addr.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "73-81",
+       "sha": "48f07ff42dd4a4a9c1b310d367fc14985f39b9343579802783c9105b7693a709"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "244-251",
+       "sha": "6598bbc65971f64a6575de148e2e567baf44e43993e35359f0ee6b358e44bc05"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "252-259",
+       "sha": "9b0a6277aebf32d1daaa1ef2ef5d34e5c7a8badd7917df77d3eee66da49edd91"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A write of register 0x13 reaches the default arm, which logs a write to an illegal index.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "148-152",
+       "sha": "d2721c22d667e9188189fe131ac858e0f0ceace9a98146aa94231690499b63ad"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "238-240",
+       "sha": "2b52b879ea830c2ca1caf24225c6ae7dad2032261c6fafd424bfbdd63bc364aa"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write of register 0x13 reaches the default arm, which logs a write to an illegal index.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "148-152",
+       "sha": "d2721c22d667e9188189fe131ac858e0f0ceace9a98146aa94231690499b63ad"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "238-240",
+       "sha": "2b52b879ea830c2ca1caf24225c6ae7dad2032261c6fafd424bfbdd63bc364aa"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    }
+   ]
+  },
+  {
+   "key": "0x1F",
+   "name": "R31 update strobe",
+   "aliases": [
+    "R31 update strobe",
+    "dummy location"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SY6545.raw.txt",
+     "lines": "354-356"
+    },
+    {
+     "ref": "datasheet:SY6545.raw.txt",
+     "lines": "477"
+    },
+    {
+     "ref": "datasheet:SY6545.raw.txt",
+     "lines": "530-532"
+    },
+    {
+     "ref": "datasheet:SY6545.raw.txt",
+     "lines": "632-635"
+    },
+    {
+     "ref": "datasheet:SY6545.raw.txt",
+     "lines": "636-640"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "187"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "204"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_r",
+     "case": [
+      "0x1f"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::register_w",
+     "case": [
+      "0x1f"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::transparent_update"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::transparent_update_tick"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "write_crtc_data_other",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "function": "read_crtc_data_other",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "293"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "variant": "6545",
+     "text": "Figure 3 lists R31 as the Dummy Location, at register-select code 0 1 1 1 1 1 1 (the capture reads its name as R3l).",
+     "quotes": [
+      {
+       "ref": "datasheet:SY6545.raw.txt",
+       "lines": "477",
+       "sha": "a0c3031983b0aa8fe65fd3b66d524427fda05a7c71bb2082bd711f72690dd817"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "variant": "6545",
+     "text": "R31 does not drive the data bus at all when it is read.",
+     "quotes": [
+      {
+       "ref": "datasheet:SY6545.raw.txt",
+       "lines": "530-532",
+       "sha": "86295faddece0ad1dadb4d3424ec24e142e33d77657b1acee96644b2b5c5a097"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "variant": "6545",
+     "text": "R31 stores no data but is required to detect when transparent addressing updates occur and to set the Update Ready bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:SY6545.raw.txt",
+       "lines": "636-640",
+       "sha": "618cc371034c815fb1f643f8328c44409e7161c038c562e13c300ef04236e1f8"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "variant": "6545",
+     "text": "Whenever a read or update occurs, the update address increments automatically.",
+     "quotes": [
+      {
+       "ref": "datasheet:SY6545.raw.txt",
+       "lines": "632-635",
+       "sha": "39e966c79c88b9402f8bc5cb2ca5761301e5fced392bd34e408dd1224cc2626f"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "variant": "6545",
+     "text": "The Update Ready bit of the status register goes to 0 when R31 (read as A31 in the capture) has been read or written by the MPU.",
+     "quotes": [
+      {
+       "ref": "datasheet:SY6545.raw.txt",
+       "lines": "354-356",
+       "sha": "ed1a70a76ec9c04d4d0d4388a0fc55485030ed3a8cca713089dcacec0fb40229"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "2",
+     "text": "A read of 0x1F returns 0: transparent_update is called and the function returns the byte it initialised to zero.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "187",
+       "sha": "63b15860c8a508d5130c031ca172d951f327645e03aad1b5af3d0f40c19bd912"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "198",
+       "sha": "e406a0d889d14e46e5aa3d9cca16cd907e265be13797bad5b0285bb10d01a0c4"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "204",
+       "sha": "67f6db9d4a2e640b2fa88b7ad8e8f66bbcfe38eae9b1e4d974aaa66f5be96cc8"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "With the 0x88 mode bits both set, an access to 0x1F increments m_update_addr, wrapped to 14 bits, and calls call_on_update_address; it does not touch m_update_ready_bit.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "73-81",
+       "sha": "48f07ff42dd4a4a9c1b310d367fc14985f39b9343579802783c9105b7693a709"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "164-171",
+       "sha": "9350736083a117463f7d7f389640dd9874bcf00e20f0ad8a1fd0eddc902138a7"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "723",
+       "sha": "59738b8b7eb99171af914e68fbe3f0618327818451e7e701660ae5924899c0dc"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "In transparent_update_tick, m_update_ready_bit is set and m_update_addr incremented only when the flag is clear and the 0x88 mode bits equal 0x08.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "73-81",
+       "sha": "48f07ff42dd4a4a9c1b310d367fc14985f39b9343579802783c9105b7693a709"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "721-729",
+       "sha": "78db7e0f785fe7b7c0ffe824396ddd418233d428e80b9fc165b7811190fd3381"
+      }
+     ]
+    },
+    {
+     "n": "104",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "5",
+     "text": "An access to 0x1F clears m_update_ready_bit only when the variant supports transparent addressing, the 0x88 mode bits equal 0x08 and the flag is set.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "73-81",
+       "sha": "48f07ff42dd4a4a9c1b310d367fc14985f39b9343579802783c9105b7693a709"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "162-172",
+       "sha": "5bf69bb60c826aa3a0b31c75b1960c04f27e295766deb20a183bbe32b5de0c2e"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "173-182",
+       "sha": "b2ba1c11d3f679457fc3256417fad14bde1c3acd5403795a719e193a1da6eb9d"
+      }
+     ]
+    },
+    {
+     "n": "105",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "4",
+     "text": "An access to 0x1F increments m_update_addr only with the 0x88 mode bits both set; with them equal to 0x08 the increment is in transparent_update_tick, when the flag is clear.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "73-81",
+       "sha": "48f07ff42dd4a4a9c1b310d367fc14985f39b9343579802783c9105b7693a709"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "164-171",
+       "sha": "9350736083a117463f7d7f389640dd9874bcf00e20f0ad8a1fd0eddc902138a7"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "721-729",
+       "sha": "78db7e0f785fe7b7c0ffe824396ddd418233d428e80b9fc165b7811190fd3381"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A read of register 0x1F reaches the default arm, which logs a read from an illegal index, and the handler then returns all ones.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "281-288",
+       "sha": "045d0ab356fb80c9272370d072d27185a0509a7fad7444cc581b1d54271e81a0"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "289-293",
+       "sha": "ab870ec6b68918674ec25b56b2bf5e87aec22e143533fe12d336076f73686954"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write of register 0x1F reaches the default arm, which logs a write to an illegal index; a read logs a read from an illegal index.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "228-236",
+       "sha": "993871885657b9738c906dd9402fa35bd38560892a42f4d67aee026a8107654d"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "238-240",
+       "sha": "2b52b879ea830c2ca1caf24225c6ae7dad2032261c6fafd424bfbdd63bc364aa"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "281-288",
+       "sha": "045d0ab356fb80c9272370d072d27185a0509a7fad7444cc581b1d54271e81a0"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "289-293",
+       "sha": "ab870ec6b68918674ec25b56b2bf5e87aec22e143533fe12d336076f73686954"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "4",
+     "text": "A write of register 0x1F reaches the default arm, which logs a write to an illegal index; a read logs a read from an illegal index.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "228-236",
+       "sha": "993871885657b9738c906dd9402fa35bd38560892a42f4d67aee026a8107654d"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "238-240",
+       "sha": "2b52b879ea830c2ca1caf24225c6ae7dad2032261c6fafd424bfbdd63bc364aa"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "281-288",
+       "sha": "045d0ab356fb80c9272370d072d27185a0509a7fad7444cc581b1d54271e81a0"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "289-293",
+       "sha": "ab870ec6b68918674ec25b56b2bf5e87aec22e143533fe12d336076f73686954"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "A write of register 0x1F reaches the default arm, which logs a write to an illegal index; a read logs a read from an illegal index.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "228-236",
+       "sha": "993871885657b9738c906dd9402fa35bd38560892a42f4d67aee026a8107654d"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "238-240",
+       "sha": "2b52b879ea830c2ca1caf24225c6ae7dad2032261c6fafd424bfbdd63bc364aa"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "281-288",
+       "sha": "045d0ab356fb80c9272370d072d27185a0509a7fad7444cc581b1d54271e81a0"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/vga_other.cpp",
+       "lines": "289-293",
+       "sha": "ab870ec6b68918674ec25b56b2bf5e87aec22e143533fe12d336076f73686954"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "189",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "224",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "72",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/vga_other.cpp",
+     "lines": "244",
+     "as": "key"
+    }
+   ]
+  }
+ ],
+ "engine": [
+  "VGA_StartResize",
+  "call_on_update_address",
+  "update_upd_adr_timer",
+  "m_on_update_addr_changed_cb"
+ ]
+}

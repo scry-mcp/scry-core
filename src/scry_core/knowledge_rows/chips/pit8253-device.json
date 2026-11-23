@@ -215,7 +215,7 @@
     },
     {
      "n": "5",
-     "on": "when",
+     "on": "is",
      "of": "doc",
      "text": "Each counter must be programmed before it can be used; unused counters need not be programmed.",
      "quotes": [
@@ -416,8 +416,8 @@
      "quotes": [
       {
        "ref": "datasheet:8254.raw.txt",
-       "lines": "602-608",
-       "sha": "aa55d01a5955a10ed5da7b4fb9dd83b5881f2c21ed2dfef99cc892dda9a8397e"
+       "lines": "602-609",
+       "sha": "79e19066e587491dc568983d608d0dfa71d8abc2bfea7ceb25d9e85d39d51889"
       }
      ]
     },
@@ -498,19 +498,19 @@
     },
     {
      "n": "26",
-     "on": "when",
+     "on": "is",
      "of": "doc",
      "text": "In modes 2 and 3 a GATE transition should not occur one clock before terminal count.",
      "quotes": [
       {
        "ref": "datasheet:8254.raw.txt",
-       "lines": "653-654",
-       "sha": "5e611c9a3b7f780fc3c8cba6cf44da1bcb5b001b9b5cb5d84122d03d87c1bd58"
+       "lines": "653-655",
+       "sha": "86ea8f92b7ee33b0909f6966aa1c8a927b6f68e9417169e5a9eaf1e1dca9030e"
       },
       {
        "ref": "datasheet:8254.raw.txt",
-       "lines": "679-680",
-       "sha": "5e611c9a3b7f780fc3c8cba6cf44da1bcb5b001b9b5cb5d84122d03d87c1bd58"
+       "lines": "679-681",
+       "sha": "06b3c1ea660b514231f7fcd971ce9aa1a41518bfe50e02d29d5a13c5a010286b"
       }
      ]
     },
@@ -749,12 +749,25 @@
      "n": "44",
      "on": "when",
      "of": "doc",
-     "text": "The counter does not stop at zero: in modes 0, 1, 4 and 5 it wraps to FFFF or 9999 and goes on; modes 2 and 3 reload.",
+     "text": "The counter does not stop at zero: in modes 0, 1, 4 and 5 it wraps around to FFFF or 9999 and goes on counting.",
      "quotes": [
       {
        "ref": "datasheet:8254.raw.txt",
        "lines": "800-806",
        "sha": "038c7de72f8c3b5da4d5391635e66ce012e708e7fe5b361fa43a17456191f5e0"
+      }
+     ]
+    },
+    {
+     "n": "45",
+     "on": "when",
+     "of": "doc",
+     "text": "Modes 2 and 3 are periodic: the counter reloads itself with the initial count and continues counting.",
+     "quotes": [
+      {
+       "ref": "datasheet:8254.raw.txt",
+       "lines": "804-806",
+       "sha": "df705456d10ab9317916a03d2170099a670592c100edcf4c723f496fa8aaa50b"
       }
      ]
     },
@@ -805,6 +818,11 @@
        "ref": "mame:src/devices/machine/pit8253.cpp",
        "lines": "901-908",
        "sha": "870e6b95a62b0d40ae5e4b37efe6fb218d26c3e6fc3616e39bb637b4f4d72209"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "221-224",
+       "sha": "393d79ca62c090c9aaf1438aba68d0d58da5e10b949c4e80961a1e11a4caf63c"
       }
      ]
     },
@@ -813,7 +831,7 @@
      "on": "place",
      "of": "mame",
      "vs": "place",
-     "text": "Reads and writes at offsets 0 to 3 go to counters 0 to 2 and the control word.",
+     "text": "Writes at offsets 0 to 3 go to counters 0 to 2 and the control word; a read at offset 3 returns 0.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pit8253.cpp",
@@ -899,6 +917,11 @@
        "ref": "dosbox-x:src/hardware/timer.cpp",
        "lines": "141-142",
        "sha": "87dd9cf92f2761c46a4c64f9e10735a13f7e0022fd0042eeda6839294a911a99"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "316-318",
+       "sha": "73a8bfe0c8b4d0f478019acc98d685ae4b4047120b9b3d7ca70d7c8096b5ec2a"
       }
      ]
     },
@@ -923,7 +946,7 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "24",
-     "text": "A new count restarts the count at once, with no wait for a CLK pulse.",
+     "text": "After a control word the first count restarts the count at once, with no wait for a CLK pulse.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/timer.cpp",
@@ -938,7 +961,7 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "28",
-     "text": "The two halves of the wave are equal, so an odd count gives equal high and low times.",
+     "text": "The high and low halves of the wave are each computed as half of the period delay.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/timer.cpp",
@@ -1013,12 +1036,17 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "39",
-     "text": "A GATE change acts at once, with no sampling on a CLK edge.",
+     "text": "A change of GATE is stored by set_gate when it occurs, not at a rising CLK edge.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/timer.cpp",
-       "lines": "228-232",
+       "lines": "228-231",
        "sha": "5901a02cd2c38c91c14d197817ad2f6a14c7ab5026b1f9a8d1a982b33c523fbe"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "270",
+       "sha": "f747d1f1072869b02f6ab02fec16e2bfe398200a5d434dc305553184a1bd6b0f"
       }
      ]
     },
@@ -1088,12 +1116,22 @@
      "of": "dosbox-x",
      "vs": "differs",
      "row": "40",
-     "text": "A rising GATE edge acts at once, with no flip-flop sampled on the next CLK edge.",
+     "text": "In modes 1, 2, 3 and 5 a rising GATE edge restarts the count in set_gate straight away.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/timer.cpp",
-       "lines": "253-255",
-       "sha": "c54f4de575002ba115221b64f7e757dae9fbc4e02a2892a98455346977274e85"
+       "lines": "242-246",
+       "sha": "27046c8775c9c58b846305aa7b1447bbf5d48283f5ca28b8a188af20e1a7cf9b"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "252-256",
+       "sha": "a566b62697c31c37a5cc67973fc246034564d3e8ec740d7c0ce1d8f0546b75d5"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "262-266",
+       "sha": "a566b62697c31c37a5cc67973fc246034564d3e8ec740d7c0ce1d8f0546b75d5"
       }
      ]
     },
@@ -1117,12 +1155,22 @@
      "of": "mame",
      "vs": "differs",
      "row": "41",
-     "text": "A rising GATE edge triggers mode 3 only while the clock input is stopped.",
+     "text": "A rising GATE edge triggers mode 3 only while no clock frequency is set, then each GATE change calls flush_output; a TODO calls the check unneeded but unverified.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pit8253.cpp",
        "lines": "1117-1119",
        "sha": "3e656ae665069f534658e9ba3ae8ba47b18cd861a97daa97fd27b4709222ff70"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1134-1142",
+       "sha": "dcb843cb2e024dcf732024062e4e79db5c4f1ade1d21196cdeb957b7d32699dc"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "314-324",
+       "sha": "f08efa3505d48e619c1f3049e115891b6c9571ec2644bf69e86d485641e2902b"
       }
      ]
     },
@@ -1140,6 +1188,199 @@
        "sha": "5545cd9ce980eed62824c72b5cbf826579f13e29d9b9c3a7f4c0d9039776eaa4"
       }
      ]
+    },
+    {
+     "n": "112",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "text": "With a clock frequency set a GATE change reaches the counter at once; a rising edge of a driven clock signal also samples it.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1128-1133",
+       "sha": "d372df20d28dabaf6f7ba0e2523a5e11d78fccb5f4edd490c09f4508772e6d64"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1169-1171",
+       "sha": "f8d4753384f69ed47ed1df7b334145d012b12a712cb5a1c33267537314711983"
+      }
+     ],
+     "row": "39"
+    },
+    {
+     "n": "113",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "28",
+     "text": "OUT is high for (N+1)>>1 and low for N>>1 cycles, but the counter is loaded with N, not N-1, and drops by two per cycle.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "604-610",
+       "sha": "2f5bcf956a665689fcfe76ee2022f9a4824561b3c7ca0d066bd767a4f2f2b85f"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "614-620",
+       "sha": "94ff89be189e87ddf5b174c7f15e8b79894835159ad910999faeba8e06daa7eb"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "627",
+       "sha": "cc4d96e2ebcf8ea6b07d00deeb51c9edbfe38b308c435026ff73a9febb4088d0"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "297-302",
+       "sha": "0419ff95783501695e27ccd964cc66c4cbaa520c4610eb6f49a1b0f7444a6283"
+      }
+     ]
+    },
+    {
+     "n": "114",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "36",
+     "text": "A rising GATE edge triggers modes 1, 2 and 5 but mode 3 only while no clock frequency is set; GATE low forces OUT high in modes 2 and 3.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1117-1119",
+       "sha": "3e656ae665069f534658e9ba3ae8ba47b18cd861a97daa97fd27b4709222ff70"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1134-1139",
+       "sha": "dc1ef6ae23afe5400d7b4fbd571fb664a69a19ca48e5308d21e9b315367bd57b"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "498-503",
+       "sha": "bf5d343c092cb8a5735c7cee6f0b705b3cccffeb0e5d5656e4a980c0397fd4e3"
+      },
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "578-583",
+       "sha": "00195d6a678120b5e5084fca74c63121b9a5e3dcbd5c0437d9b07a4b72f4527e"
+      }
+     ]
+    },
+    {
+     "n": "220",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "45",
+     "text": "In modes 2 and 3 the period start advances by the delay or half of it as time passes; the counter is derived from elapsed time, not reloaded.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "189-194",
+       "sha": "bd4a1554122f74be24b136d324cff02c2abe54a34f48de6887f3ad47c0825a58"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "208-210",
+       "sha": "ce6e93f8a6222bf63725c5e0d7562e404988854b046ef23902484f107bc3d235"
+      }
+     ]
+    },
+    {
+     "n": "221",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "10",
+     "text": "In mode 0 between the two bytes of a write the counter reads its latched value; a new count restarts counting at once, not on the next CLK pulse.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "334-335",
+       "sha": "d00d5a0e1cf452fa15e27cdd62549c925ce80662bf8b2e732a07afe09183c212"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "591",
+       "sha": "bdbbc2650a33a57907b11b0ae4937e13ebcaefcaac96be5547dc35bb416ce398"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "632-634",
+       "sha": "47c64c73e4041f2be7f7fbf641dc3d84c668493f03b57932a2c4dec9d78f708f"
+      }
+     ]
+    },
+    {
+     "n": "222",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "13",
+     "text": "In mode 1 a rising GATE sets OUT low at once, with no wait for the next CLK pulse; OUT then stays low until the elapsed time passes the delay.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "242-246",
+       "sha": "27046c8775c9c58b846305aa7b1447bbf5d48283f5ca28b8a188af20e1a7cf9b"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "312-315",
+       "sha": "27c088a81fc0205f7f0ff8711dce3efe699a057dbf00014d91297048645dd4f3"
+      }
+     ]
+    },
+    {
+     "n": "223",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "At start each counter stores its configured clock frequency and a clock period of 1/frequency, or the never time for a frequency of 0.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "102-103",
+       "sha": "b53cd12f7ca317128840cf0c2e24fd489c8355bdababc33bcec502082d6de4ac"
+      }
+     ]
+    },
+    {
+     "n": "224",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "Changing a counter's clock frequency updates the counter first when it has started, stores the frequency and period, and updates again.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pit8253.cpp",
+       "lines": "1154-1159",
+       "sha": "174724ddc3e232f31bea733d71b4e3cb3c2d61c07d3fcf31ff4c82c9568e1b56"
+      }
+     ]
+    },
+    {
+     "n": "225",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "text": "A newly loaded count is stored at once as the value a read returns while counting is halted.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "159-160",
+       "sha": "015be5d849f2a28196d8e2d4b0f462c71cbdb4076ad8d8be1c7aff1be1ae51a8"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/timer.cpp",
+       "lines": "334-335",
+       "sha": "d00d5a0e1cf452fa15e27cdd62549c925ce80662bf8b2e732a07afe09183c212"
+      }
+     ],
+     "row": "10"
     }
    ],
    "closed": [
@@ -1155,17 +1396,7 @@
     },
     {
      "ref": "datasheet:8254.raw.txt",
-     "lines": "655",
-     "as": "layout"
-    },
-    {
-     "ref": "datasheet:8254.raw.txt",
      "lines": "677-678",
-     "as": "layout"
-    },
-    {
-     "ref": "datasheet:8254.raw.txt",
-     "lines": "681-682",
      "as": "layout"
     },
     {
@@ -1205,12 +1436,6 @@
      "lines": "375-384",
      "as": "agrees",
      "row": "9"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1081-1087",
-     "as": "agrees",
-     "row": "10"
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
@@ -1268,7 +1493,7 @@
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "918-922",
+     "lines": "913-922",
      "as": "agrees",
      "row": "35"
     },
@@ -1280,21 +1505,9 @@
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1169-1171",
-     "as": "agrees",
-     "row": "39"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
      "lines": "1172-1176",
      "as": "agrees",
      "row": "40"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "334-335",
-     "as": "agrees",
-     "row": "5"
     },
     {
      "ref": "dosbox-x:src/hardware/timer.cpp",
@@ -1310,33 +1523,9 @@
     },
     {
      "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "334-335",
-     "as": "agrees",
-     "row": "10"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "312-315",
-     "as": "agrees",
-     "row": "13"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
      "lines": "319-321",
      "as": "agrees",
      "row": "22"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "195-198",
-     "as": "agrees",
-     "row": "25"
-    },
-    {
-     "ref": "dosbox-x:src/hardware/timer.cpp",
-     "lines": "270",
-     "as": "agrees",
-     "row": "26"
     },
     {
      "ref": "dosbox-x:src/hardware/timer.cpp",
@@ -1354,12 +1543,6 @@
      "ref": "mame:src/devices/machine/pit8253.cpp",
      "lines": "347",
      "as": "structure"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "913-916",
-     "as": "unseen",
-     "reason": "arms the load of the first count in modes 2 and 3"
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
@@ -1554,12 +1737,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "369-374",
-     "as": "agrees",
-     "row": "5"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
      "lines": "1074-1076",
      "as": "agrees",
      "row": "11"
@@ -1662,12 +1839,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1128-1139",
-     "as": "agrees",
-     "row": "26"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
      "lines": "604-611",
      "as": "agrees",
      "row": "27"
@@ -1683,18 +1854,6 @@
      "lines": "250",
      "as": "agrees",
      "row": "27"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "604-607",
-     "as": "agrees",
-     "row": "28"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "614-617",
-     "as": "agrees",
-     "row": "28"
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
@@ -1734,36 +1893,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "386-391",
-     "as": "agrees",
-     "row": "36"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "498-503",
-     "as": "agrees",
-     "row": "36"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "578-583",
-     "as": "agrees",
-     "row": "36"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "666-669",
-     "as": "agrees",
-     "row": "36"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1134-1139",
-     "as": "agrees",
-     "row": "36"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
      "lines": "1181-1185",
      "as": "unfollowed",
      "row": "42"
@@ -1782,36 +1911,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "248-252",
-     "as": "agrees",
-     "row": "44"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "259-270",
-     "as": "agrees",
-     "row": "44"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "271-282",
-     "as": "agrees",
-     "row": "44"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "283-293",
-     "as": "agrees",
-     "row": "44"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "405",
-     "as": "agrees",
-     "row": "44"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
      "lines": "518",
      "as": "structure"
     },
@@ -1824,12 +1923,6 @@
      "ref": "mame:src/devices/machine/pit8253.cpp",
      "lines": "602",
      "as": "structure"
-    },
-    {
-     "ref": "mame:src/devices/machine/pit8253.cpp",
-     "lines": "1141-1142",
-     "as": "unseen",
-     "reason": "flushes the output pin when the clock input is stopped"
     },
     {
      "ref": "dosbox-x:src/hardware/timer.cpp",
@@ -1975,6 +2068,315 @@
      "lines": "250-260",
      "as": "unfollowed",
      "row": "41"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "189-193",
+     "as": "agrees",
+     "row": "22"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "369",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "374",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:8254.raw.txt",
+     "lines": "682",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "405",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "248-252",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "259-270",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "271-282",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "283-293",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "704",
+     "as": "agrees",
+     "row": "30"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "248-252",
+     "as": "agrees",
+     "row": "30"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "259-270",
+     "as": "agrees",
+     "row": "30"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "271-282",
+     "as": "agrees",
+     "row": "30"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "283-293",
+     "as": "agrees",
+     "row": "30"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1078-1087",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1074-1076",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "911",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "918-922",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "375-384",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1134-1139",
+     "as": "agrees",
+     "row": "40"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "248-252",
+     "as": "agrees",
+     "row": "44"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "285-293",
+     "as": "agrees",
+     "row": "44"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "405",
+     "as": "agrees",
+     "row": "44"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "462",
+     "as": "agrees",
+     "row": "44"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "704",
+     "as": "agrees",
+     "row": "44"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "534-535",
+     "as": "agrees",
+     "row": "45"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "608-609",
+     "as": "agrees",
+     "row": "45"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "618-619",
+     "as": "agrees",
+     "row": "45"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "191-198",
+     "as": "agrees",
+     "row": "25"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "913-916",
+     "as": "agrees",
+     "row": "19"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "913-916",
+     "as": "agrees",
+     "row": "24"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "375-384",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "392-403",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1134-1139",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1134-1139",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "911",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1134-1139",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "439-449",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "618-620",
+     "as": "agrees",
+     "row": "25"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1134-1139",
+     "as": "agrees",
+     "row": "25"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "918-922",
+     "as": "agrees",
+     "row": "29"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "687-693",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "696-702",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "918-922",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1074-1076",
+     "as": "agrees",
+     "row": "32"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1078-1089",
+     "as": "agrees",
+     "row": "32"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "672-680",
+     "as": "agrees",
+     "row": "34"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "687-693",
+     "as": "agrees",
+     "row": "34"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "1134-1139",
+     "as": "agrees",
+     "row": "35"
+    },
+    {
+     "ref": "mame:src/devices/machine/pit8253.cpp",
+     "lines": "148-150",
+     "as": "unseen",
+     "reason": "stores the same defined values the reset stores, which another row states"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "453",
+     "as": "parent",
+     "owner": "pit8253:register:0x03"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/timer.cpp",
+     "lines": "491",
+     "as": "parent",
+     "owner": "pit8253:register:0x03"
     }
    ]
   }

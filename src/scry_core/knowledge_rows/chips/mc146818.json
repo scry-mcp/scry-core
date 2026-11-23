@@ -1,0 +1,5028 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "mc146818",
+ "title": "The MC146818 real-time clock, its registers",
+ "kind": "register",
+ "scope": "mc146818",
+ "covers": "The registers of the MC146818 real-time clock: the time, calendar and alarm bytes, the control and status registers and the general purpose RAM",
+ "source": "official",
+ "documents": [
+  {
+   "name": "MC146818A.raw.txt",
+   "variant": "146818"
+  }
+ ],
+ "official": {
+  "MC146818A.raw.txt": [
+   "568-577",
+   "610-616",
+   "633-641",
+   "661-696",
+   "698-707",
+   "713-716",
+   "944-958",
+   "970-972",
+   "981-983",
+   "993-1052",
+   "1053-1100"
+  ]
+ },
+ "engine": [
+  "adjust",
+  "from_usec",
+  "update_timer",
+  "cmos_checktimer",
+  "PIC_FullIndex",
+  "PIC_AddEvent",
+  "PIC_ActivateIRQ",
+  "PIC_RemoveEvents"
+ ],
+ "entries": [
+  {
+   "key": "0x00",
+   "name": "seconds",
+   "aliases": [
+    "seconds"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "661"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "REG_SECONDS"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x00"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x00"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "568-577"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 3 lists the seconds location with decimal range 0 to 59 (the capture reads 0 as o).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "661",
+       "sha": "ddfb5b608b05b5712f46fea9b3bf5b233ee47a1268df7816a436c305f30a8ef9"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of the seconds location returns a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "661",
+       "sha": "ddfb5b608b05b5712f46fea9b3bf5b233ee47a1268df7816a436c305f30a8ef9"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to the seconds location sets it to a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "661",
+       "sha": "ddfb5b608b05b5712f46fea9b3bf5b233ee47a1268df7816a436c305f30a8ef9"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write stores the byte with bit 7 cleared, with no range check in this case body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "686-689",
+       "sha": "0e98a1816595fd3a06190ae3402fd6defd2b88f731e8918d9ad3a9854488dd11"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The memory has 50 general purpose RAM bytes, 10 bytes of time, calendar and alarm data and four control and status bytes, all directly readable and writable except as listed.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "568-572",
+       "sha": "5c99c150cde4a4fee27c5bd45994038aabfdc3a38ca7756efa986279d9e88f5a"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "The high-order bit of the seconds byte is read only.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "574-575",
+       "sha": "dc4fe97384a28a4766fd6169326d2e9806ed24a77d72ac8a68a1fbbcbfa7cc85"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "bit 7",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "A byte of 0x80 or more is above 59 and is refused by the range check on write.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "287",
+       "sha": "dac777e16680c46ba7da373328d75564cc8108a90ec627ce8e7be726efcf1dee"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The seconds count is also set by cmos_sync_time, which stores the tm_sec field of the host time that localtime gives.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "72",
+       "sha": "c5daee7da116ff03eb4b8eb21a1309d12d541e0ae2df99f0ec8c67b7334a8edc"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "74",
+       "sha": "908bd96639f308b38c93a04d478f76a0b70836fade94785a8b5b8fc59afa4c16"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "688",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "287-288",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "405",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "573",
+     "as": "elsewhere",
+     "owner": "mc146818:register:0x0C"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "576-577",
+     "as": "layout"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "122",
+     "as": "parent",
+     "owner": "mc146818:register:0x0B"
+    }
+   ]
+  },
+  {
+   "key": "0x01",
+   "name": "seconds alarm",
+   "aliases": [
+    "alarm seconds"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "662"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x01"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x01"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 3 lists the seconds alarm location with decimal range 0 to 59 (the capture reads 0 as o).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "662",
+       "sha": "3f8ab6bca1d9812f82428b037c6ebd35607cd92e334b4988e401891bad1e9d08"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of the seconds alarm location returns a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "662",
+       "sha": "3f8ab6bca1d9812f82428b037c6ebd35607cd92e334b4988e401891bad1e9d08"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to the seconds alarm location sets it to a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "662",
+       "sha": "3f8ab6bca1d9812f82428b037c6ebd35607cd92e334b4988e401891bad1e9d08"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write stores the byte as written, with no range check in this case body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "716-718",
+       "sha": "2eb7ce9e4ffc2c6716cd43eab65d9f2a565969ef19364b8f9a089f9a53658575"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "290-291",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "407",
+     "as": "agrees",
+     "row": "2"
+    }
+   ]
+  },
+  {
+   "key": "0x02",
+   "name": "minutes",
+   "aliases": [
+    "minutes"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "663"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x02"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x02"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 3 lists the minutes location with decimal range 0 to 59 (the capture reads 0 as o).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "663",
+       "sha": "232d8f552fc1d181fcf6eaa3b400d32844e0521ead22006107270f7e26e25a66"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of the minutes location returns a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "663",
+       "sha": "232d8f552fc1d181fcf6eaa3b400d32844e0521ead22006107270f7e26e25a66"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to the minutes location sets it to a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "663",
+       "sha": "232d8f552fc1d181fcf6eaa3b400d32844e0521ead22006107270f7e26e25a66"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write stores the byte as written, with no range check in this case body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "716-718",
+       "sha": "2eb7ce9e4ffc2c6716cd43eab65d9f2a565969ef19364b8f9a089f9a53658575"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The minutes count is also set by cmos_sync_time, which stores the tm_min field of the host local time.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "72",
+       "sha": "c5daee7da116ff03eb4b8eb21a1309d12d541e0ae2df99f0ec8c67b7334a8edc"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "75",
+       "sha": "8d4a95809a38611d41a21cfc472a21ecd5684e1af407d98d7fb045fc79f53482"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "293-294",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "409",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "125",
+     "as": "parent",
+     "owner": "mc146818:register:0x0B"
+    }
+   ]
+  },
+  {
+   "key": "0x03",
+   "name": "minutes alarm",
+   "aliases": [
+    "alarm minutes"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "664"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x03"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x03"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 3 lists the minutes alarm location with decimal range 0 to 59 (the capture reads 0 as o).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "664",
+       "sha": "18b03b31dbddb0f2108416975a073b2604ffaa3bf65c4515eda0df637ed56550"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of the minutes alarm location returns a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "664",
+       "sha": "18b03b31dbddb0f2108416975a073b2604ffaa3bf65c4515eda0df637ed56550"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to the minutes alarm location sets it to a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "664",
+       "sha": "18b03b31dbddb0f2108416975a073b2604ffaa3bf65c4515eda0df637ed56550"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write stores the byte as written, with no range check in this case body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "716-718",
+       "sha": "2eb7ce9e4ffc2c6716cd43eab65d9f2a565969ef19364b8f9a089f9a53658575"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "296-297",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "411",
+     "as": "agrees",
+     "row": "2"
+    }
+   ]
+  },
+  {
+   "key": "0x04",
+   "name": "hours",
+   "aliases": [
+    "hours"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "665-676"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x04"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x04"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "610-616"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 3 lists the hours location with decimal range 1 to 12 in 12-hour mode and 0 to 23 in 24-hour mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "665-676",
+       "sha": "4593d0df5a6afc37e2970dedf1c8106fa9e71d21848df34e8fefc5f0fac263ca"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of the hours location returns a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "665-676",
+       "sha": "4593d0df5a6afc37e2970dedf1c8106fa9e71d21848df34e8fefc5f0fac263ca"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to the hours location sets it to a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "665-676",
+       "sha": "4593d0df5a6afc37e2970dedf1c8106fa9e71d21848df34e8fefc5f0fac263ca"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write stores the byte as written, with no range check in this case body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "716-718",
+       "sha": "2eb7ce9e4ffc2c6716cd43eab65d9f2a565969ef19364b8f9a089f9a53658575"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "In 12-hour format the high-order bit of the hours byte is PM when it is 1 (capture of line 614 damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "667-669",
+       "sha": "160fffa34ced0b7807e721c8bd7df5638eb43b3c691ee7219ae72d7c4733fc43"
+      },
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "614-616",
+       "sha": "c1e6a0f56448cee374e31f98bbe4f4088ea1cd253b0ecc2c20cf0519dc31606a"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The 24/12 bit of Register B selects whether the hour locations hold 1 to 12 or 0 to 23 (capture of line 611 damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "610-613",
+       "sha": "b6b0ca544b28a9073fef6a901eb94b175c2cb709d67579b900e11879cc2051ac"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "The 24/12 bit cannot be [word lost in the capture] without reinitializing the hour locations; the capture of line 613 is damaged.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "613-614",
+       "sha": "049abafc579acad9ccfe9e51a791ef6981393e1e974182ef53fc3a1e6be7a107"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The hours count is also set by cmos_sync_time, which stores the tm_hour field of the host local time.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "72",
+       "sha": "c5daee7da116ff03eb4b8eb21a1309d12d541e0ae2df99f0ec8c67b7334a8edc"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "76",
+       "sha": "ee76ee0a709b5ae2383fe18245c482041896a910248f08e6bb466b793bdaaabe"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "299-310",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "413",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "717",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "299-310",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "128",
+     "as": "parent",
+     "owner": "mc146818:register:0x0B"
+    }
+   ]
+  },
+  {
+   "key": "0x05",
+   "name": "hours alarm",
+   "aliases": [
+    "alarm hours"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "677-688"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x05"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x05"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "633-641"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.h",
+     "lines": "70"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "220-226"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_checkalarm"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 3 lists the hours alarm location with decimal range 1 to 12 in 12-hour mode and 0 to 23 in 24-hour mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "677-688",
+       "sha": "14ac8388864f0077ca51506e20639eab5665cd7c36a9578c944b6734fb2606f6"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of the hours alarm location returns a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "677-688",
+       "sha": "14ac8388864f0077ca51506e20639eab5665cd7c36a9578c944b6734fb2606f6"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to the hours alarm location sets it to a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "677-688",
+       "sha": "14ac8388864f0077ca51506e20639eab5665cd7c36a9578c944b6734fb2606f6"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write stores the byte as written, with no range check in this case body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "716-718",
+       "sha": "2eb7ce9e4ffc2c6716cd43eab65d9f2a565969ef19364b8f9a089f9a53658575"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "when",
+     "of": "doc",
+     "text": "A don't care code in an alarm byte is any byte from C0 (capture reads CO) to FF, its two high bits set, creating a don't care situation.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "633-636",
+       "sha": "55227b97cd51dcaceaa93c5f4e2b4287a6db01e0301f61179aa34a0de3fd6cac"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "when",
+     "of": "doc",
+     "text": "A don't care code in the hours alarm gives an alarm each hour, in hours and minutes each minute, and in all three bytes each second.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "636-641",
+       "sha": "2f29e0b9cc06a317a471a68296a3b95f278b46d2c543ed6dced3e7ca77f4caa8"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "4",
+     "text": "In 24-hour mode an hours alarm byte above 23 is refused by the range check on write.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "318-321",
+       "sha": "094d72b9ae7b2da950648ab2af63f35a42e9f58253c11c05100ee03227b3c0cf"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "The alarm flag is set when seconds, minutes and hours all equal the alarm bytes, a comparison with no don't care mask.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "147-148",
+       "sha": "ead453090a004d7c0555966b642cc6d5e112138c93bb49a53e7cac9838d60376"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "312-323",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "415",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "220-226",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "220-226",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.h",
+     "lines": "70",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.h",
+     "lines": "70",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "147",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x06",
+   "name": "day of week",
+   "aliases": [
+    "weekday"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "689-693"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x06"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x06"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 3 lists the day of the week location with decimal range 1 to 7, Sunday being 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "689-693",
+       "sha": "f8c2a65f49b3885ff750549d773610223c4bb10f87a8d5e8ca10306566e10ad6"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of the day of the week location returns a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "689-693",
+       "sha": "f8c2a65f49b3885ff750549d773610223c4bb10f87a8d5e8ca10306566e10ad6"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to the day of the week location sets it to a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "689-693",
+       "sha": "f8c2a65f49b3885ff750549d773610223c4bb10f87a8d5e8ca10306566e10ad6"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write stores the byte as written, with no range check in this case body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "716-718",
+       "sha": "2eb7ce9e4ffc2c6716cd43eab65d9f2a565969ef19364b8f9a089f9a53658575"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The day of the week is also set by cmos_sync_time, which stores the tm_wday field of the host local time plus one.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "72",
+       "sha": "c5daee7da116ff03eb4b8eb21a1309d12d541e0ae2df99f0ec8c67b7334a8edc"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "77",
+       "sha": "04784b07922c5fbb66b8e05bc621106ae511bcc883d5c2b57bd008102def53a4"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "325-326",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "417",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "131",
+     "as": "parent",
+     "owner": "mc146818:register:0x0B"
+    }
+   ]
+  },
+  {
+   "key": "0x07",
+   "name": "day of month",
+   "aliases": [
+    "date"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "694"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x07"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x07"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 3 lists the date of the month location with decimal range 1 to 31.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "694",
+       "sha": "f7c998a11472cb78f1625b00428bc571c9a26bda5386c4907e519ebed4c2a6a1"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of the date of the month location returns a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "694",
+       "sha": "f7c998a11472cb78f1625b00428bc571c9a26bda5386c4907e519ebed4c2a6a1"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to the date of the month location sets it to a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "694",
+       "sha": "f7c998a11472cb78f1625b00428bc571c9a26bda5386c4907e519ebed4c2a6a1"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write stores the byte as written, with no range check in this case body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "716-718",
+       "sha": "2eb7ce9e4ffc2c6716cd43eab65d9f2a565969ef19364b8f9a089f9a53658575"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The day of the month count is also set by cmos_sync_time, which stores the tm_mday field of the host local time.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "72",
+       "sha": "c5daee7da116ff03eb4b8eb21a1309d12d541e0ae2df99f0ec8c67b7334a8edc"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "78",
+       "sha": "c3c20a7a261b8813e19806d7a01c9bdd35463be8d117449b28f75ca054dd64e8"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The day count wraps to 1 after the length the month table gives, plus one in February of a leap year (divisible by 4, but by 400 if by 100).",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "135-138",
+       "sha": "aae1a81c7949debe041bcdbcee6a3f7a411689166d5bef8b78fba9eca9219cb7"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "328-329",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "419",
+     "as": "agrees",
+     "row": "2"
+    }
+   ]
+  },
+  {
+   "key": "0x08",
+   "name": "month",
+   "aliases": [
+    "month"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "695"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x08"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x08"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 3 lists the month location with decimal range 1 to 12.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "695",
+       "sha": "c9aed8443c1b3035a3e01ec329352ecc6b884e8d737fab8e9e74786455b24c19"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of the month location returns a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "695",
+       "sha": "c9aed8443c1b3035a3e01ec329352ecc6b884e8d737fab8e9e74786455b24c19"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to the month location sets it to a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "695",
+       "sha": "c9aed8443c1b3035a3e01ec329352ecc6b884e8d737fab8e9e74786455b24c19"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write stores the byte as written, with no range check in this case body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "716-718",
+       "sha": "2eb7ce9e4ffc2c6716cd43eab65d9f2a565969ef19364b8f9a089f9a53658575"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The month is also set by cmos_sync_time, which stores the tm_mon field of the host local time plus one.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "72",
+       "sha": "c5daee7da116ff03eb4b8eb21a1309d12d541e0ae2df99f0ec8c67b7334a8edc"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "79",
+       "sha": "e3e5677ea3c1fed11a9375289ccd79748a8b068f8ae2027d8e970a6be423657d"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "Before it counts days, the clock tick sets a month outside 1 to 12 to 1.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "134",
+       "sha": "76d85fdf7fba45cd8f43df6e40ba3148c79822fa4dab0eb4584430e66e31ed20"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "331-332",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "421",
+     "as": "agrees",
+     "row": "2"
+    }
+   ]
+  },
+  {
+   "key": "0x09",
+   "name": "year",
+   "aliases": [
+    "year"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "696"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x09"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x09"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Table 3 lists the year location with decimal range 0 to 99 (the capture reads 0 as o).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "696",
+       "sha": "b88527c2a1d7323a3229a3599cc0fec6c8024bd05e7703cbe698c8cb5d91066c"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of the year location returns a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "696",
+       "sha": "b88527c2a1d7323a3229a3599cc0fec6c8024bd05e7703cbe698c8cb5d91066c"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to the year location sets it to a value of the decimal range Table 3 lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "696",
+       "sha": "b88527c2a1d7323a3229a3599cc0fec6c8024bd05e7703cbe698c8cb5d91066c"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "A write stores the byte as written, with no range check in this case body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "716-718",
+       "sha": "2eb7ce9e4ffc2c6716cd43eab65d9f2a565969ef19364b8f9a089f9a53658575"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The year count is also set by cmos_sync_time, which stores the tm_year field of the host local time plus 1900.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "72",
+       "sha": "c5daee7da116ff03eb4b8eb21a1309d12d541e0ae2df99f0ec8c67b7334a8edc"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "80",
+       "sha": "090ea049ba23cc419ac092ab327111ce3b39e500ad8925f7c1b0e7222e42705f"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "383",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "334-337",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "423",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "143",
+     "as": "parent",
+     "owner": "mc146818:register:0x0B"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "341",
+     "as": "unseen",
+     "reason": "century write keeps the low two digits of the year, which this register returns"
+    }
+   ]
+  },
+  {
+   "key": "0x0A",
+   "name": "status A",
+   "aliases": [
+    "Register A"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "944-958"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "970-972"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "981-983"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "REG_A"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "REG_A"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "132-137"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "237"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "700-709"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "357"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x0a"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x0a"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register A at $0A holds UIP, DV2, DV1, DV0, RS3, RS2, RS1 and RS0 from bit 7 down to bit 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "944",
+       "sha": "ba3181debbd0a9a70d808e359b0be272c6c2376186c8d874a6f8fca309268c89"
+      },
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "945-946",
+       "sha": "123901b7b131c127cb5242c1c5a423ad6cf2c47f4697851b64096a158608b22e"
+      },
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "947",
+       "sha": "1e4d48b6dba8f6be7244d3691cf37584e784c446658021cd9fa0c2ee48aec194"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "Every bit of Register A is read/write except UIP.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "945-948",
+       "sha": "e876849ef2270c3529385aaf1a5c0b57e58dd74efa0754ccf188446844c8c992"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of Register A returns its bits; the UIP status flag may be monitored by the program.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "945-947",
+       "sha": "9fe7a76934fffbf8626063e4809b3d1d7fd9b1c3c44d12b33011d5401dfc9eff"
+      },
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "949-950",
+       "sha": "bea1c949daa7ca9a5b23c6f08ce71d5e65e414688468be61ddb2a0c7a93edcbe"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "UIP at 1 means an update cycle is in progress or about to begin; at 0 none is, or will be for at least 244 us (capture reads 'ps').",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "949-953",
+       "sha": "c458a76e77acda3e4e1c4dcf122e8e2000e6969bc680ee2b5e0136070a7702aa"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The time, calendar and alarm bytes are fully available to the program when UIP is zero, since they are not in transition.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "954-956",
+       "sha": "e7ef417107b79489f31b030848a191da6f8897c52bce63ffc6b6c617d87209ea"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "UIP is a read-only bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "956",
+       "sha": "853f451e5932b1504e3e9c6832fefe9657d76a634bdf404d429eaf0b66462f1f"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "when",
+     "of": "doc",
+     "text": "Writing the SET bit of Register B to 1 inhibits any update cycle and then clears the UIP bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "957-958",
+       "sha": "9c8bf7bc06f5b1934b856aa8e7813c5c65341bf3dcdf7140fb9440168f8b8267"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "bits 4-6",
+     "of": "doc",
+     "text": "DV2, DV1 and DV0 let the program select various conditions of the 22-stage divider chain.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "970-972",
+       "sha": "3997544dc34a7f0da81ece819c0c253e8cc102b4be24b0a9211a98f90afb7d0f"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "bits 0-3",
+     "of": "doc",
+     "text": "RS3, RS2, RS1 and RS0 select one of 15 taps on the 22-stage divider, or disable the divider output (capture of lines 981-983 damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "981-983",
+       "sha": "4424602ffc853536042a1190ee08e39c6a141c51dcc8f43bb6fa8b845307c4b2"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "7",
+     "text": "Writing register 0x0B with SET newly set clears the update-ended interrupt enable bit from the stored byte and refreshes the IRQ line; this body does not clear the UIP bit.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "700-709",
+       "sha": "76c434f31e436241d1cedf87b8a5cfe65b7c6ba406b8236f798e0f0e0cab740d"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "bit 7",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "4",
+     "text": "UIP reads 1 for 244 microseconds after the last update ended, so the window follows the update, and never while SET is 1.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "429-436",
+       "sha": "5a8066c4011e9899886928a67f79baf1bccd7785f2c45c84eb1c474808708198"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "357",
+       "sha": "fefe44ff71d94d87d39dee11cc58d8346c48597aa1c7514ce9f078fe3878bbea"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "bits 4-6",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "8",
+     "text": "A write stores the byte with bit 7 cleared; a DV value other than 0x20 logs a warning, and the rate comes from the low four bits.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "346-348",
+       "sha": "65f338ba2eb94584f481dc6b4ec56301fa35780004ca3fe4e9a46ca1d4a85380"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "693",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "693-698",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "693-698",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "693-698",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "693-698",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "653-655",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "132-133",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "137",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "134-136",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "237",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "438-452",
+     "as": "parent",
+     "owner": "mc146818:register:0x0C"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "431-433",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "357",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "345-349",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "345-349",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "345-349",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "431-436",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "148",
+     "as": "unseen",
+     "reason": "case 0x0a returns before the case 0x0c body that reads cmos.regs[0xc]"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "161",
+     "as": "unseen",
+     "reason": "case 0x0a returns before the case 0x0c body that reads cmos.regs[0xc]"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "588",
+     "as": "unseen",
+     "reason": "case 0x0a returns before the case 0x0c body that reads cmos.regs[0xc]"
+    }
+   ]
+  },
+  {
+   "key": "0x0B",
+   "name": "status B",
+   "aliases": [
+    "Register B"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "993-1052"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "REG_B"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::update_irq"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::clock_tick"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "117-127"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "220-226"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "316-319"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "329-332"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.h",
+     "lines": "117"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x0b"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "89-144"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "161"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "172-175"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "178"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "190-193"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "147-148"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register B at $0B holds SET, PIE, AIE, UIE, SQWE, DM, 24/12 and DSE from bit 7 down to bit 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "993-994",
+       "sha": "cd1b02ef7cfe3291e76b9c749e076838eecae8857cdc2493f39bd1f5a037dc6e"
+      },
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "998",
+       "sha": "58b93f9472c0d8ff57c5b6bd5b3c6cfb7e17829ac5d3ff1383abe1cbbc78a7c2"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "Register B is a read/write register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "995-997",
+       "sha": "4b06fe6030ec59753423a998cccdcdaffa4034f529bbec292111b8f4c955e7a7"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of Register B returns its bits.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "995-997",
+       "sha": "4b06fe6030ec59753423a998cccdcdaffa4034f529bbec292111b8f4c955e7a7"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "With SET at 0 the update cycle functions normally, advancing the counts once per second.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "999-1000",
+       "sha": "6e241b12441a91949b957f688ab20405ed8fc041c672d4a1c7273148369342a0"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "Writing SET to 1 aborts any update cycle in progress so the program can initialize time and calendar without an update.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1001",
+       "sha": "338d6a504b0e873f803afa784515c7a128eb6c7e6f6679669ef789ed83574941"
+      },
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1003-1004",
+       "sha": "7d8aca92e40f6ad70b9631b90001850f9ccd9f27d18ac7dff47eeb339103af6f"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "SET is a read/write bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1005-1006",
+       "sha": "d302ffd37f200bbd53022480dfe8e254268c66ef0750261b0c1dac1fc7ecb785"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "PIE is a read/write bit which allows the periodic flag PF in Register C to cause the IRQ pin to be driven low.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1007-1009",
+       "sha": "908b9a3a91a4e65adbc892ace744aa9fdcdce4b05c34cd1f90d1b1d3b8eef07f"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "A zero in PIE blocks IRQ from a periodic interrupt, but the periodic flag PF is still set at the periodic rate.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1012-1014",
+       "sha": "5ed398ddb4ff836d7a14f345aa457cffdfe31ac7ca1fe23feeabab6e3f3a7648"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "AIE set to 1 permits the alarm flag AF in Register C to assert IRQ (capture of lines 1015-1017 damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1015-1017",
+       "sha": "13cbcb26538fc77df890e7e08f02ef355100d2f651204d7b85af6eb5e122caa7"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "when",
+     "of": "doc",
+     "text": "An alarm inte[damaged] occurs for each second that the three time bytes [word lost] the three alarm bytes; a don't-care alarm code is binary 1IXXXXX (glyph doubtful).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1017-1019",
+       "sha": "7f19e388b5d345217e51e19ffd4f50373e49210080043b078d5dc8eb69e84584"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "With AIE at 0 the part does not initiate an IRQ signal (capture of lines 1020-1022 damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1020-1022",
+       "sha": "ccb30bc61708a3826d59fabcaa22741ff24772df4ff0d76ba44ba5ab5618e078"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "bit 4",
+     "of": "doc",
+     "text": "The predicate of UIE is destroyed in the capture of lines 1023-1025; it reads as the update-ended flag (UF) bit in Register C, probably enabled to assert IRQ.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1023-1025",
+       "sha": "d256c55cd5b219c3e056fcb5476a24102f9dbdce251494892b5873aeb2e1405c"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "bit 4",
+     "of": "doc",
+     "text": "The SET bit going [word damaged in the capture, probably high] clears the UIE bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1025-1026",
+       "sha": "6a1ba2470926c74e7a976f2cc8b575ba9656d056e2542c0202cfbda2df6422ad"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "bit 3",
+     "of": "doc",
+     "text": "With SQWE at 1 a square-wave signal appears on the SQW pin (capture of lines 1028-1031 damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1028-1031",
+       "sha": "e1b04f8960d45b4b7cfc6973f2b3d147688a53547b3e7786ece06d1a38e956ad"
+      }
+     ]
+    },
+    {
+     "n": "15",
+     "on": "bit 3",
+     "of": "doc",
+     "text": "With SQWE at 0 the SQW pin is held low; SQWE is a read/write bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1031-1033",
+       "sha": "416aa750b3a04959a011035073c14e46f0bb8519d5a0d1cf92701b45e78c41c8"
+      }
+     ]
+    },
+    {
+     "n": "16",
+     "on": "bit 2",
+     "of": "doc",
+     "text": "DM tells whether updates use binary or BCD: a 1 in DM signifies binary data and a 0 specifies BCD.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1035-1036",
+       "sha": "db76bb64f88b69db17747157afca319878fbaa1b05e0e927a1e22651fa20dc86"
+      },
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1039-1040",
+       "sha": "4f21545dab283a70d7ed83033b12201839dec9c0ce2b1e11809ca804f5b76d64"
+      }
+     ]
+    },
+    {
+     "n": "17",
+     "on": "bit 2",
+     "of": "doc",
+     "text": "DM is written by the program and may be read.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1037-1038",
+       "sha": "1531fd39ea423b7a475fbad103996b9881e55faf95fbdf866a7f78577985b655"
+      }
+     ]
+    },
+    {
+     "n": "18",
+     "on": "bit 1",
+     "of": "doc",
+     "text": "The 24/12 bit selects the 24-hour mode at 1 and the 12-hour mode at 0, and is a read/write bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1041-1044",
+       "sha": "2809c67536e83c134e21969fc9dbd655ca849358c17d5266daf885bb4078984d"
+      }
+     ]
+    },
+    {
+     "n": "19",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "DSE is a read/write bit that lets the program enable two special daylight savings updates.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1045-1047",
+       "sha": "50c9af882b4d853ecc7035a9bf9b536a49dc61d3393758c87d774bcd34883736"
+      }
+     ]
+    },
+    {
+     "n": "20",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "With DSE at 1 the time jumps from 1:59:59 AM to 3:00:00 AM on the last Sunday in April, and back to 1:00:00 AM in October.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1047-1052",
+       "sha": "f3822d6319f2edef59fcc3783f0e19f77d33e09a2acb0aa9ce38faadfecade50"
+      }
+     ]
+    },
+    {
+     "n": "21",
+     "on": "is",
+     "of": "doc",
+     "text": "A program writes a 1 to PIE to receive periodic interrupts at the rate specified by RS3, RS2, RS1 and RS0 in Register A.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1010-1012",
+       "sha": "d6b15c5217abfaa92258ef3c26979bf965d3faadc22b39a34ac5a51e9f95d788"
+      }
+     ]
+    },
+    {
+     "n": "22",
+     "on": "is",
+     "of": "doc",
+     "text": "The square-wave frequency is the one specified by the rate selection bits RS3 to RS0 (capture of lines 1029-1030 damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1029-1030",
+       "sha": "ae29e0df37afc7ab0c6c550b4b049a0b10cbee07a01a1350ea04fcb746480250"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "5",
+     "text": "Writing register 0x0B with SET newly set clears the UIE bit from the stored byte and refreshes the IRQ line; this body does not cancel an update already scheduled.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "700-709",
+       "sha": "76c434f31e436241d1cedf87b8a5cfe65b7c6ba406b8236f798e0f0e0cab740d"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "bit 0",
+     "of": "mame",
+     "vs": "differs",
+     "row": "20",
+     "text": "The header marks the daylight savings adjustment as a TODO; time_tick increments the hour by one and wraps at 24.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.h",
+       "lines": "117",
+       "sha": "bda971db3041a0c84841ae425512b768f2d25e3886d7b2790e11a215a28c6f18"
+      },
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "163-170",
+       "sha": "2e4ab66b3b40a6aa3a8a6f1e357ea3f7902c7a06aa4801ec831b16d304ab95e8"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "bit 6",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "7",
+     "text": "The line that sets PF sits inside a test of PIE, and IRQ 8 is raised when the interrupt was acknowledged and any flag bit of 0x70 is set.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "161",
+       "sha": "18a0eb57054cb0e5545aa0d751ecccde91045718e197dc357ec89660d716f097"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "190-193",
+       "sha": "8a90b15fb445ebf4345b7eeb3fc390f8289ee84aa0d0c822d07946255bef3d06"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "bit 6",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "8",
+     "text": "The line that sets PF sits inside a test of PIE, so PF is not set at the periodic rate when PIE is 0.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "161",
+       "sha": "18a0eb57054cb0e5545aa0d751ecccde91045718e197dc357ec89660d716f097"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "bit 5",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "9",
+     "text": "The alarm check that sets AF is called inside a test of AIE.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "174",
+       "sha": "3ea70b70aa7ddbbb78c4a2a85f37d9df8001cbe2786b4f7bd4d9780b8b2adfc2"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "146-149",
+       "sha": "e8fbe22dad12fbfc0e8f4699a1bd68e647c0cce13781726347a0978b005815ae"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "bit 4",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "12",
+     "text": "The line that sets UF sits inside a test of UIE.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "178",
+       "sha": "a11095d8c1494bd61f70afa25330f09d06432fbfe363133905f3ae45cec9d844"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "bit 3",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "14",
+     "text": "No line of the write case for 0x0B drives a square-wave output.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "352-363",
+       "sha": "cb59aca33457bfab1c21c667f65931ae05879618a4f0e1db5d99076b0e8e7d6e"
+      }
+     ]
+    },
+    {
+     "n": "206",
+     "on": "bit 3",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "15",
+     "text": "No line of the write case for 0x0B holds a SQW pin low.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "352-363",
+       "sha": "cb59aca33457bfab1c21c667f65931ae05879618a4f0e1db5d99076b0e8e7d6e"
+      }
+     ]
+    },
+    {
+     "n": "207",
+     "on": "bit 0",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "20",
+     "text": "No line of the clock tick tests bit 0 of 0x0B or adds a daylight savings adjustment.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "89-100",
+       "sha": "fef203eccc6ac719f295b785d3434f285ba7a1fc42b7e6427ce0a97a2eefea4e"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "101-112",
+       "sha": "c417794fcf6e6a77edf0265063f7fa55440932eff773cd5836ce37f85677d611"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "113-124",
+       "sha": "5ad7118f8f9b480b0973200dd8af3aac56b83b8172998bc604c4b70dfa5d38bd"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "125-136",
+       "sha": "fbae1b1605789ebdc3d45c4fa919cd6d3a785b68cf0e8a009549c1792aeffc4f"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "137-144",
+       "sha": "e01693dea14f291a1935cb0edafa2f2f97270bc8b56246b2c1f92879e6d375b4"
+      }
+     ]
+    },
+    {
+     "n": "208",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The select handler stores the low six bits of the byte as the selected register and bit 7 in cmos.nmi.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "260-261",
+       "sha": "832fee6333f5b4788bbaf8c3dbcd8765390806db548dfa95158d99e28adb773b"
+      }
+     ]
+    },
+    {
+     "n": "209",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "Reset leaves register 0x0B selected, since it selects 0x0A and then 0x0B before its two writes.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "584-587",
+       "sha": "882204192f5a9ab6bdb37e43125c4e39f2a5f177ca0a79689d89c279157ef65d"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "1002",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "1027",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "1034",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "707",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "707",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "707",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "707",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "707",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "707",
+     "as": "agrees",
+     "row": "19"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-676",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "701-702",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "704-705",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "708",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "708",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "708",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "578-581",
+     "as": "unseen",
+     "reason": "clears IRQF and releases the IRQ line when no flag and enable pair is set"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "132-133",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "134",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "136",
+     "as": "unfollowed",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "117-122",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "123-126",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "119-120",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "127",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "220-226",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "316-319",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "329-332",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.h",
+     "lines": "117",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "ignores a BCD byte with a digit above 9 before the per-location range check"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "359",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "359",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "359",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "359",
+     "as": "agrees",
+     "row": "19"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "355",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "356",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "357",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "358",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "354",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "551",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "147-148",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "174",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "708",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "172-175",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "172-175",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "89-144",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "707",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "359",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "551",
+     "as": "agrees",
+     "row": "18"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "122-132",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "134-143",
+     "as": "agrees",
+     "row": "4"
+    }
+   ]
+  },
+  {
+   "key": "0x0C",
+   "name": "status C",
+   "aliases": [
+    "status C",
+    "register C"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "573"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "1053-1085"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "REG_C"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "REG_C"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "117"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "123-127"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "220-226"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "238"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x0c"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x0c"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "147-148"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "161"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "178"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "190-193"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "588"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "509"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "512"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "516"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "520-521"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register C at $0C holds IRQF, PF, AF and UF from bit 7 down, then four cells the capture reads as zeros (glyphs damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1053",
+       "sha": "fd76110c08ac7df11a37879ac6fd0e78f112dcec2e18c780c69ab8f5e33fa2ac"
+      },
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1057",
+       "sha": "bbb6b08362dc45400ff4470dfcf097d019380b52c6c47f21509befc51a9ff3a5"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "Register C is read only.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "573",
+       "sha": "8604af0b8eec9e9ef28b26dd7f0bf5dd56be420769a439ddd59d5fe8b654609b"
+      },
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1055",
+       "sha": "fd523668f3222a1544fd470a1900656f4fe1a89dbb518262cd6f9bb2460019d4"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "IRQF is set when one or more of PF=PIE=1, AF=AIE=1 and UF=UIE=1 holds: IRQF = PF*PIE + AF*AIE + UF*UIE (the capture writes 1 as I).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1058-1063",
+       "sha": "511fffb0ee9549fe400d2ca6f0d3188d837aa0e7cfbb7de9b0f668e608f79299"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "Any time IRQF is 1 the IRQ pin is driven low (the pin name is damaged in the capture).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1065",
+       "sha": "513ae17411690cac49b77a62216f0d66fd02d6a8e00b6f34b4b3893682562dbc"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "read",
+     "of": "doc",
+     "text": "All flag bits of Register C are cleared after the program reads it.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1066-1067",
+       "sha": "6a2caa1f3a77784a9ade82c99fa5eaea9e952c0047a1325c2606027f0ccb8d79"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "PF is a read-only bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1068",
+       "sha": "06fc3efeef781dcec239b90c5bcb47404e845159dd62c8807a0267460968f91b"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "PF is set to 1 when a particular edge is detected on the selected tap of the divider chain, independent of the state of PIE.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1068-1072",
+       "sha": "2d234929da038897c074c2023bd4b74f1d7f0d4c82bee1464e3c5fd480bd5568"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "is",
+     "of": "doc",
+     "text": "The RS3 to RS0 bits establish the periodic rate.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1070-1071",
+       "sha": "93d5934985c8a058dbcaf1c47b6213caf265d4a82d1507ffdac5e63085238a84"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "PF at 1 initiates an IRQ signal (the pin name is damaged in the capture) and sets IRQF when PIE is also 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1072-1073",
+       "sha": "53b3d3120fac0b7a9b298977c027ca31b71bb6a38fe64bdb71a08813d23b2617"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "read",
+     "of": "doc",
+     "text": "PF is cleared by a software read of Register C.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1073-1074",
+       "sha": "ff6386de0305c8bbbe61340f94d89b85c81922ac711ff6303eba16b22d4bcb19"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "A 1 in AF, the alarm interrupt flag, indicates that the current time has matched the alarm time.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1075-1076",
+       "sha": "45f366a268c0028828c74d885d89ff4ffc10d0ef0518ddd70dc8aa26a7c45361"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "AF at 1 causes the IRQ pin to go low and IRQF to be 1, when AIE is also 1 (the capture damages the pin name and the 1).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1076-1078",
+       "sha": "3def9566028343325261ea34498fb851447f2588e6cf030ea57d9bc2217cd6bc"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "read",
+     "of": "doc",
+     "text": "A read of Register C clears AF.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1078-1079",
+       "sha": "586d65f11bef641af2da9f7d45fbe971430c7bbe67ba9fcdce05020919b00635"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "bit 4",
+     "of": "doc",
+     "text": "UF, the update-ended interrupt flag, is set after each update cycle.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1080-1081",
+       "sha": "737f6813062912313f1c9856ee63e86a2f8c42d3e0c353fdb28f66a2f7f9f230"
+      }
+     ]
+    },
+    {
+     "n": "15",
+     "on": "bit 4",
+     "of": "doc",
+     "text": "When UIE is 1, UF at 1 causes IRQF to be 1 and asserts IRQ (the capture damages the pin name and the 1s).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1081-1082",
+       "sha": "a94a29963173ef7f929a98db6520577c4c6b569469af98b38cac516559534669"
+      }
+     ]
+    },
+    {
+     "n": "16",
+     "on": "read",
+     "of": "doc",
+     "text": "UF is cleared by a Register C read.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1082-1083",
+       "sha": "2bfa190e3eae98d4bb547296715399dbc48e335374142b0eea221dbb0688a34c"
+      }
+     ]
+    },
+    {
+     "n": "17",
+     "on": "bits 0-3",
+     "of": "doc",
+     "text": "The unused bits b3 to b0 are read as zeros (the line says Status Register 1, here Register C; O for zero in the capture).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1084-1085",
+       "sha": "3813cfae0ac0c9f39e7995d952283bd10726b4bfb05d463055baac83e37e77df"
+      }
+     ]
+    },
+    {
+     "n": "18",
+     "on": "write",
+     "of": "doc",
+     "text": "The unused bits b3 to b0 cannot be written (the line says Status Register 1, here Register C).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1085",
+       "sha": "05ded2584fb51e697696e64583e7c62666036ae4c5f6260806d00381ba2324d0"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "extra",
+     "text": "The flag clear and the IRQ line update sit inside a branch taken only when side effects are not disabled.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "661-665",
+       "sha": "abde8dae6841f11da46efe088812eea07cd0c141d0c6ac20cca5ae956f30874b"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "bit 7",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "4",
+     "text": "The timer event activates IRQ 8 when a read of register 0x0C has set the acknowledged flag and any of bits 6 to 4 of it is stored.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "190-193",
+       "sha": "8a90b15fb445ebf4345b7eeb3fc390f8289ee84aa0d0c822d07946255bef3d06"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "440",
+       "sha": "4ec3f6d26c708d8369842dc32d252328cebcc85790d423d4d20a4d7f9ad6894d"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "bit 6",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "7",
+     "text": "The line that sets PF sits inside a test of bit 6 of register 0x0B, so PF is stored only when that bit is set.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "161",
+       "sha": "18a0eb57054cb0e5545aa0d751ecccde91045718e197dc357ec89660d716f097"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "bit 6",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "9",
+     "text": "A read of register 0x0C sets bits 7 and 6 when bit 6 of registers 0x0B and 0x0C are both set; the timer event activates IRQ 8 separately.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "442-444",
+       "sha": "f32de4385f2d62c97c5a2a7382010611e5ef2a593ec69138e31a27a6ec487b38"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "190-193",
+       "sha": "8a90b15fb445ebf4345b7eeb3fc390f8289ee84aa0d0c822d07946255bef3d06"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "bit 5",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "12",
+     "text": "A read of register 0x0C sets bits 7 and 5 when bit 5 of registers 0x0B and 0x0C are both set; the timer event activates IRQ 8 separately.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "448-450",
+       "sha": "bab7756e72c9b60f0e9ec51777471777d7f24ab7bfa165710bcd00c2d6513d6f"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "190-193",
+       "sha": "8a90b15fb445ebf4345b7eeb3fc390f8289ee84aa0d0c822d07946255bef3d06"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "bit 4",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "14",
+     "text": "The line that sets UF sits inside a test of bit 4 of register 0x0B, so UF is stored only when that bit is set.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "178",
+       "sha": "a11095d8c1494bd61f70afa25330f09d06432fbfe363133905f3ae45cec9d844"
+      }
+     ]
+    },
+    {
+     "n": "206",
+     "on": "bit 4",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "15",
+     "text": "A read of register 0x0C sets bits 7 and 4 when bit 4 of registers 0x0B and 0x0C are both set; the timer event activates IRQ 8 separately.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "445-447",
+       "sha": "c3b8d169912f9a09e7cfb6a93d31784b7803763c5b819d9529ed5e0e1698794d"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "190-193",
+       "sha": "8a90b15fb445ebf4345b7eeb3fc390f8289ee84aa0d0c822d07946255bef3d06"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "1054",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "1056",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "1064",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "711-714",
+     "as": "agrees",
+     "row": "2",
+     "nothing": true
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "711-714",
+     "as": "agrees",
+     "row": "6",
+     "nothing": true
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "711-714",
+     "as": "agrees",
+     "row": "18",
+     "nothing": true
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "571-577",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "661-665",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "661-665",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "661-665",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "661-665",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "117",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "123-127",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "220-226",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "659",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "102",
+     "as": "parent",
+     "owner": "chip:device:mc146818"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "580",
+     "as": "parent",
+     "owner": "mc146818:register:0x0B"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "the BCD check is entered only for registers up to 0x09 and 0x32, 0x37"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "364-365",
+     "as": "agrees",
+     "row": "2",
+     "nothing": true
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "364-365",
+     "as": "agrees",
+     "row": "6",
+     "nothing": true
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "364-365",
+     "as": "agrees",
+     "row": "18",
+     "nothing": true
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "441-452",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "451",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "451",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "451",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "451",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "147-148",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "441-452",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "148",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "161",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "178",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "588",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "237-238",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "509",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "512",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "516",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "520-521",
+     "as": "agrees",
+     "row": "7"
+    }
+   ]
+  },
+  {
+   "key": "0x0D",
+   "name": "status D",
+   "aliases": [
+    "status D",
+    "register D"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "1086-1100"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "REG_D"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "REG_D"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::device_reset"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "248-259"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "281-288"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x0d"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_writereg",
+     "case": [
+      "0x0d"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "589"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register D at $0D holds VRT in bit 7, then seven cells the capture reads as zeros (glyphs damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1086",
+       "sha": "494b72fb0c1b549771dc8be5730305d0934877d402898db2f754a6453525de69"
+      },
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1089",
+       "sha": "9020c7551cf2f8560bd52804c1d4e8e0db29e17b29ab9f63ad9d48d3c502b6ea"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "Register D is read only.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1088",
+       "sha": "f4b43a394857f7c9c8b5725bb190cd2e41f92f223070a108d9ed7cb5a6875a5a"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "VRT is stored as bit 7 of Register D; per the document it indicates the condition of the RAM contents, provided the power-sense (PS) pin is satisfactorily connected.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1090-1092",
+       "sha": "fb059460ac803940af3512ccde8ba238d28a6618f012dddf90634dc6b79f679f"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "A 0 appears in the VRT bit when the power-sense pin is low (the capture writes 0 as O).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1092-1093",
+       "sha": "fc0acf3430b28c7b5235982bd604430fbf3259e04f0bdff4eaf386661dce4513"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The processor program can set the VRT bit when the time and calendar are initialized, to indicate that the RAM and time are valid.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1094-1095",
+       "sha": "08df9c7b3466b983ee5cf8ec5378f4dd2d63d22f88425c8c393e46f1ae42e34d"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "write",
+     "of": "doc",
+     "text": "VRT is a read only bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1095-1096",
+       "sha": "ad76beb6d33434cf99a4221abf8bd71f5161f2f7fee50e39a6d4fda671ed96f9"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "reset",
+     "of": "doc",
+     "text": "The VRT bit is not modified by the RESET pin (the pin name is damaged in the capture).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1096-1097",
+       "sha": "23594735217aeec5390af8172b74c2be0b1829d6b1bacc5bc2f99e0392c76506"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "The VRT bit can only be set by reading Register D (the register letter is damaged in the capture and read here as D).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1097",
+       "sha": "7d90ff65194e39b8c4e60881b6267af87f147724eba6ace43b1450d3b0ab1640"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "is",
+     "of": "doc",
+     "text": "The remaining bits b6 to b0 of Register D are unused.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1099",
+       "sha": "69d4a9c3600270f6451611855070989d48843ec392d84060bfc1218b029a704c"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "write",
+     "of": "doc",
+     "text": "The unused bits of Register D cannot be written.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1100",
+       "sha": "219b59fa316007a13bf8f853000d9d6cd567a7c9fac7ceeedc84c1c19fed29aa"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "read",
+     "of": "doc",
+     "text": "The unused bits of Register D are always read as zeros (the capture writes the zeros as O and S).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "1100",
+       "sha": "219b59fa316007a13bf8f853000d9d6cd567a7c9fac7ceeedc84c1c19fed29aa"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "bit 7",
+     "of": "mame",
+     "vs": "differs",
+     "row": "8",
+     "text": "A read returns the stored byte and then ORs bit 7 into the register; nvram_read and nvram_default, when a memory region is present, also OR bit 7 in.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "668-672",
+       "sha": "f60be020b428caa85673edaa7595c3b588a3b84116925b678019531ff4f01def"
+      },
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "248-259",
+       "sha": "c08c06321ed6579bec839ffecfce110c456e8cc0ac9d3a0787eb1039978cc950"
+      },
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "281-288",
+       "sha": "36ded227d035b787dacdb3ccc8ccbe89e439b5aa9550c5372be5851e899d210e"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "11",
+     "text": "A read returns the stored byte of register 0x0D with no mask on bits 6 to 0, and nvram_read loads that whole byte from the file.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "668-669",
+       "sha": "9e66d180562030679a5f2119f66d3bfb4c297077225c1d18c587746c0845fa4d"
+      },
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "281-288",
+       "sha": "36ded227d035b787dacdb3ccc8ccbe89e439b5aa9550c5372be5851e899d210e"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A write of register 0x0D stores bit 7 of the byte in the register.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "367",
+       "sha": "61e38885e5da105e3107668c819a9cef87bf7c1fb0d03486158cb39a59596e44"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "6",
+     "text": "A write of register 0x0D stores bit 7 of the byte in the register.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "367",
+       "sha": "61e38885e5da105e3107668c819a9cef87bf7c1fb0d03486158cb39a59596e44"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "7",
+     "text": "Reset stores 0x80 in register 0x0D, setting bit 7.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "589",
+       "sha": "fe417674ec9d834de1710fa1efb1608e71a1fb789c1ad39a64437cc2fc0a01ab"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "bit 7",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "8",
+     "text": "Reset stores 0x80 and a write stores bit 7 of the byte in register 0x0D; the read case only returns the stored byte.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "589",
+       "sha": "fe417674ec9d834de1710fa1efb1608e71a1fb789c1ad39a64437cc2fc0a01ab"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "367",
+       "sha": "61e38885e5da105e3107668c819a9cef87bf7c1fb0d03486158cb39a59596e44"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "534-544",
+       "sha": "158e42a1a741eaa9182d1920043e0cbe7fa57be3f79d983ac4adb607887b2f4d"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "bit 7",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "4",
+     "text": "The read case returns the stored byte of register 0x0D and consults no power-sense input.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "534-544",
+       "sha": "158e42a1a741eaa9182d1920043e0cbe7fa57be3f79d983ac4adb607887b2f4d"
+      }
+     ]
+    },
+    {
+     "n": "106",
+     "on": "bit 7",
+     "of": "mame",
+     "vs": "differs",
+     "row": "4",
+     "text": "The read case returns the stored byte of register 0x0D, consults no power-sense input and sets VRT in the stored byte after the read.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/mc146818.cpp",
+       "lines": "668-672",
+       "sha": "f60be020b428caa85673edaa7595c3b588a3b84116925b678019531ff4f01def"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "1087",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "1098",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "712-714",
+     "as": "agrees",
+     "row": "2",
+     "nothing": true
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "712-714",
+     "as": "agrees",
+     "row": "6",
+     "nothing": true
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "712-714",
+     "as": "agrees",
+     "row": "10",
+     "nothing": true
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "671",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "99-109",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "285",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "270",
+     "as": "unseen",
+     "reason": "the BCD check is entered only for registers up to 0x09 and 0x32, 0x37"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "589",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "260",
+     "as": "parent",
+     "owner": "mc146818:register:0x0B"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "584",
+     "as": "parent",
+     "owner": "mc146818:register:0x0B"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "367",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "367",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "589",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "544",
+     "as": "agrees",
+     "row": "11"
+    }
+   ]
+  },
+  {
+   "key": "0x0E..0x3F",
+   "name": "general purpose RAM",
+   "aliases": [
+    "general purpose RAM",
+    "user RAM",
+    "CMOS RAM"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "698-707"
+    },
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "713-716"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_read",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "function": "mc146818_device::internal_write",
+     "case": [
+      "default"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "302-307"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "424-426"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "453-531"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "function": "cmos_readreg",
+     "case": [
+      "0x0f"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "545-551"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "338-343"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "369-375"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "563-565"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "134"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "431-435"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The general purpose RAM bytes are not dedicated within the MC146818A (the byte count is damaged in the capture).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "698-700",
+       "sha": "322355f5eecca413fa6dfbdeaa243791cff74e1299c490487c23bea51326235e"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "The general purpose RAM bytes can be used by the processor program.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "700-701",
+       "sha": "9bbe856f59bb153f8d1a6b06064c0b7adb19c8bc77dd88d1bfdf404d0de79ab6"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "when",
+     "of": "doc",
+     "text": "The general purpose RAM bytes are fully available during the update cycle.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "701",
+       "sha": "7c7561377ed5ae3eda4dcb72f46326511ad90571f071db62b47726dc10123cd6"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "when",
+     "of": "doc",
+     "text": "The RAM bytes serve the need for low-power CMOS battery-backed storage of data that must be retained when main power is removed (parts of the sentence are damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "702-706",
+       "sha": "8a447627eb1f9531964ec3e5738bd1a9acd02eb2f1af11de102a86b6e7d59c48"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The sentence goes on about extending the available RAM and a part the capture reads as MC148818AS; the capture is too damaged to say more.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "706-707",
+       "sha": "eb5a47596fe072249dc85b4e361615739937bd818bdfc86402610b9ccb295674"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "With a condition the capture damages, the available user RAM is extended to a size whose digits the capture damages (it reads 59 followed by noise).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "713-714",
+       "sha": "54d665f8178c1754e295a96303ca95d496f480af93d470811e987e7c38ec9d0b"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "The high-order bit of the seconds byte, bit 7 of Register A and all bits of Registers C and D cannot effectively be used as general RAM (words damaged).",
+     "quotes": [
+      {
+       "ref": "datasheet:MC146818A.raw.txt",
+       "lines": "714-716",
+       "sha": "55c7044fa2ce01ca7bb051321dd1ddb8d16cbd3862070243c4cfb69b6e181dbc"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A read of register 0x10 returns a byte built from the BIOS types of the floppy images, and 0x12 one built from the two hard disk images.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "453-459",
+       "sha": "4d75a5da9aba5bd886fe92635c8a8b257fcdbed2d56e341ee94f0ccd7c9e1efc"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "460-469",
+       "sha": "1bbda91e3274da48b7b74cdfc2cfecbff803d6105226426ccc87da9db0aeee45"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "With imageDiskList[2] attached, reads of 0x19 and 0x1b to 0x23 return 47, its cylinders, heads, 0xFF, a heads-derived byte, or its sectors; with none attached they return 0.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "470-481",
+       "sha": "430869d52dbed45eee419bab479fce48118d35a47f7ece643d0dee9f4f266213"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "482-493",
+       "sha": "f567e1be6f88ed92f28eddc0ee45fafe21f40e0c4417f831c1cf8898ad4862bb"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "494-497",
+       "sha": "a8dbd562a972e60cc874e6ba93ce700346ff587c99f123e929adfff1c9864ee0"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "Reads of registers 0x1a and 0x24 to 0x2c return the same kind of values built from the second hard disk image, or 0 with none attached.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "498-509",
+       "sha": "ff08b4ec94e02c55638cafc7871c110af6aefaf4eb3551842d58b1a9cbbb62a9"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "510-521",
+       "sha": "24a3edca7bfe56feccb2b4d3118e95e1a089f990e7562d42dcaed106632908ea"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "522-526",
+       "sha": "3e391f7fc9bcce54ecb01ba418055ae2e2592a0bb652780c9938f397d00cbe9d"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "Reads of registers 0x39 and 0x3a return 0.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "527-530",
+       "sha": "7c25ec3cb79f516689036672a200d6c99342e9e240a285abdc4d275dd8559064"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A read of register 0x2F returns 0xFF when the PS/1 audio card is enabled.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "545-548",
+       "sha": "e46c1b5906d280fee8550a538c47194657224c777ba3138846ebd5aae5bb1840"
+      }
+     ]
+    },
+    {
+     "n": "206",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "Registers 0x32 and 0x37 read the century of the emulated clock year; a valid write of 19 or more to either sets the century of that year.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "424-426",
+       "sha": "233fe14b656b53bf6f7ddaeac4c7b97a6a21626c6a9416619bef641397ce1dd2"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "338-343",
+       "sha": "2b2622e04b27e4d346e6ee63f812b9fe20a6df7e63ef439b48f7a211a341eac6"
+      }
+     ]
+    },
+    {
+     "n": "207",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "A write of register 0x0F stores the byte with bit 7 cleared.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "369-371",
+       "sha": "97cc30ea93580efa3d9f6aba6f403377eaed1fe42d9f82a3e56d468e513847e7"
+      }
+     ]
+    },
+    {
+     "n": "208",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "4",
+     "text": "The CMOS_Destroy function has an empty body apart from a void cast of its argument.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/cmos.cpp",
+       "lines": "563-565",
+       "sha": "a50d919df02249c59198d753fd6b3006dd765d509ac5fd654ae32a441b6c2bfe"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "651",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "684",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-677",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "716-719",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "674-677",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "716-719",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "302-307",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "397",
+     "as": "unseen",
+     "reason": "early return of 0xFF taken before the register dispatch"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "403",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "260",
+     "as": "parent",
+     "owner": "mc146818:register:0x0B"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "584",
+     "as": "parent",
+     "owner": "mc146818:register:0x0B"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "563-565",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "534-544",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "549-551",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "372-375",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/mc146818.cpp",
+     "lines": "134",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/cmos.cpp",
+     "lines": "431-435",
+     "as": "agrees",
+     "row": "3"
+    }
+   ]
+  }
+ ]
+}

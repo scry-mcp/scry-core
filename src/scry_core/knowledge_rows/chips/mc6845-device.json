@@ -1,0 +1,377 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "mc6845-device",
+ "title": "The MC6845 CRT controller as a chip",
+ "kind": "device",
+ "scope": "chip",
+ "covers": "The MC6845 CRT controller as a chip: what it does, what its RESET input leaves in it and how its address register and register file are reached",
+ "source": "official",
+ "documents": [
+  {
+   "name": "MC6845.raw.txt",
+   "variant": "6845"
+  }
+ ],
+ "official": {
+  "MC6845.raw.txt": [
+   "3-9",
+   "458-468",
+   "536-551"
+  ]
+ },
+ "engine": [
+  "adjust",
+  "cclks_to_attotime"
+ ],
+ "entries": [
+  {
+   "key": "mc6845",
+   "name": "MC6845 CRTC",
+   "aliases": [
+    "MC6845 CRTC",
+    "MC6845"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "3-9"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "458-468"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "536-551"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::device_reset"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "function": "mc6845_device::address_w"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "142-159"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "940-942"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The MC6845 CRT controller performs the interface between an MPU and a raster-scan CRT display, for use in MPU-based CRT terminal controllers.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "3-5",
+       "sha": "920453ede3ba52859a3f426c00243bb3932251d0059c4181d652b62df24c3adf"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "The CRTC provides video timing and refresh memory addressing; keyboard functions, reads, writes, cursor movements and editing are under processor control.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "6-9",
+       "sha": "f467abc228ccc9cd999f114fbefb34a1f4b36f82ca1115ee418d97a528916b9d"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "reset",
+     "of": "doc",
+     "text": "A low level on RESET clears all counters in the CRTC and the device stops the display operation.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "458-462",
+       "sha": "8f2b2597d0351545aaa0bb81f7866dbd8a2624a7f3c7f42a3831118f07fc932a"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "reset",
+     "of": "doc",
+     "text": "A low level on RESET drives all the outputs low.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "463",
+       "sha": "baf6989a8868cad2232201661d460b6a5be28febacafb4bf73f217e1969e153b"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The horizontal sync output is not defined until after R2 is programmed.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "464-466",
+       "sha": "185d2858f074755db3430eacf6fa67646a0d74bd0c1cb109f94d9ac69fb44957"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "reset",
+     "of": "doc",
+     "text": "A low level on RESET does not affect the control registers of the CRTC, which remain unchanged.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "467-468",
+       "sha": "b5e1c38c721dd8ebea3b7704d4403f377a7e8568cf79eed13a2fdde0c858030a"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "Only two memory locations are required: one is used as a pointer to address one of the remaining eighteen registers.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "537-540",
+       "sha": "f3258e83282454ac933cb8fd4de69b40694d4216a2527a8b98789fd6680ea1e0"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "is",
+     "of": "doc",
+     "text": "The eighteen registers control horizontal and vertical timing, interlace and row address operation, and define the cursor, cursor address, start address and light pen register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "540-544",
+       "sha": "16732010eb5dde0325e6c21f11ab456bd264a5d2017c67a5bb22076458649dd5"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "when",
+     "of": "doc",
+     "text": "The address register is a 5-bit register used as an indirect or pointer register.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "546-547",
+       "sha": "0cd0a9e52352f742309dcf80b9cf1c94f157e04a1b44840d82e642ce8b0e633b"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "when",
+     "of": "doc",
+     "text": "The address register is write-only.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "546",
+       "sha": "a59a531ae534ed142a1bee45e625acf7f1979dbf5216e70bce2ce1dd97729f5f"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "when",
+     "of": "doc",
+     "text": "The address register contains the address of one of the other eighteen registers.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "547-548",
+       "sha": "bdfea15fa093d1f72e5566f2d98a34989d220613856be407c2711b2d57ee7804"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "is",
+     "of": "doc",
+     "text": "The address register is selected when both RS and CS are low; when CS is low and RS is high, the register the address register points to is selected.",
+     "quotes": [
+      {
+       "ref": "datasheet:MC6845.raw.txt",
+       "lines": "548-551",
+       "sha": "a7cb855b1328fabff1acbcebd869fe1f85d6595e337668493c356d8c3bf693ed"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "reset",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "device_reset restarts the line timer when it is not enabled and the parameters are valid, and clears m_line_address and m_cursor_x.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "1029-1032",
+       "sha": "fbad02e78fbbfefab76a3e2178fd1612ae99079f6cf8328272ab8b4fb0b96a7d"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "1038",
+       "sha": "06b6bba082490bb12b93cba4c716ec146c9a84f0ccab3f16b93f2076db459468"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "1042",
+       "sha": "0cd45a927ebd48252f3b9b2ad6e6cd8ebd31a91a2e7891ca0f268e514d247c34"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "reset",
+     "of": "mame",
+     "vs": "differs",
+     "row": "4",
+     "text": "device_reset sets the DE, HSYNC and VSYNC outputs low through their callbacks and does not call the cursor output callback.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "1020-1031",
+       "sha": "d77a2c3e3bd2fb5f0b6eb632e223c6ad2642dcb490e4e888955c2036ba0544ff"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "1032-1042",
+       "sha": "94a0eadc04d1e3fa4011d5836db92c19d7f1e37089c58fdb45cd09247637a6c2"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "1043-1046",
+       "sha": "2494aac535652dc99d1684530fbd2a36993f390e8b8077089583612afab2fe14"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "reset",
+     "of": "mame",
+     "vs": "differs",
+     "row": "6",
+     "text": "device_reset sets the cursor address, the register address latch, the update address and the light pen address to 0.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "1037",
+       "sha": "fd36da7f25c75526e633a47e77fb7f740e6b27ac69a7b7b21ab8e931fab5ec34"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "1043",
+       "sha": "a24376495e3e65081d606be9060b8b8b98abcbce1056d91fe6b3dcef14e61c9a"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "1044",
+       "sha": "4403c814cdbee3b6b77c96e2b45192d5360f9552340c5909f2c40efe2a4f942c"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "1045",
+       "sha": "807e651b762386219a486447a4cec2e50e289f8995e56db6f69659665237ba97"
+      }
+     ]
+    },
+    {
+     "n": "104",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "10",
+     "text": "status_r returns 0 on the MC6845, since the three status flags that device_start sets are false.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "142-152",
+       "sha": "eae3c0460129b298c60fe9adf9856f9ebc295290e4afde66672cea4a124daddf"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "153-159",
+       "sha": "acd8ba7a8941c3138e4bb53d5b80f453bad42ffcfcf7e8593adde3b25675d210"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "940-942",
+       "sha": "265f5784c9059d5718ab1288a62a335c64ebff8806c593e53877a52234b577bb"
+      }
+     ]
+    },
+    {
+     "n": "105",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "address_w stores the pointer in m_register_address_latch, which register_r and register_w switch on to pick the register they access.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "136-139",
+       "sha": "204b7b73e236b3e99b48b922d1a9dc3a7a602a8e527411445d65936511dd7214"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "189",
+       "sha": "7c37182e74c61e3ad78a9d459444dd546093db0bae0ce256a5baaad90c1c8053"
+      },
+      {
+       "ref": "mame:src/devices/video/mc6845.cpp",
+       "lines": "224",
+       "sha": "7c37182e74c61e3ad78a9d459444dd546093db0bae0ce256a5baaad90c1c8053"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "138",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/video/mc6845.cpp",
+     "lines": "138",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "536",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "545",
+     "as": "layout"
+    }
+   ]
+  }
+ ]
+}

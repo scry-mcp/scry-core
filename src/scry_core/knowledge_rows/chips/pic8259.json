@@ -218,8 +218,8 @@
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/pic.cpp",
-       "lines": "253-256",
-       "sha": "76dd700c3b460b507512a13bf7c4791e261cefb916b34cf576938f34f270d5c1"
+       "lines": "249-256",
+       "sha": "60da514da6ca74abedbf2a3aff60a7ae57a4755dfb8563610247d0fb3a7ed383"
       }
      ]
     },
@@ -235,6 +235,11 @@
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "258",
        "sha": "36fef93f7067a184ceb4f8949a6ab06fa3fd6d895a5c0aa243d4ba4bdce4ffac"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "344-345",
+       "sha": "73a83d9095ab3d63f2c6ffea35e2c1599a84165d761b11651c550f31bdd78865"
       }
      ]
     },
@@ -250,6 +255,11 @@
        "ref": "dosbox-x:src/hardware/pic.cpp",
        "lines": "258",
        "sha": "36fef93f7067a184ceb4f8949a6ab06fa3fd6d895a5c0aa243d4ba4bdce4ffac"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "344-345",
+       "sha": "73a83d9095ab3d63f2c6ffea35e2c1599a84165d761b11651c550f31bdd78865"
       }
      ]
     },
@@ -266,6 +276,54 @@
        "sha": "2253392f19592a12b61e53077cdfaef648cee2797b2cd2998dcaee0e76aff901"
       }
      ]
+    },
+    {
+     "n": "103",
+     "on": "read",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A poll read that finds a level clears its request bit unless level triggered or a slave sits on it, and sets its in-service bit unless auto EOI.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "198-208",
+       "sha": "1bb55c6183a5931a5b640d08293d341f64516f0f81dd7927efa4ebbd869d5420"
+      }
+     ]
+    },
+    {
+     "n": "104",
+     "on": "read",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A poll read clears the poll bit of the stored OCW3 when side effects are enabled.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "191",
+       "sha": "c059df8a3453062eb996a88b9837e0e57a4fe025911dd0983a1370ed78c3e042"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "210-211",
+       "sha": "be3cec0d5e06b12c1b52149b7f07f1b9414e31be24c6d5ca782dd636dff83464"
+      }
+     ]
+    },
+    {
+     "n": "105",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "text": "A poll read is chosen by the P bit alone: the test is m_ocw3 & 0x04, with no test of the RR bit.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "191",
+       "sha": "c059df8a3453062eb996a88b9837e0e57a4fe025911dd0983a1370ed78c3e042"
+      }
+     ],
+     "row": "6"
     }
    ],
    "closed": [
@@ -314,12 +372,6 @@
      "as": "structure"
     },
     {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "198-211",
-     "as": "parent",
-     "owner": "pic8259:command:0x08..0x0F"
-    },
-    {
      "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "343",
      "as": "decode"
@@ -354,9 +406,87 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "191-196",
-     "as": "agrees",
-     "row": "6"
+     "lines": "49",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "70",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "99",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "102",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "433-434",
+     "as": "unseen",
+     "reason": "resets to the power-on value, which the datasheet does not state"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "452",
+     "as": "unseen",
+     "reason": "resets to the power-on value, which the datasheet does not state"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "103",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "153",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "217",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "224",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "274",
+     "as": "parent",
+     "owner": "pic8259:command:0x60..0x67"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "616",
+     "as": "unseen",
+     "reason": "the debugger's own acknowledge, which the guest cannot issue"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "1025",
+     "as": "unseen",
+     "reason": "resets to the power-on value, which the datasheet does not state"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "437",
+     "as": "parent",
+     "owner": "pic8259:register:0x01:read"
     }
    ]
   },
@@ -414,6 +544,34 @@
        "sha": "1de6eda4c03e73aa0a3a48d1bb6def67c0025b9453cea8a5c56ff7cc8c70b66a"
       }
      ]
+    },
+    {
+     "n": "3",
+     "on": "reset",
+     "of": "mame",
+     "vs": "extra",
+     "text": "The device reset stores 0 in the mask register.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "437",
+       "sha": "7ec67c0df204c8f00c01f8f6045afbba80864df76f1910fb5b436701130aefcd"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The controller reset stores 0xFF in the mask register.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "1026",
+       "sha": "afcd9ea3777125c2bb65d8ef95847172b2e1f351c27b8cd6dab9d1e3e5b79233"
+      }
+     ]
     }
    ],
    "closed": [
@@ -438,6 +596,18 @@
      "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "361",
      "as": "decode"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "380",
+     "as": "parent",
+     "owner": "pic8259:register:0x01:write"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "169",
+     "as": "unseen",
+     "reason": "stores the OCW1 byte as the mask, as the OCW1 row of the write entry states"
     }
    ]
   },
@@ -530,6 +700,20 @@
        "sha": "9ec38b9dfe1c140b7e882207ca67f4e261cea4f36cb8bbd5569fc29e0e11ff40"
       }
      ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "extra",
+     "text": "OCW2 and OCW3 are decoded only once the initialization sequence has finished and the state is READY.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "259",
+       "sha": "cd115ad5604f1244393990ad8b80e1b5ee65c9a21f080892d3e3e8e790fb3a45"
+      }
+     ]
     }
    ],
    "closed": [
@@ -546,18 +730,6 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "259",
-     "as": "parent",
-     "owner": "chip:device:pic8259"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "262-273",
-     "as": "parent",
-     "owner": "pic8259:command:0x08..0x0F"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "276-283",
      "as": "parent",
      "owner": "pic8259:command:0x20..0x27"
@@ -567,12 +739,6 @@
      "lines": "284-286",
      "as": "parent",
      "owner": "pic8259:command:0x00..0x07"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "287-298",
-     "as": "parent",
-     "owner": "pic8259:command:0x20..0x27"
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -640,12 +806,6 @@
      "owner": "pic8259:command:0x20..0x27"
     },
     {
-     "ref": "dosbox-x:src/hardware/pic.cpp",
-     "lines": "287-294",
-     "as": "parent",
-     "owner": "pic8259:command:0x80..0x87"
-    },
-    {
      "ref": "datasheet:8259A.raw.txt",
      "lines": "498",
      "as": "layout"
@@ -685,6 +845,42 @@
      "lines": "257-265",
      "as": "agrees",
      "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "266-269",
+     "as": "parent",
+     "owner": "pic8259:command:0x08..0x0F"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "271-272",
+     "as": "parent",
+     "owner": "pic8259:command:0x68..0x6F"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "287-296",
+     "as": "parent",
+     "owner": "pic8259:command:0x20..0x27"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "297-298",
+     "as": "parent",
+     "owner": "pic8259:command:0x40..0x47"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "287-290",
+     "as": "parent",
+     "owner": "pic8259:command:0x80..0x87"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "291-293",
+     "as": "parent",
+     "owner": "pic8259:command:0xC0..0xC7"
     }
    ]
   },
@@ -909,7 +1105,7 @@
      "of": "mame",
      "vs": "differs",
      "row": "7",
-     "text": "In a slave the ICW3 value is not used: only a master acts on its slave bits.",
+     "text": "The slave bits of ICW3 are tested together with m_master, so only a master acts on them in these lines.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -924,27 +1120,12 @@
      ]
     },
     {
-     "n": "102",
-     "on": "bit 3",
-     "of": "mame",
-     "vs": "differs",
-     "row": "9",
-     "text": "The buffered mode bits of ICW4 are stored in a mode field and nothing else in that case acts on them.",
-     "quotes": [
-      {
-       "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "369",
-       "sha": "d35c85e1f454f62b86162e758f77d27d47c55876839f190d6685ac143a9d08f4"
-      }
-     ]
-    },
-    {
      "n": "103",
      "on": "bit 2",
      "of": "mame",
      "vs": "differs",
      "row": "10",
-     "text": "The master or slave bit of ICW4 is stored in the mode field; the role comes from the SP pin read at reset.",
+     "text": "The master or slave bit of ICW4 is stored in m_mode, and m_master is read from the SP input in the reset code.",
      "quotes": [
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
@@ -1313,6 +1494,12 @@
      "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "316",
      "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "369",
+     "as": "agrees",
+     "row": "9"
     }
    ]
   }

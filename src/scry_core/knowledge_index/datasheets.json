@@ -44,6 +44,72 @@
    "tool_version": "26.10.0",
    "pdf": "e3c83da5a5d8e372364c20fa53665e6fbb165ec6ac38c8c1eebc359603447b5e",
    "capture": "e75d769e64d3a8721118c59b54812bd3d991743009a0d385468c449aa18d890c"
+  },
+  "INS8250.raw.txt": {
+   "title": "National Semiconductor INS8250 and INS8250-B universal asynchronous receiver/transmitter",
+   "url": "https://datasheet4u.com/pdf/1529856/INS8250-B.pdf",
+   "archive": "https://web.archive.org/web/20261122135310/https://datasheet4u.com/pdf/1529856/INS8250-B.pdf",
+   "class": "maker-datasheet",
+   "text": "layer",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "eefeae3a27921280b5a2922bbfd851c9433953d02aa374ae0b861d0507b80f09",
+   "capture": "d912e52a07c85b4e026ff3950a63fbf06172e89e7ef268067ee602e20ba8ef02"
+  },
+  "MC146818A.raw.txt": {
+   "title": "Motorola MC146818A real-time clock plus RAM (advance information)",
+   "url": "https://www.scs.stanford.edu/22wi-cs212/pintos/specs/mc146818a.pdf",
+   "archive": "https://web.archive.org/web/20261122135352/https://www.scs.stanford.edu/22wi-cs212/pintos/specs/mc146818a.pdf",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "ab2a1a92080a6b1b5a66c24a25017a4bd6889a622993b695a79e95dfd88bbc7b",
+   "capture": "ef097553e393584809b394190654accecb5179bbf1e32228baf74c0f436f9b5d"
+  },
+  "MC6845.raw.txt": {
+   "title": "Motorola MC6845 CRT controller (CRTC)",
+   "url": "https://cdn.hackaday.io/files/1670897148735776/6845.pdf",
+   "archive": "https://web.archive.org/web/20221025224207/https://cdn.hackaday.io/files/1670897148735776/6845.pdf",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "84ae68617c23e3b3057dce86f4a04a5be5d890d108bce8e9bb928bfdd2759dcf",
+   "capture": "066a21a53a68003d604d4f2b8a230806457814108105209be098756ac02b0406"
+  },
+  "SY6545.raw.txt": {
+   "title": "Synertek SY6545-1 CRT controller (CRTC)",
+   "url": "https://vgamuseum.info/images/doc/misc/synertek_sy6545.pdf",
+   "archive": "http://web.archive.org/web/20241109213013/http://www.vgamuseum.info/images/doc/misc/synertek_sy6545.pdf",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "cfebee5548c63b84e766cd55891b2a00d8b06a35e3eebacb7de48711cb7f7214",
+   "capture": "7bd583e40ccaf96286a2d85479c2ff71af99b9f89757ae80ad2b2100a8d80f8f"
+  },
+  "YM3812.raw.txt": {
+   "title": "Yamaha YM3812 (OPL2) application manual",
+   "url": "https://archive.org/download/YamahaYM3812ApplicationManual/Yamaha%20YM3812%20Application%20Manual_text.pdf",
+   "archive": "https://archive.org/details/YamahaYM3812ApplicationManual",
+   "class": "maker-guide",
+   "text": "ocr",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "a4caed26a837721ddf86ab089c9bc69dc0fc71f657ec658f1acb9a9723baf20b",
+   "capture": "fe46cf7644f44a51cbb843b3def5c756023d7f986f2be40c58d77b52ba4a28c8"
+  },
+  "YMF262.raw.txt": {
+   "title": "Yamaha YMF262 (OPL3) datasheet",
+   "url": "https://bitsavers.org/components/yamaha/YMF262_199411.pdf",
+   "archive": "http://web.archive.org/web/20260223110211/https://www.bitsavers.org/components/yamaha/YMF262_199411.pdf",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "c0eefa8572dab706a8f05ea0a61d80c2c0f65f3a477abb3c416dde60c276abc2",
+   "capture": "70eb47703a3315fa8564d4599c83c9961c9efaa157557192b55795710ab25825"
   }
  }
 }
