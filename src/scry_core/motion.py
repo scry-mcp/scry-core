@@ -37,11 +37,11 @@ from scry_core import aspect, avi, png
 from scry_core.verdict import Invalid
 
 LOOP_NAME = "loop.webp"
-CUTS_MAX = 3
+CUTS_MAX = 5
 #: The seconds one cut may last, and all of them together.
-CUT_SECONDS = (1.0, 3.0)
-LOOP_SECONDS = 6.0
-#: Half a frame of slack at any rate a recording has, so `3 s` of 70.09 Hz is not refused.
+CUT_SECONDS = (1.5, 4.0)
+LOOP_SECONDS = 16.0
+#: Half a frame of slack at any rate a recording has, so `4 s` of 70.09 Hz is not refused.
 SLACK_SECONDS = 0.02
 RATE_MAX = 30
 BUDGET_BYTES = 400_000

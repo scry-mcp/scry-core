@@ -21,7 +21,7 @@ from scry_core import motion, timeline
 from scry_core import overlay as ov
 from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
 
-#: The demo runner's own recorded fixture: 72 frames of 8 x 8 at 60 a second.
+#: The demo runner's own recorded fixture: 120 frames of 8 x 8 at 60 a second.
 RECORDING = Path(__file__).resolve().parent / "fixtures" / "demo" / "screen.avi"
 needs_programs = pytest.mark.skipif(
     any(shutil.which(name) is None for name in motion.PROGRAMS),
@@ -66,11 +66,11 @@ def test_a_clip_decorated_twice_is_the_same_pixels() -> None:
 @needs_programs
 def test_a_loop_of_the_recorded_fixture_decorated_twice_is_the_same_bytes(tmp_path: Path) -> None:
     def once(n: int) -> motion.Built:
-        return motion.build([motion.Cut(RECORDING, 0, 72)], tmp_path / f"w{n}",
+        return motion.build([motion.Cut(RECORDING, 0, 120)], tmp_path / f"w{n}",
                             dc.for_loop(_run(), [100]))
 
     one, two = once(1), once(2)
-    plain = motion.build([motion.Cut(RECORDING, 0, 72)], tmp_path / "plain")
+    plain = motion.build([motion.Cut(RECORDING, 0, 120)], tmp_path / "plain")
     assert one.data == two.data
     assert one.data != plain.data, "the decorated loop is the plain one"
 
@@ -78,7 +78,7 @@ def test_a_loop_of_the_recorded_fixture_decorated_twice_is_the_same_bytes(tmp_pa
 @needs_programs
 def test_each_cut_of_a_loop_is_decorated_with_its_own_frames_and_lasts_as_undecorated(
         tmp_path: Path) -> None:
-    cuts = [motion.Cut(RECORDING, 0, 60), motion.Cut(RECORDING, 12, 60)]
+    cuts = [motion.Cut(RECORDING, 0, 120), motion.Cut(RECORDING, 12, 108)]
     seen: list[tuple[int, list[int], int]] = []
     shown: list[bytes] = []
     decorated = dc.for_loop(_run(), [100, 300])
@@ -90,7 +90,7 @@ def test_each_cut_of_a_loop_is_decorated_with_its_own_frames_and_lasts_as_undeco
         return decorated(n, numbers, pictures, rate, box) if n == 0 else list(pictures)
 
     built = motion.build(cuts, tmp_path / "d", watched)
-    assert seen == [(0, list(range(0, 60, 2)), 30), (1, list(range(12, 72, 2)), 30)]
+    assert seen == [(0, list(range(0, 120, 2)), 60), (1, list(range(12, 120, 2)), 54)]
     assert built.cut_ms == motion.build(cuts, tmp_path / "p").cut_ms
     assert shown[0] != shown[1], "the second cut was handed the first one's frames"
 
@@ -201,12 +201,12 @@ def test_the_command_refuses_a_clip_with_no_timeline(tmp_path: Path) -> None:
     said: list[str] = []
     out = tmp_path / "loop.webp"
     code = dc.main([str(RECORDING), "--timeline", str(tmp_path / "none.json"), "--at", "100",
-                    "--frames", "72", "--out", str(out)], said.append)
+                    "--frames", "120", "--out", str(out)], said.append)
     assert code == EXIT_INVALID and not out.exists()
     assert said[0].startswith("INVALID: the timeline") and "decorated only from" in said[0]
     (tmp_path / "bytes.json").write_bytes(b"\xff\xfe")
     code = dc.main([str(RECORDING), "--timeline", str(tmp_path / "bytes.json"), "--at", "100",
-                    "--frames", "72", "--out", str(out)], said.append)
+                    "--frames", "120", "--out", str(out)], said.append)
     assert code == EXIT_INVALID and said[-1].startswith("INVALID: the timeline")
 
 
@@ -216,12 +216,12 @@ def test_the_command_writes_the_decorated_loop_and_leaves_nothing_beside_it(
     (tmp_path / "t.json").write_text(json.dumps(_run()))
     said: list[str] = []
     code = dc.main([str(RECORDING), "--timeline", str(tmp_path / "t.json"), "--at", "100",
-                    "--frames", "72", "--out", str(tmp_path / "loop.webp"), "--place", "top",
+                    "--frames", "120", "--out", str(tmp_path / "loop.webp"), "--place", "top",
                     "--without", "keys", "--sine"], said.append)
     assert code == EXIT_PASS, said
     assert sorted(p.name for p in tmp_path.iterdir()) == ["loop.webp", "t.json"]
     code = dc.main([str(RECORDING), "--timeline", str(tmp_path / "t.json"), "--at", "100",
-                    "--frames", "72", "--out", str(tmp_path / "none" / "loop.webp")], said.append)
+                    "--frames", "120", "--out", str(tmp_path / "none" / "loop.webp")], said.append)
     assert code == EXIT_INVALID and said[-1].startswith("INVALID: the loop cannot be written")
 
 
@@ -250,6 +250,19 @@ def test_the_caption_is_the_timeline_s_own_text_and_tint() -> None:
     written = _pixel(dc.decorate(run, _clip(), dc.Style(layers=("edge", "calls")))[5], *at)
     blue = _pixel(dc.decorate(read, _clip(), dc.Style(layers=("edge", "calls")))[5], *at)
     assert written[0] > written[2] and blue[2] > blue[0], (written, blue)
+
+
+def test_a_record_step_is_the_camera_and_is_not_captioned() -> None:
+    """A moment the demo records itself shows the machine, not the camera: `record` is not
+    captioned, and any other step's caption is drawn as it was."""
+    def drawn(tool: str, layers: tuple[ov.Layer, ...] = ("calls",)) -> list[bytes]:
+        made = timeline.Builder("t")
+        made.add("shoot", tool, {}, "ok", (100, 160))
+        return [p.rgb for p in dc.decorate(timeline.loads(made.dumps()), _clip(),
+                                           dc.Style(layers=layers))]
+
+    assert drawn("record") == drawn("record", ())
+    assert drawn("run_for") != drawn("run_for", ())
 
 
 def test_a_server_with_no_pointer_layer_draws_no_pointer_from_the_same_timeline() -> None:

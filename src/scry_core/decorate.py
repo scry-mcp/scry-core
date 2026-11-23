@@ -14,7 +14,9 @@ The clock is the clip's own: an emulator frame is `1 / rate` seconds, and a call
 from the frame it began at. A call that ran no frame (a read, a stop) is captioned at the frame
 it was made on, so the captions' minimum time, burst and hold (`overlay_timeline.Captions`) are
 reckoned in the clip's seconds. Calls are read from the last rewind of the machine (a state
-load) before the clip, because frames before it are no longer this clip's.
+load) before the clip, because frames before it are no longer this clip's. A demo's camera is
+not work the demo does: a `record` step is not captioned, and its cut shows only what the
+machine runs.
 
 Deterministic: no clock, no randomness, a bitmap font, so a clip decorated twice is the same
 pixels. `python -m scry_core.decorate` makes one decorated loop from a recording.
@@ -38,6 +40,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from scry_core import motion, placement, timeline
 from scry_core import overlay as ov
 from scry_core import overlay_timeline as tl
+from scry_core.demo import RECORD_TOOL
 from scry_core.presence import LOOK, Look
 from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
 
@@ -63,6 +66,8 @@ SINE_HZ = 0.8
 RASTER_HZ = 0.5
 POINTER_SHAPE = ((0, 0), (0, 16), (4, 12), (7, 19), (10, 18), (7, 11), (12, 11))
 POINTER_UNITS = 19
+#: The tool that is a demo's camera rather than work it does: its calls are not captioned.
+CAMERA_TOOLS = (RECORD_TOOL,)
 
 
 @dataclass(frozen=True)
@@ -115,6 +120,7 @@ class _Call:
     tint: tl.Kind
     begin: float
     end: float
+    camera: bool = False
 
 
 @dataclass
@@ -181,7 +187,7 @@ def _plan(document: Mapping[str, Any], clip: Clip) -> _Plan:
     for call in _span(document["calls"], (min(clip.frames), max(clip.frames))):
         began, ended = _ran(call)
         plan.calls.append(_Call(call["tool"], call["caption"]["text"], call["caption"]["tint"],
-                                at(began), at(ended)))
+                                at(began), at(ended), call["tool"] in CAMERA_TOOLS))
         for event in call["events"]:
             when = at(event["frame"])
             if event["kind"] == "key":
@@ -294,12 +300,14 @@ class _Painter:
                 self.pending_ends.remove(due_end)
                 call = calls[self.ended]
                 self.ended += 1
-                self.captions.ended(False, call.tint == "refused", due_end)
+                if not call.camera:
+                    self.captions.ended(False, call.tint == "refused", due_end)
             else:
                 call = calls[self.fed_calls]
                 self.fed_calls += 1
-                self.captions.began(call.tool, {}, call.tint == "read", False, call.begin,
-                                    text=call.text)
+                if not call.camera:
+                    self.captions.began(call.tool, {}, call.tint == "read", False, call.begin,
+                                        text=call.text)
                 self.pending_ends.append(call.end)
         while self.fed_keys < len(self.plan.keys) and self.plan.keys[self.fed_keys][0] <= t:
             when, name, down = self.plan.keys[self.fed_keys]

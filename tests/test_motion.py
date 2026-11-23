@@ -34,7 +34,7 @@ def _blocks(pixels: list[list[tuple[int, int, int]]]) -> motion.Picture:
 
 
 def test_the_fixture_recording_reads_as_the_frames_and_rate_it_holds() -> None:
-    assert motion.facts(FIXTURE) == (72, Fraction(60))
+    assert motion.facts(FIXTURE) == (120, Fraction(60))
     assert motion.rate(b"RIFF....AVI ") is None
 
 
@@ -233,12 +233,13 @@ def test_a_ppm_is_read_and_written_back() -> None:
 
 
 @pytest.mark.parametrize(("cuts", "why"), [
-    ([], "a loop shows 1 to 3 moments, and this one has 0"),
-    ([(0, 36)] * 4, "and this one has 4"),
-    ([(0, 30)], r"moment 1 lasts 0.50 s \(30 frames at 60.00 a second\), and a moment lasts 1 to"),
-    ([(10, 72)], "moment 1 asks frames 10 to 81 of .*screen.avi, which holds 72"),
+    ([], "a loop shows 1 to 5 moments, and this one has 0"),
+    ([(0, 36)] * 6, "and this one has 6"),
+    ([(0, 30)], r"moment 1 lasts 0.50 s \(30 frames at 60.00 a second\), and a moment "
+     r"lasts 1.5 to"),
+    ([(10, 120)], "moment 1 asks frames 10 to 129 of .*screen.avi, which holds 120"),
     ([(-1, 60)], "moment 1 asks frames -1 to"),
-    ([(0, 72), (0, 0)], "moment 2 asks frames 0 to -1"),
+    ([(0, 120), (0, 0)], "moment 2 asks frames 0 to -1"),
 ])
 def test_cuts_past_a_limit_of_the_loop_are_invalid(cuts: list[tuple[int, int]],
                                                    why: str) -> None:
@@ -246,14 +247,33 @@ def test_cuts_past_a_limit_of_the_loop_are_invalid(cuts: list[tuple[int, int]],
         motion.planned([motion.Cut(FIXTURE, first, frames) for first, frames in cuts])
 
 
+def test_the_loop_s_budget_is_five_moments_of_one_and_a_half_to_four_seconds(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """A lead clip is not rushed: a moment lasts 1.5 to 4 s, five of them, 16 s in all."""
+    monkeypatch.setattr(motion, "facts", lambda source: (100_000, Fraction(60)))
+
+    def moments(*frames: int) -> list[motion.Cut]:
+        return [motion.Cut(FIXTURE, 0, n) for n in frames]
+
+    assert len(motion.planned(moments(90))) == 1, "1.5 s is a moment"
+    assert len(motion.planned(moments(240))) == 1, "4 s is a moment"
+    assert len(motion.planned(moments(240, 240, 240, 240))) == 4, "16 s is a loop"
+    for frames in (84, 246):
+        with pytest.raises(Invalid, match=rf"moment 1 lasts {frames / 60:.2f} s"):
+            motion.planned(moments(frames))
+    with pytest.raises(Invalid, match=r"the moments last 20.00 s together, and a loop lasts at "
+                                      r"most 16 s: show less"):
+        motion.planned(moments(*[240] * 5))
+
+
 def test_moments_that_last_more_than_the_loop_together_are_invalid(
         monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(motion, "LOOP_SECONDS", 3.0)
-    with pytest.raises(Invalid, match=r"the moments last 3.60 s together, and a loop lasts at "
+    with pytest.raises(Invalid, match=r"the moments last 4.50 s together, and a loop lasts at "
                                       r"most 3 s: show less"):
-        motion.planned([motion.Cut(FIXTURE, 0, 72)] * 3)
-    assert motion.lasting([motion.Cut(FIXTURE, 0, 72), motion.Cut(FIXTURE, 12, 60)]) == (1200,
-                                                                                         1000)
+        motion.planned([motion.Cut(FIXTURE, 0, 90)] * 3)
+    assert motion.lasting([motion.Cut(FIXTURE, 0, 90), motion.Cut(FIXTURE, 12, 90)]) == (1500,
+                                                                                        1500)
 
 
 def test_a_recording_that_is_no_avi_is_invalid(tmp_path: Path) -> None:
@@ -267,10 +287,10 @@ def test_a_recording_that_is_no_avi_is_invalid(tmp_path: Path) -> None:
 
 @needs_programs
 def test_a_loop_is_built_from_cuts_of_a_real_recording(tmp_path: Path) -> None:
-    cuts = [motion.Cut(FIXTURE, 0, 72), motion.Cut(FIXTURE, 6, 60)]
-    assert motion.build(cuts[:1], tmp_path).cut_ms == (1200,)
+    cuts = [motion.Cut(FIXTURE, 0, 120), motion.Cut(FIXTURE, 6, 114)]
+    assert motion.build(cuts[:1], tmp_path).cut_ms == (2000,)
     built = motion.build(cuts, tmp_path)  # in the folder an earlier build left its frames in
-    assert built.cut_ms == (1200, 1000) and built.lossless
+    assert built.cut_ms == (2000, 1900) and built.lossless
     assert built.data[:4] == b"RIFF" and built.data[8:12] == b"WEBP"
     out = tmp_path / "loop.webp"
     out.write_bytes(built.data)
@@ -282,7 +302,7 @@ def test_a_loop_is_built_from_cuts_of_a_real_recording(tmp_path: Path) -> None:
             f"the fixture's 8 x 8 frames are not scaled up 90 times, shown at 4:3: {info}"
         lasting = [int(line.split()[6]) for line in info.splitlines() if line.strip()[:1].isdigit()
                    and ":" in line.split()[0]]
-        assert sum(lasting) == 2200, info
+        assert sum(lasting) == 3900, info
 
 
 @needs_programs
@@ -291,7 +311,7 @@ def test_a_loop_past_the_budget_lossless_and_lossy_is_invalid(
     monkeypatch.setattr(motion, "BUDGET_BYTES", 10)
     with pytest.raises(Invalid, match=r"the loop is \d+ bytes lossless and \d+ bytes lossy, past "
                                       r"the 10-byte budget: show less"):
-        motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
+        motion.build([motion.Cut(FIXTURE, 0, 120)], tmp_path)
 
 
 @needs_programs
@@ -300,9 +320,9 @@ def test_a_recording_ffmpeg_cannot_decode_is_invalid_with_its_own_words(
     broken = tmp_path / "broken.avi"
     data = FIXTURE.read_bytes()
     at = data.index(b"movi")
-    broken.write_bytes(data[:at + 4] + b"idx1")  # the header's 72 frames, and none to decode
+    broken.write_bytes(data[:at + 4] + b"idx1")  # the header's 120 frames, and none to decode
     with pytest.raises(Invalid, match="ffmpeg (refused to decode|decoded 0 frames)"):
-        motion.build([motion.Cut(broken, 0, 72)], tmp_path / "work")
+        motion.build([motion.Cut(broken, 0, 120)], tmp_path / "work")
 
 
 def test_a_frame_doubled_down_and_not_across_is_not_a_double() -> None:
@@ -335,7 +355,7 @@ def test_a_capture_nearly_all_doubled_is_halved_torn_frames_included(
     whole = _blocks([[(1, 2, 3), (4, 5, 6)], [(4, 5, 6), (1, 2, 3)]])
     torn = motion.Picture(whole.width, whole.height, b"\x09" + whole.rgb[1:], 40)
     assembled = _faked(monkeypatch, {0: [whole] * 9 + [torn]}, [1])
-    built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
+    built = motion.build([motion.Cut(FIXTURE, 0, 120)], tmp_path)
     assert built.lossless and built.cut_ms == (400,)
     assert built.kept.whole == (2, 2), "the capture was not halved"
     times = motion.factor(built.kept)
@@ -343,7 +363,7 @@ def test_a_capture_nearly_all_doubled_is_halved_torn_frames_included(
         "the halved capture was not scaled up to fit and shown at 4:3"
     assert [p.ms for p in assembled[0]] == [360, 40], "equal frames were not merged"
     assembled = _faked(monkeypatch, {0: [whole] * 8 + [torn] * 2}, [1])
-    built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
+    built = motion.build([motion.Cut(FIXTURE, 0, 120)], tmp_path)
     assert built.kept.whole == (4, 4), "the capture was halved"
     times = motion.factor(motion.Box(0, 0, 4, 4, (4, 4)))
     assert {(p.width, p.height) for p in assembled[0]} == {aspect.shown(4 * times, 4 * times)}, \
@@ -353,20 +373,20 @@ def test_a_capture_nearly_all_doubled_is_halved_torn_frames_included(
 def test_moments_of_two_sizes_are_invalid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _faked(monkeypatch, {0: [_picture(3, 3)], 6: [_picture(5, 3)]}, [1])
     with pytest.raises(Invalid, match=r"the moments are not one size: 3x3 and \[\(5, 3\)\]"):
-        motion.build([motion.Cut(FIXTURE, 0, 72), motion.Cut(FIXTURE, 6, 60)], tmp_path)
+        motion.build([motion.Cut(FIXTURE, 0, 120), motion.Cut(FIXTURE, 6, 114)], tmp_path)
 
 
 def test_a_loop_too_heavy_lossless_is_made_lossy(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _faked(monkeypatch, {0: [_picture(3, 3)]}, [motion.BUDGET_BYTES + 1, motion.BUDGET_BYTES])
-    built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
+    built = motion.build([motion.Cut(FIXTURE, 0, 120)], tmp_path)
     assert not built.lossless and len(built.data) == motion.BUDGET_BYTES
 
 
 @pytest.mark.parametrize(("code", "stderr", "why"), [
     (1, "first\nInvalid data found", r"ffmpeg refused to decode .* \(exit 1\): Invalid data found"),
     (1, "", r"ffmpeg refused to decode .* \(exit 1\): no words"),
-    (0, "", "ffmpeg decoded 0 frames of .* where frames 0 to 71, one in 2, are 36"),
+    (0, "", "ffmpeg decoded 0 frames of .* where frames 0 to 119, one in 2, are 60"),
 ])
 def test_a_decode_that_fails_or_comes_short_is_invalid(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, code: int, stderr: str, why: str) -> None:
@@ -374,7 +394,7 @@ def test_a_decode_that_fails_or_comes_short_is_invalid(
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(
         a, code, "", stderr))
     with pytest.raises(Invalid, match=why):
-        motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
+        motion.build([motion.Cut(FIXTURE, 0, 120)], tmp_path)
 
 
 def test_an_assembly_that_fails_is_invalid_with_its_own_words(
@@ -425,7 +445,7 @@ def test_a_loop_shows_only_what_moves_its_band_cut_before_it_is_scaled_up(
         return motion.Picture(320, 200, row * 100 + bytes(3 * 320 * 100), 40)
 
     assembled = _faked(monkeypatch, {0: [scene(0), scene(1)]}, [1])
-    built = motion.build([motion.Cut(FIXTURE, 0, 72)], tmp_path)
+    built = motion.build([motion.Cut(FIXTURE, 0, 120)], tmp_path)
     kept = motion.Box(0, 0, 160, 100, (320, 200))
     assert built.kept == kept
     assert (motion.factor(motion.Box(0, 0, 320, 200, (320, 200))), motion.factor(kept)) == (3, 6), \

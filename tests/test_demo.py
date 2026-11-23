@@ -27,8 +27,8 @@ from scry_core.verdict import EXIT_INVALID
 
 SERVER = Path(__file__).resolve().parent / "fixtures" / "demo" / "server.py"
 FIXTURE_AVI = SERVER.with_name("screen.avi")
-#: What the fixture's recording holds: 72 frames at 60 a second.
-FIXTURE_FRAMES, FIXTURE_MS = 72, 1200
+#: What the fixture's recording holds: 120 frames at 60 a second.
+FIXTURE_FRAMES, FIXTURE_MS = 120, 2000
 needs_loop_programs = pytest.mark.skipif(
     any(shutil.which(name) is None for name in motion.PROGRAMS),
     reason="a loop is made by ffmpeg and img2webp on PATH")
@@ -545,7 +545,7 @@ def test_update_readme_makes_the_loop_beside_the_capture_and_writes_the_motion_b
     assert d.block_of(text, d.MOTION_BEGIN, d.MOTION_END) == (
         tmp_path / "out" / "transcript-motion.md").read_text().strip("\n")
     assert "old motion" not in text and "1. The pattern moves." in text
-    assert f"{loop} rewritten: {len(data)} bytes, lossless, 1.2 s in 1 moment" \
+    assert f"{loop} rewritten: {len(data)} bytes, lossless, 2 s in 1 moment" \
         in capsys.readouterr().out
 
 
@@ -765,7 +765,7 @@ def test_a_still_that_cannot_be_cut_as_its_loop_leaves_every_file_as_it_was(
     ((d.Moment("shot", "film", ""),), {}, "its caption is one sentence"),
     ((d.Moment("shot", "film", "It moves.", skip=-1),), {}, "neither is negative"),
     ((d.Moment("shot", "film", "It moves."),), {"alt": " "}, "does not say what moves"),
-    ((d.Moment("shot", "film", "It moves."),) * 4, {}, "a loop shows at most 3"),
+    ((d.Moment("shot", "film", "It moves."),) * 6, {}, "a loop shows at most 5"),
 ])
 def test_a_moment_the_demo_s_steps_cannot_give_is_refused_before_a_call(
         tmp_path: Path, log: Path, moments: tuple[d.Moment, ...], kw: dict[str, Any],
@@ -858,21 +858,21 @@ def _session_video(tmp_path: Path) -> Path:
 
 def test_a_moment_between_two_steps_is_cut_from_the_session_s_video_by_the_replies_frames(
         tmp_path: Path) -> None:
-    """The video's last frame is the last one a reply counted: 144 frames ending at frame 150,
-    so the stretch after frame 100 begins at the video's frame 94, the second file's 22."""
+    """The video's last frame is the last one a reply counted: 240 frames ending at frame 240,
+    so the stretch after frame 190 begins at the video's frame 190, the second file's 70."""
     folder = _session_video(tmp_path)
     demo = _moment_demo(tmp_path, video=lambda run: folder, moments=(
         d.Moment("boot", "shot", "It moves."),
         d.Moment("boot", "shot", "It moves on.", skip=6, frames=20)))
     run = d.Run(dir=tmp_path, replies=_replies(
-        boot={"frame": 100}, shot={"ran": [{"reply": {"frame": 110}}, {"reply": {"frame": 130}}]},
-        film={"note": "counts none"}, end={"frame": 150}))
-    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 22, 30),
-                                 motion.Cut(folder / "x_001.avi", 28, 20)]
+        boot={"frame": 190}, shot={"ran": [{"reply": {"frame": 200}}, {"reply": {"frame": 220}}]},
+        film={"note": "counts none"}, end={"frame": 240}))
+    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 70, 30),
+                                 motion.Cut(folder / "x_001.avi", 76, 20)]
     still = d.Demo(**{**demo.__dict__, "moments": (d.Moment("shot", "end", "It moves."),)})
     assert d.cuts(still, d.Run(dir=tmp_path, replies=_replies(
-        boot={"frame": 100}, shot={"read": "a step that moved nothing"}, film={"frame": 150},
-        end={"note": "nor this one"}))) == [motion.Cut(folder / "x_001.avi", 22, 50)], \
+        boot={"frame": 190}, shot={"read": "a step that moved nothing"}, film={"frame": 240},
+        end={"note": "nor this one"}))) == [motion.Cut(folder / "x_001.avi", 70, 50)], \
         "a step that counts no frame stands at the last one counted before it"
 
 
@@ -882,19 +882,19 @@ def test_a_reply_that_names_the_frame_it_ended_at_places_a_moment_as_one_that_co
     demo = _moment_demo(tmp_path, video=lambda run: folder,
                         moments=(d.Moment("boot", "shot", "It moves."),))
     run = d.Run(dir=tmp_path, replies=_replies(
-        boot={"frame_before": 90, "frame_after": 100}, shot={"frame_before": 100,
-                                                              "frame_after": 130},
-        film={"note": "counts none"}, end={"frame_before": 140, "frame_after": 150}))
-    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 22, 30)]
+        boot={"frame_before": 180, "frame_after": 190}, shot={"frame_before": 190,
+                                                              "frame_after": 220},
+        film={"note": "counts none"}, end={"frame_before": 230, "frame_after": 240}))
+    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 70, 30)]
 
 
 @pytest.mark.parametrize(("frames", "why"), [
-    ({"boot": {"frame": 60}, "shot": {"frame": 100}, "end": {"frame": 150}},
+    ({"boot": {"frame": 100}, "shot": {"frame": 240}, "end": {"frame": 240}},
      "which no one file of"),
     ({"boot": {}, "shot": {"frame": 100}, "end": {"frame": 150}},
      "no reply up to step 'boot' counts a `frame`"),
-    ({"boot": {"frame": 100}, "shot": {"frame": 130}, "end": {"note": "moved, uncounted"}},
-     "the session's video holds 144 frames and the last reply to count one counts frame 130"),
+    ({"boot": {"frame": 190}, "shot": {"frame": 220}, "end": {"note": "moved, uncounted"}},
+     "the session's video holds 240 frames and the last reply to count one counts frame 220"),
     ({"boot": {"frame": True}, "shot": {"frame": 100}}, "no reply up to step 'boot' counts a"),
 ])
 def test_a_moment_the_session_s_video_does_not_hold_is_invalid(
@@ -920,21 +920,21 @@ def test_a_moment_between_two_steps_of_a_demo_with_no_video_is_invalid(tmp_path:
 def test_a_moment_longer_than_its_stretch_is_invalid_and_one_with_a_skip_ends_with_it(
         tmp_path: Path) -> None:
     folder = _session_video(tmp_path)
-    replies = _replies(boot={"frame": 100}, shot={"frame": 130}, end={"frame": 150})
+    replies = _replies(boot={"frame": 190}, shot={"frame": 220}, end={"frame": 240})
     long = _moment_demo(tmp_path, video=lambda run: folder,
                         moments=(d.Moment("boot", "shot", "It moves.", skip=6, frames=40),))
     with pytest.raises(verdict.Invalid, match="shows frames 6 to 45 of a stretch of 30"):
         d.cuts(long, d.Run(dir=tmp_path, replies=replies))
     whole = d.Demo(**{**long.__dict__, "moments": (d.Moment("boot", "shot", "It moves.", skip=6),)})
     assert d.cuts(whole, d.Run(dir=tmp_path, replies=replies)) == [
-        motion.Cut(folder / "x_001.avi", 28, 24)]
+        motion.Cut(folder / "x_001.avi", 76, 24)]
     film = {"film": {"path": str(FIXTURE_AVI), "avi_frames": FIXTURE_FRAMES}}
     skipped = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.", skip=10),))
     assert d.cuts(skipped, d.Run(dir=tmp_path, replies=_replies(**film))) == [
         motion.Cut(FIXTURE_AVI, 10, FIXTURE_FRAMES - 10)]
     past = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.", skip=10,
                                                     frames=FIXTURE_FRAMES),))
-    with pytest.raises(verdict.Invalid, match="shows frames 10 to 81 of a stretch of 72"):
+    with pytest.raises(verdict.Invalid, match="shows frames 10 to 129 of a stretch of 120"):
         d.cuts(past, d.Run(dir=tmp_path, replies=_replies(**film)))
 
 
@@ -956,10 +956,11 @@ def test_a_recording_is_given_the_seconds_a_slow_host_needs() -> None:
 
 
 def test_a_moment_that_skips_its_whole_stretch_is_invalid(tmp_path: Path) -> None:
-    demo = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.", skip=72),))
+    demo = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.",
+                                                    skip=FIXTURE_FRAMES),))
     run = d.Run(dir=tmp_path, replies=_replies(film={"path": str(FIXTURE_AVI),
                                                      "avi_frames": FIXTURE_FRAMES}))
-    with pytest.raises(verdict.Invalid, match="skips 72 frames of a stretch of 72"):
+    with pytest.raises(verdict.Invalid, match="skips 120 frames of a stretch of 120"):
         d.cuts(demo, run)
 
 
