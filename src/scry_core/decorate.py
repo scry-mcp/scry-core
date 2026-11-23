@@ -411,25 +411,43 @@ class _Painter:
             draw.line((left, top + row, right - 1, top + row),
                       fill=(*shade, round(255 * self.look.caption_alpha * fade)))
 
-    def _keycaps(self, art: Image.Image, t: float) -> None:
-        names = self.keycaps.shown(t)
-        if not names:
-            return
-        left, top, _, bottom = self._band_box()
+    def _keycap_boxes(self, names: Sequence[str]
+                      ) -> list[tuple[str, tuple[int, int, int, int]]]:
+        """Where each held key's mark goes: on the edge the caption band does not use, never
+        over the band and never over another mark. When the row is full the oldest marks make
+        room, so the key being pressed is always the one shown."""
+        width, height = self.size
+        left, top, right, bottom = self._band_box()
         pad = self.font.scale * 2
         tall = self.font.height + 2 * pad
-        y = top - tall - pad if self.band == "bottom" else bottom + pad
+        margin = left
+        y = (height - margin - tall) if self.band == "top" else margin
+        out: list[tuple[str, tuple[int, int, int, int]]] = []
+        x = left
+        for name in reversed(names):
+            wide = len(name) * self.font.width + 2 * pad
+            if x + wide > right:
+                break
+            out.append((name, (x, y, x + wide, y + tall)))
+            x += wide + pad
+        return out
+
+    def _keycaps(self, art: Image.Image, t: float) -> None:
+        shown = self.keycaps.shown(t)
+        if not shown:
+            return
+        boxes = self._keycap_boxes(list(shown))
+        if not boxes:
+            return
+        pad = self.font.scale * 2
         caps = Image.new("RGBA", self.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(caps)
-        x = left
-        for name in names:
-            wide = len(name) * self.font.width + 2 * pad
-            draw.rounded_rectangle((x, y, x + wide, y + tall), radius=pad * 2,
+        for name, (x0, y0, x1, y1) in boxes:
+            draw.rounded_rectangle((x0, y0, x1, y1), radius=pad * 2,
                                    fill=_rgba(self.look.keycap_rgb, self.look.keycap_alpha),
                                    outline=_rgba(self.look.keycap_text_rgb, 0.5), width=1)
             _stamp(caps, self.font.mask(name), _rgba(self.look.keycap_text_rgb, 1),
-                   (x + pad, y + pad))
-            x += wide + pad
+                   (x0 + pad, y0 + pad))
         art.alpha_composite(caps)
 
     def _zoomed(self, base: Image.Image, t: float

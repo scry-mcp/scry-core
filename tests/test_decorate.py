@@ -56,6 +56,30 @@ def _pixel(picture: motion.Picture, x: int, y: int) -> tuple[int, ...]:
     return tuple(picture.rgb[at:at + 3])
 
 
+def test_keycaps_sit_in_the_corner_the_caption_band_leaves_free_and_never_overlap() -> None:
+    made = timeline.Builder("k")
+    made.add("boot", "start", {}, "ok", (None, 100))
+    made.add("hold", "send_keys", {"keys": ["a", "b", "c", "d", "e", "f"]}, "ok", (100, 190),
+             [timeline.key(name, True, 101) for name in "abcdef"])
+    for place in ("top", "bottom"):
+        style = dc.Style(layers=("calls", "keys"), place=place)
+        painter = dc._Painter(_clip(), style, dc._plan(timeline.loads(made.dumps()), _clip()))
+        boxes = painter._keycap_boxes(list("abcdef"))
+        assert boxes, place
+        left, top, right, bottom = painter._band_box()
+        for _, (x0, y0, x1, y1) in boxes:
+            assert x0 >= 0 and x1 <= painter.size[0], place
+            if place == "bottom":
+                assert y1 <= top, (place, y0, y1, top)
+            else:
+                assert y0 >= bottom, (place, y0, bottom)
+        rects = [b for _, b in boxes]
+        for i, a in enumerate(rects):
+            for b in rects[i + 1:]:
+                apart = a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
+                assert apart, (place, a, b)
+
+
 def test_a_clip_decorated_twice_is_the_same_pixels() -> None:
     style = dc.Style(sine=True, raster=True, zooms=(dc.Zoom(105, 150, (4, 4, 8, 6)),))
     first, again = (dc.decorate(_run(), _clip(), style) for _ in range(2))
