@@ -280,6 +280,14 @@
   "dosbox-x:labs": "none:libc",
   "mame:regs": "none:accessor",
   "mame:newflag": "none:accessor",
-  "mame:write_address_hi": "open"
+  "mame:write_address_hi": "open",
+  "dosbox-x:logerror": "none:log",
+  "mame:set_ready_state": "writes",
+  "mame:freq": "none:accessor",
+  "dosbox-x:update": "engine",
+  "mame:describe_context": "none:accessor",
+  "dosbox-x:describe_context": "none:accessor",
+  "mame:from_hz": "engine",
+  "mame:clock": "none:accessor"
  }
 }

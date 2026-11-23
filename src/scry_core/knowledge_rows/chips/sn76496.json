@@ -1,0 +1,1066 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "sn76496",
+ "title": "The eight SN76496 registers",
+ "kind": "register",
+ "scope": "sn76496",
+ "covers": "the eight control registers of the TI SN76496 as the SN76494/96 manual describes them, and MAME's and DOSBox-X's write of each",
+ "source": "official",
+ "documents": [
+  {
+   "name": "SN76494.raw.txt",
+   "variant": "sn76496"
+  }
+ ],
+ "official": {
+  "SN76494.raw.txt": [
+   "176-190",
+   "197-222",
+   "289-325"
+  ]
+ },
+ "engine": [
+  "update",
+  "adjust"
+ ],
+ "entries": [
+  {
+   "key": "0x00",
+   "name": "tone 0 period",
+   "aliases": [
+    "tone 1 frequency",
+    "channel 0 period"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "176-187"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "289-305"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "313-317"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "0"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "0"
+     ],
+     "preamble": true
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "0"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "0"
+     ],
+     "preamble": true
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register 0 is the destination control register Tone 1 Frequency.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "305",
+       "sha": "199c0841093ad8f822c9657bf051713cad8257b57518d1d5533647a46755d3db"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "A tone needs ten bits, F0 to F9 with F0 the most significant, in a ten-stage counter counting down at N/2.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "177-180",
+       "sha": "2321e7a814ed3afd42944ae130fdefc52cd8fbc9fe15f0283b322b7892771b4c"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "The counter's borrow toggles the output and reloads the counter, so the period is twice the register value.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "180-182",
+       "sha": "ceef07c4be0c56a873e435b980030e11877872c513621bca53ffed6db6d1db0f"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The document gives the frequency as a formula in the clock N and the number n; the formula is garbled in the capture.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "183-187",
+       "sha": "89c87d40d3d74fbea7ba7c5a56f68cc4c4e0aafc488e43eabe01921ee9e2f73d"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The chip has eight control registers and the first byte of a transfer carries a three-bit address field.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "298-301",
+       "sha": "603f2df575aeeba23668739f774135dd5409027bf25d54901b9780ab9cb83b27"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "A frequency selection is a double-byte transfer while an attenuator selection is a single byte.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "292-293",
+       "sha": "bda239056a9ec319c3c37811a5c978a51a1f3197b24818824bc6290ee11eaf21"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "With the address latched, later second bytes alone change the six most significant bits.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "294-297",
+       "sha": "ec07f38e84ce826f3c016789bb1c3e0dcfdeaba04cdd7297e78e201f750dc5ec"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "write",
+     "of": "doc",
+     "text": "A frequency takes two bytes: the first its address field and D3-D0, the second the six upper data bits; the field labels are garbled.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "313-317",
+       "sha": "9bde9646db1cd6279642ccc2d7666495805354d287371fe6edc4f142bd00d951"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "176",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "289-291",
+     "as": "see-also"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "302-304",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "332-343",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "315-328",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "348-349",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "332-333",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "352-353",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "336-337",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "329",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "335-339",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "354-358",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "360-364",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "321-324",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "338-340",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "342-345",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "349",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "333",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x01",
+   "name": "tone 0 attenuation",
+   "aliases": [
+    "tone 1 attenuation",
+    "channel 0 volume"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "188-190"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "197-204"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "306"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "322-325"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "1"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "1"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register 1 is the destination control register Tone 1 Attenuation.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "306",
+       "sha": "fcc1979f9e6ffef0e306950e319ceb9acff4b5011ba842bbeb17a9ad8775a5a9"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "A four-stage attenuator sets the output level; its control bits may be true together, giving up to 30 dB.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "188-190",
+       "sha": "af04dbdbdece41d7410cfdf2c2d127a1ffb16c1ee33edc21e1a5a83c6ec5b12d"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "The weights of A0, A1, A2 and A3 are 16, 8, 4 and 2 dB, and all four bits set is off.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "197-204",
+       "sha": "d763c3fc0ffee31a95d47886e27dc0ebb7d21509f5505cc5af20aee14ddff4a2"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "A single byte sets the attenuation from its low four bits; the printed data field is garbled in the capture.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "322-325",
+       "sha": "c657e6efa948c54a42e828a73ec2cbc10554db08cdb89289d9e98a216af05d07"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "367-370",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "348-351",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "371-373",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "352-353",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "349",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "333",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "329",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x02",
+   "name": "tone 1 period",
+   "aliases": [
+    "tone 2 frequency",
+    "channel 1 period"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "307"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "2"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "2"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The address field 010 names the tone 2 frequency register.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "307",
+       "sha": "85d8e068318b94477ff672ec8376ab6b1e5a10c4a0ec224fa235d37c97cd73b0"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "A write addressing register 2 selects the tone 2 frequency.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "307",
+       "sha": "85d8e068318b94477ff672ec8376ab6b1e5a10c4a0ec224fa235d37c97cd73b0"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "353",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "337",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "352-358",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "360-364",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "336-340",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "342-345",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "349",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "333",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "329",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x03",
+   "name": "tone 1 attenuation",
+   "aliases": [
+    "tone 2 attenuation",
+    "channel 1 volume"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "308"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "3"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "3"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The address field 011 names the tone 2 attenuation register.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "308",
+       "sha": "2699c795f533c8bf5065646fba21c0f79df2b23e8b03a549ce8cd4aca1b6a723"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "A write addressing register 3 selects the tone 2 attenuation.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "308",
+       "sha": "2699c795f533c8bf5065646fba21c0f79df2b23e8b03a549ce8cd4aca1b6a723"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "368-373",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "349-353",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "349",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "333",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "329",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x04",
+   "name": "tone 2 period",
+   "aliases": [
+    "tone 3 frequency",
+    "channel 2 period"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "309"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "4"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "4"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The address field 100 names the tone 3 frequency register.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "309",
+       "sha": "6f2dcb01e709228ff3179265248266a926335ed368d82777c9b16c989f421ad8"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "A write addressing register 4 selects the tone 3 frequency.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "309",
+       "sha": "6f2dcb01e709228ff3179265248266a926335ed368d82777c9b16c989f421ad8"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "text": "MAME stores register 0x04 and the tone 3 period, and when register 0x06 selects tone 3 as the noise rate it also sets the noise period.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/sound/sn76496.cpp",
+       "lines": "353-358",
+       "sha": "c93db06d625027f50a816846787c7b74aaf5fdd63d0c15e5c010ec97c239bbbc"
+      },
+      {
+       "ref": "mame:src/devices/sound/sn76496.cpp",
+       "lines": "360-364",
+       "sha": "31f9ac82763ac8bd0c1b6e7826da943e2198c78129edf9ac4da70496377ccc40"
+      }
+     ],
+     "row": "2"
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "text": "DOSBox-X stores register 0x04 and the tone 3 period, and when register 0x06 selects tone 3 as the noise rate it also sets the noise period.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+       "lines": "337-340",
+       "sha": "e1c525367a76a6d3c2be7b24628bd160bafa8156e49321a6bada3111951aeb72"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+       "lines": "342-345",
+       "sha": "aa333ba85f2e130e86edc787b1e0782864281882b4162bd2f1380b3a25266984"
+      }
+     ],
+     "row": "2"
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "349",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "333",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "329",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x05",
+   "name": "tone 2 attenuation",
+   "aliases": [
+    "tone 3 attenuation",
+    "channel 2 volume"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "310"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "5"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "5"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The address field 101 names the tone 3 attenuation register.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "310",
+       "sha": "bc44d85dd47449ad188127f86e516e325ff3eb3598c8471435b5e628f66603dd"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "A write addressing register 5 selects the tone 3 attenuation.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "310",
+       "sha": "bc44d85dd47449ad188127f86e516e325ff3eb3598c8471435b5e628f66603dd"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "369-373",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "350-353",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "349",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "333",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "329",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x06",
+   "name": "noise control",
+   "aliases": [
+    "noise mode",
+    "noise shift rate"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "205-222"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "311"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "318-321"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "6"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "6"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register 6 is the destination control register Noise Control.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "311",
+       "sha": "5e4e97acd4d0e4efd8dc84b92b06e7848fc7c37e5b6f8c60c956a202ddd5742b"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "The noise source is a shift register with an exclusive-OR feedback network, guarded against the zero state.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "206-208",
+       "sha": "5b0556a2ca7067e99022cb9608f375e1947610f3472d783282108248bfba0360"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "FB selects periodic noise when 0 and white noise when 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "209-212",
+       "sha": "a324fa7651a8bcf3a9d1a77237d37e0b4fc56c74ff279dedce98ebff0aac123e"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "A change of the noise control register clears the shift register; NF0 and NF1 choose one of four shift rates from the clock.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "213-214",
+       "sha": "b9f972a7270a273d216668c85eabfb40fc57cc68a2718834f354ab80f37d5482"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The shift rates are N/64, N/128, N/256 and the tone generator 3 output.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "215-221",
+       "sha": "f9991c38a633304dfa832577554468ce189586e2b90d9189f88f7428d7f2e9bb"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "The noise source's output passes through a programmable attenuator.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "222",
+       "sha": "9dec1fabe8efed9d289668b5c917187322e8a7ceaeb7bb47c6edc5a2ae9afc80"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "write",
+     "of": "doc",
+     "text": "A single byte sets the noise control from its low bits; the printed field is partly garbled in the capture.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "318-321",
+       "sha": "8c4666d29af4adbe57198eea2fc3e748ea4f6c2d2f2c21ddf8ed250ebbb78e66"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "205",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "376-378",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "356-357",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "379-386",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "358-361",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "362",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "349",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "333",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "329",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x07",
+   "name": "noise attenuation",
+   "aliases": [
+    "noise volume"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "312"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "7"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "function": "sn76496_base_device::write",
+     "case": [
+      "7"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register 7 is the destination control register Noise Attenuation.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "312",
+       "sha": "936a1705a0253536eb8606f67deb187581dddc88a5a929fe8ac0752ba6c46a07"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "A write addressing register 7 selects the noise attenuator.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "312",
+       "sha": "936a1705a0253536eb8606f67deb187581dddc88a5a929fe8ac0752ba6c46a07"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "370-373",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "351-353",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "349",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "333",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "329",
+     "as": "structure"
+    }
+   ]
+  }
+ ]
+}

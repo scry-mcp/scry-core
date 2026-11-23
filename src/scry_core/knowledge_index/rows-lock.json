@@ -1929,6 +1929,114 @@
     }
    }
   },
+  "chip:device:saa1099": {
+   "doc": {
+    "seal": "5f512c0a8194e9b7ceedb6709505edae75cf41c6c480d11596879e9a4e744f59",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "1306e60cbc8fbf21a939b84c036462b867ecdd07aba89d15f7816fe7e1d7e1ee",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "d52144b69aa58f49b7d04e54cb2f59e689450a2e53a5fca20e527886185f495b",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "91641f9ac3d3602490fb9e90b9e0af209ee4059a2cb7bd9f168279594ce4d864",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "9bab3e5362f3ff2ab7c2b51c89d0a22919bc2bfcec68cbd8a56fa539be00109a",
+      "by": "slice core-sound-03 reader"
+     },
+     "5": {
+      "digest": "a22b252cfac87a28b3dd3175e96b5a3341f11e24576e57698c1bd12121eacad3",
+      "by": "slice core-sound-03 reader"
+     },
+     "6": {
+      "digest": "c8245a001214c19ff4795b9f95db6c90666dd3ddc8a7c54c76f3e675cf1129da",
+      "by": "slice core-sound-03 reader"
+     },
+     "7": {
+      "digest": "20f9a8231bbcd3662a122e86bf5000dc92da78407b840f0d559c0afd0b29b55b",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "ea9af75d6f6f69be5e7ae7625f24214e21ef9b79d35adf129d4dfc7e3af79e3a",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "ab9b1d7e515ffb6632404320a554cf86ac3653b333a783bf969fb21af24d44e0",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "chip:device:sn76496": {
+   "doc": {
+    "seal": "419fb74279e43d129130384bd8a5f584cc7ac0c7cc5d6028cb8660c4a7732d63",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {
+     "1": {
+      "digest": "a5702e12e5e369b357ffadc1994798713a6f3f37114e4117309aa48b9fa2972d",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "608fe465d64cd11cd37f0c6f84ab3b2d26d81d52f72290fa3f328e4dd7301e03",
+      "by": "slice core-sound-02 reader"
+     },
+     "3": {
+      "digest": "1703029658fb0681b54af202f093fb760219090fc5216bfa83b8fbbe1cdd7cdb",
+      "by": "slice core-sound-02 reader"
+     },
+     "4": {
+      "digest": "1c8a3885312d7dd233e6b1ea379ec51d411c298bf807b65b05f09faf02309f50",
+      "by": "slice core-sound-02 reader"
+     },
+     "5": {
+      "digest": "fad4699ec340bbcedcf0cc0bfc61bed16f63105abb0c2e5ac41dd5f981d02667",
+      "by": "slice core-sound-02 reader"
+     },
+     "6": {
+      "digest": "a0ba9523f463e69c7568c59f038b671262c05a98aad3ead8cab5cf7d04d9cf3c",
+      "by": "slice core-sound-02 reader"
+     },
+     "7": {
+      "digest": "ada3c447b487e0a8faaa32bd3aa374cd0047c747ecd84a36fdd667de62c22b27",
+      "by": "slice core-sound-02 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "6cdc59e1dc5b957c2ea101d24f4c4d9fcbdf6479b2a29e9fb8772df6f8a0bef6",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {
+     "102": {
+      "digest": "c21803a7afdd39f1a8fc303224a3c261688815a626cafc72f6b2cabae8dd0687",
+      "by": "slice core-sound-02 reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "651db7755740fb726f774fe514b19b375d54c317ca3a45fe0076c15d5eafcfe7",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {
+     "101": {
+      "digest": "69c6aef3548b2ca460fcdf38c46a18f415f08aa223fe03d80bb7fff47395a9f3",
+      "by": "slice core-sound-02 reader"
+     }
+    }
+   }
+  },
   "chip:device:ym3812": {
    "doc": {
     "seal": "99f3736c04cd2516c022196c65c0135b18c5710f36a00fbec2aa19e383ac7d6a",
@@ -6336,6 +6444,640 @@
       "by": "slice core-board1-01 reader"
      }
     }
+   }
+  },
+  "saa1099:register:0x00..0x05": {
+   "doc": {
+    "seal": "2321f3826b4e7f7863cde6a118958f84216c1cc94ef514f92b5937d6caa6717b",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "a35284eea19590e651d8e2c39eb7e83eadea343285b39f664d86eca3f368b5ec",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "18e0f62187ca8797d767c886249c76ba84d8d5582538c63149484da1ccb7d5c3",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "bcdd1fe41de0fda78f95158f43c46a352f079ad5864ffff11b6c26c4aba1f360",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "d8b5512e11a3a0a33bf18fa2fe67bef5180fb526ff78f789855cad310393a1d0",
+      "by": "slice core-sound-03 reader"
+     },
+     "5": {
+      "digest": "bf93393b6382eca6fc76bbd79a3262860caf2c8dfe8eb6c8b9425485a44ded6a",
+      "by": "slice core-sound-03 reader"
+     },
+     "6": {
+      "digest": "c4bfc942116e16cf2c4e7d33a1694b7dfa9587b8898cc78a8200874cc7f3e318",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "c55ce771a6ea1628e0a54362baccc5ff95d5b016b9ce6b1c9514edd05572f499",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "4e3d7773e5381987f7ab09e426196e9d91316e8f2e3815d5302a897be571de20",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "saa1099:register:0x08..0x0D": {
+   "doc": {
+    "seal": "b36e94b9cfde76e139bdd6ee2de6bc87864e0048b708e84587d8b7a1bf66022b",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "b9bbf96997a063a9b337055596ea11841edbf9bfc615a3bc7297a404e19f08cb",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "057ddad97ffdc7c61030fbe7f5ea8547fd733401f2ac7018dd69b6b49679e296",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "a2e176a83e10320a0ece4f0f7730b8d600114433f0922ae97c498c03283d36fe",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "4ca00362fff12db72a8ecb7b460ef7aef8981d469cdac733695c267c37b1c174",
+      "by": "slice core-sound-03 reader"
+     },
+     "5": {
+      "digest": "26df5d75d4a7187c56fefa28895190b6b146f666e37ee9c26478eac6458a9417",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "45346d60f0eece51f4738a9401309d55acffc0a447940d9be1ae076d9f9d6d5a",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "5246fb44abea299c8b999e97d87620118ddca265654f6684f4b33245103ace1b",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "saa1099:register:0x10..0x12": {
+   "doc": {
+    "seal": "3748815ca6049d393156fd2951b0675ed83be7f196748aed92a3004129fde5c5",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "f7615c8a0364cdb9861eeeec2e8ffc1ea5359e9b1f18a88449f1d6dfc428fbda",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "5152bca66307d6d3d03f9bc9d33166928e35493756a934d003c60f35cd071c44",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "d3674e5c4cabd63e29a3ff24d4b828e6541bd4aebd582212e9f6a6004df75cd8",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "ad974714a01b99e83f3d22dc85301d251267e9604c26d0e20e9612807f47334e",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "89af819a7ca8c38b382797473ad37bdfb5dc1d748fad6fbb11de8e33076ce235",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "ef76d7b82f6b2edec04c7a5f0e744b17288da50faf6b3a0465302e58a41ff97e",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "saa1099:register:0x14": {
+   "doc": {
+    "seal": "3f8bc5f43dc522135699d057e00c9b9c648a145f6bfa65e1dfeb6e1aa7d9268f",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "24b214c64ee2dc32dfa42300ad87724a457b1673027cd2e99c682ac623fcd04b",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "6b885470172bfa7d6c6c94eb6c9e208885b4c2a5127499e76ab05254553f6edc",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "8ada6c3b0acd51c72ba5b794b714a4946903ba93671c992df6865c2a65a51a55",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "0339be5d03b97acd5adbbd535cb6dec7895869f9ea895e6d0964394f6131a004",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "saa1099:register:0x15": {
+   "doc": {
+    "seal": "8012f693324048c58044eaeba0701ed26f6d9b8620a8a4988b29e4e9118c7ca8",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "1ac74abb94bf8e2f1c7c7d93de144f68d76371935d81971dbf920d16bd3fc979",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "d7ae8238d23e31c7aa74346b0e6ecbd63bfa8d26d0a447fd83361ac9376cbf51",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "a493a888909af1e3ba937ad7b97da9f167a277c7635811f7ff7ea5b0c43eec82",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "242fe3312bb7906cc248237d3ecca96719185777e56cccc041c302744e25a574",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "a255cf4fce8a0eccae8321393f3f218492f30470730e631a68b8d32843ee45a2",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "acbe997c53545161565630b6fcc704d9ce3f134835d22bfcdcf01a0c58c997bf",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "saa1099:register:0x16": {
+   "doc": {
+    "seal": "3dc7530a5f4f2eb6928a455552c5430d7ebccb70bd20ee5aee92ef5447b6ac73",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "0c0aad20d06abdbfb72973ade95ecf0151de5e9f2a64618c623ff8799bbadfaa",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "52c76826f3ad8510d86f73ab76af38abd512526e0c07153ac99571002abf5a18",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "a0e22246e8bbbf8063c641a04d6d3f2b2b68e0c6546fffc9ea04f22c337eafa7",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "a617f7df8466d4aab0835f583b8532eb2eae5173c0a77964dcfb17b66b38aad7",
+      "by": "slice core-sound-03 reader"
+     },
+     "5": {
+      "digest": "765bfdbb31fe3ffe7422a1e2823dcc8dadf0b0a863c280e6e9e0b78a3ac35c9f",
+      "by": "slice core-sound-03 reader"
+     },
+     "6": {
+      "digest": "ee63ea00a30b18f5e89385b6d5f3a168e6a6ffdd1147441e1699a524c12a6ff8",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "cc73a41d347e7eb0e94687cc611329c2697267d0f08750a2a4531534718ffa53",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "cf6b16e360d00a883b30606f00f7b19628fd1a6f14465091f5c7af44a8c5dd70",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "saa1099:register:0x18..0x19": {
+   "doc": {
+    "seal": "c7464d7a524f427a831340100f0992e9f71b1e8351bcfa3fd28306af70ba127e",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "0cf3b52bcb6f83198f52408584931ea58531f95009b7ec49a76f37e5cf8b9d4e",
+      "by": "slice core-sound-03 reader"
+     },
+     "10": {
+      "digest": "ae9081be97254c0a2f535ffcc1376aa89c9efb2f2fac79cc940ead6e74c72ac4",
+      "by": "slice core-sound-03 reader"
+     },
+     "11": {
+      "digest": "49753669aca6696ed92a23e9f21705fbd5eb38b82357a248b0988ea00801b86b",
+      "by": "slice core-sound-03 reader"
+     },
+     "12": {
+      "digest": "c616a511bb3de823499908ca91ada01bf3e89b41e58db136441a01f0ab4c0bb0",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "ba951bcc1e0cccf27029e8fd2686d6b05366c2bc2203275c9f912f37f4113074",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "44dac1579ca8d66c8d8d51736b35b12cef343e649b9aa1f6aab9edd712ee68e3",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "8ac76969f8ffeae008841123b53a0425e8b6dfd4f67724277a54c0b978af6756",
+      "by": "slice core-sound-03 reader"
+     },
+     "5": {
+      "digest": "3e21579e6fb296821a329823646bfa2b531368659c2cb2e830e78eb48b7b2bac",
+      "by": "slice core-sound-03 reader"
+     },
+     "6": {
+      "digest": "f77eaac0282cb7c4398a419dde853c3d5a2a72de95a9bc7e337bd4b2952a8dee",
+      "by": "slice core-sound-03 reader"
+     },
+     "7": {
+      "digest": "7d09cbc6886f29f3dd150b54359193bb7e3b44badaf78863dfad4b5d64ca5017",
+      "by": "slice core-sound-03 reader"
+     },
+     "8": {
+      "digest": "3a2439fb7d114d65e32ad2a54fe8f706d6f3d93a207cfce16263de06b8b20f46",
+      "by": "slice core-sound-03 reader"
+     },
+     "9": {
+      "digest": "08cf6b20fd86b4572ff510cdd800727f28f1d643fa39a5d81c00147bbc37238a",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "a46437bc132d314b62df781060df88ed9827e819ea6155fa3bcd0599c08675fa",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "90e18a051d4a47bbc08779ad0bcb542fea547da91db3d1de0d4148667c86e6f0",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "saa1099:register:0x1C": {
+   "doc": {
+    "seal": "fd885d342a659a904ff7539fb7640cc5a45d777fca39649e0a65ed4cbc2942c2",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "a2c8a02d1417f706669b411dc4aeb9ded450b5c68781823443e0948cca788bbc",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "f57a0f2833c5c0925a5ec9a42e28e08915183f1f7182ec72d22838408a36748c",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "fa79bff0771991c67ce01876224413208a888bf4d8484a32dd267f49ef6fc10d",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "ca15dc01ba732c63b7f05f023c20fa99c45f42887fa04d18805f4095be4c17df",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "3b9a9b3a08daa6e901ed895848c2c6cd61b3d6c1370c62f2e22baf051a04f8c6",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "f0c96221e0cc9da202828b5fa4c1493578a1756e245628dab7f813a0ed68e3e5",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "sn76496:register:0x00": {
+   "doc": {
+    "seal": "7deeaeca90c078c25c2b9eae4c24987b46927350872f04dd08c966f006963fe5",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {
+     "1": {
+      "digest": "98f72d976ba27e9aa219da72b52b3964801fb42a850a3c4c51c775f7b5e875ff",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "b00f65fc3d3f4dbac17be4229ec328e867aaf79b3eb409034538dfad38b09cf4",
+      "by": "slice core-sound-02 reader"
+     },
+     "3": {
+      "digest": "b36aa1e9c35a63cf12a557a150306d8427803b086ff9ac418791263b6e34791d",
+      "by": "slice core-sound-02 reader"
+     },
+     "4": {
+      "digest": "b227f1658cb73ae5cfc64198b1cbe172bb692dd26b168ea2bbcd40e9b709e387",
+      "by": "slice core-sound-02 reader"
+     },
+     "5": {
+      "digest": "f5be20b7c4d15b621421ba7c502db629b3e51f8b1a6d997af0212cc34e0d6568",
+      "by": "slice core-sound-02 reader"
+     },
+     "6": {
+      "digest": "1b3262d1d3fed07b4aa7c19efc7e77d160eaae00f6ad76f6f6956708c07889d3",
+      "by": "slice core-sound-02 reader"
+     },
+     "7": {
+      "digest": "8ae8b431e329b3391a3ecdc6c9f6e7ddce43ed6b465bcda960969ea96527c740",
+      "by": "slice core-sound-02 reader"
+     },
+     "8": {
+      "digest": "d153f8efad03e54982eccc5bcc87134ffcba0cd70782235d1185da59d208ddaf",
+      "by": "slice core-sound-02 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "a576ec2b09479ac286641c5cece59284ef8543bf89267312715631596ade4ed7",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "a72ac1c69c312cf8b9ceaecf286945e4bb8490ee502380da5a213b066bf2b87d",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {}
+   }
+  },
+  "sn76496:register:0x01": {
+   "doc": {
+    "seal": "148179924a3c616ec3fca9e767148478f51e7e66bd935018d38030636db6785a",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {
+     "1": {
+      "digest": "794727f22550b35e77c7c16c193550ef876f08db154f4353d2af9722d42396e0",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "b633f99260e5b9b6180b831dad4c97d5988dc81907be3414c3b53d80978006ad",
+      "by": "slice core-sound-02 reader"
+     },
+     "3": {
+      "digest": "e9c0929b3f09f712e4230fd61224cdd0f0a625b9b472dce41425b052797dc518",
+      "by": "slice core-sound-02 reader"
+     },
+     "4": {
+      "digest": "5d296287e3fe54d6c65ff6b13e94627c9285701af0d576f55c270037818f3be8",
+      "by": "slice core-sound-02 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "4bf5bf2c66e0ff4435d896194edf0e381bfc6a09226f9d75ccc6246d402f11f5",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "3e3486f77936723b0fbaf8640ad8685c0e0ce4b1330ee762f674ffb656a43268",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {}
+   }
+  },
+  "sn76496:register:0x02": {
+   "doc": {
+    "seal": "a17b791ad8631cbd51235d82b23256f7f47048be96857602c23af5076882ad23",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "bc59ab70945ef2d311445d056d5e18028741bb29553459c772cd3b356d1175a5",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "b80da74414352573c714a755456893a4397aa8026dc4b2653da4eb651586d24e",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "4fff053d064012b5953b255f2b9cfea7fa489a48d52d7bad52148c61a69bfe84",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "4fae14c9465d9f0170574a63e9537bbaae363340840d3260deadbad861758e04",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "sn76496:register:0x03": {
+   "doc": {
+    "seal": "1625ebc0d646e785650613cd21eccc819bafd7b8f12c84f254c1adc1f7ed2b87",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "07d380a74d45b01e286bbf8648f0dff78a730b0c6699052df4bf8797af78f5d9",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "b301288c35c1acd256459ca00cd96c149086d5476c5b1324df41c1997bd5af11",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "b6f35a8b1e914f0f9cbbe9bb0e7687f7921deef5eeaedf738a88733be1f79e29",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "d969ad128738f0383be69324283b2a27e5eb2a8c586feb243ceffaf1bba46314",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "sn76496:register:0x04": {
+   "doc": {
+    "seal": "7fa5ed43321c5f32468f4ff17f4fa441f8f0593c123338310ec92c6240944dca",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "689cda9dca0f6ec3aef531333a7070f1b3b5bfa3f719c95b691e5ae8dd575dbb",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "059e102891f316e76fa62d59704c9931d65483a2c907b72b1e8ce9b9ab70475c",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "04ac76e9646fe685af0e155a62315ece7f3da7d6e2a15345fc19e6b9698ec8c3",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "4": {
+      "digest": "0f1f56cb8f51476654a0081330d3ad017a061ca8aae924f9d239145e904bf6be",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "47921a00a0a590cd9743b76b4678b7bd86a9ccf3863dae943663d1037dba7ae2",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "3": {
+      "digest": "dd0ba004c62e1df26981a9186a1fcfec0a3c69ab1d62f2edba89789cf981a8d2",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   }
+  },
+  "sn76496:register:0x05": {
+   "doc": {
+    "seal": "8c621a0d57926fd7fee6cb4ade07abf3ee7e8ed9e18625285bd9ff5518937608",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "5cdb0a17d778d48499c559acb0b78da9b2f528e16a56305bd45ccb2265981853",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "63fac983629f1d76bfc134b08158b9da0e4acf2267845199ba1d1cb8400dbad3",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "f28d18fa9d869e22ad0f4e66f1b956a65b8aace0dc27389ddd96600062385d54",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "673d5cd09efbddfe40511bfa6ea8508339b22f8a41ec270187274fbca03ea886",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "sn76496:register:0x06": {
+   "doc": {
+    "seal": "db22dc97ddbba0bcde7ec0dae0e0b1a55258b24e5e5d92aae4d2362ddf254e81",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "71f45199b5c625c1bae4b58dbe0bb022c6ae475e78bbd2156dde09a9f97839da",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "fed629465cba1a05f61bf8c09f639ce0a8669f85ca84dabb1e87961d717a752d",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "724e0e8125a968129e9da71cb208b43322a736c4df95fda019815a177ab8ab43",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "ea74cb2ba5087e402d66c64e00367aedae412b7a1b0183caa52ff2c8167bd0dd",
+      "by": "slice core-sound-03 reader"
+     },
+     "5": {
+      "digest": "bd590b17a3b4bc8c7d824587895572d3b8d9fc6b75b24b3d7ab410fb71ff0ea5",
+      "by": "slice core-sound-03 reader"
+     },
+     "6": {
+      "digest": "fe06c1f163d60e6c1a91540b1dd7820c8d0e369fb4265dfee553b00c3c40dd8d",
+      "by": "slice core-sound-03 reader"
+     },
+     "7": {
+      "digest": "33d5864619bfea310baf6b9d2a492ed50c0a23fdfc628319d1dc628e9bcfa161",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "4a00968bbd2bcf03eba39f934057b49d9fd6bcaddfd58632f4f006c8acbe0053",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "da1b2df2f2f7599fdb4084888642f902bee012aee74923e034bda99a92479aec",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   }
+  },
+  "sn76496:register:0x07": {
+   "doc": {
+    "seal": "5c97b2bcc67a00c3136e19f6f85bec7bcc711756cf62ef34bd2f32efa7ffa93e",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "2deaa604db61a3e82c7690c9c66a2521ea9ac82d905e541734242e5984781b3d",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "5b638236e22fbbbeef0ce311a0f229aec55184cf0ceaa5ec4f3d4d41fd6f49d9",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "d163173c66547ddc5098404d38075fe1dd85f2dfb4ec5135aceab821395201dd",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "eeb0dcdcc327e33872c5394ea5dd296e6b1d5d1cae625cff0fd7d7616e78b3c0",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {}
    }
   },
   "ym3812:register:0x01": {

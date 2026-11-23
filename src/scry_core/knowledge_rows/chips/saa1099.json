@@ -1,0 +1,1156 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "saa1099",
+ "title": "The SAA1099 registers",
+ "kind": "register",
+ "scope": "saa1099",
+ "covers": "the control registers of the Philips SAA1099 stereo sound generator as its data sheet describes them, and MAME's and DOSBox-X's write of each",
+ "source": "official",
+ "documents": [
+  {
+   "name": "SAA1099.raw.txt",
+   "variant": "saa1099"
+  }
+ ],
+ "official": {
+  "SAA1099.raw.txt": [
+   "132-147",
+   "149-175",
+   "178-202",
+   "375-415",
+   "418-495"
+  ]
+ },
+ "closed": [
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "375-377",
+   "as": "layout"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "385-386",
+   "as": "layout"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "393-394",
+   "as": "layout"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "398",
+   "as": "layout"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "403",
+   "as": "layout"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "406",
+   "as": "layout"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "409-411",
+   "as": "layout"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "407",
+   "as": "see-also"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "412-415",
+   "as": "key"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "418-419",
+   "as": "layout"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "452-454",
+   "as": "layout"
+  },
+  {
+   "ref": "datasheet:SAA1099.raw.txt",
+   "lines": "494-495",
+   "as": "key"
+  }
+ ],
+ "engine": [
+  "update",
+  "freq"
+ ],
+ "entries": [
+  {
+   "key": "0x00..0x05",
+   "name": "amplitude",
+   "aliases": [
+    "channel volume",
+    "ARn ALn"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "378-384"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "420-427"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "167-175"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "function": "saa1099_device::data_w",
+     "case": [
+      "0x00"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "399-403"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Registers 00 to 05 hold the amplitude of channels 0 to 5: right in D7-D4 and left in D3-D0.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "378-384",
+       "sha": "399c205d0917122913cbe1fa65bc84741b262890dea9891780a17596f838cdcc"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "ARn3 to ARn0 are the right channel's four amplitude bits and ALn3 to ALn0 the left's.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "420-425",
+       "sha": "08f2861543b92b4b0eec28d4842995cee0699d9b412c875ea6707e198dc441d4"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "0000 is the minimum amplitude (off) and 1111 the maximum.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "422-423",
+       "sha": "14b2de6867e3ed8f85de741e00dbb958494a90db4b71e3477527e176dea6edf9"
+      },
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "426-427",
+       "sha": "24b8d8018813ffccc92c02446733157fc3eda3df76089512ca699bbd5d7139e4"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "Each channel output splits into a right and a left component: twelve amplitude controllers of sixteen levels.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "167-172",
+       "sha": "ffbf4015b2cfd2abe68a52293b049d34cea30cc58a76b953c9356aa7d3067e0d"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "Under an envelope generator the level is reduced to eight by disabling the least significant bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "173-175",
+       "sha": "99da7b0c2d50db5dd58341bb7e622981d4d0b37b0fdaae454c9b3b904d242300"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to a register 00 to 05 sets both amplitude components of that channel in one byte.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "378-384",
+       "sha": "399c205d0917122913cbe1fa65bc84741b262890dea9891780a17596f838cdcc"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "78-83",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "378-382",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "399-403",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "375",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x08..0x0D",
+   "name": "frequency",
+   "aliases": [
+    "tone frequency",
+    "Fn"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "387-392"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "428-431"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "132-137"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "function": "saa1099_device::data_w",
+     "case": [
+      "0x08"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "405-408"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Registers 08 to 0D hold the frequency of tones 0 to 5, eight bits F7 to F0.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "387-392",
+       "sha": "7c5525a3df30add3449c462896b4d3131de045dedecd45acf46d1048212d358b"
+      },
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "428-429",
+       "sha": "6a05a3f6f6276ea1c288e85a68f044cdac64ce317b533deecf989bebb9dec091"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "00000000 is the lowest frequency and 11111111 the highest.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "430-431",
+       "sha": "bf8f018e2a06350f1da6412222186a2415db65240e1e6f7f2cb57f6e3574073b"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "Six generators each select one of eight octaves and one of 256 tones, over 31 Hz to 7,81 kHz.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "133-134",
+       "sha": "d08c4e659ab87b8ed9909ae38facf6027a4d292ad62cd172b12c98bbae8f0978"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "Each frequency generator has an enable bit and the generators may be synchronised by the frequency reset bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "135-137",
+       "sha": "a9fa48e65e97ecef567699239d1533dfc1913b464d13411c2c2f240b3c12df00"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to a register 08 to 0D sets that tone's eight frequency bits.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "387-392",
+       "sha": "7c5525a3df30add3449c462896b4d3131de045dedecd45acf46d1048212d358b"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "132",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "384-387",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "405-408",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "375",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x10..0x12",
+   "name": "octave",
+   "aliases": [
+    "On2 On1 On0"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "395-397"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "432-440"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "138-147"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "function": "saa1099_device::data_w",
+     "case": [
+      "0x10"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "410-414"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Registers 10 to 12 hold two octaves each: O2-O0 in D2-D0 and D6-D4.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "395-397",
+       "sha": "a42a1444d7799b57f61ef4f6212353c993d9e28480dc189367ff1a61aae3f540"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "O2 to O0 select one of eight octaves, from 31 Hz to 61 Hz up to 3,91 kHz to 7,81 kHz.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "432-440",
+       "sha": "bb1dc97acf5b92d5469d581ec59e80caf1d9368fa137a4b8412e951884d17a28"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "The document lists the frequency range of each of the eight octaves.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "138-147",
+       "sha": "ecd71be39b5b42bcc6e22a321d2cb231ff83d092ae5f271a45de3939312c0503"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to a register 10 to 12 sets the octave bits of both channels of the pair.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "395-397",
+       "sha": "a42a1444d7799b57f61ef4f6212353c993d9e28480dc189367ff1a61aae3f540"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "389-393",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "410-414",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "375",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x14",
+   "name": "frequency enable",
+   "aliases": [
+    "tone enable",
+    "FEn"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "399"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "441-442"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "function": "saa1099_device::data_w",
+     "case": [
+      "0x14"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "416-424"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register 14 switches the six frequency generators on and off, one bit per channel in D5-D0.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "399",
+       "sha": "7a2743538bafe09f9a4c0387d8d1643555b5bd1e52f5991dd25bfe9c5f3876c0"
+      },
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "441",
+       "sha": "583c488cd806de75034d1195847afd4839afb329270699a33cbec01eeb523ecb"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "FEn = 0 turns frequency n off for that generator.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "442",
+       "sha": "aa6c88fb6fc35fc729bda80f72a1852ccba8b894945e28f5c9392330ba325440"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "395-398",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "416-424",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "375",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x15",
+   "name": "noise enable",
+   "aliases": [
+    "noise on channel",
+    "NEn"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "400"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "443-444"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "159-166"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "function": "saa1099_device::data_w",
+     "case": [
+      "0x15"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "425-432"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register 15 switches noise on for the six channels, one bit per channel in D5-D0.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "400",
+       "sha": "f3f64b6834a671c8cdea6d13112de9e9d986b9ac491e7192b527075f21bf12fb"
+      },
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "443",
+       "sha": "123ce993eb4f021af25fd3fc6866d36228a190b6fbab9f696f836e8b5ee10291"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "The six mixers offer channel off, frequency only, noise only, and noise and frequency.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "159-164",
+       "sha": "615448e36dca3073829efc84eaa9c7ef327fa2397d871a61de34654673584c62"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "Three of the mixer channels use noise generator 0 and the other three use noise generator 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "165-166",
+       "sha": "1e757ba0fd3da9f726a6c3413f6ff2bc952747906cc1738739abf781186488bc"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "NEn = 0 turns noise n off for that channel.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "444",
+       "sha": "293d753a6c45c60bb031f5ffefe155f6fa9df1bd35f1c7b1c3573cbc31ce000a"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "400-403",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "425-432",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "375",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x16",
+   "name": "noise generator",
+   "aliases": [
+    "noise colour",
+    "Nn1 Nn0"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "401-402"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "445-451"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "149-158"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "function": "saa1099_device::data_w",
+     "case": [
+      "0x16"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "434-437"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register 16 holds two noise generator fields: N01 and N00 in D1-D0 and N11 and N10 in D5-D4.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "401-402",
+       "sha": "d54115467c2e29dc4ade6b0a0461e674100e3ae9c45f00fea94d443eb51782d3"
+      },
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "445-446",
+       "sha": "485058ceab4fb23a261ea654f0143ca1a05a09574a85cf85e26d0607a31233f4"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "The two bits select 31,3 kHz, 15,6 kHz, 7,6 kHz, or the paired frequency generator's rate.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "447-451",
+       "sha": "10a06b3c48ed0b39c82947ad8f21d587c67dd76ab0d81448110c5ad0adfd3724"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "The noise is software controlled through a frequency generator or is one of three predefined noises.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "150-153",
+       "sha": "e427db57fd986baeed1680015264007f0d173c740c2ffeb6e6504ceb8f143d6b"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "When noise and tone are mixed the tone's amplitude is increased to equalise the levels.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "156-158",
+       "sha": "6cf712e1a06ba8590f92c0a1440ba276851ea7b559c6649294af59c728f8eef1"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "Noise generator 0 mixes with frequency generators 0 to 2 and noise generator 1 with 3 to 5.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "154-156",
+       "sha": "ec7cce7c965e4f1701b066a2d34ce576215b55a7fe081adcf44c38aceab9257f"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to register 16 sets the control bits of both noise generators.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "401-402",
+       "sha": "d54115467c2e29dc4ade6b0a0461e674100e3ae9c45f00fea94d443eb51782d3"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "149",
+     "as": "key"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "405-408",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "434-437",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "375",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x18..0x19",
+   "name": "envelope generator",
+   "aliases": [
+    "envelope control",
+    "En"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "404-405"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "455-486"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "178-202"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "function": "saa1099_device::data_w",
+     "case": [
+      "0x18"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "439-448"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Registers 18 and 19 are envelope generators 0 and 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "404-405",
+       "sha": "a35d4449cd5809642bbbbb859e1b28eb3cefc021f19be0107548f3d24e3f8ce5"
+      },
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "455-457",
+       "sha": "3a0f8a4824d2913923464a1063cfd2b3848a0b02a8523b6b051672a543c8dcf0"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "The table gives one bit whose 0 leaves both components the same envelope and whose 1 inverts the right; its label is garbled in the capture.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "456-460",
+       "sha": "e1b1f831393535a13396d485ba1c494f0558a4e01824ca15a79d203c40a9f0bb"
+      },
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "193-194",
+       "sha": "509b54469b7ddc913e6d39f8bebe4b0d9b3efa202508d6ea0a86abf73ec65d9d"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "Three mode bits select one of eight modes: zero, maximum, single or repetitive decay, single or repetitive triangular, single or repetitive attack; the bit labels are garbled.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "461-471",
+       "sha": "2025ab6da66ff543c684c744b3352c13a84f096d9abda9a0444132792df52817"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The table gives four bits of envelope control at up to 977 Hz and three bits at up to 1,95 kHz; the bit labels are garbled in the capture.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "476-477",
+       "sha": "6ae9a35dafa9e6c418f86214d8aebe3ebc5ce1fb706d171ce83592294de30766"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The table gives an internal envelope clock from frequency generator 1 or 4 and an external one from the address write pulse; the bit labels are garbled.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "480-481",
+       "sha": "0f5c8dbbd25cfafca78669b1012a69fbd84dcffed969d5d8cc55ec6de79ba043"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "The timing is programmable from a frequency generator, and the mode halves the resolution to eight levels by rounding down.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "190-192",
+       "sha": "7a6b646431b365827ccb657a1d29f454c26875cb82c80fc6d85806af43869b98"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "Two of the six tone generators are under envelope control, on both their outputs.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "178-180",
+       "sha": "1bfebe045717b613b7c2f96041f8c8278d7a6328fa574f45818dd37a6055c48e"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "is",
+     "of": "doc",
+     "text": "The eight envelope modes run from zero amplitude to continuous attack-decay.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "181-189",
+       "sha": "452a4cf84c61df5130d2f9748cfad21ee3e6b29297d14a5de21232378f2c376a"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "is",
+     "of": "doc",
+     "text": "A direct enable starts an envelope and can terminate it at any time.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "195-196",
+       "sha": "80659e96d850f407e36328c331237907544785b10bae9e64d6d3e55b7aad384a"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "is",
+     "of": "doc",
+     "text": "With the frequency channel off the envelope itself appears at the output as a non-square tone.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "197-199",
+       "sha": "e5a796eeb547fbd607a8f2881d2233400c4bfaa03ef53ec55a414b6c30d2bd19"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "is",
+     "of": "doc",
+     "text": "Rates quoted are for an 8 MHz clock; halved resolution reaches up to 2 kHz.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "200-202",
+       "sha": "5ad06d86a85c305a5273f4bb7d1796442511574c09aade34a03344e118de9f75"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to register 18 or 19 holds the envelope control bits: E07 to E00 in register 18, E17 to E10 in register 19, bit 6 unused.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "404-405",
+       "sha": "a35d4449cd5809642bbbbb859e1b28eb3cefc021f19be0107548f3d24e3f8ce5"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "472-475",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "478-479",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "482-484",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "485-486",
+     "as": "see-also"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "410-419",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "439-448",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "375",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x1C",
+   "name": "sound enable, reset",
+   "aliases": [
+    "SE RST",
+    "all channels enable"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "408"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "487-493"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "function": "saa1099_device::data_w",
+     "case": [
+      "0x1c"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "450-465"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Register 1C has SE in D0 and RST in D1, its other bits unused.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "408",
+       "sha": "de11f5de6cbc5a2e4bfa28c67912e44367116a56ff18564823ad1ff352522302"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "SE enables all channels: 0 disables them and 1 enables them, reset to 0 on power-up.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "487-490",
+       "sha": "47bfca591bffcb47f9e0a98bf7b99a5fb1e17ea59649b0c39b71b805cfef6169"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "RST resets and synchronises all frequency generators: 0 enables them, 1 resets them.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "491-493",
+       "sha": "6fbe9f6ef9afee96a9563d34981860e368d49a11e91459e9e05125b85a97c04e"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to register 1C sets the sound enable and the reset bits together.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "408",
+       "sha": "de11f5de6cbc5a2e4bfa28c67912e44367116a56ff18564823ad1ff352522302"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "421-427",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "428-434",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "450-461",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "462-465",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "375",
+     "as": "structure"
+    }
+   ]
+  }
+ ]
+}

@@ -110,6 +110,28 @@
    "tool_version": "26.10.0",
    "pdf": "c0eefa8572dab706a8f05ea0a61d80c2c0f65f3a477abb3c416dde60c276abc2",
    "capture": "70eb47703a3315fa8564d4599c83c9961c9efaa157557192b55795710ab25825"
+  },
+  "SAA1099.raw.txt": {
+   "title": "Philips SAA1099 stereo sound generator, data sheet 493200",
+   "url": "https://www.worldofsam.org/sites/default/files/dl-02/493200_DS.pdf",
+   "archive": "https://archive.org/details/saa-1099-493200-ds",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "ocrmypdf + pdftotext -raw",
+   "tool_version": "17.14.2 + 26.10.0",
+   "pdf": "7ff3cca05dd569e039dc14dd557b6efce2c300e49b0db7c17b05306fd2e2a173",
+   "capture": "d949cefe1262e40449c8d0ab446f942f93ff5e221de7f160f00ff72833501a45"
+  },
+  "SN76494.raw.txt": {
+   "title": "Texas Instruments SN76494/SN76496 programmable tone/noise generator",
+   "url": "https://www.vgmpf.com/Wiki/images/9/9c/SN76494_-_Manual.pdf",
+   "archive": "https://web.archive.org/web/20241220025416/https://www.vgmpf.com/Wiki/images/9/9c/SN76494_-_Manual.pdf",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "ocrmypdf + pdftotext -raw",
+   "tool_version": "17.14.2 + 26.10.0",
+   "pdf": "4a5f7326436c385b82db3864ba6fefd7900cf47ebd29fa5333fb76d2d9a9bbe6",
+   "capture": "2b52e15de5f9752b0dbbecfec0f4edf944f943b63050ccb8f6003a22ea67f133"
   }
  }
 }
