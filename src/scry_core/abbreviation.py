@@ -11,7 +11,7 @@ cut.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -42,11 +42,34 @@ def caption(tool: str, given: Mapping[str, Any],
     for i in held:
         words[i] = _named(named[given_values[i][0]]) if named is not None else bare[i]
     text = " ".join([tool, *words])
+    if tool == "perform":
+        named_perform = _performed(given, named)
+        if named_perform != "perform":
+            text = named_perform
     while len(text) > MAX_BYTES and held:
         i = held.pop()
         words[i] = bare[i]
         text = " ".join([tool, *words])
     return fit(text, MAX_BYTES)
+
+
+def _performed(given: Mapping[str, Any], named: Mapping[str, Named] | None) -> str:
+    """A `perform` captioned by what it runs: the document it names, or the calls of its own
+    list, because the batch is a wrapper and the work is inside it."""
+    path = given.get("path")
+    if isinstance(path, str) and path:
+        return f"perform {value(_hex(path) if path.endswith(HEX_SUFFIX) else path)}"
+    steps: Any = given.get("act") or given.get("steps") or []
+    steps = steps if isinstance(steps, Sequence) and not isinstance(steps, str) else []
+    tools = [str(step.get("op") or step.get("tool") or "")
+             for step in steps if isinstance(step, Mapping)]
+    tools = [t for t in tools if t]
+    if not tools:
+        return "perform"
+    if len(tools) == 1:
+        return f"perform: {tools[0]}"
+    seen = ", ".join(tools[:4]) + (f", +{len(tools) - 4}" if len(tools) > 4 else "")
+    return f"perform of {len(tools)} calls: {seen}"
 
 
 def fit(text: str, room: int) -> str:

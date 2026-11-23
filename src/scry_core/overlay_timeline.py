@@ -55,8 +55,9 @@ class _Entry:
     serial: int = 0
 
     def caption(self, tints: Tints) -> Caption:
+        names = self.steps > 1 and (self.text.startswith("perform:") or "perform of" in self.text)
         suffix = (f" x{self.repeats}" if self.repeats > 1 else "") \
-            + (f" ({self.steps} steps)" if self.steps > 1 else "")
+            + (f" ({self.steps} steps)" if self.steps > 1 and not names else "")
         text = abbreviation.fit(self.text, abbreviation.MAX_BYTES - len(suffix)) + suffix
         return Caption(text, self.kind, tints.of(self.kind), self.serial)
 

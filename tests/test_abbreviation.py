@@ -84,6 +84,19 @@ def test_a_value_is_cut_to_its_width_with_the_cut_marked() -> None:
     assert ab.value("x" * ab.VALUE_WIDTH) == "x" * ab.VALUE_WIDTH
 
 
+@pytest.mark.parametrize(("given", "said"), [
+    ({"act": [{"op": "send_mouse"}, {"op": "send_mouse"}]},
+     "perform of 2 calls: send_mouse, send_mouse"),
+    ({"act": [{"op": "send_keys"}, {"op": "run_for"}], "seconds": 10},
+     "perform of 2 calls: send_keys, run_for"),
+    ({"act": [{"op": f"op{i}"} for i in range(6)]}, "perform of 6 calls: op0, op1, op2, op3, +2"),
+    ({"path": "~/runs/mines.json"}, "perform mines.json"),
+    ({}, "perform"),
+])
+def test_a_perform_is_captioned_by_what_it_runs(given: dict[str, Any], said: str) -> None:
+    assert ab.caption("perform", given) == said
+
+
 def test_a_caption_is_the_tool_then_its_values_in_order_without_the_empty_ones() -> None:
     assert ab.caption("read_memory", {"ref": "0x0400", "length": 16}) == "read_memory 0x0400 16"
     assert ab.caption("run_for", {"seconds": 2.0, "cpu": None, "label": ""}) == "run_for 2"

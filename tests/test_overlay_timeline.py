@@ -87,7 +87,7 @@ def test_a_call_s_steps_join_its_caption_as_a_count() -> None:
         c.began("send_keys", {"keys": ["A"]}, False, True, 0.1)
         c.ended(True, False, 0.1)
     c.ended(False, False, 0.2)
-    assert _text(c, 0.3) == "perform [{tool=run_for}] (3 steps)"
+    assert _text(c, 0.3) == "perform: run_for"
 
 
 def test_a_step_that_was_refused_leaves_its_caller_s_tint_to_its_caller() -> None:
