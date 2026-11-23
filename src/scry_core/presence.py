@@ -45,7 +45,6 @@ class Look:
     refused_rgb: int = 0xFF453A
     caption_text_rgb: int = 0xFFFFFF
     caption_alpha: float = 0.7
-    caption_min_s: float = 1.0
     caption_hold_s: float = 3.0
     scroll_cps: float = 12.0
     keycap_rgb: int = 0x202020
@@ -93,15 +92,15 @@ class Pointer:
 class Payload:
     """What a delivery draws over the edge. `layers` are the ones asked (`overlay.Overlay`);
     `caption`, `keys` and `pointer` are empty, and `recording` is `none`, when their layer is
-    not asked or nothing is due;
-    `place` is `auto` for the renderer to resolve (`placement`)."""
+    not asked or nothing is due; `place` is the band the captions take, and the keycaps take the
+    other edge."""
 
     paused: bool = False
     caption: tl.Caption | None = None
     keys: tuple[str, ...] = ()
     pointer: Pointer | None = None
     layers: tuple[ov.Layer, ...] = ("edge",)
-    place: ov.Place = "auto"
+    place: ov.Place = "bottom"
     recording: Recording = "none"
 
 
@@ -121,6 +120,19 @@ class Adapter(Protocol):
 CLOSE_WAIT_S = 1.0
 RETRY_S = 1.0
 
+#: The tools that always run other calls inside one call: `perform` and `drive`. The overlay
+#: shows what they run, never the wrapper; `start` is one only when it was given a plan.
+BATCH_TOOLS = frozenset({"perform", "drive"})
+
+
+def _wraps(call: boundary.Call) -> bool:
+    """Whether the call is a wrapper, which is never captioned: what it runs is."""
+    if call.nested:
+        return False
+    if call.tool == "start":
+        return bool(call.given.get("plan"))
+    return call.tool in BATCH_TOOLS
+
 
 def _names(driving: Collection[str]) -> frozenset[str]:
     """`driving` as a set; a bare string would match no tool in silence, so it is refused."""
@@ -138,8 +150,9 @@ class Presence:
         self._adapter = adapter
         self._driving = _names(driving)
         self._asked = overlay.asked()
-        self._place = overlay.place
-        self._captions = tl.Captions(look.tints, look.caption_min_s, look.caption_hold_s)
+        # The band never moves: an overlay asking for `auto` gets the bottom edge.
+        self._place: ov.Place = "top" if overlay.place == "top" else "bottom"
+        self._captions = tl.Captions(look.tints, look.caption_hold_s)
         self._keys = tl.Keycaps(look.keycap_min_s)
         self._pointer: Pointer | None = None
         self._paused = False
@@ -177,7 +190,7 @@ class Presence:
             if not call.nested and call.tool in self._driving:
                 self._want = "acting"
                 self._pulse = True
-            if "calls" in self._asked:
+            if "calls" in self._asked and not _wraps(call):
                 self._captions.began(call.tool, call.given, call.read_only, call.nested,
                                      time.monotonic(), named=call.named)
             self._cv.notify()
@@ -186,7 +199,7 @@ class Presence:
         with self._cv:
             if not call.nested and call.tool in self._driving:
                 self._want = "held"
-            if "calls" in self._asked:
+            if "calls" in self._asked and not _wraps(call):
                 self._captions.ended(call.nested, outcome == "refused", time.monotonic())
             self._cv.notify()
 

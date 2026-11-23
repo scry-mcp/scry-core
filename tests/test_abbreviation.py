@@ -84,17 +84,12 @@ def test_a_value_is_cut_to_its_width_with_the_cut_marked() -> None:
     assert ab.value("x" * ab.VALUE_WIDTH) == "x" * ab.VALUE_WIDTH
 
 
-@pytest.mark.parametrize(("given", "said"), [
-    ({"act": [{"op": "send_mouse"}, {"op": "send_mouse"}]},
-     "perform of 2 calls: send_mouse, send_mouse"),
-    ({"act": [{"op": "send_keys"}, {"op": "run_for"}], "seconds": 10},
-     "perform of 2 calls: send_keys, run_for"),
-    ({"act": [{"op": f"op{i}"} for i in range(6)]}, "perform of 6 calls: op0, op1, op2, op3, +2"),
-    ({"path": "~/runs/mines.json"}, "perform mines.json"),
-    ({}, "perform"),
-])
-def test_a_perform_is_captioned_by_what_it_runs(given: dict[str, Any], said: str) -> None:
-    assert ab.caption("perform", given) == said
+def test_a_perform_is_captioned_as_any_call_by_its_own_values_never_by_a_summary_of_steps(
+        ) -> None:
+    """A wrapper is never what the overlay shows: the timeline holds its steps instead, so the
+    caption of a `perform` is no different from any other call's."""
+    assert ab.caption("perform", {}) == "perform"
+    assert ab.caption("perform", {"path": "/runs/mines.json"}) == "perform mines.json"
 
 
 def test_a_caption_is_the_tool_then_its_values_in_order_without_the_empty_ones() -> None:

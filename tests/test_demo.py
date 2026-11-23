@@ -372,6 +372,17 @@ def test_a_run_writes_its_timeline_beside_the_transcript_with_the_frames_each_ca
     assert str(tmp_path) not in json.dumps(calls[3]["args"]), "a path is spelled as the transcript"
 
 
+def test_a_wrapper_s_rows_are_read_from_where_its_reply_names_them() -> None:
+    """A wrapper is shown as the calls it ran: `perform` and a `start` plan name them under
+    `ran`, `drive` under `act`."""
+    row = {"op": "send_keys", "frame_before": 1, "frame_after": 2, "reply": {"status": "ok"}}
+    assert d.ran(d.Reply({"ran": [row]})) == [row]
+    assert d.ran(d.Reply({"act": {"ran": [row]}, "verify": {"verdict": "TARGET"}})) == [row]
+    assert d.ran(d.Reply({"status": "ok", "act": [{"op": "send_keys"}]})) == [], \
+        "an argument is no row"
+    assert d.ran(None) == []
+
+
 def test_a_calls_caption_in_the_timeline_carries_the_names_its_reply_gave_its_arguments(
         tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     steps = [d.Step("look", "peek", {"ref": "score"}, _said("summary")),

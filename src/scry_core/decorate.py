@@ -1,7 +1,7 @@
 """A demo's clip with the presence layers drawn in, from the run's timeline (`timeline`) and the
 frames alone: the edge, the pointer, the keycaps and the call captions, by the rules the live
-overlay follows (`overlay_timeline`, `placement`, `presence.Look`) and richer than an emulator
-draws them. Only this module imports Pillow and numpy, the `decorate` extra.
+overlay follows (`overlay_timeline`, `presence.Look`) and richer than an emulator draws them.
+Only this module imports Pillow and numpy, the `decorate` extra.
 
 Honest to the run: a frame shows only what its call and its input were. The pointer is drawn
 from its first real position on, passes through every position the server sent at the frame it
@@ -12,9 +12,11 @@ no frame of a clip is one the session held stopped, and the pause layer has noth
 
 The clock is the clip's own: an emulator frame is `1 / rate` seconds, and a call is captioned
 from the frame it began at. A call that ran no frame (a read, a stop) is captioned at the frame
-it was made on, so the captions' minimum time, burst and hold (`overlay_timeline.Captions`) are
-reckoned in the clip's seconds. Calls are read from the last rewind of the machine (a state
-load) before the clip, because frames before it are no longer this clip's. A demo's camera is
+it was made on, so the captions' repeat and hold (`overlay_timeline.Captions`) are reckoned in
+the clip's seconds. A caption too wide for its band scrolls a whole travel inside the span of
+its own call, so a long text is read in full, never cut and never left half-read. Calls are read
+from the last rewind of the machine (a state load) before the clip, because frames before it are
+no longer this clip's. A demo's camera is
 not work the demo does: a `record` step is not captioned, and its cut shows only what the
 machine runs.
 
@@ -83,12 +85,12 @@ class Zoom:
 @dataclass(frozen=True)
 class Style:
     """What a demo draws: `layers` as `overlay.Overlay.asked` names them, less those its server
-    cannot draw (MAME's pointer), `place` as `overlay.Overlay.place`, the live overlay's `look`,
-    and the flourishes a demo may ask for: a sine scroller, a raster bar behind the captions, a
-    zoom."""
+    cannot draw (MAME's pointer), `place`, the band the captions take (the keycaps take the other
+    edge), the live overlay's `look`, and the flourishes a demo may ask for: a sine scroller, a
+    raster bar behind the captions, a zoom."""
 
     layers: tuple[ov.Layer, ...] = ov.OVERLAY.asked()
-    place: ov.Place = ov.OVERLAY.place
+    place: placement.Band = "bottom"
     look: Look = LOOK
     sine: bool = False
     raster: bool = False
@@ -97,9 +99,10 @@ class Style:
     @classmethod
     def of(cls, overlay: ov.Overlay, lacking: Sequence[ov.Layer] = (), **flourishes: Any
            ) -> Style:
-        """The style of `overlay`, a game's `.scry/` profile or a demo's own, less `lacking`."""
+        """The style of `overlay`, a game's `.scry/` profile or a demo's own, less `lacking`.
+        The band does not move, so an overlay that asks for `auto` gets `bottom`."""
         return cls(tuple(layer for layer in overlay.asked() if layer not in lacking),
-                   overlay.place, **flourishes)
+                   "top" if overlay.place == "top" else "bottom", **flourishes)
 
 
 @dataclass(frozen=True)
@@ -231,6 +234,13 @@ class _Font:
         return self._masks[text]
 
 
+def _scroll_px_s(travel: int, span_s: float | None, cps_px_s: float) -> float:
+    """The pixels a second a caption wider than its band moves: one full travel (`room + wide`)
+    inside the span of its own call when that span is known and not empty, else the speed
+    `scroll_cps` names, so a text too long for its band is scrolled whole, never cut."""
+    return travel / span_s if span_s else cps_px_s
+
+
 def _rgba(rgb: int, alpha: float) -> tuple[int, int, int, int]:
     return ((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF,
             round(255 * max(0.0, min(1.0, alpha))))
@@ -262,13 +272,11 @@ class _Painter:
         self.style, self.look, self.plan, self.clip = style, style.look, plan, clip
         self.font = _Font(max(1, first.height // ROWS_PER_SCALE))
         self.edge = _edge_mask(*self.size, self.look)
-        self.captions = tl.Captions(self.look.tints, self.look.caption_min_s,
-                                    self.look.caption_hold_s)
+        self.captions = tl.Captions(self.look.tints, self.look.caption_hold_s)
         self.keycaps = tl.Keycaps(self.look.keycap_min_s)
         self.fed_calls, self.fed_keys, self.ended = 0, 0, 0
         self.pending_ends: list[float] = []
-        self.band: placement.Band = placement.START if style.place == "auto" else style.place
-        self.streak, self.sampled_at = 0, -math.inf
+        self.band: placement.Band = style.place
         self.serial, self.serial_at = 0, 0.0
         self.last_pointer: tuple[float, float] | None = None
 
@@ -276,8 +284,6 @@ class _Painter:
         base = Image.frombytes("RGB", self.size, picture.rgb)
         base, view = self._zoomed(base, t)
         self._feed(t)
-        if self.style.place == "auto" and t - self.sampled_at >= placement.SAMPLE_S:
-            self._sample(base, t)
         art = Image.new("RGBA", self.size, (0, 0, 0, 0))
         if "calls" in self.style.layers:
             self._caption(art, t)
@@ -307,7 +313,7 @@ class _Painter:
                 self.fed_calls += 1
                 if not call.camera:
                     self.captions.began(call.tool, {}, call.tint == "read", False, call.begin,
-                                        text=call.text)
+                                        text=call.text, span=call.end - call.begin)
                 self.pending_ends.append(call.end)
         while self.fed_keys < len(self.plan.keys) and self.plan.keys[self.fed_keys][0] <= t:
             when, name, down = self.plan.keys[self.fed_keys]
@@ -332,22 +338,6 @@ class _Painter:
         pixels = np.asarray(base, dtype=np.float32)
         out = pixels * (1 - alpha[..., None]) + rgb * alpha[..., None]
         return Image.fromarray(np.rint(out).astype(np.uint8), "RGB").convert("RGBA")
-
-    def _sample(self, base: Image.Image, t: float) -> None:
-        self.sampled_at = t
-        top, bottom = placement.points(*self.size)
-        rgb = base.convert("RGB")
-
-        def colours(points: Sequence[placement.Point]) -> list[int]:
-            out = []
-            for x, y in points:
-                r, g, b = rgb.getpixel((x, y))  # type: ignore[misc]
-                out.append(r << 16 | g << 8 | b)
-            return out
-
-        self.band, self.streak = placement.step(self.band, self.streak,
-                                                placement.score(colours(top)),
-                                                placement.score(colours(bottom)))
 
     def _band_box(self) -> tuple[int, int, int, int]:
         width, height = self.size
@@ -377,7 +367,8 @@ class _Painter:
         if wide <= room:
             x0 = left + (right - left - wide) / 2
         else:
-            speed = self.look.scroll_cps * self.font.width
+            speed = _scroll_px_s(room + wide, caption.span,
+                                 self.look.scroll_cps * self.font.width)
             travel = (t - self.serial_at) * speed % (room + wide)
             x0 = left + self.font.width + room - travel
         text = Image.new("RGBA", self.size, (0, 0, 0, 0))
@@ -572,7 +563,8 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--first", type=int, default=0, help="the recording's first frame shown")
     parser.add_argument("--frames", type=int, required=True, help="how many frames are shown")
     parser.add_argument("--out", type=Path, required=True, help="the loop.webp to write")
-    parser.add_argument("--place", choices=("top", "bottom", "auto"), default="auto")
+    parser.add_argument("--place", choices=("top", "bottom"), default="bottom",
+                        help="the band the captions take; the keycaps take the other edge")
     parser.add_argument("--without", action="append", default=[],
                         choices=("calls", "keys", "pointer", "pause"),
                         help="a layer not drawn; repeat for more")

@@ -391,10 +391,13 @@ def _until(a: _Adapter, ok: Callable[[presence.Payload], bool], after: int = 0
 
 def test_a_call_s_caption_is_delivered_with_its_state_and_leaves_on_its_own() -> None:
     a = _Adapter()
-    look = presence.Look(caption_min_s=0.05, caption_hold_s=0.1)
+    look = presence.Look(caption_hold_s=0.1)
     p = _open(a, look=look)
     assert a.payloads[0] == presence.Payload(layers=overlay.OVERLAY.asked())
     p.began(_call("run_for", seconds=2.0))
+    # No minimum: the caption goes with the call's own first delivery, nothing queues it.
+    first = _until(a, lambda pl: pl.caption is not None)
+    assert first.caption is not None and first.caption.text == "run_for 2"
     _settle(a, 2)
     assert a.shown[-1] == "acting"
     caption = a.payloads[-1].caption
@@ -423,6 +426,26 @@ def test_a_call_that_ends_refused_is_delivered_in_the_refused_tint() -> None:
     refused = _until(a, lambda pl: pl.caption is not None and pl.caption.kind == "refused")
     assert refused.caption is not None and refused.caption.rgb == presence.LOOK.refused_rgb
     p.close()
+
+
+def test_a_plain_start_is_captioned_and_a_start_with_a_plan_is_not() -> None:
+    """`start` runs other calls only when it carries a plan: then its steps are what is shown,
+    and a plain `start` is captioned like any other call of its own."""
+    a = _Adapter()
+    p = _open(a)
+    p.began(_call("start", binary="dosbox-x"))
+    plain = _until(a, lambda pl: pl.caption is not None)
+    assert plain.caption is not None and plain.caption.text == "start dosbox-x"
+    p.ended(_call("start", binary="dosbox-x"), "ok")
+    p.close()
+
+    b = _Adapter()
+    q = _open(b)
+    q.began(_call("start", plan=[{"op": "run_for", "seconds": 2}]))
+    q.began(_call("run_for", nested=True, seconds=2))
+    shown = _until(b, lambda pl: pl.caption is not None)
+    assert shown.caption is not None and shown.caption.text == "run_for 2"
+    q.close()
 
 
 def test_the_keys_pointer_and_pause_reported_reach_the_payload() -> None:

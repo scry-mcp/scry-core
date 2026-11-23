@@ -16,8 +16,9 @@ from typing import Any
 
 import pytest
 
+from scry_core import abbreviation as ab
 from scry_core import decorate as dc
-from scry_core import motion, timeline
+from scry_core import motion, placement, timeline
 from scry_core import overlay as ov
 from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
 
@@ -256,11 +257,73 @@ def _band_changed(picture: motion.Picture, rows: range) -> bool:
 
 
 @pytest.mark.parametrize("place", ["top", "bottom"])
-def test_the_caption_goes_to_the_band_asked_and_nowhere_else(place: ov.Place) -> None:
+def test_the_caption_goes_to_the_band_asked_and_nowhere_else(place: placement.Band) -> None:
     drawn = dc.decorate(_run(), _clip(), dc.Style(place=place))[30]
     top, bottom = range(10, 60), range(SIZE[1] - 60, SIZE[1] - 10)
     assert _band_changed(drawn, top if place == "top" else bottom)
     assert not _band_changed(drawn, bottom if place == "top" else top)
+
+
+def _busy_bottom_clip(frames: int) -> dc.Clip:
+    """A clip whose bottom band is a checkerboard and whose top is flat: the picture `auto`'s
+    sampler used to move the captions away from, over a clip long enough for it to do so."""
+    width, height = SIZE
+    band = height // 8
+    rgb = bytearray(bytes([GREY >> 16, (GREY >> 8) & 0xFF, GREY & 0xFF]) * (width * height))
+    for y in range(height - band, height):
+        for x in range(width):
+            at = (y * width + x) * 3
+            rgb[at:at + 3] = b"\xff\xff\xff" if (x + y) % 2 else b"\x00\x00\x00"
+    picture = motion.Picture(width, height, bytes(rgb), 17)
+    return dc.Clip(list(range(100, 100 + frames)), [picture] * frames, BOX, RATE)
+
+
+@pytest.mark.parametrize("place", ["top", "bottom"])
+def test_a_style_with_a_place_never_samples_the_picture(place: placement.Band) -> None:
+    """The band is the style's place at every second of the clip, whatever the picture holds: a
+    bottom edge busy enough to have drawn `auto` away from it is never consulted."""
+    clip = _busy_bottom_clip(145)
+    drawn = dc.decorate(_run(), clip, dc.Style(layers=("calls",), place=place))
+    plain = clip.pictures[0]
+    top, bottom = range(10, 60), range(SIZE[1] - 60, SIZE[1] - 10)
+    here, elsewhere = (top, bottom) if place == "top" else (bottom, top)
+
+    def changed(picture: motion.Picture, rows: range) -> bool:
+        return any(_pixel(picture, x, y) != _pixel(plain, x, y)
+                   for x in range(16, SIZE[0] - 16, 8) for y in rows)
+
+    for index in (5, 60, 140):
+        assert changed(drawn[index], here), (place, index)
+        assert not changed(drawn[index], elsewhere), (place, index)
+
+
+def test_the_parser_refuses_the_place_it_no_longer_draws(tmp_path: Path) -> None:
+    """The band never moves, so `auto` is not a choice: a caller asking for it is refused, not
+    quietly handed the bottom edge."""
+    (tmp_path / "t.json").write_text(json.dumps(_run()))
+    said: list[str] = []
+    with pytest.raises(SystemExit) as quit:
+        dc.main([str(RECORDING), "--timeline", str(tmp_path / "t.json"), "--at", "100",
+                 "--frames", "120", "--out", str(tmp_path / "loop.webp"), "--place", "auto"],
+                said.append)
+    assert quit.value.code == 2
+
+
+def test_a_caption_wider_than_its_band_scrolls_a_whole_travel_inside_its_call() -> None:
+    """A long caption is re-timed, never cut: one full travel inside the span of its own call,
+    so it reads whole and ends the frame it began."""
+    made = timeline.Builder("t")
+    made.add("wide", "read_memory", {f"a{i}": "v" * 20 for i in range(12)}, "ok", (100, 130))
+    run = timeline.loads(made.dumps())
+    assert len(run["calls"][0]["caption"]["text"]) == ab.MAX_BYTES, "the fixture is not wide"
+    drawn = dc.decorate(run, _clip(frames=61), dc.Style(layers=("calls",)))
+    band = range(SIZE[1] - 21, SIZE[1] - 7)
+
+    def caption_pixels(picture: motion.Picture) -> list[tuple[int, ...]]:
+        return [_pixel(picture, x, y) for x in range(16, SIZE[0] - 16) for y in band]
+
+    assert caption_pixels(drawn[15]) != caption_pixels(drawn[30]), "it moves, never cut"
+    assert caption_pixels(drawn[30]) == caption_pixels(drawn[60]), "one travel inside its span"
 
 
 def test_the_caption_is_the_timeline_s_own_text_and_tint() -> None:

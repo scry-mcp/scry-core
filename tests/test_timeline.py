@@ -71,6 +71,88 @@ def test_a_call_that_counts_no_frame_stays_where_the_machine_was() -> None:
         (None, None), (None, 40), (40, 40), (40, 40)]
 
 
+def test_a_wrapper_is_one_entry_per_call_it_ran_at_that_call_s_own_frames() -> None:
+    """A `perform` of three calls is three entries in order, each captioned as itself at the
+    frames it ran for; the wrapper is not an entry at all."""
+    made = timeline.Builder("x")
+    steps = [{"op": "run_for", "seconds": 2}, {"op": "read_memory", "ref": "0x10"},
+             {"op": "send_keys", "keys": ["Enter"]}]
+    rows = [{"op": "run_for", "frame_before": 10, "frame_after": 20,
+             "reply": {"status": "ok"}},
+            {"op": "read_memory", "frame_before": 20, "frame_after": 20,
+             "reply": {"status": "ok"}},
+            {"op": "send_keys", "frame_before": 20, "frame_after": 24,
+             "reply": {"status": "INVALID"}}]
+    made.add("go", "perform", {"steps": steps}, "ok", (10, 24), rows=rows,
+             readers=("read_memory",))
+    calls = timeline.loads(made.dumps())["calls"]
+    assert [(c["tool"], c["before"], c["after"]) for c in calls] == [
+        ("run_for", 10, 20), ("read_memory", 20, 20), ("send_keys", 20, 24)]
+    assert [c["caption"] for c in calls] == [
+        {"text": "run_for 2", "tint": "write"},
+        {"text": "read_memory 0x10", "tint": "read"},
+        {"text": "send_keys [Enter]", "tint": "refused"}]
+    assert [c["args"] for c in calls] == [
+        {"seconds": 2}, {"ref": "0x10"}, {"keys": ["Enter"]}]
+
+
+def test_a_wrapper_s_row_that_counted_no_frame_is_still_the_entry_not_the_wrapper() -> None:
+    """A step sent while the machine ran answers no frame: the step is still the entry, placed
+    where the machine was, because a wrapper is never what the timeline shows."""
+    made = timeline.Builder("x")
+    rows = [{"op": "resume", "frame_before": None, "frame_after": None,
+             "reply": {"status": "ok"}},
+            {"op": "status", "frame_before": None, "frame_after": None,
+             "reply": {"status": "ok"}}]
+    made.add("go", "drive", {"act": [{"op": "resume"}, {"op": "status"}]}, "ok", (None, 7),
+             rows=rows, events=[timeline.pointer(1, 1)])
+    calls = timeline.loads(made.dumps())["calls"]
+    assert [c["tool"] for c in calls] == ["resume", "status"]
+    assert [(c["before"], c["after"]) for c in calls] == [(None, None), (None, None)]
+    assert [c["events"] for c in calls] == [[], [{"kind": "pointer", "x": 1, "y": 1,
+                                                  "frame": None}]]
+
+
+def test_a_wrapper_whose_reply_names_no_row_stays_one_entry() -> None:
+    made = _built(("go", "perform", {"steps": [{"op": "run_for"}]}, "ok", (3, 9), []))
+    assert [c["tool"] for c in timeline.loads(made.dumps())["calls"]] == ["perform"]
+
+
+def test_a_wrapper_s_events_go_to_the_row_whose_frames_hold_them() -> None:
+    """Input a wrapper fired is the input of the step it fell inside, and one that names no
+    frame stays with the last row that counted frames."""
+    made = timeline.Builder("x")
+    rows = [{"op": "send_mouse", "frame_before": 10, "frame_after": 14,
+             "reply": {"status": "ok"}},
+            {"op": "send_mouse", "frame_before": 14, "frame_after": 20,
+             "reply": {"status": "ok"}}]
+    events = [timeline.pointer(1, 1, 12), timeline.pointer(2, 2, 18), timeline.pointer(3, 3)]
+    made.add("go", "perform", {"steps": [{"op": "send_mouse", "x": 1},
+                                          {"op": "send_mouse", "x": 2}]}, "ok", (10, 20),
+             events, rows=rows)
+    calls = timeline.loads(made.dumps())["calls"]
+    assert [[e["x"] for e in c["events"]] for c in calls] == [[1], [2, 3]]
+    assert [c["events"][-1]["frame"] for c in calls] == [12, 20]
+    assert [c["args"] for c in calls] == [{"x": 1}, {"x": 2}]
+
+
+def test_a_wrapper_whose_arguments_name_no_step_still_places_its_rows() -> None:
+    """A reply can name its rows where the arguments name no step: each row is still an entry,
+    with no arguments of its own."""
+    made = timeline.Builder("x")
+    rows = [{"op": "run_for", "frame_before": 1, "frame_after": 5, "reply": {"status": "ok"}}]
+    made.add("go", "perform", {}, "ok", (1, 5), rows=rows)
+    calls = timeline.loads(made.dumps())["calls"]
+    assert [(c["tool"], c["args"]) for c in calls] == [("run_for", {})]
+
+
+def test_a_wrapper_s_row_with_no_op_or_reply_is_refused() -> None:
+    made = timeline.Builder("x")
+    with pytest.raises(Invalid, match="step 1 of the `perform` in the run's timeline names no"):
+        made.add("go", "perform", {}, "ok", (1, 5), rows=[{"frame_before": 1,
+                                                           "frame_after": 5}])
+
+
 def test_an_event_with_no_frame_takes_the_frame_its_call_ended_at() -> None:
     made = _built(("a", "send_mouse", {"x": 1}, "ok", (5, 9), [timeline.pointer(3, 4)]))
     event = timeline.loads(made.dumps())["calls"][0]["events"][0]

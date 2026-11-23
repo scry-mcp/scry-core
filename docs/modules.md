@@ -104,7 +104,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.window_capture` | What the host shows of an emulator's window: captured, and two captures compared. |
 | `scry_core.presence` | The coloured border both emulators draw while a session holds the window, the layers drawn over it (`Payload`), the keys, pointer and recordings a server reports, and the tints and timings (`Look`). |
 | `scry_core.overlay` | `start`'s `overlay` argument, which layers presence draws, and the `overlay` field of `start`'s and `status`'s replies. |
-| `scry_core.overlay_timeline` | What the overlay shows at a moment: a caption's minimum time, a burst joined with a count, its tint, its exit, and a keycap kept long enough to be seen. |
+| `scry_core.overlay_timeline` | What the overlay shows at a moment: a call captioned as it begins with nothing queued, a burst joined with a count, a wrapper's steps captioned one by one, its tint, its span and exit, and a keycap kept long enough to be seen. |
 | `scry_core.abbreviation` | A call as its caption reads: the tool and its values, each cut short, a path by its last name and never a home folder's, a named value as `name (number)`, the whole at most 160 bytes. |
 | `scry_core.placement` | Whether captions go to the top or the bottom of the picture, and `placement_vectors.txt`, the cases each emulator's drawer replays. |
 | `scry_core.app_launch` | An emulator launched as a macOS `.app` through `open`, and the process id found for it. |
@@ -161,6 +161,8 @@ The document is `{"version": 2, "demo": <name>, "calls": [...]}`. Each call hold
 | `events` | The input the call fired, each with its `frame`. |
 
 `before` and `after` come from the reply's `frame_before` and `frame_after`, else its last `frame`; a call that counts none stays where the call before left the machine. Loading a saved state rewinds the machine, so `after` can be smaller than `before`.
+
+A wrapper (`perform`, `drive`, `start` with a plan) is not an entry: each call it ran is one of its own, at the frames its row ran for, with the inner tool and the wrapper's step name. Its reply's rows are `ran`; a wrapper whose reply names no row stays one entry.
 
 An event is `{"kind": "key", "name", "down", "frame"}`, `{"kind": "button", "name", "down", "frame"}` or `{"kind": "pointer", "x", "y", "frame"}`. A pointer's `x` and `y` are the position the reply reports, in the emulator's screen pixels. A step names its events with `Step.events`, and an event's `frame` lies between its call's `before` and `after`.
 

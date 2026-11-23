@@ -595,7 +595,8 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                                      _status(reply, ok), counted(reply), events,
                                      step.tool in readers,
                                      naming.arguments_of(reply.get("names") if reply is not None
-                                                         else None))
+                                                         else None),
+                                     rows=ran(reply), readers=readers)
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
@@ -838,6 +839,16 @@ def recording(name: str, frames: int, said: Callable[[Reply, Run], str] | None =
         return {"frames": frames, "dest": dest, "seconds": RECORD_SECONDS}
 
     return Step(name, RECORD_TOOL, args, recorded(frames, said), volatile=RECORDING_TIMING)
+
+
+def ran(reply: Reply | None) -> list[Mapping[str, Any]]:
+    """The calls a wrapper ran, each with the frames it ran for: `perform`'s and a plan's under
+    `ran`, `drive`'s under `act`; none for a reply that names no step."""
+    steps = reply.get("ran") if reply is not None else None
+    act = reply.get("act") if reply is not None else None
+    if not isinstance(steps, list) and isinstance(act, Mapping):
+        steps = act.get("ran")
+    return [row for row in steps if isinstance(row, Mapping)] if isinstance(steps, list) else []
 
 
 def counted(reply: Reply | None) -> tuple[int | None, int | None]:
