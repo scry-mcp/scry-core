@@ -1,6 +1,105 @@
 {
  "format": "scry-knowledge-rows-lock/1",
  "sealed": {
+  "am9517a:register:0x00..0x07": {
+   "doc": {
+    "seal": "797dac45532e5b97335cb6bb68082663eb2cc52cb4981a6769da84a69d4216d0",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "1": {
+      "digest": "6a8446be2ba3df0ad969846c7c0ebd7a8d7f799f540a0c691f78f8bb16135595",
+      "by": "P0 unsealed reader"
+     },
+     "10": {
+      "digest": "1652e9591764dc9e6a48d128f01e56d466b47ea75befd6731eb887fb4c7eb757",
+      "by": "P0 unsealed reader"
+     },
+     "11": {
+      "digest": "4ce1e028bfa3d06e986d2c5c15971bc0be7b3decc8547d77dda589ee9a1e42e3",
+      "by": "P0 unsealed reader"
+     },
+     "12": {
+      "digest": "c9132974e43216329539aa061c8683be71ba3f20a3189411a23d265fb274b4b7",
+      "by": "P0 unsealed reader"
+     },
+     "13": {
+      "digest": "32564bf39cc1e7f2e1157707b4ab7cb2cb88243fab8b8d5cec371718c47f96a6",
+      "by": "P0 unsealed reader"
+     },
+     "14": {
+      "digest": "ac5470a7028318f7db939022c83d5007c9fe8cb291a8190a8b9a5d6d430e8f89",
+      "by": "P0 unsealed reader"
+     },
+     "15": {
+      "digest": "0532495b17df88d6f7df2cac2cda3a0e2003a2462fdc627c0d4e33a9b03729bb",
+      "by": "P0 unsealed reader"
+     },
+     "16": {
+      "digest": "61e6036b7c9afa3a2e90feebc20ac681f90124bd570f93f7363dc50e799c3f90",
+      "by": "P0 unsealed reader"
+     },
+     "2": {
+      "digest": "76eff627c34a347e25e9425d8f65a2ea6b91235ea6bcc8e5cdec1a108be70c32",
+      "by": "P0 unsealed reader"
+     },
+     "3": {
+      "digest": "1f751968b03152e6880a445b2e26ecb9e3d24f39b3a598bb2b3e79806e6fc86e",
+      "by": "P0 unsealed reader"
+     },
+     "4": {
+      "digest": "d88933e2c667ac488dd9e8dae66a01cab3e87a3f68757f96d68559e83f92b378",
+      "by": "P0 unsealed reader"
+     },
+     "5": {
+      "digest": "8bce0e57333c9f9f81e951407ed365e865ba17c9b4a987d50e97742829de05da",
+      "by": "P0 unsealed reader"
+     },
+     "6": {
+      "digest": "e3e095e1a0e95ec8ec623182fcc51993c4ca1f075f63d78b822fb1212eab4d09",
+      "by": "P0 unsealed reader"
+     },
+     "7": {
+      "digest": "e539d07cbf554c2272ef1686af9ddb3a96d3405efdd287de78064d870c703a44",
+      "by": "P0 unsealed reader"
+     },
+     "8": {
+      "digest": "837b18a97ca219001e472a49c624d53101684079d5feab04aff7ffa8b47e539f",
+      "by": "P0 unsealed reader"
+     },
+     "9": {
+      "digest": "58ba43cb585c966e27bfc44a090aa514c46013a7f06998604efcd33c78e6ed1c",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "710cef978670c7e850a77766a814ff315143d40138455849a5c435d93b659c6f",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "201": {
+      "digest": "74c2c6692ae9f02bb1e9f576058f2e8ae912e3026d34abfc19ccce451c080fa2",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "f91e7caae3a33d1044608503f2d37bd393fae39bfc78fc5bb7580e0c08872d03",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "101": {
+      "digest": "44155c6c357cb6a6ed1837a1b9d6886730baaad950b4270333e4798526e70d43",
+      "by": "P0 unsealed reader"
+     },
+     "102": {
+      "digest": "5039cc163255753c6ea3774dd6bd8009434d31848708e909649bec54ce2abdb8",
+      "by": "P0 unsealed reader"
+     }
+    }
+   }
+  },
   "am9517a:register:0x08:read": {
    "doc": {
     "seal": "cb24ed96be56bcae110eda8916b4ac5270a9e5f1ade32062af3c735f96b0c71e",
@@ -51,6 +150,87 @@
      "102": {
       "digest": "74c8d4cc99d5abae3a908c6b38a3fe3883f8a28f76c100bbad8877d53b470859",
       "by": "slice core-board1-02 reader"
+     }
+    }
+   }
+  },
+  "am9517a:register:0x08:write": {
+   "doc": {
+    "seal": "74e230e304741f33a5a1f85544042654d41f9255057ebfbf79f2d2f84779ea80",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-02 writer",
+    "rows": {
+     "1": {
+      "digest": "3c4f4879b4a249479c77f9411578f52265ddeb03f1c73ea3499e54af07c361fb",
+      "by": "P0 unsealed reader"
+     },
+     "2": {
+      "digest": "cba9cb6d0a48748a41b192de9c6f9bf9499a2a9bab5356641f8c80071166bdd3",
+      "by": "P0 unsealed reader"
+     },
+     "3": {
+      "digest": "789b3502dda68cdeec965f753baa9e4c18790b7456d65590fb78c1936f06917d",
+      "by": "P0 unsealed reader"
+     },
+     "4": {
+      "digest": "57cc525622eff35ee5ebeeeaba8b700ce6f0bc73fc5c41545c7b0f8439fa3ea8",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "9b4ac8a5f81a6e8e44f496fe821686218ad6df62ef809efd1aafa1869690d81c",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-02 writer",
+    "rows": {
+     "201": {
+      "digest": "43c7a347dcca4c0228572230b702a0bb4f4a44c89c02a6e1e1340b83d098edef",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "1a570b825b46235ea086633ca5c66dd455d7271b1e7c204cd35b86953a4f9e76",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-02 writer",
+    "rows": {}
+   }
+  },
+  "am9517a:register:0x09..0x0C:read": {
+   "doc": {
+    "seal": "8ed7304d660062b431e7975c202c3f8fbefb74e65a58dc1ce215caa65e72c6bf",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "1": {
+      "digest": "ceb5338161a8032bd533096f2ea1d803790a2f7071bd10cf133f4427c12cd594",
+      "by": "P0 unsealed reader"
+     },
+     "2": {
+      "digest": "0efb0a35fead94d21831903091929cdbd3d5abf15c455a77ed1735c53fd30ca7",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "8b95530091e794b1abd138da642d01820f522019bf00a96a7df6a4741f8ac578",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "201": {
+      "digest": "e6706ae308262702a1834c36388bf1ffc3f20b3ab89491dea4db05b0db63085b",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "dca952a1936695b4b4c8c8a28b5dac08b883cce7f67261eb5086bbe6889f8f57",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "101": {
+      "digest": "fb063196c5eef843798579777d5302cf59b9acd5c2139a596e7b77f7269dd8e9",
+      "by": "P0 unsealed reader"
      }
     }
    }
@@ -255,6 +435,48 @@
     "rows": {}
    }
   },
+  "am9517a:register:0x0D:read": {
+   "doc": {
+    "seal": "cea5c469450625152a9adec132bf5da9e8466fa999f9f2c300c057659a960520",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-02 writer",
+    "rows": {
+     "1": {
+      "digest": "d6d7e804286f2b2a12b374197c346ce69b549da4bfdb25388a7a997b4c8ca1b7",
+      "by": "P0 unsealed reader"
+     },
+     "2": {
+      "digest": "eb9595244e50a89a78f2e605fb547e6bddc989aeb5e1226b9de7d2d297b9d4ef",
+      "by": "P0 unsealed reader"
+     },
+     "3": {
+      "digest": "2ac798587ef6ee20da39726813d4779601f9063cfd4b33fb989155538790011e",
+      "by": "P0 unsealed reader"
+     },
+     "4": {
+      "digest": "d923c89ae62c478465762955a3e7f2ec6a9cd0d71f93ba4bf5cc9b3c34c1cac9",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "5ad7d3e0344529a54011417c8668d1b089a8614f40d26266001c0a0cbef34e48",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-02 writer",
+    "rows": {
+     "201": {
+      "digest": "f2bb7014240deb240310fa2b7403f59e90b6c49506384b5ee29325dcbdf67bab",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "8dbb0f1744bb277e2d9f539df46eccf396fbf168d1eb3e0c4799e3310e535996",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-02 writer",
+    "rows": {}
+   }
+  },
   "am9517a:register:0x0D:write": {
    "doc": {
     "seal": "8dd011be82e03931b6916f21c955d55a828e3ee2c50b2cb96f1e7e0ae8c1943a",
@@ -318,6 +540,45 @@
      "102": {
       "digest": "209500d5a395b897e5ced630fafc50d5a497ad62f9f0314068827dfd3b63b4d2",
       "by": "slice core-board1-02 reader"
+     }
+    }
+   }
+  },
+  "am9517a:register:0x0E..0x0F:read": {
+   "doc": {
+    "seal": "20bca79093e374943b0035e2c8c8200345ca27ba1d196c81ea05aa589149a91e",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "1": {
+      "digest": "236c123cff1a8d5655e08923d13dbf74933b6e17f7910e212d1f262139f7ec4f",
+      "by": "P0 unsealed reader"
+     },
+     "2": {
+      "digest": "2e80ff87551360b8945d90f13679fc2aed058df1ff5a037bebfedb8ba63e2897",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "4850d61cbaa40cc6a13536b374790ba520e1041022cb213f66865bcc55e6130d",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "201": {
+      "digest": "fc3630dcf249f47e0ff45f09d2210c440940bc5d42b6d17b0a2b90f856933463",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "0f5748fb9b1aff0585254545436e53b86903370e5535d37c823bc5abc9033f23",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "101": {
+      "digest": "94197ab6c304d85cfb95b0030a600b0a682588f38df0d431b90af40ada8f514f",
+      "by": "P0 unsealed reader"
      }
     }
    }
@@ -5467,6 +5728,48 @@
     }
    }
   },
+  "pic8259:register:0x00:write": {
+   "doc": {
+    "seal": "c1d30237830a22aefcbe8bc8a89f60f0b24f93f6a9b50e44a69fe607d901ae27",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-01 writer",
+    "rows": {
+     "1": {
+      "digest": "a430d8ac0e695e8aca7c6f11e3d3d13658a9dc8cc8e0fa741c7249ed413a64c0",
+      "by": "P0 unsealed reader"
+     },
+     "2": {
+      "digest": "4def0be3b055539b5792aecf59a1efeee515e04ff57de947173e8619aebb6ff7",
+      "by": "P0 unsealed reader"
+     },
+     "3": {
+      "digest": "d7d00a756744a8653b92f83c0f948ddfada2bc0415e961adfd03590a7f7d6786",
+      "by": "P0 unsealed reader"
+     },
+     "4": {
+      "digest": "80421a520abd8ccbf4d6d0cfebef16085ded1cc10f32b22f66f0195115c7dc42",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "62a6ef65a91bbe421fbb8bbff6926522504b694f470487dc35b9e568853fe242",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-01 writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "3072ac6cbe1206ca06a3c7553b39e9ed045f39cac0cc808b963503eb86696211",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-01 writer",
+    "rows": {
+     "101": {
+      "digest": "261082edc696987524875e5adbfed30727c9ca41e98e1463c731392a4850c820",
+      "by": "P0 unsealed reader"
+     }
+    }
+   }
+  },
   "pic8259:register:0x01:read": {
    "doc": {
     "seal": "e50e6a504100c47416bd4c1e432d1d09f763095009470bd655296da9fdc27ae1",
@@ -5502,6 +5805,272 @@
      "3": {
       "digest": "1d8cc980f379ef22988a68e71b66b68da4cbe3afa6c063a3342e980488b60b1e",
       "by": "slice core-board1-01 reader"
+     }
+    }
+   }
+  },
+  "pic8259:register:0x01:write": {
+   "doc": {
+    "seal": "61bc1bad1eaaf737a73e096a62fd1ae1e553ae27c50c0054786aa76278fbbb1e",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-01 writer",
+    "rows": {
+     "1": {
+      "digest": "6df4a062369096fbeaa08eb6ea5396964fae4f9260eaf706d74c6f40189c3ccf",
+      "by": "P0 unsealed reader"
+     },
+     "10": {
+      "digest": "6f3cecf1655d4bdf938f381e621b13417997848da9b815fabd4881f46152087a",
+      "by": "P0 unsealed reader"
+     },
+     "11": {
+      "digest": "f9879c25dffc5c0705a353f7089d0141d09adc57b123075a02848f402a86f616",
+      "by": "P0 unsealed reader"
+     },
+     "12": {
+      "digest": "7cd10d870043596a9d1abf5fa9f0aad6a3eb050845d5b430cf424b13a7bf2401",
+      "by": "P0 unsealed reader"
+     },
+     "13": {
+      "digest": "d0148f2282947ede386f385bea667d190057876881fc651c931f39688bb3b89c",
+      "by": "P0 unsealed reader"
+     },
+     "14": {
+      "digest": "a338e1ba3516e97fae8a7dcd816e41d0cd2489d1d5495abb58f1e9c87414fe39",
+      "by": "P0 unsealed reader"
+     },
+     "2": {
+      "digest": "098192ea6a039b804d6f67a19600b0f54baaa0229fe4bb1ba3ec4f8b054d6477",
+      "by": "P0 unsealed reader"
+     },
+     "4": {
+      "digest": "68913de2f9e6c51706d75945200dbd7b7fa17afd26d28039ea8a248a3b57caf8",
+      "by": "P0 unsealed reader"
+     },
+     "5": {
+      "digest": "aa580ad3dff45f7677b2a9f08a820ddedb64681bd21ade9be8d03554e900a76a",
+      "by": "P0 unsealed reader"
+     },
+     "6": {
+      "digest": "a4bb281d038908b8c719092145e397d01c4fad3d7086b50bf8fac1a9beb88e6b",
+      "by": "P0 unsealed reader"
+     },
+     "7": {
+      "digest": "32b0a214d7db1aba6f27a67694e326e01cc08258a168b13deed40533ed427bfc",
+      "by": "P0 unsealed reader"
+     },
+     "8": {
+      "digest": "025882c77689832ab1aec1a73a41560c08695315d7c86d97360b3bb736dc1700",
+      "by": "P0 unsealed reader"
+     },
+     "9": {
+      "digest": "773fcd69b0cb70eb18c0df15a0f95e874c3bc68344641fe23e1a00495fdcf048",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "89fe2d0d224d658ac10620161fd31a4da10f00a11be36dfe695e1f100923c60c",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-01 writer",
+    "rows": {
+     "201": {
+      "digest": "c8c4a7a764e58d2cbaa6d610951a47028992cb68a2e5ae8a5cd9f40f7b30ef2c",
+      "by": "P0 unsealed reader"
+     },
+     "202": {
+      "digest": "0e53218a2f321c36ea619f7a8e5ab925729ef6142ce264723322447dfd84f52b",
+      "by": "P0 unsealed reader"
+     },
+     "203": {
+      "digest": "8eae51498860fa5ba7f2a83b435f92bdeb424883fa8eb433bc7f94e51fc6a481",
+      "by": "P0 unsealed reader"
+     },
+     "204": {
+      "digest": "13747bec934c5b518905c54dd2bf08ad3971bc2a1300b85e4ffe533ad352d29a",
+      "by": "P0 unsealed reader"
+     },
+     "205": {
+      "digest": "fdf8b5421289bd2869729f2b1e98af5d077d929e58f461313a9442661aedd623",
+      "by": "P0 unsealed reader"
+     },
+     "206": {
+      "digest": "1285fe6726ca67640328a9f5401c8bbe7bbd52e7bfc9ecab43baa3e35f9fe6ad",
+      "by": "P0 unsealed reader"
+     },
+     "207": {
+      "digest": "2391c0e87813fdd1df15c57b99755938537e010acd4464dacd71b4bf65bf1438",
+      "by": "P0 unsealed reader"
+     },
+     "208": {
+      "digest": "4f68bfaf23b61a7055dfae54a6aa27487e6f3652b4487d92a80d9b5d04cb32f5",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "fc1d46500a00083a78ca8ef767b85045f662527ab86a9a02f61744e540bd0327",
+    "by": "P0 unsealed reader",
+    "writer": "slice core-board1-01 writer",
+    "rows": {
+     "101": {
+      "digest": "d779a1027a46e6ee3c5ff6e338d17e4fd209901d9bc3a25aefebfa2377339f2c",
+      "by": "P0 unsealed reader"
+     },
+     "102": {
+      "digest": "fa37559cf6ccdc83555c05f2465c81f878486ac5c70082f2f52440c2d4dfeae1",
+      "by": "P0 unsealed reader"
+     },
+     "103": {
+      "digest": "166f9b5475bd15ba0d68b3ae8827ada776c80ac8583ac1b8c3fe7ea06d1594c1",
+      "by": "P0 unsealed reader"
+     }
+    }
+   }
+  },
+  "pit8253:register:0x00..0x02": {
+   "doc": {
+    "seal": "ccca245165a28da7c9d05f4d9e984c43c1a46c83ea1fb4fa904f9587f1e40543",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "1": {
+      "digest": "9e1321219fb0e6aecd2600498011b601296424f5ef024d2f61c3a83038ebcb69",
+      "by": "P0 unsealed reader"
+     },
+     "10": {
+      "digest": "2ffa3ce22e17105ccef853ccbc26e30b62c123812147af05ccef1906258e1f1e",
+      "by": "P0 unsealed reader"
+     },
+     "11": {
+      "digest": "d36c95f13efb730c131b246a1203f81219ca7e82b77f3ce52e1ac91a513c22c1",
+      "by": "P0 unsealed reader"
+     },
+     "12": {
+      "digest": "1ff62bb455899ed755b20fb8ee676f55d8d8c4b835133834a31b9cec4a3ce9d3",
+      "by": "P0 unsealed reader"
+     },
+     "13": {
+      "digest": "433a01611e19c9e2a5ee14aab085280a061903abdc8caac15800aadf3d9e723d",
+      "by": "P0 unsealed reader"
+     },
+     "14": {
+      "digest": "8c9db25fae2b527cbd234710d41252b2fa0bbb512379c1b18c9cec0807aea637",
+      "by": "P0 unsealed reader"
+     },
+     "15": {
+      "digest": "73287050ca6bdb5747a5d7d48ea870308edd011cd9c31280c80b975825017071",
+      "by": "P0 unsealed reader"
+     },
+     "16": {
+      "digest": "4bfb30a1106755dc5a06c4e82356422569ab1fe5ac4180f8453dde98d140a44b",
+      "by": "P0 unsealed reader"
+     },
+     "17": {
+      "digest": "a93ca7eb2da22b300cc9928910625cc1cc4519895e37e5947021c0e336b21323",
+      "by": "P0 unsealed reader"
+     },
+     "18": {
+      "digest": "0411ba81dba2032893b7ae429f781572e037f39f5e01e3e33cbb1c26daf25c6b",
+      "by": "P0 unsealed reader"
+     },
+     "2": {
+      "digest": "22abe4a8095713b2eb250c8cd4dadf70610d9639cab18c4d4bb9980533b89fd3",
+      "by": "P0 unsealed reader"
+     },
+     "3": {
+      "digest": "628fa64b665383461ea02b0be1a21d08d17df7bb5ff1fd014d94c7e2bbacc3a3",
+      "by": "P0 unsealed reader"
+     },
+     "35": {
+      "digest": "476aef9e3123205cd7e69a0d1e4da443e3dd5ce91f1653d52e4533e8bdc336ad",
+      "by": "P0 unsealed reader"
+     },
+     "36": {
+      "digest": "1bce25448f5f5cff2561291285ad962e14e5f921b6f6d8128193c2eff5089b20",
+      "by": "P0 unsealed reader"
+     },
+     "37": {
+      "digest": "d4a58a4befbc065276d5b723cb91d9b9d89dea9dc5e34acbf35ec3634b89218a",
+      "by": "P0 unsealed reader"
+     },
+     "38": {
+      "digest": "a678bd96b6a3185d9886796f9b3e2864ca4df43e7a36558fa1554b5e1046d75a",
+      "by": "P0 unsealed reader"
+     },
+     "39": {
+      "digest": "1cc8807c250c6f04fc68b07fb5f8de6d3337ae44e2015e1c138ce633952a7d02",
+      "by": "P0 unsealed reader"
+     },
+     "4": {
+      "digest": "04150f342aa169b18f3508d52f294a6a87988680587f5db5d37bf0a659f5188f",
+      "by": "P0 unsealed reader"
+     },
+     "5": {
+      "digest": "f4b6892935b7a58b80856cb4b5624131ddabdd969a99f17cf576dd6ffc526802",
+      "by": "P0 unsealed reader"
+     },
+     "6": {
+      "digest": "a658e61d35f2b14459b3c2849bdd76b0ac389dab166d412d17de12672bd885c3",
+      "by": "P0 unsealed reader"
+     },
+     "8": {
+      "digest": "857f48dc5770cb53799a7f64ded7320c5b2aa3bbedcdbe93d2dd2fc2bc8ac16f",
+      "by": "P0 unsealed reader"
+     },
+     "9": {
+      "digest": "08747792916c165f99676ca5d0a484683fce15c680b39a6b46df21408e1dca34",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "0f210bb85c6438677f2504812a3d081904d4cc99faf94ae5628495ee4cf1077a",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "202": {
+      "digest": "d678e521999952aab0f2caf846eed917e9e02659ccc2ffc3c0e38174a5654598",
+      "by": "P0 unsealed reader"
+     },
+     "204": {
+      "digest": "8e110f569c5292410f836535ead79415509ba9e4e873b4f8016500b5afd02093",
+      "by": "P0 unsealed reader"
+     },
+     "205": {
+      "digest": "16f8d8fd533067627ab870e282e434c0f7041ed655562bb48cc72e89dc830a2d",
+      "by": "P0 unsealed reader"
+     },
+     "206": {
+      "digest": "89286329c64fa359de05ce7dd32172354b1c52753a2b8055dfee3e0eb7e70eac",
+      "by": "P0 unsealed reader"
+     },
+     "207": {
+      "digest": "44f8a975f76f7953f1fdaa3e81f34af8ccf226fa16ab9a327344a86e0e010e94",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "97f2ea69cd3f3f4a6103de360f91ffd79c8018de800b29fb4fe639860dda5998",
+    "by": "P0 unsealed reader",
+    "writer": "lane core-board1 writer",
+    "rows": {
+     "101": {
+      "digest": "c7c83eacd23f8de8d0ca38b6b493be55cbef5ae39307856de819324cc1c44efe",
+      "by": "P0 unsealed reader"
+     },
+     "102": {
+      "digest": "8d29bf10613178e946f17e5b93f68610b3046c75fd6db9b3cba095f9e9635273",
+      "by": "P0 unsealed reader"
+     },
+     "103": {
+      "digest": "f852b9276988dc3fb068028b2582f87b8d7704dace3d5903bb5bc9f25c692f8f",
+      "by": "P0 unsealed reader"
+     },
+     "104": {
+      "digest": "fc0c728b7516ed21ce5a2bf8080d0c3053c9beffddf1aa6447f23755688bc60b",
+      "by": "P0 unsealed reader"
      }
     }
    }
