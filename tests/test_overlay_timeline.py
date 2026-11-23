@@ -152,14 +152,13 @@ def test_the_same_tool_after_its_caption_left_is_a_new_caption() -> None:
     assert shown is not None and (shown.text, shown.serial) == ("step", 2)
 
 
-def test_a_key_released_at_once_is_kept_for_its_minimum_and_one_held_until_released() -> None:
+def test_a_key_released_at_once_is_kept_for_its_minimum_until_the_next_press() -> None:
     k = tl.Keycaps(0.4)
     k.down("Enter", 0.0)
     k.up("Enter", 0.01)
+    assert k.shown(0.2) == ("Enter",) and k.next_change(0.2) == 0.4
     k.down("LShift", 0.1)
-    assert k.shown(0.2) == ("Enter", "LShift")
-    assert k.next_change(0.2) == 0.4
-    assert k.shown(0.4) == ("LShift",) and k.next_change(0.4) is None
+    assert k.shown(0.2) == ("LShift",) and k.next_change(0.2) is None
     k.up("LShift", 5.0)
     assert k.shown(5.0) == ()
 
@@ -170,6 +169,33 @@ def test_a_button_s_mark_is_kept_for_its_minimum_like_a_key() -> None:
     k.down("LMB", 0.0)
     k.up("LMB", 0.01)
     assert k.shown(0.2) == ("LMB",) and k.next_change(0.2) == 0.4
+    assert k.shown(0.4) == ()
+
+
+def test_a_new_press_clears_the_mark_of_the_key_let_go_before_it() -> None:
+    """The caption of the next call is up while the key of the previous one still lingers: the
+    new press ends it, so the two never name different calls."""
+    k = tl.Keycaps(0.4)
+    k.down("left", 0.0)
+    k.up("left", 0.01)
+    assert k.shown(0.05) == ("left",)
+    k.down("right", 0.1)
+    assert k.shown(0.1) == ("right",)
+    assert k.next_change(0.1) is None
+
+
+def test_a_burst_shows_every_key_held_and_lets_only_the_last_one_linger() -> None:
+    """Eight keys pressed in one call are eight marks while they are held, and after they are
+    let go only the most recent is kept for its minimum: a burst does not pile up."""
+    k = tl.Keycaps(0.4)
+    names = ("f12", "f11", "end", "home", "delete", "insert", "pagedown", "pageup")
+    for name in names:
+        k.down(name, 0.0)
+    assert k.shown(0.1) == names
+    for name in names:
+        k.up(name, 0.1)
+    assert k.shown(0.2) == ("pageup",)
+    assert k.next_change(0.2) == 0.4
     assert k.shown(0.4) == ()
 
 

@@ -1,11 +1,10 @@
-"""What the overlay shows at a given moment, decided here and animated by the emulator: the calls'
-captions and the keycaps of the keys held. Time is passed in, so the rules are pure.
+"""What the overlay shows at a moment: a call's caption and the keys held, decided here and
+animated by the emulator. Time is passed in, so the rules are pure.
 
-A call is captioned the instant it begins: nothing queues it, and the next replaces it at once.
-One of the same tool joins the caption shown (`x<n>`). A caption leaves `hold_s` after its call's
-end, and knows the span a renderer fits a scroll in. A wrapper's inner calls (`perform`, `drive`)
-are captioned one by one; the wrapper never. A key released sooner than `min_s` after going down
-stays until then.
+A call is captioned when it begins: nothing queues it and the next replaces it. One of the same
+tool joins it (`x<n>`). A caption leaves `hold_s` after its call ends, and knows the span a
+renderer fits a scroll in. A wrapper's inner calls are captioned one by one; the wrapper never.
+Of the keys let go, only the most recent stays `min_s`, and a new press ends it.
 """
 
 from __future__ import annotations
@@ -151,6 +150,9 @@ class Keycaps:
         self._keys: dict[str, _Key] = {}
 
     def down(self, name: str, now: float) -> None:
+        # A new press ends the mark a key already let go kept, so a caption and its mark agree.
+        for gone in [n for n, k in self._keys.items() if k.released]:
+            del self._keys[gone]
         key = self._keys.get(name)
         if key is None or key.released:
             self._keys.pop(name, None)
@@ -162,14 +164,16 @@ class Keycaps:
         self._drop(now)
 
     def shown(self, now: float) -> tuple[str, ...]:
-        """In the order they went down."""
+        """Every key held, in order, and of those let go only the most recent for its minimum."""
         self._drop(now)
-        return tuple(self._keys)
+        let_go = [n for n, k in self._keys.items() if k.released]
+        keep = let_go[-1] if let_go else None
+        return tuple(n for n, k in self._keys.items() if not k.released or n == keep)
 
     def next_change(self, now: float) -> float | None:
         self._drop(now)
-        due = [k.down + self._min_s for k in self._keys.values() if k.released]
-        return min(due, default=None)
+        let_go = [k.down for k in self._keys.values() if k.released]
+        return max(let_go) + self._min_s if let_go else None
 
     def _drop(self, now: float) -> None:
         for name in [n for n, k in self._keys.items()
