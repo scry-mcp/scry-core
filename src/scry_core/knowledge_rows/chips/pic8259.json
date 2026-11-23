@@ -920,6 +920,22 @@
      ]
     },
     {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "115"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "145-156"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "157"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "168-171"
+    },
+    {
      "ref": "dosbox-x:src/hardware/pic.cpp",
      "function": "write_data"
     }
@@ -1120,6 +1136,26 @@
      ]
     },
     {
+     "n": "102",
+     "on": "bit 3",
+     "of": "mame",
+     "vs": "differs",
+     "row": "9",
+     "text": "MAME stores the buffered mode bit of ICW4 in m_mode with the master or slave bit, and takes the role from the SP input.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "369",
+       "sha": "d35c85e1f454f62b86162e758f77d27d47c55876839f190d6685ac143a9d08f4"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "455",
+       "sha": "c0b449a8332b6a74a6f224ccc95f0857ba3bc40d6cf1feda40e08185dc2db7f3"
+      }
+     ]
+    },
+    {
      "n": "103",
      "on": "bit 2",
      "of": "mame",
@@ -1279,13 +1315,43 @@
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "157",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "171",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "344",
      "as": "agrees",
      "row": "4"
     },
     {
      "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "115",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
      "lines": "360",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "145-156",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "168-171",
      "as": "agrees",
      "row": "6"
     },
@@ -1494,12 +1560,6 @@
      "ref": "dosbox-x:src/hardware/pic.cpp",
      "lines": "316",
      "as": "structure"
-    },
-    {
-     "ref": "mame:src/devices/machine/pic8259.cpp",
-     "lines": "369",
-     "as": "agrees",
-     "row": "9"
     }
    ]
   }
