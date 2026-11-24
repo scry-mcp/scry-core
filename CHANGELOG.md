@@ -4,6 +4,11 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- A keycap stays long enough to be read and then fades. `Look` carries the mark's minimum time
+  and fade (`keycap_min_s`, `keycap_fade_s`). `Payload` carries each mark's alpha
+  (`key_alphas`), so a drawer draws the fade the timeline decided. A clip draws only a press
+  its own moment holds. A demo may name an input field for a person (`Style.key_names`).
+
 - A server answers what a number is called on its machine, with the source each answer was
   checked against. `knowledge_tool.register` adds the `knowledge_find` tool, and a
   `knowledge.Base` loads the server's dictionaries (`scry-knowledge/1` JSON files in

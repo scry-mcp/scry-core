@@ -52,7 +52,8 @@ class Look:
     keycap_rgb: int = 0x202020
     keycap_text_rgb: int = 0xFFFFFF
     keycap_alpha: float = 0.8
-    keycap_min_s: float = 0.4
+    keycap_min_s: float = 1.2
+    keycap_fade_s: float = 0.4
     record_rgb: int = 0xFF3B30
     record_blink_s: float = 1.0
     font_share: float = 1 / 24
@@ -123,6 +124,8 @@ class Payload:
     paused: bool = False
     caption: tl.Caption | None = None
     keys: tuple[str, ...] = ()
+    #: Per key in `keys`, its alpha (`overlay_timeline.Keycaps.marks`).
+    key_alphas: tuple[float, ...] = ()
     pointer: Pointer | None = None
     layers: tuple[ov.Layer, ...] = ("edge",)
     place: ov.Place = "bottom"
@@ -178,7 +181,7 @@ class Presence:
         # The band never moves: an overlay asking for `auto` gets the bottom edge.
         self._place: ov.Place = "top" if overlay.place == "top" else "bottom"
         self._captions = tl.Captions(look.band_tints, look.caption_hold_s)
-        self._keys = tl.Keycaps(look.keycap_min_s)
+        self._keys = tl.Keycaps(look.keycap_min_s, look.keycap_fade_s)
         self._pointer: Pointer | None = None
         self._paused = False
         self._recording: frozenset[Kind] = frozenset()
@@ -251,7 +254,8 @@ class Presence:
             if down:
                 self._keys.down(mark, now)
             else:
-                self._keys.up(mark, now)
+                # A click is momentary: it marks no longer than the button is held.
+                self._keys.up(mark, now, linger=False)
             if self._pointer is not None:
                 rest = tuple(b for b in self._pointer.buttons if b != name)
                 self._pointer = Pointer(self._pointer.x, self._pointer.y,
@@ -319,10 +323,12 @@ class Presence:
     def _payload(self, now: float) -> Payload:
         """Under the condition."""
         asked = self._asked
+        keys = self._keys.shown(now) if "keys" in asked else ()
         return Payload(
             paused=self._paused and "pause" in asked,
             caption=self._captions.shown(now),
-            keys=self._keys.shown(now) if "keys" in asked else (),
+            keys=keys,
+            key_alphas=self._keys.alphas(now) if keys else (),
             pointer=self._pointer if "pointer" in asked else None,
             recording=self._recording_word() if "record" in asked else "none",
             layers=asked, place=self._place)

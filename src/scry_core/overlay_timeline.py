@@ -4,7 +4,8 @@ animated by the emulator. Time is passed in, so the rules are pure.
 A call is captioned when it begins: nothing queues it and the next replaces it. One of the same
 tool joins it (`x<n>`). A caption leaves `hold_s` after its call ends, and knows the span a
 renderer fits a scroll in. A wrapper's inner calls are captioned one by one; the wrapper never.
-Of the keys let go, only the most recent stays `min_s`, and a new press ends it.
+Of the keys let go, only the most recent stays `min_s` after its press, fading over `fade_s`;
+a new press ends it.
 """
 
 from __future__ import annotations
@@ -145,12 +146,17 @@ class _Key:
 #: The marks as `snapshot` hands them back: opaque to everything but `restore`.
 KeyState = dict[str, Any]
 
+#: The steps a fading mark's alpha is quantised to.
+FADE_LEVELS = 8
+
 
 class Keycaps:
-    """The keys or fields drawn as held: down, or let go less than `min_s` after the press."""
+    """Keys drawn as held, or let go less than `min_s` after the press, fading over `fade_s`."""
 
-    def __init__(self, min_s: float) -> None:
+    def __init__(self, min_s: float, fade_s: float = 0.0) -> None:
         self._min_s = min_s
+        # A fade never outlasts the stay it is the tail of.
+        self._fade_s = max(0.0, min(fade_s, min_s))
         self._keys: dict[str, _Key] = {}
 
     def down(self, name: str, now: float) -> None:
@@ -162,9 +168,12 @@ class Keycaps:
             self._keys.pop(name, None)
             self._keys[name] = _Key(now)
 
-    def up(self, name: str, now: float) -> None:
+    def up(self, name: str, now: float, linger: bool = True) -> None:
+        """Let the key go: a key lingers its minimum, a click does not."""
         key = self._keys.get(name)
-        if key is not None:
+        if key is not None and not linger:
+            del self._keys[name]
+        elif key is not None:
             self._keys[name] = replace(key, released_at=now)
             # Only the last key let go lingers.
             for gone in [n for n, k in self._keys.items()
@@ -180,19 +189,46 @@ class Keycaps:
         """The marks `snapshot` handed back."""
         self._keys = dict(state)
 
-    def shown(self, now: float) -> tuple[str, ...]:
-        """Every key held, in order, and of those let go only the last released."""
+    def marks(self, now: float) -> tuple[tuple[str, float], ...]:
         self._drop(now)
         keep = self._kept()
-        return tuple(n for n, k in self._keys.items()
+        return tuple((n, self.alpha(n, now)) for n, k in self._keys.items()
                      if k.released_at is None or n == keep)
 
+    def shown(self, now: float) -> tuple[str, ...]:
+        """Every key drawn at `now`, in order, and of those let go only the last released."""
+        return tuple(name for name, _ in self.marks(now))
+
+    def alphas(self, now: float) -> tuple[float, ...]:
+        return tuple(alpha for _, alpha in self.marks(now))
+
+    def alpha(self, name: str, now: float) -> float:
+        """`name`'s alpha at `now`: 1 while held, its fade once let go, 0 when gone."""
+        key = self._keys.get(name)
+        if key is None:
+            return 0.0
+        if key.released_at is None or self._fade_s <= 0:
+            return 1.0
+        return max(0.0, min(1.0, (self._end(key) - now) / self._fade_s))
+
     def next_change(self, now: float) -> float | None:
+        """When the drawn marks next change, or None."""
         self._drop(now)
         keep = self._kept()
         if keep is None:
             return None
-        return self._keys[keep].down + self._min_s
+        end = self._end(self._keys[keep])
+        start = end - self._fade_s
+        if now < start:
+            return start
+        if self._fade_s <= 0:
+            return end
+        return min(end, now + self._fade_s / FADE_LEVELS)
+
+    def _end(self, key: _Key) -> float:
+        """When a mark let go is gone."""
+        assert key.released_at is not None
+        return max(key.down + self._min_s, key.released_at + self._fade_s)
 
     def _kept(self) -> str | None:
         """The key let go last; a tie goes to the last pressed."""
@@ -206,5 +242,5 @@ class Keycaps:
 
     def _drop(self, now: float) -> None:
         for name in [n for n, k in self._keys.items()
-                     if k.released_at is not None and now - k.down >= self._min_s]:
+                     if k.released_at is not None and now >= self._end(k)]:
             del self._keys[name]

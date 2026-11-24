@@ -10,6 +10,12 @@ a slight curve and an overshoot that settles before it arrives. A button's press
 a brief squeeze of the pointer on its frame. A recording holds only frames the machine ran, so
 no frame of a clip is one the session held stopped, and the pause layer has nothing to mark.
 
+A key's mark lasts the look's `keycap_min_s` after its press, fading over its last
+`keycap_fade_s`. The clip draws only a press the moment itself holds, with one frame's worth of
+lead-in; a key held from before its first frame is not drawn, because the moment does not show
+the call that pressed it. A demo may name a key for a person (`Style.key_names`), which the clip
+draws; the live overlay keeps the emulator's own field name.
+
 The clock is the clip's own: an emulator frame is `1 / rate` seconds, and a call is captioned
 from the frame it began at. A call that ran no frame (a read, a stop) is captioned at the frame
 it was made on, so the captions' repeat and hold (`overlay_timeline.Captions`) are reckoned in
@@ -49,6 +55,8 @@ from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
 
 #: The seconds a pointer takes over the last stretch to a new position; before that it waits.
 MOVE_S = 0.45
+#: The seconds of a hold the clip lets a press fall before the moment's first frame.
+KEY_LEAD_IN_S = 1 / 25
 #: How far the path bows off the straight line, as a share of its length.
 CURVE = 0.08
 #: easeOutBack's overshoot; 0 is none.
@@ -91,6 +99,8 @@ class Style:
     layers: tuple[ov.Layer, ...] = ov.OVERLAY.asked()
     place: placement.Band = "bottom"
     look: Look = LOOK
+    #: What a demo calls each key or field to a person; one it does not name keeps its own.
+    key_names: Mapping[str, str] = field(default_factory=dict)
     sine: bool = False
     raster: bool = False
     zooms: tuple[Zoom, ...] = ()
@@ -130,8 +140,9 @@ class _Plan:
     """What the clip's timeline says, in the clip's seconds."""
 
     calls: list[_Call] = field(default_factory=list)
-    #: Keys and pointer buttons, as the top row draws them, in the order they went down or up.
-    marks: list[tuple[float, str, bool]] = field(default_factory=list)
+    #: Keys and pointer buttons, as the top row draws them, in the order they went down or up;
+    #: the last flag is the press being momentary (a click stays no longer than it lasts).
+    marks: list[tuple[float, str, bool, bool]] = field(default_factory=list)
     points: list[tuple[float, float, float]] = field(default_factory=list)
     presses: list[tuple[float, float, float]] = field(default_factory=list)
 
@@ -197,13 +208,17 @@ def _plan(document: Mapping[str, Any], clip: Clip) -> _Plan:
                                 at(began), at(ended), call["tool"] in CAMERA_TOOLS))
         for event in call["events"]:
             when = at(event["frame"])
+            if event["kind"] in ("key", "button") and when < -KEY_LEAD_IN_S:
+                # A press from before the moment is not this moment's: the clip shows only
+                # what the moment holds, never a mark carried in from an earlier call.
+                continue
             if event["kind"] == "key":
-                plan.marks.append((when, event["name"], event["down"]))
+                plan.marks.append((when, event["name"], event["down"], False))
             elif event["kind"] == "pointer":
                 x, y = _shown(clip.box, clip.pictures[0], event["x"], event["y"])
                 plan.points = [p for p in plan.points if p[0] < when] + [(when, x, y)]
             elif event["kind"] == "button":
-                plan.marks.append((when, mark_of(event["name"]), event["down"]))
+                plan.marks.append((when, mark_of(event["name"]), event["down"], True))
                 if event["down"]:
                     pressed.append(when)
     for when in pressed:
@@ -280,7 +295,7 @@ class _Painter:
         self.font = _Font(max(1, round(first.height * self.look.font_share / _Font(1).height)))
         self.edge = _edge_mask(*self.size, self.look)
         self.captions = tl.Captions(self.look.band_tints, self.look.caption_hold_s)
-        self.keycaps = tl.Keycaps(self.look.keycap_min_s)
+        self.keycaps = tl.Keycaps(self.look.keycap_min_s, self.look.keycap_fade_s)
         self.fed_calls, self.fed_marks, self.ended = 0, 0, 0
         self.pending_ends: list[float] = []
         self.band: placement.Band = style.place
@@ -323,9 +338,13 @@ class _Painter:
                                         text=call.text, span=call.end - call.begin)
                 self.pending_ends.append(call.end)
         while self.fed_marks < len(self.plan.marks) and self.plan.marks[self.fed_marks][0] <= t:
-            when, name, down = self.plan.marks[self.fed_marks]
+            when, name, down, momentary = self.plan.marks[self.fed_marks]
             self.fed_marks += 1
-            (self.keycaps.down if down else self.keycaps.up)(name, when)
+            name = self.style.key_names.get(name, name)
+            if down:
+                self.keycaps.down(name, when)
+            else:
+                self.keycaps.up(name, when, linger=not momentary)
 
     def _acting(self, t: float) -> float:
         """The edge's alpha: bright while a call that is not a read runs, fading back after."""
@@ -431,20 +450,22 @@ class _Painter:
         return out
 
     def _keycaps(self, art: Image.Image, t: float) -> None:
-        shown = self.keycaps.shown(t)
-        if not shown:
+        marks = dict(self.keycaps.marks(t))
+        if not marks:
             return
-        boxes = self._keycap_boxes(list(shown))
+        boxes = self._keycap_boxes(list(marks))
         if not boxes:
             return
         pad = self.font.scale * 2
         caps = Image.new("RGBA", self.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(caps)
         for name, (x0, y0, x1, y1) in boxes:
+            alpha = marks[name]
             draw.rounded_rectangle((x0, y0, x1, y1), radius=pad * 2,
-                                   fill=_rgba(self.look.keycap_rgb, self.look.keycap_alpha),
-                                   outline=_rgba(self.look.keycap_text_rgb, 0.5), width=1)
-            _stamp(caps, self.font.mask(name), _rgba(self.look.keycap_text_rgb, 1),
+                                   fill=_rgba(self.look.keycap_rgb,
+                                              self.look.keycap_alpha * alpha),
+                                   outline=_rgba(self.look.keycap_text_rgb, 0.5 * alpha), width=1)
+            _stamp(caps, self.font.mask(name), _rgba(self.look.keycap_text_rgb, alpha),
                    (x0 + pad, y0 + pad))
         art.alpha_composite(caps)
 

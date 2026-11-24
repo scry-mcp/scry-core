@@ -8,8 +8,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from scry_core import abbreviation as ab
 from scry_core import overlay_timeline as tl
+from scry_core import presence
 from scry_core.naming import Named
 
 TINTS = tl.Tints(write=0xFF8C00, read=0x5AC8FA, refused=0xFF453A)
@@ -165,6 +168,34 @@ def test_a_key_released_at_once_is_kept_for_its_minimum_until_the_next_press() -
     assert k.shown(5.0) == ()
 
 
+def test_a_mark_let_go_fades_over_the_tail_of_its_stay_and_is_gone_at_its_end() -> None:
+    k = tl.Keycaps(1.0, 0.4)
+    k.down("Enter", 0.0)
+    k.up("Enter", 0.01)
+    assert k.marks(0.5) == (("Enter", 1.0),), "the whole mark until the fade begins"
+    assert k.marks(0.8)[0][0] == "Enter" and k.marks(0.8)[0][1] == pytest.approx(0.5)
+    assert k.next_change(0.8) == 0.8 + 0.4 / tl.FADE_LEVELS
+    assert k.marks(1.0) == (), "the mark is gone when its stay ends"
+
+
+def test_a_new_press_ends_a_mark_that_is_still_fading() -> None:
+    k = tl.Keycaps(1.0, 0.4)
+    k.down("a", 0.0)
+    k.up("a", 0.01)
+    assert k.marks(0.9)[0][1] < 1.0, "the mark is fading"
+    k.down("b", 0.9)
+    assert k.shown(0.9) == ("b",)
+
+
+def test_a_key_held_past_its_minimum_still_fades_after_it_is_let_go() -> None:
+    k = tl.Keycaps(0.4, 0.4)
+    k.down("A", 0.0)
+    k.up("A", 2.0)
+    assert k.shown(1.0) == ("A",), "held, however long"
+    assert k.alphas(2.2)[0] == pytest.approx(0.5)
+    assert k.shown(2.4) == ()
+
+
 def test_a_button_s_mark_is_kept_for_its_minimum_like_a_key() -> None:
     """A click's mark is up for `min_s` even when the button was released sooner, so it is seen."""
     k = tl.Keycaps(0.4)
@@ -282,3 +313,15 @@ def test_the_count_a_burst_adds_never_pushes_a_caption_past_the_wire_s_limit() -
     text = _text(c, 0.5)
     assert text is not None and text.endswith(" x2") and \
         len(text) == ab.MAX_BYTES and text[:-3].endswith(ab.CUT)
+
+
+def test_a_click_s_mark_goes_at_its_release_where_a_key_s_lingers() -> None:
+    """A click is not a held key: its mark is gone the frame it is let go, while a key keeps the
+    look's minimum, so a burst of clicks cannot leave the button lit."""
+    caps = tl.Keycaps(presence.LOOK.keycap_min_s)
+    caps.down("LMB", 0.0)
+    caps.up("LMB", 0.1, linger=False)
+    assert caps.snapshot() == {}
+    caps.down("right", 0.0)
+    caps.up("right", 0.1)
+    assert set(caps.snapshot()) == {"right"}

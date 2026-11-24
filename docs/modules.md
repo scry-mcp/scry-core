@@ -104,7 +104,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.window_capture` | What the host shows of an emulator's window: captured, and two captures compared. |
 | `scry_core.presence` | The coloured border both emulators draw while a session holds the window, the layers drawn over it (`Payload`), the keys, mouse buttons, pointer and recordings a server reports, and the tints and timings (`Look`). |
 | `scry_core.overlay` | `start`'s `overlay` argument, which layers presence draws, and the `overlay` field of `start`'s and `status`'s replies. |
-| `scry_core.overlay_timeline` | What the overlay shows at a moment: a call captioned as it begins with nothing queued, a burst joined with a count, a wrapper's steps captioned one by one, its tint, its span and exit, and a keycap or a mouse button's mark kept long enough to be seen. |
+| `scry_core.overlay_timeline` | What the overlay shows at a moment: a call captioned as it begins with nothing queued, a burst joined with a count, a wrapper's steps captioned one by one, its tint, its span and exit, and a keycap or a mouse button's mark kept long enough to be seen, its last moments fading out. |
 | `scry_core.abbreviation` | A call as its caption reads: the tool as a call, `tool(name=value, ...)`, each value cut short, a path by its last name and never a home folder's, a named value as `name (number)`, the whole at most 160 bytes. |
 | `scry_core.placement` | Whether captions go to the top or the bottom of the picture, and `placement_vectors.txt`, the cases each emulator's drawer replays. |
 | `scry_core.app_launch` | An emulator launched as a macOS `.app` through `open`, and the process id found for it. |
@@ -140,7 +140,7 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.aspect` | The shape a game's picture is shown in: the whole frame at 4:3, one function for the loop and the still. |
 | `scry_core.committed_run` | A demo's committed run read back as its steps, and the timeline its steps' `events` name for it, standing in for an emulator in a server's tests. |
 | `scry_core.timeline` | What a demo run did, call by call, in the emulator's frames: the file the demo decorator reads. |
-| `scry_core.decorate` | A demo's clip with the presence layers drawn in from its run's timeline, richer than live; `python -m scry_core.decorate` makes one decorated loop. The only module that needs the `decorate` extra (Pillow and numpy). |
+| `scry_core.decorate` | A demo's clip with the presence layers drawn in from its run's timeline, richer than live. A keycap fades as the live one does. A demo may name an input field for a person, where the live overlay keeps the emulator's own name. `python -m scry_core.decorate` makes one decorated loop. The only module that needs the `decorate` extra (Pillow and numpy). |
 | `scry_core.install` | The table of MCP clients and the block of a server's README that says how to add it to each. |
 | `scry_core.game_demo` | One game's demo written once for both servers, with a `Binding` for what each emulator does differently. |
 | `scry_core.games` | The scripts of the games both servers run, one module per game. |

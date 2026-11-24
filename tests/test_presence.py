@@ -568,6 +568,21 @@ def test_a_key_tapped_on_an_idle_session_leaves_on_its_own() -> None:
     p.close()
 
 
+def test_a_key_let_go_is_delivered_fading_before_it_leaves() -> None:
+    """The writer wakes on its own through the fade, so the live drawer paints a mark that
+    leaves instead of one that vanishes."""
+    a = _Adapter()
+    p = _open(a, look=presence.Look(keycap_min_s=0.3, keycap_fade_s=0.2))
+    p.key("Enter", True)
+    _until(a, lambda pl: pl.keys == ("Enter",) and pl.key_alphas == (1.0,))
+    p.key("Enter", False)
+    _until(a, lambda pl: pl.keys == ("Enter",) and 0 < pl.key_alphas[0] < 1)
+    _until(a, lambda pl: pl.keys == ())
+    levels = {pl.key_alphas[0] for pl in a.payloads if pl.keys == ("Enter",)}
+    assert len(levels) > 2, "the mark stepped through its fade, not one jump to nothing"
+    p.close()
+
+
 def test_a_layer_not_asked_is_never_delivered() -> None:
     a = _Adapter()
     p = _open(a, asked=overlay.Overlay(calls=False, keys=False, pointer=False, pause=False,

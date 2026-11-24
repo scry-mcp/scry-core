@@ -82,6 +82,48 @@ def test_keycaps_sit_in_the_corner_the_caption_band_leaves_free_and_never_overla
                 assert apart, (place, a, b)
 
 
+def test_a_press_from_before_the_moment_is_not_drawn_in_it() -> None:
+    """A clip draws the input its own moment holds, never a mark carried in from an earlier
+    call: the keycap row is empty on its first frame."""
+    made = timeline.Builder("t")
+    made.add("boot", "start", {}, "ok", (None, 0))
+    made.add("hold", "send_keys", {}, "ok", (0, 60),
+             [timeline.key("A", True, 10), timeline.key("A", False, 20)])
+    made.add("later", "send_keys", {}, "ok", (60, 90), [])
+    run, clip = timeline.loads(made.dumps()), _clip(first=60, frames=30)
+    assert dc._plan(run, clip).marks == []
+    drawn = dc.decorate(run, clip, dc.Style(layers=("keys",)))
+    edge = dc.decorate(run, clip, dc.Style(layers=()))
+    assert drawn[0].rgb == edge[0].rgb, "the first frame opens with a mark"
+
+
+def test_a_demo_names_a_key_for_a_person_and_the_clip_draws_that_name() -> None:
+    """The live overlay keeps the emulator's field name; the clip may draw the demo's."""
+    made = timeline.Builder("t")
+    made.add("boot", "start", {}, "ok", (None, 100))
+    made.add("coin", "input", {}, "ok", (100, 110), [timeline.key("Coin 1", True, 101)])
+    clip = _clip()
+    painter = dc._Painter(clip, dc.Style(layers=("keys",), key_names={"Coin 1": "coin"}),
+                          dc._plan(timeline.loads(made.dumps()), clip))
+    painter._feed(0.05)
+    assert painter.keycaps.shown(0.05) == ("coin",)
+
+
+def test_a_key_s_mark_lasts_the_look_s_minimum_and_fades_out() -> None:
+    made = timeline.Builder("t")
+    made.add("boot", "start", {}, "ok", (None, 100))
+    made.add("hold", "send_keys", {}, "ok", (100, 200),
+             [timeline.key("a", True, 100), timeline.key("a", False, 101)])
+    run, clip = timeline.loads(made.dumps()), _clip(frames=120)
+    painter = dc._Painter(clip, dc.Style(layers=("keys",)), dc._plan(run, clip))
+    painter._feed(0.05)
+    look = presence.LOOK
+    at = look.keycap_min_s - 0.01
+    assert painter.keycaps.shown(at) == ("a",)
+    assert painter.keycaps.alphas(at)[0] < 1.0, "the mark vanished instead of fading"
+    assert painter.keycaps.shown(look.keycap_min_s) == ()
+
+
 def test_a_button_down_at_a_frame_is_a_mark_on_the_top_row_from_that_frame() -> None:
     """From the frame it went down on, and never inside the band the captions take."""
     made = timeline.Builder("b")
@@ -147,7 +189,7 @@ def test_the_mark_the_clip_draws_is_the_text_the_live_payload_carries() -> None:
     with held._cv:
         live = held._payload(time.monotonic()).keys
     assert live == ("LMB",)
-    assert [name for _, name, _ in plan.marks] == list(live)
+    assert [name for _, name, _, _ in plan.marks] == list(live)
 
 
 def test_a_clip_decorated_twice_is_the_same_pixels() -> None:
