@@ -37,7 +37,8 @@ def parsed(raw: dict[str, Any], kind: str = "port") -> tuple[fmt.Entry | None, l
     ("memory", "0040:00ab", "0040:00AB".upper()), ("memory", "0x9000", "0x9000"),
     ("memory", "0x9000..0x9fff", "0x9000..0x9FFF"), ("input", ":IN1/Coin 1", ":IN1/Coin 1"),
     ("register", "0x20..0x35", "0x20..0x35"), ("register", "0x2a..0x2B", "0x2A..0x2B"),
-    ("command", "0xe0..0xe3", "0xE0..0xE3"), ("device", "vga-seq", "vga-seq")])
+    ("command", "0xe0..0xe3", "0xE0..0xE3"), ("device", "vga-seq", "vga-seq"),
+    ("port", "0x20..0x3f", "0x20..0x3F")])
 def test_a_key_has_one_spelling(kind: str, typed: str, canonical: str) -> None:
     assert keys.canonical(kind, typed) == canonical
 
@@ -49,7 +50,7 @@ def test_a_key_has_one_spelling(kind: str, typed: str, canonical: str) -> None:
     ("nothing", "1"), ("port", "0x" + "F" * 13), ("input", "x" * 65), ("input", "a\x00b"),
     ("irq", "9" * 20), ("irq", str(2**48)), ("error", "9" * 5000), ("vector", "9" * 17),
     ("register", "0x35..0x20"), ("register", "0x20.."), ("command", "..0x20"),
-    ("register", "0x20..0x35..0x40"), ("port", "0x10..0x20"), ("vector", "0x1..0x2")])
+    ("register", "0x20..0x35..0x40"), ("vector", "0x1..0x2")])
 def test_a_key_that_is_none_of_its_kind_is_refused(kind: str, typed: str) -> None:
     with pytest.raises(KeyFault):
         keys.canonical(kind, typed)
@@ -62,6 +63,7 @@ def test_a_key_covers_the_numbers_it_stands_for() -> None:
     assert keys.span("input", "space") == keys.Span(None, None)
     assert keys.span("register", "0x20..0x35") == keys.Span(0x20, 0x35)
     assert keys.span("command", "0xE0..0xE3") == keys.Span(0xE0, 0xE3)
+    assert keys.span("port", "0x20..0x3F") == keys.Span(0x20, 0x3F)
     assert keys.span("vector", "2").lo == 2 and keys.span("vector", "0x02").lo == 2
 
 
@@ -240,6 +242,7 @@ def sample(tmp_path: Path) -> knowledge.Base:
                  behaviour="Write the entry, then three values for red, green and blue."),
         an_entry("0x3C9", "DAC data", device="vga-dac"),
         an_entry("0x21", "PIC mask", description="The mask of the interrupt controller."),
+        an_entry("0x40..0x43", "8253 timer counters", device="pit8253"),
         an_entry("0x226", "reset", access="write", device="sb"),
         an_entry("0x226", "reset status", access="read", device="sb")])
     write_dictionary(tmp_path, "calls", "call", "ibm-pc", [
@@ -292,6 +295,7 @@ def test_a_number_is_exact_or_a_range_and_a_range_overlaps(base: knowledge.Base)
     assert ids(base.search("port", "0x3c8")) == ["ibm-pc:port:0x3C8"]
     assert ids(base.search("port", "0x3C4..0x3C9")) == [
         "ibm-pc:port:0x3C4", "ibm-pc:port:0x3C5", "ibm-pc:port:0x3C8", "ibm-pc:port:0x3C9"]
+    assert ids(base.search("port", "0x41")) == ["ibm-pc:port:0x40..0x43"]
     assert ids(base.search("memory", "0x449")) == ["ibm-pc:memory:0x400..0x4FF",
                                                    "ibm-pc:memory:0040:0049"]
     assert "ibm-pc:memory:0040:0049" in ids(base.search("memory", "0040:0049", scopes=("ibm-pc",)))
@@ -390,7 +394,7 @@ def test_a_devices_own_entry_leads_even_where_its_scope_sorts_last(tmp_path: Pat
 
 def test_nothing_found_says_how_much_was_searched_and_what_is_near(base: knowledge.Base) -> None:
     found = base.search("port", "0x3C6", scopes=("ibm-pc",))
-    assert found.total == 0 and found.examined == 7
+    assert found.total == 0 and found.examined == 8
     assert ids(knowledge.Found(entries=found.nearest)) == ["ibm-pc:port:0x3C5",
                                                            "ibm-pc:port:0x3C8"]
     assert [e.name for e in base.search(words="sequel").nearest] == [
@@ -402,8 +406,8 @@ def test_nothing_found_says_how_much_was_searched_and_what_is_near(base: knowled
 
 def test_a_search_lists_the_first_limit_and_says_it_cut(base: knowledge.Base) -> None:
     found = base.search("port", limit=3)
-    assert (len(found.entries), found.total, found.truncated) == (3, 7, True)
-    assert not base.search("port", limit=7).truncated
+    assert (len(found.entries), found.total, found.truncated) == (3, 8, True)
+    assert not base.search("port", limit=8).truncated
 
 
 def test_a_relation_leads_from_a_thing_to_its_hardware(base: knowledge.Base) -> None:
