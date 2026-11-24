@@ -32,9 +32,9 @@ Recording = Literal["none", "video", "audio", "both"]
 class Look:
     """Colours are 0xRRGGBB; alphas 0 to 1. A caption is tinted by its call: a call that can
     change the machine `write_rgb`, a reader `read_rgb`, one that did not answer `ok`
-    `refused_rgb`. A caption wider than its band scrolls at `scroll_cps` characters a second.
-    The record mark is `record_rgb`, blinking every `record_blink_s` s. Text is `font_share`
-    of the picture's height."""
+    `refused_rgb`. A caption too wide for its band is cut with `..`. The record mark is
+    `record_rgb`, blinking every `record_blink_s` s. Text is `font_share` of the picture's
+    height."""
 
     rgb: int = 0xFF8C00
     edge: float = 0.025
@@ -45,10 +45,9 @@ class Look:
     read_rgb: int = 0x5AC8FA
     refused_rgb: int = 0xFF453A
     caption_text_rgb: int = 0xFFFFFF
-    caption_alpha: float = 0.7
+    caption_alpha: float = 0.75
     band_share: float = 0.6
     caption_hold_s: float = 3.0
-    scroll_cps: float = 12.0
     keycap_rgb: int = 0x202020
     keycap_text_rgb: int = 0xFFFFFF
     keycap_alpha: float = 0.8
@@ -63,7 +62,7 @@ class Look:
         return self.acting_alpha * self.held_share
 
     def band_rgb(self, rgb: int) -> int:
-        """`rgb` as the opaque band behind a caption, darkened by `band_share`."""
+        """`rgb` as the band behind a caption, darkened by `band_share`."""
         share = self.band_share
         return (round(((rgb >> 16) & 0xFF) * share) << 16
                 | round(((rgb >> 8) & 0xFF) * share) << 8

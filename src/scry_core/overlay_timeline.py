@@ -2,8 +2,8 @@
 animated by the emulator. Time is passed in, so the rules are pure.
 
 A call is captioned when it begins: nothing queues it and the next replaces it. One of the same
-tool joins it (`x<n>`). A caption leaves `hold_s` after its call ends, and knows the span a
-renderer fits a scroll in. A wrapper's inner calls are captioned one by one; the wrapper never.
+tool joins it (`x<n>`). A caption leaves `hold_s` after its call ends. A wrapper's inner calls
+are captioned one by one; the wrapper never.
 Of the keys let go, only the most recent stays `min_s` after its press, fading over `fade_s`;
 a new press ends it.
 """
@@ -35,14 +35,12 @@ class Tints:
 @dataclass(frozen=True)
 class Caption:
     """One caption as drawn. `serial` grows with each new caption, so a renderer can tell a new
-    one from the same text again; a call joining it keeps it. `span` is the seconds its call ran
-    for, when known."""
+    one from the same text again; a call joining it keeps it."""
 
     text: str
     kind: Kind
     rgb: int
     serial: int
-    span: float | None = None
 
 
 @dataclass
@@ -51,21 +49,13 @@ class _Entry:
     text: str
     kind: Kind
     repeats: int = 1
-    up: float = 0.0
     ended: float | None = None
     serial: int = 0
-    span: float | None = None
 
     def caption(self, tints: Tints) -> Caption:
         suffix = f" x{self.repeats}" if self.repeats > 1 else ""
         text = abbreviation.fit(self.text, abbreviation.MAX_BYTES - len(suffix)) + suffix
-        return Caption(text, self.kind, tints.of(self.kind), self.serial, self._span())
-
-    def _span(self) -> float | None:
-        """What its first call was told, or what it took from going up to its call's end."""
-        if self.span is not None:
-            return self.span
-        return None if self.ended is None else max(0.0, self.ended - self.up)
+        return Caption(text, self.kind, tints.of(self.kind), self.serial)
 
 
 class Captions:
@@ -81,12 +71,10 @@ class Captions:
 
     def began(self, tool: str, given: Mapping[str, Any], read_only: bool, nested: bool,
               now: float, text: str | None = None,
-              named: Mapping[str, Named] | None = None,
-              span: float | None = None) -> None:
+              named: Mapping[str, Named] | None = None) -> None:
         """`text` is the caption already made, as a demo's timeline holds it; else `given`'s,
-        with what the call's values are `named`. `span` is the seconds the call runs for, when
-        known. A `nested` call is a step of a wrapper: captioned like any other, and what the
-        wrapper is shown as."""
+        with what the call's values are `named`. A `nested` call is a step of a wrapper:
+        captioned like any other, and what the wrapper is shown as."""
         self._advance(now)
         if nested and any(self._shown is entry for entry in self._open):
             # A wrapper: what it ran is shown, never it.
@@ -97,13 +85,11 @@ class Captions:
         entry = joined if joined is not None else _Entry(tool, text, kind)
         entry.text, entry.kind = text, kind
         entry.ended = None
-        if span is not None:
-            entry.span = span + (now - entry.up) if joined is not None else span
         self._open.append(entry)
         if joined is not None:
             joined.repeats += 1
             return
-        self._up(entry, now)
+        self._up(entry)
 
     def ended(self, refused: bool, now: float) -> None:
         if not self._open:
@@ -126,9 +112,9 @@ class Captions:
             return None
         return shown.ended + self._hold_s
 
-    def _up(self, entry: _Entry, now: float) -> None:
+    def _up(self, entry: _Entry) -> None:
         self._serial += 1
-        entry.up, entry.serial = now, self._serial
+        entry.serial = self._serial
         self._shown = entry
 
     def _advance(self, now: float) -> None:

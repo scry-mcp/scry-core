@@ -1,8 +1,8 @@
 """`scry_core.overlay_timeline`: a call captioned at the instant it begins with nothing queued, a
 later call replacing it at once, one of the same tool joining it (`x<n>`) while it is up, a
-call's inner calls captioned one by one and the wrapper never, the span a renderer fits a scroll
-in, the tint by kind and outcome, the exit after the hold, and a keycap or a button's mark kept
-for its minimum time; all with time passed in."""
+call's inner calls captioned one by one and the wrapper never, the tint by kind and outcome, the
+exit after the hold, and a keycap or a button's mark kept for its minimum time; all with time
+passed in."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def test_a_call_is_captioned_at_once_and_tinted_by_its_kind() -> None:
     assert shown == tl.Caption("run_for(seconds=2)", "write", TINTS.write, 1)
     c.ended(False, 0.5)
     _call(c, "registers", 2.0, read_only=True)
-    assert c.shown(2.0) == tl.Caption("registers()", "read", TINTS.read, 2, 0.0)
+    assert c.shown(2.0) == tl.Caption("registers()", "read", TINTS.read, 2)
 
 
 def test_a_caption_made_before_is_shown_as_made_and_its_burst_still_joins() -> None:
@@ -55,7 +55,7 @@ def test_a_call_that_did_not_answer_ok_turns_its_caption_refused() -> None:
     c = _captions()
     _call(c, "write", 0.0, refused=True, ref="0x10", data_hex="00")
     assert c.shown(0.1) == tl.Caption("write(ref=0x10, data_hex=00)", "refused",
-                                       TINTS.refused, 1, 0.0)
+                                       TINTS.refused, 1)
 
 
 def test_a_new_call_replaces_the_shown_caption_at_once_and_nothing_waits() -> None:
@@ -119,21 +119,6 @@ def test_a_nested_call_that_was_refused_tints_its_own_caption() -> None:
     c.ended(True, 0.1)
     shown = c.shown(0.1)
     assert shown is not None and shown.kind == "refused"
-
-
-def test_a_caption_carries_the_span_of_its_call_for_a_scroll_to_fit_in() -> None:
-    c = _captions()
-    c.began("run_for", {"seconds": 2}, False, False, 0.0, span=2.0)
-    c.ended(False, 2.0)
-    shown = c.shown(2.0)
-    assert shown is not None and shown.span == 2.0
-    # A caller that knows no span gets what the call has taken so far, and none while it runs.
-    c.began("status", {}, True, False, 3.0)
-    shown = c.shown(3.0)
-    assert shown is not None and shown.span is None, "a call in flight has no span yet"
-    c.ended(False, 3.5)
-    shown = c.shown(3.5)
-    assert shown is not None and shown.span == 0.5
 
 
 def test_a_caption_leaves_its_hold_after_its_call_ended() -> None:

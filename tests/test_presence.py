@@ -647,13 +647,23 @@ def _contrast(one: int, other: int) -> float:
     return (first + 0.05) / (second + 0.05)
 
 
-def test_the_band_of_every_tint_keeps_the_caption_text_at_wcag_aa() -> None:
-    """The band is filled opaque with the call's tint darkened, so the caption reads over any
-    picture: 4.5:1 is AA for text this size, and the tint itself gave 2.3:1 over a bright one."""
+def _seen_over(above: int, below: int, alpha: float) -> int:
+    """`above` laid at `alpha` over `below`."""
+    return sum(round(alpha * ((above >> shift) & 0xFF) + (1 - alpha) * ((below >> shift) & 0xFF))
+               << shift for shift in (16, 8, 0))
+
+
+def test_the_band_at_its_alpha_keeps_the_caption_text_at_wcag_aa_over_a_dark_picture() -> None:
+    """The band is the call's tint darkened and laid at `caption_alpha`, so the picture shows
+    through it: over the dark and mid pictures these demos draw, every tint keeps AA for text
+    this size. A near-white picture takes the read and write tints below it, which is what a
+    band that is not painted whole costs."""
     look = presence.Look()
     tints = look.tints
-    for tint in (tints.write, tints.read, tints.refused):
-        assert _contrast(look.band_rgb(tint), look.caption_text_rgb) >= 4.5, hex(tint)
+    for picture in (0x000000, 0x808080):
+        for tint in (tints.write, tints.read, tints.refused):
+            seen = _seen_over(look.band_rgb(tint), picture, look.caption_alpha)
+            assert _contrast(seen, look.caption_text_rgb) >= 4.5, (hex(picture), hex(tint))
 
 
 def test_the_band_is_the_call_tint_darkened_by_its_share() -> None:

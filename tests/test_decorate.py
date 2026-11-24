@@ -17,7 +17,6 @@ from typing import Any
 
 import pytest
 
-from scry_core import abbreviation as ab
 from scry_core import decorate as dc
 from scry_core import motion, placement, presence, timeline
 from scry_core import overlay as ov
@@ -292,7 +291,33 @@ def test_before_its_first_call_a_frame_carries_the_edge_alone() -> None:
     assert drawn[0].rgb == edge[0].rgb and drawn[15].rgb != edge[15].rgb
 
 
-def test_a_caption_wider_than_its_band_scrolls_and_one_that_fits_stands_still() -> None:
+def test_the_band_of_the_clip_is_laid_at_the_look_s_alpha_so_the_picture_shows_through() -> None:
+    made = timeline.Builder("t")
+    made.add("boot", "start", {}, "ok", (None, 100))
+    made.add("go", "run_for", {"seconds": 2}, "ok", (100, 160))
+    run = timeline.loads(made.dumps())
+    style = dc.Style(layers=("calls",))
+
+    def band(bg: int) -> tuple[int, ...]:
+        """The band's pixel over a picture of `bg`, off the text it centres."""
+        rgb = bytes([(bg >> 16) & 0xFF, (bg >> 8) & 0xFF, bg & 0xFF]) * (SIZE[0] * SIZE[1])
+        clip = dc.Clip(list(range(100, 130)),
+                       [motion.Picture(*SIZE, rgb, 17) for _ in range(30)], BOX, RATE)
+        left, top, right, bottom = dc._Painter(clip, style, dc._plan(run, clip))._band_box()
+        return _pixel(dc.decorate(run, clip, style)[20], left + 2, (top + bottom) // 2)
+
+    tint = presence.LOOK.band_rgb(presence.LOOK.tints.write)
+    dark, light = band(0x000000), band(0xFFFFFF)
+    for shift in (16, 8, 0):
+        channel, over_dark, over_light = (tint >> shift) & 0xFF, dark[2 - shift // 8], \
+                                        light[2 - shift // 8]
+        assert over_dark < over_light, "the picture under the band reaches it"
+        assert over_dark <= channel <= over_light, (shift, dark, light)
+
+
+def test_a_caption_wider_than_its_band_is_cut_to_it_and_never_moves() -> None:
+    """A line that moves cannot be read while the machine runs: a caption too wide for its band
+    is cut with `..`, and one that fits is drawn whole. Neither moves."""
     def band(values: int, frame: int) -> bytes:
         made = timeline.Builder("t")
         made.add("go", "run_for", {f"v{n}": f"{n}" * 20 for n in range(values)}, "ok",
@@ -302,8 +327,9 @@ def test_a_caption_wider_than_its_band_scrolls_and_one_that_fits_stands_still() 
         row = picture.width * 3
         return picture.rgb[(SIZE[1] - 25) * row:(SIZE[1] - 15) * row]
 
-    assert band(1, 20) == band(1, 40)
-    assert band(6, 20) != band(6, 40)
+    assert band(1, 20) == band(1, 40), "a caption that fits stands still"
+    assert band(6, 20) == band(6, 40), "a caption wider than its band stands still too"
+    assert dc._line("x" * 60, 320, 8) == "x" * 38 + "..", "cut to the room, the cut marked"
 
 
 @pytest.mark.parametrize(("clip", "why"), [
@@ -429,30 +455,6 @@ def test_the_parser_refuses_the_place_it_no_longer_draws(tmp_path: Path) -> None
                  "--frames", "120", "--out", str(tmp_path / "loop.webp"), "--place", "auto"],
                 said.append)
     assert quit.value.code == 2
-
-
-def test_a_scroll_never_runs_faster_than_the_look_s_own_speed() -> None:
-    """A call too short to show a whole travel keeps the look's speed and lets the text run on
-    into its hold: re-timing fits a travel to its span, it never turns a caption into a blur."""
-    assert dc._scroll_px_s(1840, 0.03, 48.0) == 48.0
-    assert dc._scroll_px_s(1840, 100.0, 48.0) == pytest.approx(18.4)
-
-
-def test_a_caption_wider_than_its_band_scrolls_within_a_short_call_never_wrapping() -> None:
-    """A long caption is never cut: a call too short to show it whole scrolls it at the look's
-    own speed and lets it run on into its hold, instead of turning it into a blur."""
-    made = timeline.Builder("t")
-    made.add("wide", "read_memory", {f"a{i}": "v" * 20 for i in range(12)}, "ok", (100, 130))
-    run = timeline.loads(made.dumps())
-    assert len(run["calls"][0]["caption"]["text"]) == ab.MAX_BYTES, "the fixture is not wide"
-    drawn = dc.decorate(run, _clip(frames=61), dc.Style(layers=("calls",)))
-    band = range(SIZE[1] - 21, SIZE[1] - 7)
-
-    def caption_pixels(picture: motion.Picture) -> list[tuple[int, ...]]:
-        return [_pixel(picture, x, y) for x in range(16, SIZE[0] - 16) for y in band]
-
-    assert caption_pixels(drawn[15]) != caption_pixels(drawn[30]), "it moves, never cut"
-    assert caption_pixels(drawn[30]) != caption_pixels(drawn[60]), "no wrap inside a short call"
 
 
 def test_the_caption_is_the_timeline_s_own_text_and_tint() -> None:

@@ -19,9 +19,8 @@ draws; the live overlay keeps the emulator's own field name.
 The clock is the clip's own: an emulator frame is `1 / rate` seconds, and a call is captioned
 from the frame it began at. A call that ran no frame (a read, a stop) is captioned at the frame
 it was made on, so the captions' repeat and hold (`overlay_timeline.Captions`) are reckoned in
-the clip's seconds. A caption too wide for its band scrolls a whole travel inside the span of
-its own call when the look's own speed allows it, and never faster than that speed; a call too
-short for the travel lets the text run on into its hold. Calls are read
+the clip's seconds. A caption too wide for its band is cut, marked with `..`: a line that moves
+cannot be read while the machine runs. Calls are read
 from the last rewind of the machine (a state load) before the clip, because frames before it are
 no longer this clip's. A demo's camera is
 not work the demo does: a `record` step is not captioned, and its cut shows only what the
@@ -46,7 +45,7 @@ from typing import Any
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from scry_core import motion, placement, timeline
+from scry_core import abbreviation, motion, placement, timeline
 from scry_core import overlay as ov
 from scry_core import overlay_timeline as tl
 from scry_core.demo import RECORD_TOOL
@@ -255,12 +254,11 @@ class _Font:
         return self._masks[text]
 
 
-def _scroll_px_s(travel: int, span_s: float | None, cps_px_s: float) -> float:
-    """The pixels a second a caption wider than its band moves: one full travel (`room + wide`)
-    inside the span of its own call when `scroll_cps` allows it, and never faster than that
-    speed, so a call too short to read it lets the text run on into its hold instead of
-    blurring."""
-    return min(travel / span_s, cps_px_s) if span_s else cps_px_s
+def _line(text: str, room: int, width: int) -> str:
+    """`text` cut to the characters `room` pixels hold, marked with `..` when it does not fit.
+    A room that cannot hold the marker itself holds no text."""
+    chars = max(0, room // width)
+    return abbreviation.fit(text, chars) if chars >= len(abbreviation.CUT) else ""
 
 
 def _rgba(rgb: int, alpha: float) -> tuple[int, int, int, int]:
@@ -335,7 +333,7 @@ class _Painter:
                 self.fed_calls += 1
                 if not call.camera:
                     self.captions.began(call.tool, {}, call.tint == "read", False, call.begin,
-                                        text=call.text, span=call.end - call.begin)
+                                        text=call.text)
                 self.pending_ends.append(call.end)
         while self.fed_marks < len(self.plan.marks) and self.plan.marks[self.fed_marks][0] <= t:
             when, name, down, momentary = self.plan.marks[self.fed_marks]
@@ -385,20 +383,15 @@ class _Painter:
             self._raster(draw, (left, top, right, bottom), caption.rgb, t, fade)
         else:
             draw.rectangle((left, top, right - 1, bottom - 1),
-                           fill=_rgba(caption.rgb, fade))
+                           fill=_rgba(caption.rgb, self.look.caption_alpha * fade))
         room = right - left - 2 * self.font.width
-        wide = len(caption.text) * self.font.width
+        line = _line(caption.text, room, self.font.width)
+        wide = len(line) * self.font.width
         y = top + (bottom - top - self.font.height) // 2
         colour = _rgba(self.look.caption_text_rgb, fade)
-        if wide <= room:
-            x0 = left + (right - left - wide) / 2
-        else:
-            speed = _scroll_px_s(room + wide, caption.span,
-                                 self.look.scroll_cps * self.font.width)
-            travel = (t - self.serial_at) * speed % (room + wide)
-            x0 = left + self.font.width + room - travel
+        x0 = left + (right - left - wide) / 2
         text = Image.new("RGBA", self.size, (0, 0, 0, 0))
-        for n, char in enumerate(caption.text):
+        for n, char in enumerate(line):
             x = round(x0 + n * self.font.width)
             if x + self.font.width < left or x > right or char == " ":
                 continue

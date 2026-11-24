@@ -4,6 +4,12 @@ What a server author notices. A client's view of each server is in that server's
 
 ## Unreleased
 
+- A caption wider than its band is cut and marked with `..`, never scrolled: a line that moves
+  cannot be read while the machine runs. `Look` no longer carries a scroll speed, and a clip cuts
+  a long caption with the marker too.
+- The band behind a caption is laid at `Look.caption_alpha`, in the clip and in both windows, so
+  the picture shows through it; the keycaps already were.
+
 - A keycap stays long enough to be read and then fades. `Look` carries the mark's minimum time
   and fade (`keycap_min_s`, `keycap_fade_s`). `Payload` carries each mark's alpha
   (`key_alphas`), so a drawer draws the fade the timeline decided. A clip draws only a press
