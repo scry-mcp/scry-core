@@ -46,6 +46,7 @@ class Look:
     refused_rgb: int = 0xFF453A
     caption_text_rgb: int = 0xFFFFFF
     caption_alpha: float = 0.7
+    band_share: float = 0.6
     caption_hold_s: float = 3.0
     scroll_cps: float = 12.0
     keycap_rgb: int = 0x202020
@@ -60,6 +61,13 @@ class Look:
     def held_alpha(self) -> float:
         return self.acting_alpha * self.held_share
 
+    def band_rgb(self, rgb: int) -> int:
+        """`rgb` as the opaque band behind a caption, darkened by `band_share`."""
+        share = self.band_share
+        return (round(((rgb >> 16) & 0xFF) * share) << 16
+                | round(((rgb >> 8) & 0xFF) * share) << 8
+                | round((rgb & 0xFF) * share))
+
     @property
     def write_rgb(self) -> int:
         """The edge's own colour."""
@@ -68,6 +76,12 @@ class Look:
     @property
     def tints(self) -> tl.Tints:
         return tl.Tints(self.write_rgb, self.read_rgb, self.refused_rgb)
+
+    @property
+    def band_tints(self) -> tl.Tints:
+        """The tints a band is filled with: each call's colour darkened by `band_share`."""
+        return tl.Tints(*(self.band_rgb(rgb) for rgb in
+                          (self.write_rgb, self.read_rgb, self.refused_rgb)))
 
 
 LOOK = Look()
@@ -163,7 +177,7 @@ class Presence:
         self._asked = overlay.asked()
         # The band never moves: an overlay asking for `auto` gets the bottom edge.
         self._place: ov.Place = "top" if overlay.place == "top" else "bottom"
-        self._captions = tl.Captions(look.tints, look.caption_hold_s)
+        self._captions = tl.Captions(look.band_tints, look.caption_hold_s)
         self._keys = tl.Keycaps(look.keycap_min_s)
         self._pointer: Pointer | None = None
         self._paused = False

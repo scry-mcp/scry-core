@@ -279,7 +279,7 @@ class _Painter:
         self.style, self.look, self.plan, self.clip = style, style.look, plan, clip
         self.font = _Font(max(1, round(first.height * self.look.font_share / _Font(1).height)))
         self.edge = _edge_mask(*self.size, self.look)
-        self.captions = tl.Captions(self.look.tints, self.look.caption_hold_s)
+        self.captions = tl.Captions(self.look.band_tints, self.look.caption_hold_s)
         self.keycaps = tl.Keycaps(self.look.keycap_min_s)
         self.fed_calls, self.fed_marks, self.ended = 0, 0, 0
         self.pending_ends: list[float] = []
@@ -366,7 +366,7 @@ class _Painter:
             self._raster(draw, (left, top, right, bottom), caption.rgb, t, fade)
         else:
             draw.rectangle((left, top, right - 1, bottom - 1),
-                           fill=_rgba(caption.rgb, self.look.caption_alpha * fade))
+                           fill=_rgba(caption.rgb, fade))
         room = right - left - 2 * self.font.width
         wide = len(caption.text) * self.font.width
         y = top + (bottom - top - self.font.height) // 2

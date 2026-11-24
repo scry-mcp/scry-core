@@ -437,7 +437,7 @@ def test_a_call_s_caption_is_delivered_with_its_state_and_leaves_on_its_own() ->
     assert a.shown[-1] == "acting"
     caption = a.payloads[-1].caption
     assert caption is not None and \
-        (caption.text, caption.rgb) == ("run_for(seconds=2)", look.write_rgb)
+        (caption.text, caption.rgb) == ("run_for(seconds=2)", look.band_rgb(look.write_rgb))
     p.ended(_call("run_for", seconds=2.0), "ok")
     gone = _until(a, lambda pl: pl.caption is None, after=1)
     assert gone.layers == overlay.OVERLAY.asked(), "no call came: the writer woke on its own"
@@ -460,7 +460,8 @@ def test_a_call_that_ends_refused_is_delivered_in_the_refused_tint() -> None:
     p.began(_call("run_for"))
     p.ended(_call("run_for"), "refused")
     refused = _until(a, lambda pl: pl.caption is not None and pl.caption.kind == "refused")
-    assert refused.caption is not None and refused.caption.rgb == presence.LOOK.refused_rgb
+    assert refused.caption is not None and \
+        refused.caption.rgb == presence.LOOK.band_rgb(presence.LOOK.refused_rgb)
     p.close()
 
 
@@ -615,3 +616,31 @@ def test_the_mark_map_names_the_three_buttons_and_leaves_any_other_name_alone() 
         "LMB", "RMB", "MMB"]
     assert [presence.mark_of(name) for name in ("wheel up", "wheel down")] == [
         "wheel up", "wheel down"]
+
+
+def _contrast(one: int, other: int) -> float:
+    """WCAG 2.x contrast between two 0xRRGGBB colours."""
+    def linear(channel: int) -> float:
+        value = channel / 255
+        return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+    def luminance(rgb: int) -> float:
+        r, g, b = (linear((rgb >> shift) & 0xFF) for shift in (16, 8, 0))
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+    first, second = sorted((luminance(one), luminance(other)), reverse=True)
+    return (first + 0.05) / (second + 0.05)
+
+
+def test_the_band_of_every_tint_keeps_the_caption_text_at_wcag_aa() -> None:
+    """The band is filled opaque with the call's tint darkened, so the caption reads over any
+    picture: 4.5:1 is AA for text this size, and the tint itself gave 2.3:1 over a bright one."""
+    look = presence.Look()
+    tints = look.tints
+    for tint in (tints.write, tints.read, tints.refused):
+        assert _contrast(look.band_rgb(tint), look.caption_text_rgb) >= 4.5, hex(tint)
+
+
+def test_the_band_is_the_call_tint_darkened_by_its_share() -> None:
+    look = presence.Look(band_share=0.5)
+    assert look.band_rgb(0xFF8C00) == 0x804600
