@@ -123,7 +123,7 @@ def test_a_still_call_leaves_the_state_held_and_only_captions_itself() -> None:
     _settle(a, 2)
     assert a.shown == ["held", "held"]
     caption = a.payloads[-1].caption
-    assert caption is not None and (caption.text, caption.kind) == ("registers", "read")
+    assert caption is not None and (caption.text, caption.kind) == ("registers()", "read")
     p.close()
 
 
@@ -389,6 +389,41 @@ def _until(a: _Adapter, ok: Callable[[presence.Payload], bool], after: int = 0
     raise AssertionError(f"never delivered; delivered {a.payloads}")
 
 
+def test_a_call_s_marks_can_be_snapshotted_and_restored() -> None:
+    """A call whose input wrote nothing puts the marks back as it found them, and the writer
+    delivers the restored set."""
+    a = _Adapter()
+    p = _open(a)
+    p.key("a", True)
+    saved = p.keys_marked()
+    _until(a, lambda pl: pl.keys == ("a",))
+    p.key("a", False)
+    p.key("b", True)
+    _until(a, lambda pl: pl.keys == ("b",))
+    p.keys_restore(saved)
+    restored = _until(a, lambda pl: pl.keys == ("a",))
+    assert restored.keys == ("a",)
+    p.close()
+
+
+def test_a_presence_that_is_not_drawn_has_no_marks_to_save() -> None:
+    assert presence.Shown().keys_marked() == {}
+    presence.Shown().keys_restore({})
+
+
+def test_a_drawn_presence_passes_the_marks_through_its_shown() -> None:
+    """Whatever holds a `Shown` takes a call's marks and puts them back without reading them."""
+    a = _Adapter()
+    shown = presence.Presence.open(a, ("run_for",))
+    shown.key("a", True)
+    saved = shown.keys_marked()
+    shown.key("a", False)
+    _until(a, lambda pl: pl.keys == ())
+    shown.keys_restore(saved)
+    assert _until(a, lambda pl: pl.keys == ("a",)).keys == ("a",)
+    shown.close()
+
+
 def test_a_call_s_caption_is_delivered_with_its_state_and_leaves_on_its_own() -> None:
     a = _Adapter()
     look = presence.Look(caption_hold_s=0.1)
@@ -397,11 +432,12 @@ def test_a_call_s_caption_is_delivered_with_its_state_and_leaves_on_its_own() ->
     p.began(_call("run_for", seconds=2.0))
     # No minimum: the caption goes with the call's own first delivery, nothing queues it.
     first = _until(a, lambda pl: pl.caption is not None)
-    assert first.caption is not None and first.caption.text == "run_for 2"
+    assert first.caption is not None and first.caption.text == "run_for(seconds=2)"
     _settle(a, 2)
     assert a.shown[-1] == "acting"
     caption = a.payloads[-1].caption
-    assert caption is not None and (caption.text, caption.rgb) == ("run_for 2", look.write_rgb)
+    assert caption is not None and \
+        (caption.text, caption.rgb) == ("run_for(seconds=2)", look.write_rgb)
     p.ended(_call("run_for", seconds=2.0), "ok")
     gone = _until(a, lambda pl: pl.caption is None, after=1)
     assert gone.layers == overlay.OVERLAY.asked(), "no call came: the writer woke on its own"
@@ -414,7 +450,7 @@ def test_a_caption_is_delivered_with_the_names_the_boundary_gave_the_call() -> N
     p.began(boundary.Call("read_memory", {"ref": "score", "length": 2}, False, True,
                           {"ref": Named("symbol", "score", "0x9405")}))
     caption = _until(a, lambda pl: pl.caption is not None).caption
-    assert caption is not None and caption.text == "read_memory score (0x9405) 2"
+    assert caption is not None and caption.text == "read_memory(ref=score (0x9405), length=2)"
     p.close()
 
 
@@ -435,7 +471,7 @@ def test_a_plain_start_is_captioned_and_a_start_with_a_plan_is_not() -> None:
     p = _open(a)
     p.began(_call("start", binary="dosbox-x"))
     plain = _until(a, lambda pl: pl.caption is not None)
-    assert plain.caption is not None and plain.caption.text == "start dosbox-x"
+    assert plain.caption is not None and plain.caption.text == "start(binary=dosbox-x)"
     p.ended(_call("start", binary="dosbox-x"), "ok")
     p.close()
 
@@ -444,7 +480,7 @@ def test_a_plain_start_is_captioned_and_a_start_with_a_plan_is_not() -> None:
     q.began(_call("start", plan=[{"op": "run_for", "seconds": 2}]))
     q.began(_call("run_for", nested=True, seconds=2))
     shown = _until(b, lambda pl: pl.caption is not None)
-    assert shown.caption is not None and shown.caption.text == "run_for 2"
+    assert shown.caption is not None and shown.caption.text == "run_for(seconds=2)"
     q.close()
 
 

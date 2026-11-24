@@ -362,8 +362,9 @@ def test_a_run_writes_its_timeline_beside_the_transcript_with_the_frames_each_ca
         ("start", None, None), ("press", 0, 5), ("point", 5, 8), ("picture", 8, 8),
         ("read", 8, 8), ("close", 8, 8)]
     assert calls[1]["args"] == {"key": "Fire 1", "frames": 4}
-    assert calls[1]["caption"] == {"text": "press Fire 1 4", "tint": "write"}
-    assert calls[4]["caption"] == {"text": "read", "tint": "read"}, "the server marks it read-only"
+    assert calls[1]["caption"] == {"text": "press(key=Fire 1, frames=4)", "tint": "write"}
+    assert calls[4]["caption"] == {"text": "read()", "tint": "read"}, \
+        "the server marks it read-only"
     assert calls[1]["events"] == [
         {"kind": "key", "name": "Fire 1", "down": True, "frame": 0},
         {"kind": "key", "name": "Fire 1", "down": False, "frame": 4}]
@@ -389,14 +390,14 @@ def test_a_calls_caption_in_the_timeline_carries_the_names_its_reply_gave_its_ar
              d.Step("again", "peek", {"ref": "score"}, _said("summary"))]
     assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_PASS
     calls = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
-    assert [c["caption"]["text"] for c in calls[:2]] == ["peek score (0x9405)"] * 2
+    assert [c["caption"]["text"] for c in calls[:2]] == ["peek(ref=score (0x9405))"] * 2
     live = abbreviation.caption("peek", {"ref": "score"},
                                 {"ref": Named("symbol", "score", "0x9405")})
     assert calls[0]["caption"]["text"] == live, "the overlay and the demo write one text"
     monkeypatch.setenv("DEMO_NO_NAMES", "1")
     assert _run(_demo(tmp_path, steps[:1]), tmp_path) == verdict.EXIT_PASS
     bare = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
-    assert bare[0]["caption"]["text"] == "peek score", "a session with the names off has none"
+    assert bare[0]["caption"]["text"] == "peek(ref=score)", "a session with the names off has none"
 
 
 def test_the_read_only_tools_are_read_across_every_page_the_server_lists() -> None:

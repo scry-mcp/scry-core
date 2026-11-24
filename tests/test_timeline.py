@@ -51,10 +51,10 @@ def test_a_call_carries_its_caption_tinted_by_what_the_tool_does_and_how_it_answ
     made.add("c", "read_memory", {}, "INVALID", (9, 9), read_only=True)
     made.add("d", "close", {}, "ended", (None, None))
     assert [c["caption"] for c in timeline.loads(made.dumps())["calls"]] == [
-        {"text": "run_to Draw_Title a.png", "tint": "write"},
-        {"text": "read_memory 0x10 4", "tint": "read"},
-        {"text": "read_memory", "tint": "refused"},
-        {"text": "close", "tint": "refused"}]
+        {"text": "run_to(ref=Draw_Title, dest=a.png)", "tint": "write"},
+        {"text": "read_memory(ref=0x10, length=4)", "tint": "read"},
+        {"text": "read_memory()", "tint": "refused"},
+        {"text": "close()", "tint": "refused"}]
 
 
 def test_a_symbol_the_agent_gave_reaches_the_timeline_as_given() -> None:
@@ -89,9 +89,9 @@ def test_a_wrapper_is_one_entry_per_call_it_ran_at_that_call_s_own_frames() -> N
     assert [(c["tool"], c["before"], c["after"]) for c in calls] == [
         ("run_for", 10, 20), ("read_memory", 20, 20), ("send_keys", 20, 24)]
     assert [c["caption"] for c in calls] == [
-        {"text": "run_for 2", "tint": "write"},
-        {"text": "read_memory 0x10", "tint": "read"},
-        {"text": "send_keys [Enter]", "tint": "refused"}]
+        {"text": "run_for(seconds=2)", "tint": "write"},
+        {"text": "read_memory(ref=0x10)", "tint": "read"},
+        {"text": "send_keys(keys=[Enter])", "tint": "refused"}]
     assert [c["args"] for c in calls] == [
         {"seconds": 2}, {"ref": "0x10"}, {"keys": ["Enter"]}]
 
@@ -239,5 +239,5 @@ def test_a_caption_names_what_the_calls_reply_called_its_arguments() -> None:
              named={"ref": Named("symbol", "score", "0x9405")})
     made.add("bare", "read_memory", {"ref": "score"}, "ok", (2, 3))
     first, second = timeline.loads(made.dumps())["calls"]
-    assert first["caption"] == {"text": "read_memory score (0x9405) 2", "tint": "read"}
-    assert second["caption"]["text"] == "read_memory score"
+    assert first["caption"] == {"text": "read_memory(ref=score (0x9405), length=2)", "tint": "read"}
+    assert second["caption"]["text"] == "read_memory(ref=score)"

@@ -389,9 +389,16 @@ def test_the_parser_refuses_the_place_it_no_longer_draws(tmp_path: Path) -> None
     assert quit.value.code == 2
 
 
-def test_a_caption_wider_than_its_band_scrolls_a_whole_travel_inside_its_call() -> None:
-    """A long caption is re-timed, never cut: one full travel inside the span of its own call,
-    so it reads whole and ends the frame it began."""
+def test_a_scroll_never_runs_faster_than_the_look_s_own_speed() -> None:
+    """A call too short to show a whole travel keeps the look's speed and lets the text run on
+    into its hold: re-timing fits a travel to its span, it never turns a caption into a blur."""
+    assert dc._scroll_px_s(1840, 0.03, 48.0) == 48.0
+    assert dc._scroll_px_s(1840, 100.0, 48.0) == pytest.approx(18.4)
+
+
+def test_a_caption_wider_than_its_band_scrolls_within_a_short_call_never_wrapping() -> None:
+    """A long caption is never cut: a call too short to show it whole scrolls it at the look's
+    own speed and lets it run on into its hold, instead of turning it into a blur."""
     made = timeline.Builder("t")
     made.add("wide", "read_memory", {f"a{i}": "v" * 20 for i in range(12)}, "ok", (100, 130))
     run = timeline.loads(made.dumps())
@@ -403,7 +410,7 @@ def test_a_caption_wider_than_its_band_scrolls_a_whole_travel_inside_its_call() 
         return [_pixel(picture, x, y) for x in range(16, SIZE[0] - 16) for y in band]
 
     assert caption_pixels(drawn[15]) != caption_pixels(drawn[30]), "it moves, never cut"
-    assert caption_pixels(drawn[30]) == caption_pixels(drawn[60]), "one travel inside its span"
+    assert caption_pixels(drawn[30]) != caption_pixels(drawn[60]), "no wrap inside a short call"
 
 
 def test_the_caption_is_the_timeline_s_own_text_and_tint() -> None:
@@ -452,6 +459,29 @@ def test_the_edge_is_bright_while_a_call_runs_the_machine_and_dim_once_it_faded(
                         dc.Style(layers=("edge",)))
     running, faded = _pixel(drawn[10], 0, 120), _pixel(drawn[299], 0, 120)
     assert running[0] > faded[0] > GREY >> 16, (running, faded)
+
+
+def test_a_call_that_counted_only_one_of_its_frames_is_still_the_clip_s() -> None:
+    """A first call whose reply named only its end frame ran somewhere in the clip: it is placed
+    at that frame with the events it fired, never dropped for the frame it could not name."""
+    made = timeline.Builder("t")
+    made.add("boot", "start", {}, "ok", (None, None))
+    made.add("aim", "send_mouse", {}, "ok", (None, 3), [timeline.pointer(1, 2, 3)])
+    calls = dc._span(timeline.loads(made.dumps())["calls"], (0, 10))
+    assert [c["step"] for c in calls] == ["aim"]
+    assert dc._ran(calls[0]) == (3, 3)
+
+
+def test_a_later_call_that_counted_one_frame_walks_back_over_an_earlier_one() -> None:
+    """A call that named only its end frame after a counted one: the walk back to the stretch
+    the clip shows must not compare a frame against a missing one."""
+    made = timeline.Builder("t")
+    made.add("a", "run_for", {}, "ok", (0, 1))
+    made.add("b", "send_mouse", {}, "ok", (5, 5), [timeline.pointer(1, 2, 5)])
+    document = timeline.loads(made.dumps())
+    document["calls"][1]["before"] = None      # a timeline a writer did not make
+    calls = dc._span(document["calls"], (0, 10))
+    assert [c["step"] for c in calls] == ["a", "b"]
 
 
 def test_calls_before_a_rewind_of_the_machine_are_not_this_clip_s() -> None:

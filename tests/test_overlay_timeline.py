@@ -23,7 +23,7 @@ def _captions() -> tl.Captions:
 def _call(c: tl.Captions, tool: str, now: float, end: float | None = None,
           read_only: bool = False, refused: bool = False, **given: Any) -> None:
     c.began(tool, given, read_only, False, now)
-    c.ended(False, refused, now if end is None else end)
+    c.ended(refused, now if end is None else end)
 
 
 def _text(c: tl.Captions, now: float) -> str | None:
@@ -35,10 +35,10 @@ def test_a_call_is_captioned_at_once_and_tinted_by_its_kind() -> None:
     c = _captions()
     c.began("run_for", {"seconds": 2}, False, False, 0.0)
     shown = c.shown(0.0)
-    assert shown == tl.Caption("run_for 2", "write", TINTS.write, 1)
-    c.ended(False, False, 0.5)
+    assert shown == tl.Caption("run_for(seconds=2)", "write", TINTS.write, 1)
+    c.ended(False, 0.5)
     _call(c, "registers", 2.0, read_only=True)
-    assert c.shown(2.0) == tl.Caption("registers", "read", TINTS.read, 2, 0.0)
+    assert c.shown(2.0) == tl.Caption("registers()", "read", TINTS.read, 2, 0.0)
 
 
 def test_a_caption_made_before_is_shown_as_made_and_its_burst_still_joins() -> None:
@@ -51,7 +51,8 @@ def test_a_caption_made_before_is_shown_as_made_and_its_burst_still_joins() -> N
 def test_a_call_that_did_not_answer_ok_turns_its_caption_refused() -> None:
     c = _captions()
     _call(c, "write", 0.0, refused=True, ref="0x10", data_hex="00")
-    assert c.shown(0.1) == tl.Caption("write 0x10 00", "refused", TINTS.refused, 1, 0.0)
+    assert c.shown(0.1) == tl.Caption("write(ref=0x10, data_hex=00)", "refused",
+                                       TINTS.refused, 1, 0.0)
 
 
 def test_a_new_call_replaces_the_shown_caption_at_once_and_nothing_waits() -> None:
@@ -63,7 +64,7 @@ def test_a_new_call_replaces_the_shown_caption_at_once_and_nothing_waits() -> No
     _call(c, "disassemble", 0.4, read_only=True, ref="0x100")
     assert c.next_change(0.4) == 0.4 + HOLD_S
     shown = c.shown(0.4)
-    assert shown is not None and (shown.text, shown.serial) == ("disassemble 0x100", 3)
+    assert shown is not None and (shown.text, shown.serial) == ("disassemble(ref=0x100)", 3)
 
 
 def test_a_burst_of_one_tool_joins_the_caption_with_a_count_and_its_latest_values() -> None:
@@ -71,7 +72,8 @@ def test_a_burst_of_one_tool_joins_the_caption_with_a_count_and_its_latest_value
     for i, now in enumerate((0.0, 0.1, 0.2)):
         _call(c, "read_memory", now, read_only=True, ref=f"0x{i}0", length=4)
     shown = c.shown(0.3)
-    assert shown is not None and (shown.text, shown.serial) == ("read_memory 0x20 4 x3", 1)
+    assert shown is not None and \
+        (shown.text, shown.serial) == ("read_memory(ref=0x20, length=4) x3", 1)
 
 
 def test_one_of_another_tool_breaks_the_burst_and_a_new_caption_is_drawn() -> None:
@@ -80,20 +82,20 @@ def test_one_of_another_tool_breaks_the_burst_and_a_new_caption_is_drawn() -> No
     _call(c, "read_memory", 0.1, read_only=True, ref="0x10")
     _call(c, "registers", 0.2, read_only=True)
     shown = c.shown(0.2)
-    assert shown is not None and (shown.text, shown.serial) == ("registers", 3)
+    assert shown is not None and (shown.text, shown.serial) == ("registers()", 3)
 
 
 def test_a_call_s_steps_are_captioned_one_by_one_and_the_wrapper_never() -> None:
     c = _captions()
     c.began("perform", {"steps": [{"op": "send_keys"}]}, False, False, 0.0)
     c.began("send_keys", {"keys": ["A"]}, False, True, 0.1)
-    assert _text(c, 0.1) == "send_keys [A]"
-    c.ended(True, False, 0.2)
+    assert _text(c, 0.1) == "send_keys(keys=[A])"
+    c.ended(False, 0.2)
     c.began("run_for", {"seconds": 2}, False, True, 0.3)
-    assert _text(c, 0.3) == "run_for 2"
-    c.ended(True, False, 1.0)
-    c.ended(False, False, 1.1)
-    assert _text(c, 1.1) == "run_for 2", "the wrapper is not restored when it ends"
+    assert _text(c, 0.3) == "run_for(seconds=2)"
+    c.ended(False, 1.0)
+    c.ended(False, 1.1)
+    assert _text(c, 1.1) == "run_for(seconds=2)", "the wrapper is not restored when it ends"
 
 
 def test_two_steps_of_one_wrapper_with_the_same_tool_count_on_the_step() -> None:
@@ -102,16 +104,16 @@ def test_two_steps_of_one_wrapper_with_the_same_tool_count_on_the_step() -> None
     c.began("perform", {}, False, False, 0.0)
     for now in (0.1, 0.2):
         c.began("send_mouse", {"x": 2}, False, True, now)
-        c.ended(True, False, now)
-    c.ended(False, False, 0.3)
-    assert _text(c, 0.3) == "send_mouse 2 x2"
+        c.ended(False, now)
+    c.ended(False, 0.3)
+    assert _text(c, 0.3) == "send_mouse(x=2) x2"
 
 
 def test_a_nested_call_that_was_refused_tints_its_own_caption() -> None:
     c = _captions()
     c.began("perform", {}, False, False, 0.0)
     c.began("write", {}, False, True, 0.1)
-    c.ended(True, True, 0.1)
+    c.ended(True, 0.1)
     shown = c.shown(0.1)
     assert shown is not None and shown.kind == "refused"
 
@@ -119,14 +121,14 @@ def test_a_nested_call_that_was_refused_tints_its_own_caption() -> None:
 def test_a_caption_carries_the_span_of_its_call_for_a_scroll_to_fit_in() -> None:
     c = _captions()
     c.began("run_for", {"seconds": 2}, False, False, 0.0, span=2.0)
-    c.ended(False, False, 2.0)
+    c.ended(False, 2.0)
     shown = c.shown(2.0)
     assert shown is not None and shown.span == 2.0
     # A caller that knows no span gets what the call has taken so far, and none while it runs.
     c.began("status", {}, True, False, 3.0)
     shown = c.shown(3.0)
     assert shown is not None and shown.span is None, "a call in flight has no span yet"
-    c.ended(False, False, 3.5)
+    c.ended(False, 3.5)
     shown = c.shown(3.5)
     assert shown is not None and shown.span == 0.5
 
@@ -135,9 +137,9 @@ def test_a_caption_leaves_its_hold_after_its_call_ended() -> None:
     c = _captions()
     c.began("run_for", {}, False, False, 0.0)
     assert c.next_change(10.0) is None, "a call in flight keeps its caption"
-    c.ended(False, False, 10.0)
+    c.ended(False, 10.0)
     assert c.next_change(10.0) == 10.0 + HOLD_S
-    assert _text(c, 10.0 + HOLD_S - 0.01) == "run_for"
+    assert _text(c, 10.0 + HOLD_S - 0.01) == "run_for()"
     assert c.shown(10.0 + HOLD_S) is None and c.next_change(20.0) is None
     quick = _captions()
     _call(quick, "status", 0.0, read_only=True)
@@ -149,7 +151,7 @@ def test_the_same_tool_after_its_caption_left_is_a_new_caption() -> None:
     _call(c, "step", 0.0)
     _call(c, "step", HOLD_S + 0.1)
     shown = c.shown(HOLD_S + 0.1)
-    assert shown is not None and (shown.text, shown.serial) == ("step", 2)
+    assert shown is not None and (shown.text, shown.serial) == ("step()", 2)
 
 
 def test_a_key_released_at_once_is_kept_for_its_minimum_until_the_next_press() -> None:
@@ -184,6 +186,44 @@ def test_a_new_press_clears_the_mark_of_the_key_let_go_before_it() -> None:
     assert k.next_change(0.1) is None
 
 
+def test_the_key_let_go_last_is_the_one_that_lingers_not_the_last_pressed() -> None:
+    """Two keys held together and released in the reverse order of their presses: the mark kept
+    is the one let go last, because that is the last thing the overlay saw happen."""
+    k = tl.Keycaps(0.4)
+    k.down("A", 0.0)
+    k.down("B", 0.1)
+    k.up("B", 0.2)
+    k.up("A", 0.3)
+    assert k.shown(0.35) == ("A",)
+    assert k.next_change(0.35) == 0.4
+
+
+def test_a_key_let_go_before_the_last_one_does_not_come_back_when_it_drops() -> None:
+    """Two keys let go in turn: only the last keeps its mark, and when its minimum ends none of
+    the earlier ones returns."""
+    k = tl.Keycaps(0.4)
+    k.down("A", 0.0)
+    k.down("B", 0.1)
+    k.up("B", 0.3)
+    k.up("A", 0.35)
+    assert k.shown(0.35) == ("A",)
+    assert k.next_change(0.35) == 0.40
+    assert k.shown(0.40) == ()
+
+
+def test_the_marks_a_snapshot_holds_are_restored_whole() -> None:
+    """A call's marks can be taken back: the set it found comes back as it was, whatever the
+    call did to it."""
+    k = tl.Keycaps(0.4)
+    k.down("A", 0.0)
+    saved = k.snapshot()
+    k.up("A", 0.1)
+    k.down("C", 0.2)
+    assert k.shown(0.2) == ("C",)
+    k.restore(saved)
+    assert k.shown(0.2) == ("A",)
+
+
 def test_a_burst_shows_every_key_held_and_lets_only_the_last_one_linger() -> None:
     """Eight keys pressed in one call are eight marks while they are held, and after they are
     let go only the most recent is kept for its minimum: a burst does not pile up."""
@@ -201,7 +241,7 @@ def test_a_burst_shows_every_key_held_and_lets_only_the_last_one_linger() -> Non
 
 def test_a_call_that_ends_with_nothing_open_shows_nothing() -> None:
     c = _captions()
-    c.ended(False, False, 1.0)
+    c.ended(False, 1.0)
     assert c.shown(1.0) is None and c.next_change(1.0) is None
 
 
@@ -230,15 +270,15 @@ def test_a_call_s_names_reach_its_caption() -> None:
     c = _captions()
     c.began("read_memory", {"ref": "score"}, True, False, 0.0,
             named={"ref": Named("symbol", "score", "0x9405")})
-    assert _text(c, 0.0) == "read_memory score (0x9405)"
+    assert _text(c, 0.0) == "read_memory(ref=score (0x9405))"
 
 
 def test_the_count_a_burst_adds_never_pushes_a_caption_past_the_wire_s_limit() -> None:
     c = _captions()
     long = {f"a{i}": "v" * 20 for i in range(12)}
     c.began("perform", long, False, False, 0.0)
-    c.ended(False, False, 0.1)
+    c.ended(False, 0.1)
     c.began("perform", long, False, False, 0.5)
     text = _text(c, 0.5)
     assert text is not None and text.endswith(" x2") and \
-        len(text) == ab.MAX_BYTES and " .. x2" in text
+        len(text) == ab.MAX_BYTES and text[:-3].endswith(ab.CUT)

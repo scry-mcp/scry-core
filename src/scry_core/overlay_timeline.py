@@ -104,7 +104,7 @@ class Captions:
             return
         self._up(entry, now)
 
-    def ended(self, nested: bool, refused: bool, now: float) -> None:
+    def ended(self, refused: bool, now: float) -> None:
         if not self._open:
             return
         entry = self._open.pop()
@@ -139,11 +139,15 @@ class Captions:
 @dataclass(frozen=True)
 class _Key:
     down: float
-    released: bool = False
+    released_at: float | None = None
+
+
+#: The marks as `snapshot` hands them back: opaque to everything but `restore`.
+KeyState = dict[str, Any]
 
 
 class Keycaps:
-    """The keys or fields drawn as held: down, or released less than `min_s` ago."""
+    """The keys or fields drawn as held: down, or let go less than `min_s` after the press."""
 
     def __init__(self, min_s: float) -> None:
         self._min_s = min_s
@@ -151,31 +155,56 @@ class Keycaps:
 
     def down(self, name: str, now: float) -> None:
         # A new press ends the mark a key already let go kept, so a caption and its mark agree.
-        for gone in [n for n, k in self._keys.items() if k.released]:
+        for gone in [n for n, k in self._keys.items() if k.released_at is not None]:
             del self._keys[gone]
         key = self._keys.get(name)
-        if key is None or key.released:
+        if key is None or key.released_at is not None:
             self._keys.pop(name, None)
             self._keys[name] = _Key(now)
 
     def up(self, name: str, now: float) -> None:
-        if (key := self._keys.get(name)) is not None:
-            self._keys[name] = replace(key, released=True)
+        key = self._keys.get(name)
+        if key is not None:
+            self._keys[name] = replace(key, released_at=now)
+            # Only the last key let go lingers.
+            for gone in [n for n, k in self._keys.items()
+                         if k.released_at is not None and n != name]:
+                del self._keys[gone]
         self._drop(now)
 
+    def snapshot(self) -> KeyState:
+        """The marks as they stand."""
+        return dict(self._keys)
+
+    def restore(self, state: KeyState) -> None:
+        """The marks `snapshot` handed back."""
+        self._keys = dict(state)
+
     def shown(self, now: float) -> tuple[str, ...]:
-        """Every key held, in order, and of those let go only the most recent for its minimum."""
+        """Every key held, in order, and of those let go only the last released."""
         self._drop(now)
-        let_go = [n for n, k in self._keys.items() if k.released]
-        keep = let_go[-1] if let_go else None
-        return tuple(n for n, k in self._keys.items() if not k.released or n == keep)
+        keep = self._kept()
+        return tuple(n for n, k in self._keys.items()
+                     if k.released_at is None or n == keep)
 
     def next_change(self, now: float) -> float | None:
         self._drop(now)
-        let_go = [k.down for k in self._keys.values() if k.released]
-        return max(let_go) + self._min_s if let_go else None
+        keep = self._kept()
+        if keep is None:
+            return None
+        return self._keys[keep].down + self._min_s
+
+    def _kept(self) -> str | None:
+        """The key let go last; a tie goes to the last pressed."""
+        best: str | None = None
+        best_at = float("-inf")
+        for name, key in self._keys.items():
+            at = key.released_at
+            if at is not None and at >= best_at:
+                best, best_at = name, at
+        return best
 
     def _drop(self, now: float) -> None:
         for name in [n for n, k in self._keys.items()
-                     if k.released and now - k.down >= self._min_s]:
+                     if k.released_at is not None and now - k.down >= self._min_s]:
             del self._keys[name]

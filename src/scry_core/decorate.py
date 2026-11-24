@@ -14,7 +14,8 @@ The clock is the clip's own: an emulator frame is `1 / rate` seconds, and a call
 from the frame it began at. A call that ran no frame (a read, a stop) is captioned at the frame
 it was made on, so the captions' repeat and hold (`overlay_timeline.Captions`) are reckoned in
 the clip's seconds. A caption too wide for its band scrolls a whole travel inside the span of
-its own call, so a long text is read in full, never cut and never left half-read. Calls are read
+its own call when the look's own speed allows it, and never faster than that speed; a call too
+short for the travel lets the text run on into its hold. Calls are read
 from the last rewind of the machine (a state load) before the clip, because frames before it are
 no longer this clip's. A demo's camera is
 not work the demo does: a `record` step is not captioned, and its cut shows only what the
@@ -98,7 +99,7 @@ class Style:
     def of(cls, overlay: ov.Overlay, lacking: Sequence[ov.Layer] = (), **flourishes: Any
            ) -> Style:
         """The style of `overlay`, a game's `.scry/` profile or a demo's own, less `lacking`.
-        The band does not move, so an overlay that asks for `auto` gets `bottom`."""
+        An overlay that asks for `auto` gets `bottom`; `presence` says why."""
         return cls(tuple(layer for layer in overlay.asked() if layer not in lacking),
                    "top" if overlay.place == "top" else "bottom", **flourishes)
 
@@ -156,8 +157,11 @@ def pointer_at(points: Sequence[tuple[float, float, float]], t: float
 
 
 def _ran(call: Mapping[str, Any]) -> tuple[int, int]:
-    """The frames a call ran from and to; a rewind ran none, at the frame it left the machine."""
+    """The frames a call ran from and to; a rewind ran none, at the frame it left the machine,
+    and a call whose reply named one frame only is placed at it."""
     before, after = call["before"], call["after"]
+    before = after if before is None else before
+    after = before if after is None else after
     return (after, after) if after < before else (before, after)
 
 
@@ -165,15 +169,16 @@ def _span(calls: Sequence[Mapping[str, Any]], frames: tuple[int, int]) -> list[M
     """The calls a clip of `frames` (first, last) may show: from the last rewind before the last
     call that reaches into the clip, up to that call."""
     first, last = frames
-    counted = [call for call in calls if call["before"] is not None]
+    counted = [call for call in calls
+               if call["before"] is not None or call["after"] is not None]
     reaching = [n for n, call in enumerate(counted)
                 if _ran(call)[0] <= last and _ran(call)[1] >= first]
     if not reaching:
         raise Invalid(f"the timeline names no call over frames {first} to {last}, so nothing "
                       "says what the clip shows")
     end = begin = reaching[-1]
-    while begin > 0 and counted[begin]["after"] >= counted[begin]["before"] \
-            and counted[begin - 1]["after"] <= counted[begin]["before"]:
+    while begin > 0 and _ran(counted[begin])[1] >= _ran(counted[begin])[0] \
+            and _ran(counted[begin - 1])[1] <= _ran(counted[begin])[0]:
         begin -= 1
     return counted[begin:end + 1]
 
@@ -237,9 +242,10 @@ class _Font:
 
 def _scroll_px_s(travel: int, span_s: float | None, cps_px_s: float) -> float:
     """The pixels a second a caption wider than its band moves: one full travel (`room + wide`)
-    inside the span of its own call when that span is known and not empty, else the speed
-    `scroll_cps` names, so a text too long for its band is scrolled whole, never cut."""
-    return travel / span_s if span_s else cps_px_s
+    inside the span of its own call when `scroll_cps` allows it, and never faster than that
+    speed, so a call too short to read it lets the text run on into its hold instead of
+    blurring."""
+    return min(travel / span_s, cps_px_s) if span_s else cps_px_s
 
 
 def _rgba(rgb: int, alpha: float) -> tuple[int, int, int, int]:
@@ -308,7 +314,7 @@ class _Painter:
                 call = calls[self.ended]
                 self.ended += 1
                 if not call.camera:
-                    self.captions.ended(False, call.tint == "refused", due_end)
+                    self.captions.ended(call.tint == "refused", due_end)
             else:
                 call = calls[self.fed_calls]
                 self.fed_calls += 1
@@ -568,7 +574,8 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
                         help="the band the captions take; the keycaps take the other edge")
     parser.add_argument("--without", action="append", default=[],
                         choices=("calls", "keys", "pointer", "pause"),
-                        help="a layer not drawn; repeat for more")
+                        help="a layer not drawn; repeat for more (`pause` draws nothing in a "
+                             "clip, where no call pauses)")
     parser.add_argument("--sine", action="store_true", help="the captions as a sine scroller")
     parser.add_argument("--raster", action="store_true", help="a raster bar behind the captions")
     return parser.parse_args(argv)

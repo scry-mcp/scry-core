@@ -4,7 +4,7 @@ both servers (`scry_core.sequence`)."""
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -166,6 +166,21 @@ def test_each_step_of_the_account_carries_the_frames_it_ran_for() -> None:
     assert ended.fields["ran"][0]["frame_before"] == contract.unavailable(
         sequence.NO_FRAME_WHY)
     assert ended.fields["ran"][0]["frame_after"] == contract.unavailable(sequence.NO_FRAME_WHY)
+
+
+def test_a_step_whose_reply_names_its_frames_keeps_them_when_the_machine_cannot_read_one(
+        ) -> None:
+    """A key sent to a running guest: the machine cannot read a frame while it runs, but the
+    step's own reply read the frames it went in between, so the row carries those."""
+    m = Double(running=True)
+
+    def send_keys(**kw: Any) -> dict[str, Any]:
+        return {"status": "ok", "frame_before": 100, "frame_after": 101}
+
+    ops = cast(sequence.Ops, {"send_keys": send_keys})
+    ended = sequence.run(m, [{"op": "send_keys", "keys": ["a"]}], ops, 5.0)
+    row = ended.fields["ran"][0]
+    assert (row["frame_before"], row["frame_after"]) == (100, 101)
 
 
 def test_a_replay_that_leaves_its_recording_is_diverged_and_held_counts_the_rest() -> None:

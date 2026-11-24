@@ -211,7 +211,7 @@ class Presence:
             if not call.nested and call.tool in self._driving:
                 self._want = "held"
             if "calls" in self._asked and not _wraps(call):
-                self._captions.ended(call.nested, outcome == "refused", time.monotonic())
+                self._captions.ended(outcome == "refused", time.monotonic())
             self._cv.notify()
 
     def key(self, name: str, down: bool) -> None:
@@ -242,6 +242,17 @@ class Presence:
                 rest = tuple(b for b in self._pointer.buttons if b != name)
                 self._pointer = Pointer(self._pointer.x, self._pointer.y,
                                         (*rest, name) if down else rest)
+            self._cv.notify()
+
+    def keys_marked(self) -> tl.KeyState:
+        """The marks as they stand."""
+        with self._cv:
+            return self._keys.snapshot()
+
+    def keys_restore(self, state: tl.KeyState) -> None:
+        """The marks a snapshot handed back, whole."""
+        with self._cv:
+            self._keys.restore(state)
             self._cv.notify()
 
     def paused(self, stopped: bool) -> None:
@@ -412,6 +423,14 @@ class Shown:
     def recording(self, kind: Kind, on: bool) -> None:
         if self.held is not None:
             self.held.recording(kind, on)
+
+    def keys_marked(self) -> tl.KeyState:
+        """The marks as they stand."""
+        return self.held.keys_marked() if self.held is not None else {}
+
+    def keys_restore(self, state: tl.KeyState) -> None:
+        if self.held is not None:
+            self.held.keys_restore(state)
 
     def close(self) -> None:
         if self.held is not None:

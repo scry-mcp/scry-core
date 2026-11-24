@@ -102,7 +102,8 @@ RECORD_SECONDS = 300
 #: The tool every Scry server ends a session with.
 CLEANUP_TOOL = "close"
 
-#: Every Scry tool bounds its own waits at 600 s, so past this a server will not answer.
+#: Every Scry tool bounds its own waits (`vocabulary.WAIT_MAX_S`), so past that a server will
+#: not answer.
 CALL_TIMEOUT_S = 900
 
 #: The options a demo can offer beyond `--binary`, as its server's `start` spells them.

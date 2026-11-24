@@ -53,8 +53,9 @@ def test_a_path_reaches_the_caption_by_its_last_name_and_a_home_as_a_tilde(
 
 def test_a_pattern_with_an_escaped_dot_is_read_whole_not_cut_at_its_backslash() -> None:
     assert ab.caption("log_wait", {"channel": "dos", "pattern": "UFODATA/CITYMAP1\\.BLD",
-                                   "seconds": 120}) == "log_wait dos CITYMAP1\\.BLD 120"
-    assert ab.caption("log_wait", {"pattern": "GAME\\.EXE"}) == "log_wait GAME\\.EXE"
+                                   "seconds": 120}) == \
+        "log_wait(channel=dos, pattern=CITYMAP1\\.BLD, seconds=120)"
+    assert ab.caption("log_wait", {"pattern": "GAME\\.EXE"}) == "log_wait(pattern=GAME\\.EXE)"
 
 
 def test_no_folder_of_a_path_under_a_home_reaches_the_caption() -> None:
@@ -62,7 +63,7 @@ def test_no_folder_of_a_path_under_a_home_reaches_the_caption() -> None:
                                    "nested": {"to": "/home/someone/x/y.bin"},
                                    "many": ["/Users/someone/a/b.txt"],
                                    "keyed": {"/Users/someone/k": 1}})
-    assert text == "snapshot title.png {to=y.bin} [b.txt] {k=1}"
+    assert text == "snapshot(dest=title.png, nested={to=y.bin}, many=[b.txt], keyed={k=1})"
     assert not any(w in text for w in ("someone", "Users", "home", "Code", "shots", "/"))
 
 
@@ -88,27 +89,32 @@ def test_a_perform_is_captioned_as_any_call_by_its_own_values_never_by_a_summary
         ) -> None:
     """A wrapper is never what the overlay shows: the timeline holds its steps instead, so the
     caption of a `perform` is no different from any other call's."""
-    assert ab.caption("perform", {}) == "perform"
-    assert ab.caption("perform", {"path": "/runs/mines.json"}) == "perform mines.json"
+    assert ab.caption("perform", {}) == "perform()"
+    assert ab.caption("perform", {"path": "/runs/mines.json"}) == "perform(path=mines.json)"
 
 
 def test_a_caption_is_the_tool_then_its_values_in_order_without_the_empty_ones() -> None:
-    assert ab.caption("read_memory", {"ref": "0x0400", "length": 16}) == "read_memory 0x0400 16"
-    assert ab.caption("run_for", {"seconds": 2.0, "cpu": None, "label": ""}) == "run_for 2"
-    assert ab.caption("status", {}) == "status"
+    assert ab.caption("read_memory", {"ref": "0x0400", "length": 16}) == \
+        "read_memory(ref=0x0400, length=16)"
+    assert ab.caption("run_for", {"seconds": 2.0, "cpu": None, "label": ""}) == \
+        "run_for(seconds=2)"
+    assert ab.caption("status", {}) == "status()"
 
 
 def test_an_argument_named_hex_is_bytes_and_any_other_hex_text_is_text() -> None:
     assert ab.caption("write", {"ref": "0x1F00", "data_hex": "3E00C9210000FF"}) == \
-        "write 0x1F00 3E 00 C9 21 +3"
-    assert ab.caption("write", {"data_hex": "not hex"}) == "write not hex"
-    assert ab.caption("write", {"data_hex": 4096}) == "write 4096"
-    assert ab.caption("find", {"pattern": "3E00C9210000FF"}) == "find 3E00C9210000FF"
+        "write(ref=0x1F00, data_hex=3E 00 C9 21 +3)"
+    assert ab.caption("write", {"data_hex": "not hex"}) == "write(data_hex=not hex)"
+    assert ab.caption("write", {"data_hex": 4096}) == "write(data_hex=4096)"
+    assert ab.caption("find", {"pattern": "3E00C9210000FF"}) == "find(pattern=3E00C9210000FF)"
 
 
 def test_every_caption_is_printable_ascii() -> None:
     text = ab.caption("send_keys", {"keys": ["\u00f1", "\x1b", "F1"], "data_hex": "00"})
     assert all(" " <= c <= "~" for c in text), text
+    named = ab.caption("t", {"\u00f1" * 40: 1})
+    assert all(" " <= c <= "~" for c in named), named
+    assert len(named) == len(named.encode()), "a printable caption is its own bytes"
 
 
 def test_a_value_that_cannot_be_written_is_a_question_mark_never_a_failure() -> None:
@@ -120,7 +126,7 @@ def test_a_value_that_cannot_be_written_is_a_question_mark_never_a_failure() -> 
     for _ in range(2000):
         deep = [deep]
     assert ab.caption("x", {"big": 10 ** 5000, "odd": Unprintable(), "deep": deep}) == \
-        "x ? ? " + ab.value(deep)
+        "x(big=?, odd=?, deep=" + ab.value(deep) + ")"
     wide = {f"k{i}": i for i in range(1000)}
     assert ab.value(wide).startswith("{k0=0 k1=1")
 
@@ -132,47 +138,49 @@ def _n(name: str, number: str, **fields: Any) -> Named:
 def test_a_named_value_reads_its_name_then_its_number() -> None:
     assert ab.caption("port", {"port": 968, "method": "write"},
                       {"port": _n("DAC write address", "0x3C8")}) == \
-        "port DAC write address (0x3C8) write"
+        "port(port=DAC write address (0x3C8), method=write)"
 
 
 def test_two_values_that_select_one_thing_are_named_each() -> None:
     assert ab.caption("log", {"number": "0x21", "ah": "0x4C"},
                       {"number": Named("vector", "DOS", "0x21"),
-                       "ah": Named("call", "exit", "0x4C")}) == "log DOS (0x21) exit (0x4C)"
+                       "ah": Named("call", "exit", "0x4C")}) == \
+        "log(number=DOS (0x21), ah=exit (0x4C))"
 
 
 def test_a_symbol_the_agent_typed_is_kept_as_typed_with_its_address_beside_it() -> None:
     assert ab.caption("read_memory", {"ref": "score", "length": 2},
                       {"ref": Named("symbol", "score", "0x9405")}) == \
-        "read_memory score (0x9405) 2"
+        "read_memory(ref=score (0x9405), length=2)"
 
 
 def test_an_address_inside_a_symbol_says_how_far_in() -> None:
     assert ab.caption("find", {"ref": "0xb58c"},
                       {"ref": Named("symbol", "count_coin", "0xb58c", delta=9)}) == \
-        "find count_coin+0x9 (0xb58c)"
+        "find(ref=count_coin+0x9 (0xb58c))"
 
 
 def test_a_name_is_cut_at_24_and_its_number_never() -> None:
     long = "a_function_name_that_is_far_too_long_for_a_caption"
     text = ab.caption("run_to", {"ref": "0x123456789ABCDEF0123456"},
                       {"ref": Named("symbol", long, "0x123456789ABCDEF0123456")})
-    assert text == f"run_to {long[:22]}.. (0x123456789ABCDEF0123456)"
-    assert len(text.split(" (")[0].split()[1]) == ab.NAME_WIDTH
+    assert text == f"run_to(ref={long[:22]}.. (0x123456789ABCDEF0123456))"
+    assert len(text.split(" (")[0].split("ref=")[1]) == ab.NAME_WIDTH
 
 
 def test_a_name_with_no_printable_ascii_is_written_as_a_caption_writes_text() -> None:
-    assert ab.caption("t", {"a": 1}, {"a": Named("symbol", "café\tx", "1")}) == "t caf? x (1)"
+    assert ab.caption("t", {"a": 1}, {"a": Named("symbol", "café\tx", "1")}) == \
+        "t(a=caf? x (1))"
 
 
 def test_a_name_for_an_argument_not_given_or_empty_shows_nothing() -> None:
-    assert ab.caption("t", {"a": None, "b": ""}, {"a": _n("x", "1"), "b": _n("y", "2")}) == "t"
+    assert ab.caption("t", {"a": None, "b": ""}, {"a": _n("x", "1"), "b": _n("y", "2")}) == "t()"
 
 
-def test_a_caption_with_no_names_is_the_caption_it_always_was() -> None:
+def test_a_caption_with_no_names_writes_its_values_by_their_parameters() -> None:
     given = {"port": 968, "dest": "/Users/someone/x/y.png", "data_hex": "3E00C921"}
     assert ab.caption("t", given, {}) == ab.caption("t", given, None) == \
-        "t 968 y.png 3E 00 C9 21"
+        "t(port=968, dest=y.png, data_hex=3E 00 C9 21)"
 
 
 def _wide(n: int, name: str = "n" * 24) -> tuple[dict[str, Any], dict[str, Named]]:
@@ -182,8 +190,9 @@ def _wide(n: int, name: str = "n" * 24) -> tuple[dict[str, Any], dict[str, Named
 
 def _line(names_kept: int, n: int) -> str:
     """The caption of `_wide(n)` in which only the first `names_kept` values keep their name."""
-    return " ".join(["t", *(f"{'n' * 24} (0x{v:04X})" if v < names_kept else str(v)
-                            for v in range(n))])
+    parts = [f"a{v}={'n' * 24} (0x{v:04X})" if v < names_kept else f"a{v}={v}"
+             for v in range(n)]
+    return "t(" + ", ".join(parts) + ")"
 
 
 def test_a_caption_within_160_bytes_keeps_every_name() -> None:
@@ -209,7 +218,7 @@ def test_when_the_bare_values_do_not_fit_either_the_tail_is_cut() -> None:
 def test_a_number_is_never_cut_even_when_it_alone_is_wide() -> None:
     number = "0x" + "AB" * 30
     text = ab.caption("t", {"ref": 1}, {"ref": Named("symbol", "x", number)})
-    assert text == f"t x ({number})" and number in text
+    assert text == f"t(ref=x ({number}))" and number in text
 
 
 def test_a_caption_is_cut_to_the_room_a_suffix_leaves() -> None:

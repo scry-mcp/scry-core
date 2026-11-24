@@ -1054,4 +1054,4 @@ def test_the_live_caption_and_the_demos_caption_read_the_same_names() -> None:
     live = abbreviation.caption("read", heard.calls[0].given, heard.calls[0].named)
     shown = abbreviation.caption("read", {"ref": "score", "port": 0x3C8},
                                  naming.arguments_of(got["names"]))
-    assert live == shown == "read score (0x9405) DAC write address (0x03C8)"
+    assert live == shown == "read(ref=score (0x9405), port=DAC write address (0x03C8))"

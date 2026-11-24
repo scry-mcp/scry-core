@@ -31,6 +31,14 @@ NO_FRAME_WHY = "the machine counted no frame while the step ran"
 WAITS_TO_SEE = frozenset({"log_wait", "screen_wait"})
 
 
+def _own_frame(reply: Mapping[str, Any], field: str, read: int | None) -> int | None:
+    """The frame the step's own reply names, when the machine cannot read one while it runs."""
+    if read is not None:
+        return read
+    value = reply.get(field)
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
 def _own_words(reply: Mapping[str, Any]) -> str:
     """A missed step's own account of the miss, its summary and its `verify` note, as a clause
     the list's note ends with; "" when the reply says nothing."""
@@ -281,6 +289,8 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
         else:
             reply = ops[op](**args)
         after = machine.frame_now()
+        before = _own_frame(reply, "frame_before", before)
+        after = _own_frame(reply, "frame_after", after)
         if reply.get("status") != "ok":
             return r.ended("step_failed",
                            f"{_named(i, op, len(steps), cycle)} failed: {reply.get('message')}",
