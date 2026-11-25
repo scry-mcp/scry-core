@@ -6,22 +6,17 @@ reads. The format is in docs/modules.md, under *A demo run's timeline*; `Builder
 from __future__ import annotations
 
 import json
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
-from scry_core import abbreviation, naming
-from scry_core.naming import Named
 from scry_core.verdict import Invalid
 
-VERSION = 2
+VERSION = 3
 Kind = Literal["key", "button", "pointer"]
 KINDS: tuple[Kind, ...] = ("key", "button", "pointer")
-Tint = Literal["write", "read", "refused"]
-TINTS: tuple[Tint, ...] = ("write", "read", "refused")
 DOCUMENT_KEYS = {"version", "demo", "calls"}
-CALL_KEYS = {"n", "step", "tool", "args", "status", "caption", "before", "after", "events"}
-CAPTION_KEYS = {"text", "tint"}
+CALL_KEYS = {"n", "step", "tool", "args", "status", "before", "after", "events"}
 
 
 @dataclass(frozen=True)
@@ -42,14 +37,6 @@ class Event:
         return {"kind": self.kind, "name": self.name, "down": self.down, "frame": frame}
 
 
-def key(name: str, down: bool, frame: int | None = None) -> Event:
-    return Event("key", frame, name=name, down=down)
-
-
-def button(name: str, down: bool, frame: int | None = None) -> Event:
-    return Event("button", frame, name=name, down=down)
-
-
 def pointer(x: int, y: int, frame: int | None = None) -> Event:
     return Event("pointer", frame, x=x, y=y)
 
@@ -64,45 +51,35 @@ class Builder:
 
     def add(self, step: str, tool: str, args: Mapping[str, Any], status: str,
             counted: tuple[int | None, int | None], events: Sequence[Event] = (),
-            read_only: bool = False, named: Mapping[str, Named] | None = None,
-            rows: Sequence[Mapping[str, Any]] = (),
-            readers: Collection[str] = ()) -> None:
-        """A call made: `counted` is the frames its reply said it began and ended at, or None;
-        `read_only` is the tool's `readOnlyHint`, which tints its caption; `named` is what its
-        arguments are called, as its reply's `names` says (`naming.arguments_of`).
+            rows: Sequence[Mapping[str, Any]] = ()) -> None:
+        """A call made: `counted` is the frames its reply said it began and ended at, or None.
 
         `rows` are the calls a wrapper ran, as its reply names them (`ran`): the timeline holds
         one entry per row, in order, at the frames that row ran for, and none for the wrapper,
         because a wrapper is not what a viewer follows. A row that counted no frame stays where
-        the machine was. `readers` are the tools its server marks `readOnlyHint`, which tint a
-        step's caption as a read. A reply that names no row stays one entry, so a server that
-        cannot report the calls a wrapper ran is not invented."""
+        the machine was. A reply that names no row stays one entry, so a server that cannot
+        report the calls a wrapper ran is not invented."""
         if rows:
-            self._ran(step, tool, args, list(rows), list(events), readers)
+            self._ran(step, tool, args, list(rows), list(events))
             return
-        self._one(step, tool, args, status, counted, events, read_only, named)
+        self._one(step, tool, args, status, counted, events)
 
     def _one(self, step: str, tool: str, args: Mapping[str, Any], status: str,
-             counted: tuple[int | None, int | None], events: Sequence[Event], read_only: bool,
-             named: Mapping[str, Named] | None) -> None:
+             counted: tuple[int | None, int | None], events: Sequence[Event]) -> None:
         """One call as one entry."""
         before = counted[0] if counted[0] is not None else self._frame
         after = counted[1] if counted[1] is not None else before
         if after is not None:
             self._frame = after
-        tint: Tint = "refused" if status != "ok" else "read" if read_only else "write"
         self.calls.append({"n": len(self.calls) + 1, "step": step, "tool": tool,
                            "args": dict(args), "status": status,
-                           "caption": {"text": abbreviation.caption(tool, args, named),
-                                       "tint": tint},
                            "before": before, "after": after,
                            "events": [e.fields(after) for e in events]})
 
     def _ran(self, step: str, tool: str, args: Mapping[str, Any],
-             rows: list[Mapping[str, Any]], events: list[Event], readers: Collection[str]
-             ) -> None:
+             rows: list[Mapping[str, Any]], events: list[Event]) -> None:
         """The calls a wrapper ran, each an entry of its own; the wrapper's arguments give each
-        step's, its reply's own names give what they are called."""
+        step's."""
         steps = _steps_of(args)
         bounds: list[tuple[int | None, int | None]] = []
         first = len(self.calls)
@@ -119,13 +96,8 @@ class Builder:
                 self._frame = after
             bounds.append((before, after))
             status = str(reply.get("status", "ok"))
-            tint: Tint = "refused" if status != "ok" else "read" if op in readers else "write"
             self.calls.append({"n": len(self.calls) + 1, "step": step, "tool": op,
                                "args": _step_arguments(steps, n, op), "status": status,
-                               "caption": {"text": abbreviation.caption(
-                                   op, _step_arguments(steps, n, op),
-                                   naming.arguments_of(reply.get("names"))),
-                                   "tint": tint},
                                "before": before, "after": after, "events": []})
         placed: list[list[Event]] = [[] for _ in rows]
         for event in events:
@@ -189,8 +161,11 @@ def _frame(value: Any, what: str) -> None:
 
 
 def _check(document: Any) -> None:
-    if not isinstance(document, dict) or type(document.get("version")) is not int \
-            or document["version"] != VERSION:
+    version = document.get("version") if isinstance(document, dict) else None
+    if version == 2:
+        raise Invalid("the timeline is a version 2 document, the format a demo's transcript "
+                      f"carried; this reader is version {VERSION}")
+    if not isinstance(document, dict) or type(version) is not int or version != VERSION:
         raise Invalid(f"the timeline is not a version {VERSION} document")
     calls = document.get("calls")
     if set(document) != DOCUMENT_KEYS or not isinstance(document["demo"], str) \
@@ -207,11 +182,6 @@ def _check(document: Any) -> None:
                 raise Invalid(f"call {n} of the timeline has no `{name}` text")
         if not isinstance(call.get("args"), dict) or not isinstance(call.get("events"), list):
             raise Invalid(f"call {n} of the timeline has no `args` object or `events` list")
-        caption = call["caption"]
-        if not isinstance(caption, dict) or set(caption) != CAPTION_KEYS \
-                or not isinstance(caption["text"], str) or caption["tint"] not in TINTS:
-            raise Invalid(f"call {n}'s caption is not a `text` and a `tint` of "
-                          f"{', '.join(TINTS)}")
         before, after = call.get("before"), call.get("after")
         _frame(before, f"call {n} `before`")
         _frame(after, f"call {n} `after`")

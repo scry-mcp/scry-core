@@ -14,15 +14,13 @@ import types
 from collections.abc import Mapping, Sequence
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
-import anyio
 import pytest
 from mcp.client import Client
 
-from scry_core import abbreviation, example, motion, png, timeline, verdict
 from scry_core import demo as d
-from scry_core.naming import Named
+from scry_core import example, motion, png, timeline, verdict
 from scry_core.verdict import EXIT_INVALID
 
 SERVER = Path(__file__).resolve().parent / "fixtures" / "demo" / "server.py"
@@ -348,11 +346,6 @@ def test_update_readme_rewrites_the_block_and_the_capture(
     assert d.readme_drift(_readme(demo), examples).startswith("line 1: the README has ")
 
 
-def _pressed(args: Mapping[str, Any], reply: d.Reply) -> list[timeline.Event]:
-    return [timeline.key(args["key"], True, reply["frame_set"]),
-            timeline.key(args["key"], False, reply["frame_released"])]
-
-
 def _pointed(args: Mapping[str, Any], reply: d.Reply) -> list[timeline.Event]:
     return [timeline.pointer(reply["pointer"]["x"], reply["pointer"]["y"])]
 
@@ -363,8 +356,7 @@ def test_a_run_writes_its_timeline_beside_the_transcript_with_the_frames_each_ca
     run's own directory is spelled as the transcript spells it."""
     steps = [
         d.Step("boot", "start", {"value": 7}, _said("value")),
-        d.Step("fire", "press", {"key": "Fire 1", "frames": 4}, _said("summary"),
-               events=_pressed),
+        d.Step("fire", "press", {"key": "Fire 1", "frames": 4}, _said("summary")),
         d.Step("aim", "point", {"x": 12, "y": 34}, _said("summary"), events=_pointed),
         d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
                lambda reply, run: "a picture"),
@@ -378,12 +370,6 @@ def test_a_run_writes_its_timeline_beside_the_transcript_with_the_frames_each_ca
         ("start", None, None), ("press", 0, 5), ("point", 5, 8), ("picture", 8, 8),
         ("read", 8, 8), ("close", 8, 8)]
     assert calls[1]["args"] == {"key": "Fire 1", "frames": 4}
-    assert calls[1]["caption"] == {"text": "press(key=Fire 1, frames=4)", "tint": "write"}
-    assert calls[4]["caption"] == {"text": "read()", "tint": "read"}, \
-        "the server marks it read-only"
-    assert calls[1]["events"] == [
-        {"kind": "key", "name": "Fire 1", "down": True, "frame": 0},
-        {"kind": "key", "name": "Fire 1", "down": False, "frame": 4}]
     assert calls[2]["events"] == [{"kind": "pointer", "x": 12, "y": 34, "frame": 8}], \
         "a reply that counts no `frame_after` ends at the frame it stopped at"
     assert str(tmp_path) not in json.dumps(calls[3]["args"]), "a path is spelled as the transcript"
@@ -400,46 +386,13 @@ def test_a_wrapper_s_rows_are_read_from_where_its_reply_names_them() -> None:
     assert d.ran(None) == []
 
 
-def test_a_calls_caption_in_the_timeline_carries_the_names_its_reply_gave_its_arguments(
-        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    steps = [d.Step("look", "peek", {"ref": "score"}, _said("summary")),
-             d.Step("again", "peek", {"ref": "score"}, _said("summary"))]
-    assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_PASS
-    calls = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
-    assert [c["caption"]["text"] for c in calls[:2]] == ["peek(ref=score (0x9405))"] * 2
-    live = abbreviation.caption("peek", {"ref": "score"},
-                                {"ref": Named("symbol", "score", "0x9405")})
-    assert calls[0]["caption"]["text"] == live, "the overlay and the demo write one text"
-    monkeypatch.setenv("DEMO_NO_NAMES", "1")
-    assert _run(_demo(tmp_path, steps[:1]), tmp_path) == verdict.EXIT_PASS
-    bare = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
-    assert bare[0]["caption"]["text"] == "peek(ref=score)", "a session with the names off has none"
-
-
-def test_the_read_only_tools_are_read_across_every_page_the_server_lists() -> None:
-    from mcp.types import ListToolsResult, Tool, ToolAnnotations
-
-    def tool(name: str, read_only: bool | None) -> Tool:
-        hint = None if read_only is None else ToolAnnotations(read_only_hint=read_only)
-        return Tool(name=name, input_schema={"type": "object"}, annotations=hint)
-
-    pages = {None: ListToolsResult(tools=[tool("a", True), tool("b", None)], next_cursor="2"),
-             "2": ListToolsResult(tools=[tool("c", True), tool("d", False)])}
-
-    class Listing:
-        async def list_tools(self, cursor: str | None = None) -> ListToolsResult:
-            return pages[cursor]
-
-    assert anyio.run(d._readers, cast(Client, Listing())) == frozenset({"a", "c"})
-
-
 def test_a_failed_step_is_in_the_timeline_with_its_status_and_no_events(
         tmp_path: Path, log: Path) -> None:
     def refused(reply: d.Reply, run: d.Run) -> str:
         raise d.StepFailed("the check says no")
 
     steps = [d.Step("boot", "start", {}, _said("value")),
-             d.Step("fire", "press", {"key": "A"}, refused, events=_pressed)]
+             d.Step("fire", "press", {"key": "A"}, refused)]
     assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_FAIL
     calls = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
     assert [(c["step"], c["status"], c["events"]) for c in calls] == [
@@ -459,7 +412,7 @@ def test_a_pointer_in_the_first_call_that_counts_a_frame_does_not_end_the_run_in
 def test_an_event_outside_the_frames_of_its_call_makes_the_run_invalid(
         tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
     def early(args: Mapping[str, Any], reply: d.Reply) -> list[timeline.Event]:
-        return [timeline.key("A", True, reply["frame_after"] + 1)]
+        return [timeline.pointer(1, 1, reply["frame_after"] + 1)]
 
     steps = [d.Step("boot", "start", {}, _said("value")),
              d.Step("fire", "press", {"key": "A"}, _said("summary"), events=early)]

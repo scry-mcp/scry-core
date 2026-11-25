@@ -72,7 +72,7 @@ from mcp.client import Client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult
 
-from scry_core import example, file_names, fresh, motion, naming, prose, timeline
+from scry_core import example, file_names, fresh, motion, prose, timeline
 from scry_core.verdict import EXIT_FAIL, EXIT_INVALID, EXIT_PASS, Invalid
 
 BEGIN = "<!-- demo-transcript:begin -->"
@@ -595,7 +595,6 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                               read_timeout_seconds=CALL_TIMEOUT_S) as client:
                 started = True
                 closed = False
-                readers = await _readers(client)
                 for n, step in enumerate(demo.steps, start=1):
                     ok, line, args, reply, events = await _step(
                         client, step, run, out.transcripts.answered if step.name == led else None)
@@ -603,10 +602,7 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                     out.transcripts.add(n, step, args, reply, line, ok)
                     out.timeline.add(step.name, step.tool, norm.arguments(args),
                                      _status(reply, ok), counted(reply), events,
-                                     step.tool in readers,
-                                     naming.arguments_of(reply.get("names") if reply is not None
-                                                         else None),
-                                     rows=ran(reply), readers=readers)
+                                     rows=ran(reply))
                     closed = ok and step.tool == CLEANUP_TOOL
                     if not ok:
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
@@ -634,19 +630,6 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
         out.lines.append(demo.verdict(len(demo.steps), passed) if demo.verdict else
                          f"DEMO {demo.name}: {prose.counted(len(demo.steps), 'step')}, {passed} OK")
     return out
-
-
-async def _readers(client: Client) -> frozenset[str]:
-    """The tools the server marks `readOnlyHint`, whose captions take the read tint."""
-    names: set[str] = set()
-    cursor: str | None = None
-    while True:
-        listed = await client.list_tools(cursor=cursor)
-        names |= {tool.name for tool in listed.tools
-                  if tool.annotations is not None and tool.annotations.read_only_hint}
-        cursor = listed.next_cursor
-        if not cursor:
-            return frozenset(names)
 
 
 async def _step(client: Client, step: Step, run: Run,

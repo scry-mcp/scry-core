@@ -1,6 +1,5 @@
 """A demo's committed run read back as its steps, standing in for an emulator, and the timeline
-their `events` name for it. A normalised run hides the frames its demo marks volatile, and every
-caption is tinted as a write: no server is asked which tools only read."""
+their `events` name for it. A normalised run hides the frames its demo marks volatile."""
 
 from __future__ import annotations
 

@@ -1035,23 +1035,3 @@ def test_a_step_is_named_too_so_a_sequence_row_can_carry_its_names() -> None:
 
     got = run()
     assert got["ran"][0]["names"][0]["name"] == "score" and "names" not in got
-
-
-def test_the_live_caption_and_the_demos_caption_read_the_same_names() -> None:
-    """The caption of the overlay is made from `Call.named`; the demo runner makes its own from
-    the reply's block with the same function. Both give the same text."""
-    from scry_core import abbreviation
-
-    heard = _Heard()
-    s, _, _ = _named_server(listener=heard)
-    heard.server = s
-
-    @s.tool("Read")
-    def read(ref: str, port: int = 0) -> dict[str, Any]:
-        return {"status": "ok"}
-
-    got = read("score", port=0x3C8)
-    live = abbreviation.caption("read", heard.calls[0].given, heard.calls[0].named)
-    shown = abbreviation.caption("read", {"ref": "score", "port": 0x3C8},
-                                 naming.arguments_of(got["names"]))
-    assert live == shown == "read(ref=score (0x9405), port=DAC write address (0x03C8))"

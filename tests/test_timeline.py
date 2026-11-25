@@ -10,7 +10,6 @@ import pytest
 
 from scry_core import demo as d
 from scry_core import timeline, transcript
-from scry_core.naming import Named
 from scry_core.verdict import Invalid
 
 #: Calls 1, 3, 9 and 11 of scry-mame's LineUp demo's committed `TRANSCRIPT.md`, verbatim.
@@ -31,30 +30,11 @@ def test_the_frames_of_a_recorded_run_are_the_ones_its_replies_counted() -> None
     made = timeline.Builder("lineup")
     for n, record in enumerate(transcript.records(RUN.read_text(encoding="utf-8"), "lineup")):
         reply = d.Reply(record["reply"])
-        events = [timeline.key(reply["name"], True, reply["frame_set"]),
-                  timeline.key(reply["name"], False, reply["frame_released"])] \
-            if record["tool"] == "input" else []
-        made.add(f"step {n}", record["tool"], record["args"], "ok", d.counted(reply), events)
+        made.add(f"step {n}", record["tool"], record["args"], "ok", d.counted(reply))
     calls = timeline.loads(made.dumps())["calls"]
     assert [(c["tool"], c["before"], c["after"]) for c in calls] == [
         ("start", None, 0), ("run_to", 0, 251), ("input", 261, 266), ("screen_wait", 266, 267)]
     assert calls[2]["args"] == {"port": ":P1", "field": "Coin 1", "frames": 4}
-    assert calls[2]["events"] == [
-        {"kind": "key", "name": "Coin 1", "down": True, "frame": 261},
-        {"kind": "key", "name": "Coin 1", "down": False, "frame": 265}]
-
-
-def test_a_call_carries_its_caption_tinted_by_what_the_tool_does_and_how_it_answered() -> None:
-    made = timeline.Builder("x")
-    made.add("a", "run_to", {"ref": "Draw_Title", "dest": "/tmp/run/a.png"}, "ok", (1, 9))
-    made.add("b", "read_memory", {"ref": "0x10", "length": 4}, "ok", (9, 9), read_only=True)
-    made.add("c", "read_memory", {}, "INVALID", (9, 9), read_only=True)
-    made.add("d", "close", {}, "ended", (None, None))
-    assert [c["caption"] for c in timeline.loads(made.dumps())["calls"]] == [
-        {"text": "run_to(ref=Draw_Title, dest=a.png)", "tint": "write"},
-        {"text": "read_memory(ref=0x10, length=4)", "tint": "read"},
-        {"text": "read_memory()", "tint": "refused"},
-        {"text": "close()", "tint": "refused"}]
 
 
 def test_a_symbol_the_agent_gave_reaches_the_timeline_as_given() -> None:
@@ -72,8 +52,8 @@ def test_a_call_that_counts_no_frame_stays_where_the_machine_was() -> None:
 
 
 def test_a_wrapper_is_one_entry_per_call_it_ran_at_that_call_s_own_frames() -> None:
-    """A `perform` of three calls is three entries in order, each captioned as itself at the
-    frames it ran for; the wrapper is not an entry at all."""
+    """A `perform` of three calls is three entries in order, each at the frames it ran for;
+    the wrapper is not an entry at all."""
     made = timeline.Builder("x")
     steps = [{"op": "run_for", "seconds": 2}, {"op": "read_memory", "ref": "0x10"},
              {"op": "send_keys", "keys": ["Enter"]}]
@@ -83,15 +63,10 @@ def test_a_wrapper_is_one_entry_per_call_it_ran_at_that_call_s_own_frames() -> N
              "reply": {"status": "ok"}},
             {"op": "send_keys", "frame_before": 20, "frame_after": 24,
              "reply": {"status": "INVALID"}}]
-    made.add("go", "perform", {"steps": steps}, "ok", (10, 24), rows=rows,
-             readers=("read_memory",))
+    made.add("go", "perform", {"steps": steps}, "ok", (10, 24), rows=rows)
     calls = timeline.loads(made.dumps())["calls"]
     assert [(c["tool"], c["before"], c["after"]) for c in calls] == [
         ("run_for", 10, 20), ("read_memory", 20, 20), ("send_keys", 20, 24)]
-    assert [c["caption"] for c in calls] == [
-        {"text": "run_for(seconds=2)", "tint": "write"},
-        {"text": "read_memory(ref=0x10)", "tint": "read"},
-        {"text": "send_keys(keys=[Enter])", "tint": "refused"}]
     assert [c["args"] for c in calls] == [
         {"seconds": 2}, {"ref": "0x10"}, {"keys": ["Enter"]}]
 
@@ -161,8 +136,8 @@ def test_an_event_with_no_frame_takes_the_frame_its_call_ended_at() -> None:
 
 def test_the_document_is_the_same_bytes_every_time_it_is_written() -> None:
     def one() -> str:
-        return _built(("a", "press", {"key": "A"}, "ok", (1, 6),
-                       [timeline.button("left", True, 2)])).dumps()
+        return _built(("a", "point", {"x": 2}, "ok", (1, 6),
+                       [timeline.pointer(3, 4, 2)])).dumps()
 
     assert one() == one() and one().endswith("}\n")
     assert list(json.loads(one())) == ["version", "demo", "calls"]
@@ -170,27 +145,23 @@ def test_the_document_is_the_same_bytes_every_time_it_is_written() -> None:
 
 def _document(**call: Any) -> str:
     base: dict[str, Any] = {"n": 1, "step": "a", "tool": "t", "args": {}, "status": "ok",
-                            "caption": {"text": "t", "tint": "write"}, "before": 1, "after": 5,
-                            "events": []}
+                            "before": 1, "after": 5, "events": []}
     return json.dumps({"version": timeline.VERSION, "demo": "x", "calls": [{**base, **call}]})
 
 
 @pytest.mark.parametrize(("text", "why"), [
     ("not json", "is not JSON"),
-    (json.dumps({"version": 1, "demo": "x", "calls": []}), "not a version 2 document"),
-    (json.dumps({"version": True, "demo": "x", "calls": []}), "not a version 2 document"),
-    (json.dumps({"version": 2, "demo": "x"}), "not \\['calls', 'demo', 'version'\\]"),
-    (json.dumps({"version": 2, "demo": "x", "calls": [], "more": 1}), "holds \\['calls'"),
+    (json.dumps({"version": 1, "demo": "x", "calls": []}), "not a version 3 document"),
+    (json.dumps({"version": True, "demo": "x", "calls": []}), "not a version 3 document"),
+    (json.dumps({"version": 2, "demo": "x", "calls": []}), "version 2 document"),
+    (json.dumps({"version": 3, "demo": "x"}), "not \\['calls', 'demo', 'version'\\]"),
+    (json.dumps({"version": 3, "demo": "x", "calls": [], "more": 1}), "holds \\['calls'"),
     (_document(n=2), "call 1 of the timeline is not numbered 1"),
     (_document(n=1.0), "is not numbered 1"),
     (_document(n=True), "is not numbered 1"),
     (_document(extra=1), "does not hold exactly"),
     (_document(tool=3), "has no `tool` text"),
     (_document(args=[]), "no `args` object or `events` list"),
-    (_document(caption="t"), "caption is not a `text` and a `tint`"),
-    (_document(caption={"text": "t", "tint": "blue"}), "caption is not a `text` and a `tint`"),
-    (_document(caption={"text": 3, "tint": "read"}), "caption is not a `text` and a `tint`"),
-    (_document(caption={"text": "t"}), "caption is not a `text` and a `tint`"),
     (_document(after=None), "began at frame 1 and names no end"),
     (_document(before=-1), "not a frame number or null"),
     (_document(events=[{"kind": "wheel"}]), "an event of kind 'wheel'"),
@@ -231,13 +202,3 @@ def test_the_first_call_that_counts_a_frame_may_fire_input_with_no_frame_before_
                   ("b", "point", {}, "ok", (None, 3), [timeline.pointer(1, 2)]))
     event = timeline.loads(made.dumps())["calls"][1]["events"][0]
     assert event["frame"] == 3
-
-
-def test_a_caption_names_what_the_calls_reply_called_its_arguments() -> None:
-    made = timeline.Builder("x")
-    made.add("look", "read_memory", {"ref": "score", "length": 2}, "ok", (1, 2), read_only=True,
-             named={"ref": Named("symbol", "score", "0x9405")})
-    made.add("bare", "read_memory", {"ref": "score"}, "ok", (2, 3))
-    first, second = timeline.loads(made.dumps())["calls"]
-    assert first["caption"] == {"text": "read_memory(ref=score (0x9405), length=2)", "tint": "read"}
-    assert second["caption"]["text"] == "read_memory(ref=score)"

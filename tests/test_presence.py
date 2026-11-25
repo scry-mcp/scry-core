@@ -1,6 +1,6 @@
 """`scry_core.presence`: the states a session's calls set, the one writer that delivers only the
 latest (a quick call still shown, a failed delivery sent again), a delivery that fails said in
-`reply` and never in a call's own reply, the mark a mouse button raises, and the declaration of
+`reply` and never in a call's own reply, the pointer a session moves, and the declaration of
 which tools drive held against a registry."""
 
 from __future__ import annotations
@@ -15,7 +15,6 @@ import pytest
 
 from scry_core import boundary, overlay, presence
 from scry_core.envelope import Envelope
-from scry_core.naming import Named
 
 #: Long enough for an idle writer to have sent anything it was going to.
 QUIET_S = 0.2
@@ -113,28 +112,15 @@ def test_a_driving_call_turns_it_acting_and_its_end_back_to_held() -> None:
     p.close()
 
 
-def test_a_still_call_leaves_the_state_held_and_only_captions_itself() -> None:
+def test_a_still_call_leaves_the_state_held() -> None:
     a = _Adapter()
     p = _open(a)
     p.began(_call("registers", read_only=True))
     with p._cv:
         assert (p._want, p._pulse) == ("held", False), "a still call set no state"
     p.ended(_call("registers", read_only=True), "ok")
-    _settle(a, 2)
-    assert a.shown == ["held", "held"]
-    caption = a.payloads[-1].caption
-    assert caption is not None and (caption.text, caption.kind) == ("registers()", "read")
-    p.close()
-
-
-def test_a_still_call_changes_nothing_with_the_calls_layer_off() -> None:
-    a = _Adapter()
-    p = _open(a, asked=overlay.Overlay(calls=False))
-    p.began(_call("registers", read_only=True))
-    p.ended(_call("registers", read_only=True), "ok")
     time.sleep(QUIET_S)
-    assert a.shown == ["held"] and a.payloads[0].layers == (
-        "edge", "pointer", "keys", "pause", "record")
+    assert a.shown == ["held"]
     p.close()
 
 
@@ -389,120 +375,16 @@ def _until(a: _Adapter, ok: Callable[[presence.Payload], bool], after: int = 0
     raise AssertionError(f"never delivered; delivered {a.payloads}")
 
 
-def test_a_call_s_marks_can_be_snapshotted_and_restored() -> None:
-    """A call whose input wrote nothing puts the marks back as it found them, and the writer
-    delivers the restored set."""
+def test_the_pointer_and_its_buttons_reported_reach_the_payload() -> None:
     a = _Adapter()
     p = _open(a)
-    p.key("a", True)
-    saved = p.keys_marked()
-    _until(a, lambda pl: pl.keys == ("a",))
-    p.key("a", False)
-    p.key("b", True)
-    _until(a, lambda pl: pl.keys == ("b",))
-    p.keys_restore(saved)
-    restored = _until(a, lambda pl: pl.keys == ("a",))
-    assert restored.keys == ("a",)
-    p.close()
-
-
-def test_a_presence_that_is_not_drawn_has_no_marks_to_save() -> None:
-    assert presence.Shown().keys_marked() == {}
-    presence.Shown().keys_restore({})
-
-
-def test_a_drawn_presence_passes_the_marks_through_its_shown() -> None:
-    """Whatever holds a `Shown` takes a call's marks and puts them back without reading them."""
-    a = _Adapter()
-    shown = presence.Presence.open(a, ("run_for",))
-    shown.key("a", True)
-    saved = shown.keys_marked()
-    shown.key("a", False)
-    _until(a, lambda pl: pl.keys == ())
-    shown.keys_restore(saved)
-    assert _until(a, lambda pl: pl.keys == ("a",)).keys == ("a",)
-    shown.close()
-
-
-def test_a_call_s_caption_is_delivered_with_its_state_and_leaves_on_its_own() -> None:
-    a = _Adapter()
-    look = presence.Look(caption_hold_s=0.1)
-    p = _open(a, look=look)
-    assert a.payloads[0] == presence.Payload(layers=overlay.OVERLAY.asked())
-    p.began(_call("run_for", seconds=2.0))
-    # No minimum: the caption goes with the call's own first delivery, nothing queues it.
-    first = _until(a, lambda pl: pl.caption is not None)
-    assert first.caption is not None and first.caption.text == "run_for(seconds=2)"
-    _settle(a, 2)
-    assert a.shown[-1] == "acting"
-    caption = a.payloads[-1].caption
-    assert caption is not None and \
-        (caption.text, caption.rgb) == ("run_for(seconds=2)", look.band_rgb(look.write_rgb))
-    p.ended(_call("run_for", seconds=2.0), "ok")
-    gone = _until(a, lambda pl: pl.caption is None, after=1)
-    assert gone.layers == overlay.OVERLAY.asked(), "no call came: the writer woke on its own"
-    p.close()
-
-
-def test_a_caption_is_delivered_with_the_names_the_boundary_gave_the_call() -> None:
-    a = _Adapter()
-    p = _open(a)
-    p.began(boundary.Call("read_memory", {"ref": "score", "length": 2}, False, True,
-                          {"ref": Named("symbol", "score", "0x9405")}))
-    caption = _until(a, lambda pl: pl.caption is not None).caption
-    assert caption is not None and caption.text == "read_memory(ref=score (0x9405), length=2)"
-    p.close()
-
-
-def test_a_call_that_ends_refused_is_delivered_in_the_refused_tint() -> None:
-    a = _Adapter()
-    p = _open(a)
-    p.began(_call("run_for"))
-    p.ended(_call("run_for"), "refused")
-    refused = _until(a, lambda pl: pl.caption is not None and pl.caption.kind == "refused")
-    assert refused.caption is not None and \
-        refused.caption.rgb == presence.LOOK.band_rgb(presence.LOOK.refused_rgb)
-    p.close()
-
-
-def test_a_plain_start_is_captioned_and_a_start_with_a_plan_is_not() -> None:
-    """`start` runs other calls only when it carries a plan: then its steps are what is shown,
-    and a plain `start` is captioned like any other call of its own."""
-    a = _Adapter()
-    p = _open(a)
-    p.began(_call("start", binary="dosbox-x"))
-    plain = _until(a, lambda pl: pl.caption is not None)
-    assert plain.caption is not None and plain.caption.text == "start(binary=dosbox-x)"
-    p.ended(_call("start", binary="dosbox-x"), "ok")
-    p.close()
-
-    b = _Adapter()
-    q = _open(b)
-    q.began(_call("start", plan=[{"op": "run_for", "seconds": 2}]))
-    q.began(_call("run_for", nested=True, seconds=2))
-    shown = _until(b, lambda pl: pl.caption is not None)
-    assert shown.caption is not None and shown.caption.text == "run_for(seconds=2)"
-    q.close()
-
-
-def test_the_keys_pointer_and_pause_reported_reach_the_payload() -> None:
-    a = _Adapter()
-    p = _open(a)
-    p.key("Enter", True)
-    p.key("Enter", False)
-    _until(a, lambda pl: pl.keys == ("Enter",))
-    p.button("left", True)                       # no pointer yet: the mark, and no ripple
+    p.button("left", True)                       # no pointer yet: nothing to report
     p.moved(10, 20)
     p.button("left", True)
     p.button("right", True)
     p.button("left", False)
     p.moved(11, 21)
     _until(a, lambda pl: pl.pointer == presence.Pointer(11, 21, ("right",)))
-    p.paused(True)
-    _until(a, lambda pl: pl.paused)
-    before = len(a.payloads)
-    p.paused(False)
-    _until(a, lambda pl: not pl.paused, after=before)
     p.close()
 
 
@@ -557,115 +439,25 @@ def test_the_record_mark_is_red_and_blinks_once_a_second() -> None:
     assert (presence.LOOK.record_rgb, presence.LOOK.record_blink_s) == (0xFF3B30, 1.0)
 
 
-def test_a_key_tapped_on_an_idle_session_leaves_on_its_own() -> None:
-    a = _Adapter()
-    p = _open(a, look=presence.Look(keycap_min_s=0.05))
-    p.key("Enter", True)
-    p.key("Enter", False)
-    _until(a, lambda pl: pl.keys == ("Enter",))
-    shown = _until(a, lambda pl: pl.keys == (), after=1)
-    assert shown.layers == overlay.OVERLAY.asked(), "nothing came: the writer woke on its own"
-    p.close()
-
-
-def test_a_key_let_go_is_delivered_fading_before_it_leaves() -> None:
-    """The writer wakes on its own through the fade, so the live drawer paints a mark that
-    leaves instead of one that vanishes."""
-    a = _Adapter()
-    p = _open(a, look=presence.Look(keycap_min_s=0.3, keycap_fade_s=0.2))
-    p.key("Enter", True)
-    _until(a, lambda pl: pl.keys == ("Enter",) and pl.key_alphas == (1.0,))
-    p.key("Enter", False)
-    _until(a, lambda pl: pl.keys == ("Enter",) and 0 < pl.key_alphas[0] < 1)
-    _until(a, lambda pl: pl.keys == ())
-    levels = {pl.key_alphas[0] for pl in a.payloads if pl.keys == ("Enter",)}
-    assert len(levels) > 2, "the mark stepped through its fade, not one jump to nothing"
-    p.close()
-
-
 def test_a_layer_not_asked_is_never_delivered() -> None:
     a = _Adapter()
-    p = _open(a, asked=overlay.Overlay(calls=False, keys=False, pointer=False, pause=False,
-                                       record=False, place="top"))
-    p.key("Enter", True)
+    p = _open(a, asked=overlay.Overlay(pointer=False, record=False))
     p.moved(1, 2)
-    p.paused(True)
     p.recording("video", True)
     p.began(_call("run_for"))
     p.ended(_call("run_for"), "ok")
     _settle(a, 3)
-    assert all(pl == presence.Payload(layers=("edge",), place="top") for pl in a.payloads)
+    assert all(pl == presence.Payload(layers=("edge",)) for pl in a.payloads)
     p.close()
 
 
 def test_a_session_without_presence_takes_input_reports_and_does_nothing() -> None:
     shown = presence.Shown()
-    shown.key("A", True)
     shown.moved(1, 1)
     shown.button("left", True)
-    shown.paused(True)
     shown.recording("video", True)
     a = _Adapter()
     held = presence.Presence.open(a, ())
-    held.key("A", True)
-    held.paused(True)
-    _until(a, lambda pl: pl.keys == ("A",) and pl.paused)
+    held.moved(1, 2)
+    _until(a, lambda pl: pl.pointer == presence.Pointer(1, 2))
     held.close()
-
-
-def test_a_mouse_button_raises_its_mark_and_releasing_it_lowers_it_like_a_key() -> None:
-    a = _Adapter()
-    p = _open(a, look=presence.Look(keycap_min_s=0.05))
-    p.button("left", True)
-    _until(a, lambda pl: pl.keys == ("LMB",))
-    after = len(a.payloads)
-    p.button("left", False)
-    lowered = _until(a, lambda pl: pl.keys == (), after=after)
-    assert lowered.layers == overlay.OVERLAY.asked(), "nothing came: the writer woke on its own"
-    p.close()
-
-
-def test_the_mark_map_names_the_three_buttons_and_leaves_any_other_name_alone() -> None:
-    """A wheel's own names are not ours to invent, so they keep the spelling they came with."""
-    assert [presence.mark_of(name) for name in ("left", "right", "middle")] == [
-        "LMB", "RMB", "MMB"]
-    assert [presence.mark_of(name) for name in ("wheel up", "wheel down")] == [
-        "wheel up", "wheel down"]
-
-
-def _contrast(one: int, other: int) -> float:
-    """WCAG 2.x contrast between two 0xRRGGBB colours."""
-    def linear(channel: int) -> float:
-        value = channel / 255
-        return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
-
-    def luminance(rgb: int) -> float:
-        r, g, b = (linear((rgb >> shift) & 0xFF) for shift in (16, 8, 0))
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-    first, second = sorted((luminance(one), luminance(other)), reverse=True)
-    return (first + 0.05) / (second + 0.05)
-
-
-def _seen_over(above: int, below: int, alpha: float) -> int:
-    """`above` laid at `alpha` over `below`."""
-    return sum(round(alpha * ((above >> shift) & 0xFF) + (1 - alpha) * ((below >> shift) & 0xFF))
-               << shift for shift in (16, 8, 0))
-
-
-def test_the_band_at_its_alpha_keeps_the_caption_text_at_wcag_aa_over_a_dark_picture() -> None:
-    """The band is the call's tint darkened and laid at `caption_alpha`, so the picture shows
-    through it: over the dark and mid pictures these demos draw, every tint keeps AA for text
-    this size. A near-white picture takes the read and write tints below it, which is what a
-    band that is not painted whole costs."""
-    look = presence.Look()
-    tints = look.tints
-    for picture in (0x000000, 0x808080):
-        for tint in (tints.write, tints.read, tints.refused):
-            seen = _seen_over(look.band_rgb(tint), picture, look.caption_alpha)
-            assert _contrast(seen, look.caption_text_rgb) >= 4.5, (hex(picture), hex(tint))
-
-
-def test_the_band_is_the_call_tint_darkened_by_its_share() -> None:
-    look = presence.Look(band_share=0.5)
-    assert look.band_rgb(0xFF8C00) == 0x804600
