@@ -18,6 +18,7 @@ import pytest
 
 from scry_core import decorate as dc
 from scry_core import motion, timeline
+from scry_core.presence import LOOK
 from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
 
 #: The demo runner's own recorded fixture: 120 frames of 8 x 8 at 60 a second.
@@ -157,7 +158,19 @@ def test_before_its_first_call_a_frame_carries_the_edge_alone() -> None:
 def test_the_edge_is_drawn_at_the_look_s_held_alpha_on_every_frame() -> None:
     drawn = dc.decorate(_run(), _clip(), dc.Style(layers=("edge",)))
     border = [_pixel(picture, 0, 120) for picture in drawn]
-    assert len(set(border)) == 1 and border[0] != _pixel(_clip().pictures[0], 0, 120)
+    plain = _pixel(_clip().pictures[0], 0, 120)
+    look = LOOK
+    a = look.held_alpha
+    rgb = ((look.rgb >> 16) & 0xFF, (look.rgb >> 8) & 0xFF, look.rgb & 0xFF)
+    want = tuple(p * (1 - a) + c * a for p, c in zip(plain, rgb, strict=True))
+    assert len(set(border)) == 1 and border[0] != plain
+    assert all(abs(got - expected) <= 1
+               for got, expected in zip(border[0], want, strict=True)), border[0]
+
+
+def test_a_style_that_asks_for_the_pointer_alone_draws_no_edge() -> None:
+    drawn = dc.decorate(_run(), _clip(), dc.Style(layers=("pointer",)))
+    assert _pixel(drawn[0], 0, 120) == _pixel(_clip().pictures[0], 0, 120)
 
 
 @pytest.mark.parametrize(("clip", "why"), [

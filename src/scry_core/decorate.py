@@ -26,13 +26,12 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 from scry_core import motion, timeline
-from scry_core import overlay as ov
 from scry_core.presence import LOOK, Look
 from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
 
@@ -63,12 +62,17 @@ class Zoom:
     box: tuple[int, int, int, int]
 
 
+#: The layers a clip can carry: the frame and the pointer. The record mark is a live state and
+#: a clip holds only frames the machine ran.
+ClipLayer = Literal["edge", "pointer"]
+
+
 @dataclass(frozen=True)
 class Style:
     """What a demo draws: `layers` as `overlay.Overlay.asked` names them, the live overlay's
     `look`, and a zoom."""
 
-    layers: tuple[ov.Layer, ...] = ov.OVERLAY.asked()
+    layers: tuple[ClipLayer, ...] = ("edge", "pointer")
     look: Look = LOOK
     zooms: tuple[Zoom, ...] = ()
 
@@ -199,7 +203,7 @@ class _Painter:
         art = Image.new("RGBA", self.size, (0, 0, 0, 0))
         if "pointer" in self.style.layers:
             self._pointer(art, t, view)
-        shown = self._edged(base)
+        shown = self._edged(base) if "edge" in self.style.layers else base.convert("RGBA")
         shown.alpha_composite(art)
         return motion.Picture(*self.size, shown.convert("RGB").tobytes(), picture.ms)
 

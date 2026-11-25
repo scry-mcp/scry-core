@@ -117,8 +117,8 @@ def _number(value: Any) -> int | None:
 
 
 def _steps_of(args: Mapping[str, Any]) -> list[Any]:
-    """The steps a wrapper was given: `steps` (`perform`) or `act` (`drive`)."""
-    for key in ("steps", "act"):
+    """The steps a wrapper was given: `steps` (`perform`), `act` (`drive`) or `plan` (`start`)."""
+    for key in ("steps", "act", "plan"):
         given = args.get(key)
         if isinstance(given, list):
             return given

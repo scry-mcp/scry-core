@@ -139,9 +139,8 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.example` | The one shape of an example: the ask, the call, an excerpt of the reply, how to read it. |
 | `scry_core.motion` | A demo's `loop.webp` and `screen.png`: stretches cut from a run's recordings and assembled with ffmpeg and `img2webp`, both shown at 4:3. |
 | `scry_core.aspect` | The shape a game's picture is shown in: the whole frame at 4:3, one function for the loop and the still. |
-| `scry_core.committed_run` | A demo's committed run read back as its steps, and the timeline its steps' `events` name for it, standing in for an emulator in a server's tests. |
 | `scry_core.timeline` | What a demo run did, call by call, in the emulator's frames: the file the demo decorator reads. |
-| `scry_core.decorate` | A demo's clip with the edge and the pointer drawn in from its run's timeline, and an optional zoom. `python -m scry_core.decorate` makes one decorated loop. The only module that needs the `decorate` extra (Pillow and numpy). |
+| `scry_core.decorate` | A demo's clip with the edge and the pointer drawn from its run's timeline, when the demo declares a decorator; no demo of the two servers declares one today. `python -m scry_core.decorate` makes one decorated clip. The only module that needs the `decorate` extra (Pillow and numpy). |
 | `scry_core.install` | The table of MCP clients and the block of a server's README that says how to add it to each. |
 | `scry_core.game_demo` | One game's demo written once for both servers, with a `Binding` for what each emulator does differently. |
 | `scry_core.games` | The scripts of the games both servers run, one module per game. |
@@ -162,7 +161,7 @@ The document is `{"version": 3, "demo": <name>, "calls": [...]}`. Each call hold
 
 `before` and `after` come from the reply's `frame_before` and `frame_after`, else its last `frame`; a call that counts none stays where the call before left the machine. Loading a saved state rewinds the machine, so `after` can be smaller than `before`.
 
-A wrapper (`perform`, `drive`, `start` with a plan) is not an entry: each call it ran is one of its own, at the frames its row ran for, with the inner tool and the wrapper's step name. Its reply's rows are `ran`; a wrapper whose reply names no row stays one entry.
+A wrapper (`perform`, `drive`, `start` with a plan) is not an entry. Each call it ran is one of its own, at its row's frames, with the inner tool and the wrapper's step name. Its reply's rows are `ran`, or `act.ran` for a `drive`; a wrapper whose reply names no row stays one entry.
 
 An event is `{"kind": "key", "name", "down", "frame"}`, `{"kind": "button", "name", "down", "frame"}` or `{"kind": "pointer", "x", "y", "frame"}`. A pointer's `x` and `y` are the position the reply reports, in the emulator's screen pixels. A button's `name` is the button as the server names it (`left`). A step names its events with `Step.events`, and an event's `frame` lies between its call's `before` and `after`.
 

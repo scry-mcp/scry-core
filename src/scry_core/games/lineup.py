@@ -45,9 +45,10 @@ PLAYER_ACTIVE = 1
 #: Where a one-player game puts the player.
 START_COLUMN, START_BLOCK = 3, 1
 MUSIC_MS = 2000
-#: What the loop shows of each further shot. They come after the sound, because a recording
-#: anywhere earlier moves the instant the music is compared from.
-SHOT_MS = 1000
+#: What the loop shows of each further shot: a moment must last `motion.CUT_SECONDS[0]` s, and at
+#: a board's own rate a second of recording is under it. They come after the sound, because a
+#: recording anywhere earlier moves the instant the music is compared from.
+SHOT_MS = 2000
 
 
 def player(want: dict[str, int], what: str) -> Step:

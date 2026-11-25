@@ -71,6 +71,20 @@ def test_a_wrapper_is_one_entry_per_call_it_ran_at_that_call_s_own_frames() -> N
         {"seconds": 2}, {"ref": "0x10"}, {"keys": ["Enter"]}]
 
 
+@pytest.mark.parametrize(("tool", "args"), [
+    ("perform", {"steps": [{"op": "run_for", "frames": 10}]}),
+    ("drive", {"act": [{"op": "run_for", "frames": 10}]}),
+    ("start", {"plan": [{"op": "run_for", "frames": 10}]}),
+])
+def test_a_wrapper_s_row_carries_the_arguments_it_was_given(
+        tool: str, args: dict[str, Any]) -> None:
+    made = timeline.Builder("x")
+    rows = [{"op": "run_for", "frame_before": 0, "frame_after": 10,
+             "reply": {"status": "ok"}}]
+    made.add("go", tool, args, "ok", (0, 10), rows=rows)
+    assert timeline.loads(made.dumps())["calls"][0]["args"] == {"frames": 10}
+
+
 def test_a_wrapper_s_row_that_counted_no_frame_is_still_the_entry_not_the_wrapper() -> None:
     """A step sent while the machine ran answers no frame: the step is still the entry, placed
     where the machine was, because a wrapper is never what the timeline shows."""
