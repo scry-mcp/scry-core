@@ -18,10 +18,9 @@ import pytest
 
 from scry_core import decorate as dc
 from scry_core import motion, timeline
-from scry_core import overlay as ov
 from scry_core.verdict import EXIT_INVALID, EXIT_PASS, Invalid
 
-#: The demo runner's own recorded fixture: 72 frames of 8 x 8 at 60 a second.
+#: The demo runner's own recorded fixture: 120 frames of 8 x 8 at 60 a second.
 RECORDING = Path(__file__).resolve().parent / "fixtures" / "demo" / "screen.avi"
 needs_programs = pytest.mark.skipif(
     any(shutil.which(name) is None for name in motion.PROGRAMS),
@@ -32,6 +31,10 @@ RATE = Fraction(60)
 BOX = motion.Box(0, 0, 32, 24, (32, 24))
 
 
+def _button(name: str, down: bool, frame: int | None = None) -> timeline.Event:
+    return timeline.Event("button", frame, name=name, down=down)
+
+
 def _run() -> dict[str, Any]:
     made = timeline.Builder("t")
     made.add("boot", "start", {}, "ok", (None, 100))
@@ -39,9 +42,9 @@ def _run() -> dict[str, Any]:
              [timeline.pointer(3, 4, 100), timeline.pointer(20, 15, 112),
               timeline.pointer(9, 9, 113), timeline.pointer(30, 2, 130)])
     made.add("click", "send_mouse", {"button": "left"}, "ok", (130, 140),
-             [timeline.button("left", True, 131), timeline.button("left", False, 135)])
-    made.add("keys", "send_keys", {"keys": ["Enter"]}, "ok", (140, 160),
-             [timeline.key("Enter", True, 141), timeline.key("Enter", False, 150)])
+             [_button("left", True, 131), _button("left", False, 135)])
+    made.add("more", "send_mouse", {}, "ok", (140, 160),
+             [timeline.pointer(2, 2, 141), timeline.pointer(4, 4, 150)])
     return timeline.loads(made.dumps())
 
 
@@ -57,7 +60,7 @@ def _pixel(picture: motion.Picture, x: int, y: int) -> tuple[int, ...]:
 
 
 def test_a_clip_decorated_twice_is_the_same_pixels() -> None:
-    style = dc.Style(sine=True, raster=True, zooms=(dc.Zoom(105, 150, (4, 4, 8, 6)),))
+    style = dc.Style(zooms=(dc.Zoom(105, 150, (4, 4, 8, 6)),))
     first, again = (dc.decorate(_run(), _clip(), style) for _ in range(2))
     assert [p.rgb for p in first] == [p.rgb for p in again]
     assert first[0].rgb != _clip().pictures[0].rgb, "nothing was drawn, so nothing was compared"
@@ -66,11 +69,11 @@ def test_a_clip_decorated_twice_is_the_same_pixels() -> None:
 @needs_programs
 def test_a_loop_of_the_recorded_fixture_decorated_twice_is_the_same_bytes(tmp_path: Path) -> None:
     def once(n: int) -> motion.Built:
-        return motion.build([motion.Cut(RECORDING, 0, 72)], tmp_path / f"w{n}",
+        return motion.build([motion.Cut(RECORDING, 0, 120)], tmp_path / f"w{n}",
                             dc.for_loop(_run(), [100]))
 
     one, two = once(1), once(2)
-    plain = motion.build([motion.Cut(RECORDING, 0, 72)], tmp_path / "plain")
+    plain = motion.build([motion.Cut(RECORDING, 0, 120)], tmp_path / "plain")
     assert one.data == two.data
     assert one.data != plain.data, "the decorated loop is the plain one"
 
@@ -78,7 +81,7 @@ def test_a_loop_of_the_recorded_fixture_decorated_twice_is_the_same_bytes(tmp_pa
 @needs_programs
 def test_each_cut_of_a_loop_is_decorated_with_its_own_frames_and_lasts_as_undecorated(
         tmp_path: Path) -> None:
-    cuts = [motion.Cut(RECORDING, 0, 60), motion.Cut(RECORDING, 12, 60)]
+    cuts = [motion.Cut(RECORDING, 0, 120), motion.Cut(RECORDING, 12, 108)]
     seen: list[tuple[int, list[int], int]] = []
     shown: list[bytes] = []
     decorated = dc.for_loop(_run(), [100, 300])
@@ -90,7 +93,7 @@ def test_each_cut_of_a_loop_is_decorated_with_its_own_frames_and_lasts_as_undeco
         return decorated(n, numbers, pictures, rate, box) if n == 0 else list(pictures)
 
     built = motion.build(cuts, tmp_path / "d", watched)
-    assert seen == [(0, list(range(0, 60, 2)), 30), (1, list(range(12, 72, 2)), 30)]
+    assert seen == [(0, list(range(0, 120, 2)), 60), (1, list(range(12, 120, 2)), 54)]
     assert built.cut_ms == motion.build(cuts, tmp_path / "p").cut_ms
     assert shown[0] != shown[1], "the second cut was handed the first one's frames"
 
@@ -120,18 +123,13 @@ def test_of_two_positions_sent_at_one_frame_the_later_is_drawn() -> None:
 def test_a_press_ripples_where_the_pointer_is_drawn_and_none_before_any_position() -> None:
     """A position sent after the press moves the pointer during the press already."""
     made = timeline.Builder("t")
-    made.add("early", "send_mouse", {}, "ok", (100, 102), [timeline.button("left", True, 101)])
+    made.add("early", "send_mouse", {}, "ok", (100, 102), [_button("left", True, 101)])
     made.add("aim", "send_mouse", {}, "ok", (102, 110), [timeline.pointer(1, 1, 110)])
-    made.add("click", "send_mouse", {}, "ok", (110, 120), [timeline.button("left", True, 111)])
+    made.add("click", "send_mouse", {}, "ok", (110, 120), [_button("left", True, 111)])
     made.add("away", "send_mouse", {}, "ok", (120, 130), [timeline.pointer(30, 1, 120)])
     plan = dc._plan(timeline.loads(made.dumps()), _clip())
     assert [p[0] for p in plan.presses] == [11 / 60]
     assert plan.presses[0][1:] == dc.pointer_at(plan.points, 11 / 60)
-
-
-def test_a_name_the_bitmap_font_cannot_draw_is_drawn_as_a_question_mark() -> None:
-    font = dc._Font(1)
-    assert font.mask("\u00e9\u2192").tobytes() == font.mask("??").tobytes()
 
 
 def test_a_zoom_on_a_box_wider_than_the_picture_shows_the_whole_picture() -> None:
@@ -156,18 +154,10 @@ def test_before_its_first_call_a_frame_carries_the_edge_alone() -> None:
     assert drawn[0].rgb == edge[0].rgb and drawn[15].rgb != edge[15].rgb
 
 
-def test_a_caption_wider_than_its_band_scrolls_and_one_that_fits_stands_still() -> None:
-    def band(values: int, frame: int) -> bytes:
-        made = timeline.Builder("t")
-        made.add("go", "run_for", {f"v{n}": f"{n}" * 20 for n in range(values)}, "ok",
-                 (100, 160))
-        picture = dc.decorate(timeline.loads(made.dumps()), _clip(),
-                              dc.Style(layers=("calls",)))[frame]
-        row = picture.width * 3
-        return picture.rgb[(SIZE[1] - 25) * row:(SIZE[1] - 15) * row]
-
-    assert band(1, 20) == band(1, 40)
-    assert band(6, 20) != band(6, 40)
+def test_the_edge_is_drawn_at_the_look_s_held_alpha_on_every_frame() -> None:
+    drawn = dc.decorate(_run(), _clip(), dc.Style(layers=("edge",)))
+    border = [_pixel(picture, 0, 120) for picture in drawn]
+    assert len(set(border)) == 1 and border[0] != _pixel(_clip().pictures[0], 0, 120)
 
 
 @pytest.mark.parametrize(("clip", "why"), [
@@ -201,12 +191,12 @@ def test_the_command_refuses_a_clip_with_no_timeline(tmp_path: Path) -> None:
     said: list[str] = []
     out = tmp_path / "loop.webp"
     code = dc.main([str(RECORDING), "--timeline", str(tmp_path / "none.json"), "--at", "100",
-                    "--frames", "72", "--out", str(out)], said.append)
+                    "--frames", "120", "--out", str(out)], said.append)
     assert code == EXIT_INVALID and not out.exists()
     assert said[0].startswith("INVALID: the timeline") and "decorated only from" in said[0]
     (tmp_path / "bytes.json").write_bytes(b"\xff\xfe")
     code = dc.main([str(RECORDING), "--timeline", str(tmp_path / "bytes.json"), "--at", "100",
-                    "--frames", "72", "--out", str(out)], said.append)
+                    "--frames", "120", "--out", str(out)], said.append)
     assert code == EXIT_INVALID and said[-1].startswith("INVALID: the timeline")
 
 
@@ -216,62 +206,35 @@ def test_the_command_writes_the_decorated_loop_and_leaves_nothing_beside_it(
     (tmp_path / "t.json").write_text(json.dumps(_run()))
     said: list[str] = []
     code = dc.main([str(RECORDING), "--timeline", str(tmp_path / "t.json"), "--at", "100",
-                    "--frames", "72", "--out", str(tmp_path / "loop.webp"), "--place", "top",
-                    "--without", "keys", "--sine"], said.append)
+                    "--frames", "120", "--out", str(tmp_path / "loop.webp")], said.append)
     assert code == EXIT_PASS, said
     assert sorted(p.name for p in tmp_path.iterdir()) == ["loop.webp", "t.json"]
     code = dc.main([str(RECORDING), "--timeline", str(tmp_path / "t.json"), "--at", "100",
-                    "--frames", "72", "--out", str(tmp_path / "none" / "loop.webp")], said.append)
+                    "--frames", "120", "--out", str(tmp_path / "none" / "loop.webp")], said.append)
     assert code == EXIT_INVALID and said[-1].startswith("INVALID: the loop cannot be written")
 
 
-def _band_changed(picture: motion.Picture, rows: range) -> bool:
-    centre = picture.width // 2
-    return any(_pixel(picture, centre, y) != _pixel(_clip().pictures[0], centre, y)
-               for y in rows)
-
-
-@pytest.mark.parametrize("place", ["top", "bottom"])
-def test_the_caption_goes_to_the_band_asked_and_nowhere_else(place: ov.Place) -> None:
-    drawn = dc.decorate(_run(), _clip(), dc.Style(place=place))[30]
-    top, bottom = range(10, 60), range(SIZE[1] - 60, SIZE[1] - 10)
-    assert _band_changed(drawn, top if place == "top" else bottom)
-    assert not _band_changed(drawn, bottom if place == "top" else top)
-
-
-def test_the_caption_is_the_timeline_s_own_text_and_tint() -> None:
-    """A read tint is blue where a write tint is orange: the band takes the call's tint, read
-    from the timeline and never worked out again."""
-    run = _run()
-    read = json.loads(json.dumps(run))
-    for call in read["calls"]:
-        call["caption"]["tint"] = "read"
-    at = (SIZE[0] // 8, SIZE[1] - 20)
-    written = _pixel(dc.decorate(run, _clip(), dc.Style(layers=("edge", "calls")))[5], *at)
-    blue = _pixel(dc.decorate(read, _clip(), dc.Style(layers=("edge", "calls")))[5], *at)
-    assert written[0] > written[2] and blue[2] > blue[0], (written, blue)
-
-
-def test_a_server_with_no_pointer_layer_draws_no_pointer_from_the_same_timeline() -> None:
-    """MAME's: `overlay` names the pointer lacking, so the style leaves it out."""
-    style = dc.Style.of(ov.OVERLAY, lacking=("pointer",))
-    assert "pointer" not in style.layers
-    with_events = dc.decorate(_run(), _clip(), style)
-    run = _run()
-    for call in run["calls"]:
-        call["events"] = [e for e in call["events"] if e["kind"] == "key"]
-    assert [p.rgb for p in with_events] == [p.rgb for p in dc.decorate(run, _clip(), style)]
-
-
-def test_the_edge_is_bright_while_a_call_runs_the_machine_and_dim_once_it_faded() -> None:
+def test_a_call_that_counted_only_one_of_its_frames_is_still_the_clip_s() -> None:
+    """A first call whose reply named only its end frame ran somewhere in the clip: it is placed
+    at that frame with the events it fired, never dropped for the frame it could not name."""
     made = timeline.Builder("t")
-    made.add("go", "run_for", {}, "ok", (0, 30))
-    made.add("look", "read_memory", {}, "ok", (30, 30), read_only=True)
-    made.add("wait", "screen_wait", {}, "ok", (30, 300), read_only=True)
-    drawn = dc.decorate(timeline.loads(made.dumps()), _clip(first=0, frames=300),
-                        dc.Style(layers=("edge",)))
-    running, faded = _pixel(drawn[10], 0, 120), _pixel(drawn[299], 0, 120)
-    assert running[0] > faded[0] > GREY >> 16, (running, faded)
+    made.add("boot", "start", {}, "ok", (None, None))
+    made.add("aim", "send_mouse", {}, "ok", (None, 3), [timeline.pointer(1, 2, 3)])
+    calls = dc._span(timeline.loads(made.dumps())["calls"], (0, 10))
+    assert [c["step"] for c in calls] == ["aim"]
+    assert dc._ran(calls[0]) == (3, 3)
+
+
+def test_a_later_call_that_counted_one_frame_walks_back_over_an_earlier_one() -> None:
+    """A call that named only its end frame after a counted one: the walk back to the stretch
+    the clip shows must not compare a frame against a missing one."""
+    made = timeline.Builder("t")
+    made.add("a", "run_for", {}, "ok", (0, 1))
+    made.add("b", "send_mouse", {}, "ok", (5, 5), [timeline.pointer(1, 2, 5)])
+    document = timeline.loads(made.dumps())
+    document["calls"][1]["before"] = None      # a timeline a writer did not make
+    calls = dc._span(document["calls"], (0, 10))
+    assert [c["step"] for c in calls] == ["a", "b"]
 
 
 def test_calls_before_a_rewind_of_the_machine_are_not_this_clip_s() -> None:
@@ -313,10 +276,11 @@ def test_scry_core_and_its_demo_runner_import_without_the_decorate_extra() -> No
     assert blocked.returncode != 0 and "halted" in blocked.stderr, "the block blocks nothing"
 
 
-def test_the_record_layer_is_not_drawn_into_a_demo() -> None:
-    """Live only: a clip carries no recording mark, whatever its style asks."""
-    asked = dc.Style.of(ov.OVERLAY)
-    assert "record" in asked.layers
-    with_record = dc.decorate(_run(), _clip(), asked)
-    without = dc.decorate(_run(), _clip(), dc.Style.of(ov.Overlay(record=False)))
-    assert [p.rgb for p in with_record] == [p.rgb for p in without]
+def test_a_style_that_leaves_the_pointer_out_draws_no_pointer_from_the_same_timeline() -> None:
+    """A server whose overlay names the pointer lacking: the style leaves it out."""
+    style = dc.Style(layers=("edge",))
+    with_events = dc.decorate(_run(), _clip(), style)
+    run = _run()
+    for call in run["calls"]:
+        call["events"] = [e for e in call["events"] if e["kind"] != "pointer"]
+    assert [p.rgb for p in with_events] == [p.rgb for p in dc.decorate(run, _clip(), style)]

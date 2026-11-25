@@ -110,6 +110,27 @@ def test_an_activation_reports_why_it_failed_and_nothing_when_it_did_not() -> No
     assert wh.activation_error("osascript did not answer") == "osascript did not answer"
 
 
+def test_the_bundle_a_process_runs_from_is_read_from_lsappinfo() -> None:
+    assert wh.bundle_path('"LSBundlePath"="/Applications/App.app"\n') == "/Applications/App.app"
+    assert wh.bundle_path('"LSDisplayName"="mame"\n') == ""
+
+
+def test_an_application_is_activated_through_its_bundle_and_never_by_pid_alone(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    # System Events' `frontmost` is refused, silently and with rc 0, from a background process.
+    seen: list[list[str]] = []
+
+    def run(argv: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
+        seen.append(argv)
+        said = '"LSBundlePath"="/a/App.app"' if argv[0] == wh.LSAPPINFO else ""
+        return subprocess.CompletedProcess(argv, 0, said, "")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert wh.activate_app(42) == ""
+    assert seen == [["/usr/bin/lsappinfo", "info", "-only", "bundlepath", "-pid", "42"],
+                    ["/usr/bin/open", "-a", "/a/App.app"]]
+
+
 def _host(monkeypatch: pytest.MonkeyPatch, spaces: list[int], desk: list[Any] | None
           ) -> tuple[wh.MacHost, list[Any]]:
     calls: list[Any] = []

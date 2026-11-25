@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from test_demo import _demo, _pointed, _pressed, _run, _said
+from test_demo import _demo, _pointed, _run, _said
 
 from scry_core import committed_run, timeline
 from scry_core import demo as d
@@ -23,8 +23,7 @@ def log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def _steps() -> list[d.Step]:
     return [
         d.Step("boot", "start", {"value": 7}, _said("value")),
-        d.Step("fire", "press", {"key": "Fire 1", "frames": 4}, _said("summary"),
-               events=_pressed),
+        d.Step("fire", "press", {"key": "Fire 1", "frames": 4}, _said("summary")),
         d.Step("aim", "point", {"x": 12, "y": 34}, _said("summary"), events=_pointed),
         d.Step("end", "close", {}, lambda reply, run: "closed"),
     ]
@@ -47,7 +46,7 @@ def test_the_timeline_of_a_committed_run_names_what_its_steps_fired_and_is_the_o
     written = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())
     read_back = committed_run.timeline_of(demo, tmp_path / "out" / "transcript.md")
     assert read_back["calls"] == written["calls"]
-    assert read_back["calls"][1]["events"], "the press named no events"
+    assert read_back["calls"][2]["events"], "the point named no events"
 
 
 def test_a_file_that_is_no_transcript_is_invalid_and_not_an_empty_run(tmp_path: Path) -> None:

@@ -31,9 +31,11 @@ class Host:
     records its calls and, when `brings`, puts the window in front."""
 
     def __init__(self, listed: list[w.Seen], displays: list[w.Display] = TWO,
-                 appears_after: int = 0, brings: bool = True, refuses: str = "") -> None:
+                 appears_after: int = 0, brings: bool = True, refuses: str = "",
+                 brings_after: int = 1) -> None:
         self.listed, self._displays, self.polls = listed, displays, 0
         self.appears_after, self.brings, self.refuses = appears_after, brings, refuses
+        self.brings_after = brings_after
         self.activated: list[int] = []
 
     def displays(self) -> list[w.Display]:
@@ -48,7 +50,7 @@ class Host:
 
     def activate(self, window: w.Seen) -> str:
         self.activated.append(window.number)
-        if self.brings:
+        if self.brings and len(self.activated) >= self.brings_after:
             self.listed = [seen(window.pid, window.bounds, True, window.number),
                            *(x for x in self.listed if x.number != window.number)]
         return self.refuses
@@ -334,6 +336,14 @@ def test_the_window_activated_is_the_largest_of_the_pid_as_the_reading_picks_it(
     state = w.bring_front(PID, host, 3.0, clock, clock.sleep, launched_behind=False)
     assert host.activated == [1], host.activated
     assert state.bounds == (100, 100, 400, 300)
+
+
+def test_an_activation_that_lands_while_the_window_opens_is_asked_once_more() -> None:
+    """The first request can land mid-transition and do nothing, as macOS does it."""
+    clock = Clock()
+    host = Host([seen(PID, (100, 100, 400, 300), onscreen=False)], brings_after=2)
+    state = w.bring_front(PID, host, 3.0, clock, clock.sleep, launched_behind=False)
+    assert state.front and host.activated == [1, 1]
 
 
 def test_a_window_that_does_not_come_forward_is_a_refusal_with_what_was_read_back() -> None:

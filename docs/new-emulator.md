@@ -254,7 +254,7 @@ public source each fact was checked against. A server ships dictionaries and one
   `Confirmation.of(locks, second_checks)` from its own lock and second check (and
   `shared.locks()` and `shared.second_check()` for the shared dictionaries) and passes it to
   `Base.load(..., confirmation=...)`. That is the one place the filter lives: the namer, the
-  line notes, the summary, the captions and `machine_map`'s rows read a base that cannot hold a
+  line notes, the summary and `machine_map`'s rows read a base that cannot hold a
   held-back entry, a `device` or `contains` that points at one is dropped when the base loads,
   and `knowledge_find` answers a key whose entry is held back as an entry that exists and is not
   confirmed, with its id in `unconfirmed`. A server's `status` carries `knowledge_tool.counts`.
@@ -508,7 +508,7 @@ public source each fact was checked against. A server ships dictionaries and one
 
 ## Naming what the replies show
 
-A reply and a caption call a number by its name where the server knows one (`DAC write address
+A reply calls a number by its name where the server knows one (`DAC write address
 (0x3C8)`), so a reader does not look it up. The server writes one namer and a table of its replies'
 number fields; `scry_core.naming` does the rest.
 
@@ -520,23 +520,21 @@ number fields; `scry_core.naming` does the rest.
   every example, and expects zero calls.
 - **The wiring**: `naming.Guarded(namer)` goes to `Boundary(namer=..., names_on=...)`. A failure
   of the namer gives no names and is counted: `Guarded.failed()` is what `status` says as
-  `names_failed`, and never a call's own reply. `Boundary` puts the names on `Call.named`, which
-  the caption uses, and, while `names_on()` holds, adds `names` and `names_cut` to every reply and
+  `names_failed`, and never a call's own reply. `Boundary` puts the names on `Call.named` and, while `names_on()` holds,
+  adds `names` and `names_cut` to every reply and
   names the numbers its summary prints, at the first whole occurrence: a short number such as `1`
   is ambiguous in a line, so a tool gives its field a `shown` spelling (`irq {}`) that is not. The
-  block also names the call's own arguments, under `given.<argument>`; the demo runner builds its
-  captions from those with the function the window's captions use.
+  block also names the call's own arguments, under `given.<argument>`.
 - **The switch**: `start` takes `names: naming.Switch = True`, whose description is
   `naming.ARGUMENT`, and `naming.ASK` is the sentence for `asks.json`. Off, a reply has no
-  `names`, no names in its summary and no note on a disassembled line; the window's captions
-  keep theirs.
+  `names`, no names in its summary and no note on a disassembled line.
 - **A call with variants**: `naming.named_call(base, scope, interrupt, registers)` names `INT
   interrupt` from the registers a stop holds (upper-case names, `AH`, `BX`; a word or its two
   bytes serve either way). It answers the variant whose selector's register is known and holds
   the variant's value, else the call itself, else None; a register the stop does not say never
-  picks a variant, so a caption never names one it cannot know. A namer calls it where it names
-  a call. `base` is either base a server loads, its dictionaries or its base of rows, and so
-  for `notes.note` and `knowledge.calls.resolve`; on a base of rows an address is named by a
+  picks a variant, so a name never says one it cannot know. A namer calls it where it names
+  a call. `base` is either base a server loads, its dictionaries or its base of rows, and so for
+  `notes.note` and `knowledge.calls.resolve`; on a base of rows an address is named by a
   `memory` entry's key only: it does not read an entry's `address` and `length`.
 - **A disassembled line's note**: `notes.note(base, scope, operands, names_on=...)` returns what
   the base calls the operands the server parsed (a port, an interrupt, an address), and None when

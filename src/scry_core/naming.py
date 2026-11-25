@@ -1,6 +1,6 @@
-"""What a number is called, in a call's caption and in its reply: the `names` block, the names in
-a summary, and `Guarded`, which keeps a server's namer from failing the call it names. The
-`names` argument of `start` turns the reply's names off; the window's captions keep theirs."""
+"""What a number is called in a reply: the `names` block, the names in a summary, and `Guarded`,
+which keeps a server's namer from failing the call it names. The `names` argument of `start`
+turns the reply's names off."""
 
 from __future__ import annotations
 
@@ -25,9 +25,9 @@ GIVEN = "given."
 
 ARGUMENT = ("Name the numbers a reply shows: a port, interrupt, address or key gets its name in "
             "the reply's `names`, its summary and a disassembled line's note. `false` leaves "
-            "replies bare; the window's captions keep their names.")
+            "replies bare.")
 ASK = ("`names`: `false` leaves a reply's numbers bare, with no `names` field, no name in its "
-       "summary and no note on a disassembled line; the window's captions still name them.")
+       "summary and no note on a disassembled line.")
 Switch = Annotated[bool, Described(description=ARGUMENT)]
 
 

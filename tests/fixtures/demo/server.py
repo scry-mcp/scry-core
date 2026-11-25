@@ -15,7 +15,7 @@ from typing import Any
 from mcp.server import MCPServer
 from mcp.types import CallToolResult, ImageContent, TextContent, ToolAnnotations
 
-from scry_core import png
+from scry_core import avi, png
 
 # An 8 x 8 picture: the size of the frames of `screen.avi`, so a loop's still can be cut from it.
 PIXEL = png.encode(png.Raster(8, 8, bytes(range(192))))
@@ -43,6 +43,13 @@ def start(value: int = 7, binary: str = "", shared: bool = False,
         body["shared"] = shared
     if display is not None:
         body["display"] = display
+    return _answer(body)
+
+
+@server.tool()
+def window(front: bool = False) -> CallToolResult:
+    body: dict[str, Any] = {"status": "ok", "summary": "the window on display 0, in front",
+                            "display": 0, "onscreen": True, "front": front}
     return _answer(body)
 
 
@@ -110,11 +117,12 @@ def record(frames: int, dest: str) -> CallToolResult:
     """A recording as both servers answer it: the AVI at `dest`, and the file's own numbers."""
     path = Path(dest)
     path.parent.mkdir(parents=True, exist_ok=True)
-    avi = (Path(__file__).parent / "screen.avi").read_bytes()
-    path.write_bytes(avi)
+    recording = (Path(__file__).parent / "screen.avi").read_bytes()
+    path.write_bytes(recording)
     return _answer({"status": "ok", "summary": f"record: {frames} frames",
-                    "verdict": "ELAPSED", "path": str(path), "frames": frames, "bytes": len(avi),
-                    "avi_frames": 72, "began": True, "ended": True,
+                    "verdict": "ELAPSED", "path": str(path), "frames": frames,
+                    "bytes": len(recording), "avi_frames": avi.count(recording),
+                    "began": True, "ended": True,
                     "frame_before": 7})
 
 

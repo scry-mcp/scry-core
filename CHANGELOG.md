@@ -30,6 +30,11 @@ What a server author notices. A client's view of each server is in that server's
   calls write the guest.
 
 ## 0.121.0
+||||||| 87b74fa
+- The overlay no longer narrates: it draws the frame, the pointer and the recording mark, and
+  the chat says what a call is doing. `overlay` takes `pointer` and `record`; `Look` and
+  `Payload` lose the caption, the keycaps and the pause mark; `scry_core.timeline` holds
+  version 3 and refuses a version 2 document by name.
 
 - A server answers what a number is called on its machine, with the source each answer was
   checked against. `knowledge_tool.register` adds the `knowledge_find` tool, and a
@@ -52,8 +57,7 @@ What a server author notices. A client's view of each server is in that server's
   cpus, `knowledge/cpus/`.
   `tools/knowledge_sources.py` writes the index of the sources they cite from each emulator's
   source at its pin (`--mame DIR`, `--dosbox REPO`).
-- `scry_core.decorate` draws the presence layers into a demo's clip from the demo's run, richer
-  than the live overlay. It needs the `decorate` extra (`scry-core[decorate]`: Pillow and numpy),
+- `scry_core.decorate` draws the frame and the pointer into a demo's clip from the demo's run. It needs the `decorate` extra (`scry-core[decorate]`: Pillow and numpy),
   which a server and its users never load. A moment of the session's video is placed by the frame
   a reply ended at, so an input sent to a running guest cuts where it happened.
 

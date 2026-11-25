@@ -23,10 +23,20 @@ Ops = dict[str, Callable[..., dict[str, Any]]]
 Waited = Literal["stopped", "running", "gone"]
 
 NO_FAILURE_WHY = "no step failed"
+#: A step's frame the machine did not answer: `unavailable`, because a reply carries no null.
+NO_FRAME_WHY = "the machine counted no frame while the step ran"
 
 
 #: The steps that wait for something to see, whose TIMEOUT fails the list's premise.
 WAITS_TO_SEE = frozenset({"log_wait", "screen_wait"})
+
+
+def _own_frame(reply: Mapping[str, Any], field: str, read: int | None) -> int | None:
+    """The frame the step's own reply names, when the machine cannot read one while it runs."""
+    if read is not None:
+        return read
+    value = reply.get(field)
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
 def _own_words(reply: Mapping[str, Any]) -> str:
@@ -129,6 +139,11 @@ class SequenceMachine(ABC):
         """The bounded wait for a stop; `tail` for the list's last."""
 
     @abstractmethod
+    def frame_now(self) -> int | None:
+        """The frame counter where the machine stands, or None while it runs or its build has
+        none. Read around each step, so the account says the frames that step ran for."""
+
+    @abstractmethod
     def can_be_stopped(self) -> bool:
         """Whether anything declared can stop the machine."""
 
@@ -142,7 +157,7 @@ class SequenceMachine(ABC):
         """`ran` as the reply carries it (`scry_core.sequence_account.account`)."""
 
     def entry(self, op: str, reply: dict[str, Any]) -> dict[str, Any]:
-        """One step in the account."""
+        """One step in the account; the executor adds the frames the step ran for."""
         return {"op": op, "reply": reply}
 
     def missed(self, op: str, reply: dict[str, Any]) -> bool:
@@ -266,12 +281,16 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
                                note=f"{why}; it and the steps after it were not sent")
             # settle_seconds 0 asked for no wait, even if the stop had landed: no verdict.
             r.waited = r.waited or settle_seconds > 0
+        before = machine.frame_now()
         if cycle is None:
             with mprogress.within(progress, f"{name} step {i + 1} of {len(steps)} ({op})",
                                   began):
                 reply = ops[op](**args)
         else:
             reply = ops[op](**args)
+        after = machine.frame_now()
+        before = _own_frame(reply, "frame_before", before)
+        after = _own_frame(reply, "frame_after", after)
         if reply.get("status") != "ok":
             return r.ended("step_failed",
                            f"{_named(i, op, len(steps), cycle)} failed: {reply.get('message')}",
@@ -281,7 +300,9 @@ def run(machine: SequenceMachine, steps: list[dict[str, Any]], ops: Ops, settle_
             message, fields = recording.divergence(i, op, reply, apart)
             return r.ended("diverged", message, keep_last=False, also=[reply], **fields)
         r.held += bool(step.get(recording.RECORDED))
-        r.ran.append(machine.entry(op, reply))
+        r.ran.append({**machine.entry(op, reply),
+                      "frame_before": contract.or_unavailable(before, NO_FRAME_WHY),
+                      "frame_after": contract.or_unavailable(after, NO_FRAME_WHY)})
         machine.noted(op, reply)
         if machine.missed(op, reply):
             # What the rest of the list was built on did not happen.

@@ -4,7 +4,7 @@ both servers (`scry_core.sequence`)."""
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -16,7 +16,7 @@ from scry_core import reply_contract as contract
 class Double(sequence.SequenceMachine):
     """A machine whose stops are scripted: `waits` is what each wait for a stop finds, in order;
     `releases` the ops that let it run; `stopping` the ops that answer on a running machine and
-    stop it (a `stop`)."""
+    stop it (a `stop`); `frames` what each read of the frame counter finds, in order."""
 
     stoppers = "A breakpoint or a watch"
     undeclared = "no breakpoint"
@@ -24,7 +24,9 @@ class Double(sequence.SequenceMachine):
     def __init__(self, waits: list[sequence.Waited | Exception] | None = None,
                  running: bool = False,
                  can_stop: bool = True, missed_ops: frozenset[str] = frozenset(),
-                 rests: bool = False, began: bool | None = None) -> None:
+                 rests: bool = False, began: bool | None = None,
+                 frames: list[int | None] | None = None) -> None:
+        self.frames = list(frames or [])
         self.waits = list(waits or [])
         self.is_running = running
         self.can_stop = can_stop
@@ -54,6 +56,9 @@ class Double(sequence.SequenceMachine):
         if state == "stopped":
             self.is_running = False
         return state
+
+    def frame_now(self) -> int | None:
+        return self.frames.pop(0) if self.frames else None
 
     def can_be_stopped(self) -> bool:
         return self.can_stop
@@ -148,6 +153,34 @@ def test_a_step_that_fails_ends_the_list_beside_the_steps_before_it() -> None:
     assert [e["op"] for e in ended.fields["ran"]] == ["status"]
     assert ended.fields["failed"]["op"] == "read_memory"
     assert ended.fields["failed_at"] == 1
+
+
+def test_each_step_of_the_account_carries_the_frames_it_ran_for() -> None:
+    """The account holds what each step ran for as frames, read before its call and after, so a
+    timeline can place it; a machine that cannot count frames says so with None."""
+    m = Double(frames=[10, 12, 20, 22])
+    ended, _ = _run(m, [{"op": "status"}, {"op": "read_memory"}])
+    assert [(e["frame_before"], e["frame_after"]) for e in ended.fields["ran"]] == [
+        (10, 12), (20, 22)]
+    ended, _ = _run(Double(), [{"op": "status"}])
+    assert ended.fields["ran"][0]["frame_before"] == contract.unavailable(
+        sequence.NO_FRAME_WHY)
+    assert ended.fields["ran"][0]["frame_after"] == contract.unavailable(sequence.NO_FRAME_WHY)
+
+
+def test_a_step_whose_reply_names_its_frames_keeps_them_when_the_machine_cannot_read_one(
+        ) -> None:
+    """A key sent to a running guest: the machine cannot read a frame while it runs, but the
+    step's own reply read the frames it went in between, so the row carries those."""
+    m = Double(running=True)
+
+    def send_keys(**kw: Any) -> dict[str, Any]:
+        return {"status": "ok", "frame_before": 100, "frame_after": 101}
+
+    ops = cast(sequence.Ops, {"send_keys": send_keys})
+    ended = sequence.run(m, [{"op": "send_keys", "keys": ["a"]}], ops, 5.0)
+    row = ended.fields["ran"][0]
+    assert (row["frame_before"], row["frame_after"]) == (100, 101)
 
 
 def test_a_replay_that_leaves_its_recording_is_diverged_and_held_counts_the_rest() -> None:

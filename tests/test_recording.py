@@ -94,7 +94,8 @@ class _Server:
 
         @b.tool("start")
         def start(system: str, plan: list[dict[str, Any]] | None = None, bound: float = 0.0,
-                  fails: bool = False, over_live: bool = False) -> dict[str, Any]:
+                  fails: bool = False, over_live: bool = False,
+                  overlay: Any = None) -> dict[str, Any]:
             if over_live:                      # refused before anything is spawned
                 return {"status": "INVALID", "code": "session_live", "message": "close first",
                         "session": {"alive": True}}
@@ -397,6 +398,23 @@ def test_a_state_saved_under_one_spelling_and_loaded_under_another_is_one_state(
     s.state_write(method="load", name="their-state")
     doc, _out = s.document()
     assert doc["needs"]["states"] == ["their-state"]
+
+
+def test_the_start_a_document_holds_is_the_json_it_received_not_a_model(
+        tmp_path: Path) -> None:
+    """A `start` takes an `overlay` model; a document is JSON, so what is kept is its mapping."""
+    class Overlay:
+        def model_dump(self, mode: str = "python") -> dict[str, Any]:
+            return {"layers": ["calls"], "place": "bottom"}
+
+    s = _Server()
+    s.start(system="board", overlay=Overlay())
+    s.run_for(frames=3)
+    path = tmp_path / "session.json"
+    s.perform_export(path=str(path))
+    held = json.loads(path.read_text(encoding="utf-8"))["start"]
+    assert held["overlay"] == {"layers": ["calls"], "place": "bottom"}, held
+    assert json.dumps(held)
 
 
 def test_the_export_writes_the_document_and_accounts_for_it(tmp_path: Path) -> None:
