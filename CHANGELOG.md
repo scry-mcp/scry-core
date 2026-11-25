@@ -55,16 +55,12 @@ What a server author notices. A client's view of each server is in that server's
   and hears how it ended: `ok`, or `refused` for anything else. Its methods are now
   `began(call)` and `ended(call, outcome)`.
 - `presence.Adapter.show(state, payload)` takes a `presence.Payload`: whether the machine is
-  held stopped, the caption of the latest call, the keys held, the pointer, the layers asked and
-  where the captions go. A server reports input with `Shown.key`, `moved`, `button` and
-  `paused`, which do nothing without presence.
+  held stopped, the pointer, the layers asked and what is being recorded. A server reports
+  input with `Shown.moved` and `button`, which do nothing without presence.
 - `Presence.open` takes the session's `overlay.Overlay`, `start`'s new `overlay` argument with
   its description (`overlay.ARGUMENT`); `overlay.reply` builds the `overlay` field of `start`'s
-  and `status`'s replies. `Look` carries the caption tints (write, read, refused), the keycap and
-  caption styles, a caption's minimum and hold times and the scroll speed.
-- A caption is written by `abbreviation.caption`: a path shows its last name only and a home
-  folder shows as `~`. `placement` decides `place="auto"`, and `placement_vectors.txt` holds the
-  cases a drawer in another language replays.
+  and `status`'s replies. `Look` carries the edge's colour, steps and alphas, the fade, and the
+  record mark's colour and blink.
 - A demo's `loop.webp` and `screen.png` are written at the game's display aspect, 4:3, from one
   function (`aspect`, `motion.Box.display`): a 320x200 game comes out 4:3 and no page has to
   stretch it. `motion.FIT` is 960 by 720, `motion.factor` takes a `Box`, `motion.scaled` is
@@ -72,7 +68,7 @@ What a server author notices. A client's view of each server is in that server's
   A demo's capture must be a picture `scry_core.png` reads, as a demo with a loop already needed.
 - A demo run writes `<transcript>-timeline.json` beside its transcript: each call with its
   arguments as given and the emulator frame it began and ended at, and the input it fired where
-  its step says (`Step.events`, `timeline.key`, `button`, `pointer`). The format is in
+  its step says (`Step.events`; `timeline.pointer` makes one). The format is in
   `docs/modules.md`; `timeline.loads` reads it.
 - A demo draws its loop's cuts from its run's timeline when it declares `Demo.decorator`: given
   the demo, the run and the timeline (`demo.Decoration`), it returns the `motion.Decorator` that
@@ -84,22 +80,21 @@ What a server author notices. A client's view of each server is in that server's
   marker, so an entry's closing `</details>` no longer swallows the next tool's heading when a
   tool is added after the last one of a page, and the drift check names a page whose blocks
   touch.
-- A sixth overlay layer, `record`: a blinking mark while the session records video or audio,
-  on by default (`overlay.Overlay.record`, after `pause` in `overlay.LAYERS`). A server tells the
-  presence with `Shown.recording(kind, on)`, `kind` being `video` or `audio`; the payload's
-  `recording` is `none`, `video`, `audio` or `both`. `Look.record_rgb` and `record_blink_s`
-  give the mark's colour and period. A demo's decorated clip never draws it.
+- The overlay's `record` layer: a blinking mark while the session records video or audio, on by
+  default (`overlay.Overlay.record`, last in `overlay.LAYERS`). A server tells the presence with
+  `Shown.recording(kind, on)`, `kind` being `video` or `audio`; the payload's `recording` is
+  `none`, `video`, `audio` or `both`. `Look.record_rgb` and `record_blink_s` give the mark's
+  colour and period. A demo's decorated clip never draws it.
 
-- A reply and a caption name what they show. A server writes a namer (`naming.Namer`) and a table
-  of its replies' number fields (`naming.Field`); `Boundary(namer=naming.Guarded(namer),
-  names_on=...)` then puts `Call.named` on every call, so a caption reads `name (number)`
-  (`abbreviation.caption(tool, given, named)`, at most `abbreviation.MAX_BYTES`), and adds `names`
-  and `names_cut` to every reply, with the numbers its summary prints named. A namer that fails
-  gives no names and is counted (`Guarded.failed`), never raised. `start` takes the shared
-  `names` switch (`naming.Switch`, `naming.ASK`).
-- `notes.note` gives a disassembled line the note the base has for its operands, kept apart from a
-  person's comments (`instruction.StopInstruction.note`). `overlay.reply` takes `notes`, a word per
-  layer drawn with a limit, and a demo's timeline captions carry the names the replies gave.
+- A reply names what it shows. A server writes a namer (`naming.Namer`) and a table of its
+  replies' number fields (`naming.Field`); `Boundary(namer=naming.Guarded(namer), names_on=...)`
+  then puts `Call.named` on every call and adds `names` and `names_cut` to every reply, with the
+  numbers its summary prints named through `abbreviation.name_text`. A namer that fails gives no
+  names and is counted (`Guarded.failed`), never raised. `start` takes the shared `names` switch
+  (`naming.Switch`, `naming.ASK`).
+- `notes.note` gives a disassembled line the note the base has for its operands, kept apart from
+  a person's comments (`instruction.StopInstruction.note`). `overlay.reply` takes `notes`, a
+  word per layer drawn with a limit.
 
 ## 0.120.1
 
