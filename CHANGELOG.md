@@ -7,7 +7,7 @@ What a server author notices. A client's view of each server is in that server's
 - The overlay no longer narrates: it draws the frame, the pointer and the recording mark, and
   the chat says what a call is doing. `overlay` takes `pointer` and `record`; `Look` and
   `Payload` lose the caption, the keycaps and the pause mark; `scry_core.timeline` holds
-  version 3 and refuses a version 2 document by name.
+  version 3.
 
 - A server answers what a number is called on its machine, with the source each answer was
   checked against. `knowledge_tool.register` adds the `knowledge_find` tool, and a
