@@ -46,6 +46,13 @@ def start(value: int = 7, binary: str = "", shared: bool = False,
     return _answer(body)
 
 
+@server.tool()
+def window(front: bool = False) -> CallToolResult:
+    body: dict[str, Any] = {"status": "ok", "summary": "the window on display 0, in front",
+                            "display": 0, "onscreen": True, "front": front}
+    return _answer(body)
+
+
 @server.tool(annotations=ToolAnnotations(read_only_hint=True))
 def read() -> CallToolResult:
     body: dict[str, Any] = {"status": "ok", "summary": "read", "value": _held["value"]}

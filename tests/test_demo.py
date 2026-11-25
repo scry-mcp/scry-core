@@ -267,6 +267,22 @@ def test_the_window_a_demo_asks_for_is_watched_behind_and_on_its_display(tmp_pat
     assert d.window_args(d.Run(dir=tmp_path)) == {"shared": True, "background": True, "display": 0}
     named = d.Run(dir=tmp_path, options={"display": 1})
     assert d.window_args(named)["display"] == 1
+    watched = d.Run(dir=tmp_path, watch=True)
+    assert d.window_args(watched)["background"] is False, "a watched window must be activatable"
+    assert d.window_args(watched)["shared"] is True
+
+
+def test_a_watched_run_brings_the_window_forward_once_the_machine_is_up(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    demo = _demo(tmp_path, steps=[d.Step("boot", "start", {}, _said("value"), options=True),
+                                  d.Step("end", "close", {}, lambda reply, run: "closed")])
+    assert _run(demo, tmp_path) == verdict.EXIT_PASS
+    assert [c["summary"] for c in _calls(log)] == ["started", "closed"], "behind: no window call"
+    assert _run(demo, tmp_path, "--watch") == verdict.EXIT_PASS
+    calls = _calls(log)[2:]
+    assert [c["summary"] for c in calls] == ["started", "the window on display 0, in front",
+                                             "closed"], calls
+    assert "OK window: the window on display 0, in front" in capsys.readouterr().out
 
 
 def test_a_step_takes_only_the_options_it_names(tmp_path: Path, log: Path) -> None:

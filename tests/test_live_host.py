@@ -72,6 +72,12 @@ def test_a_canary_that_ends_by_itself_answers_nothing_and_leaves_no_directory(
     assert list(tmp_path.iterdir()) == []
 
 
+def test_a_canary_shows_nothing_so_it_cannot_take_the_desk() -> None:
+    # MAME's own `-video none` still opens a window, and a window may take a Space.
+    code = "import os, sys; print(os.environ.get('SDL_VIDEODRIVER')); sys.exit(1)"
+    assert "dummy" in host.canary(_py(code))
+
+
 def test_a_canary_that_never_returns_is_refused_naming_the_host_and_its_group_is_killed(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(host, "CANARY_S", 3.0)

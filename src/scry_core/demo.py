@@ -101,6 +101,8 @@ RECORD_SECONDS = 300
 
 #: The tool every Scry server ends a session with.
 CLEANUP_TOOL = "close"
+#: The tool that says where a session's window is, and brings it forward when asked.
+WINDOW_TOOL = "window"
 
 #: Every Scry tool bounds its own waits (`vocabulary.WAIT_MAX_S`), so past that a server will
 #: not answer.
@@ -115,8 +117,11 @@ DISPLAY = "the host's display layout"
 
 def window_args(run: Run) -> dict[str, Any]:
     """What a demo's `start` asks of the window: watched, behind so it takes nobody's focus, on
-    the display `--display` names and the host's main one otherwise."""
-    return {"shared": True, "background": True, "display": run.options.get("display", 0)}
+    the display `--display` names and the host's main one otherwise. A run somebody watches
+    (`--watch`) starts in the front mode a regular app has, and the runner reads its window back
+    once it is up."""
+    return {"shared": True, "background": not run.watch,
+            "display": run.options.get("display", 0)}
 
 #: Reply keys whose values differ between two honest runs, each with the reason. A demo adds
 #: its own through `Demo.volatile`, and a step those that vary in it alone through
@@ -175,11 +180,15 @@ class Reply(Mapping[str, Any]):
 
 @dataclass
 class Run:
-    """What a step's arguments and checks read: options, output directory, replies by step name."""
+    """What a step's arguments and checks read: options, output directory, replies by step name,
+    and whether somebody watches it (`--watch`)."""
 
     dir: Path
     options: dict[str, Any] = field(default_factory=dict)
     replies: dict[str, Reply] = field(default_factory=dict)
+    #: A watched run is launched in the window mode a regular app has, so its window can be brought
+    #: forward once it is up; behind, the emulator may never become the front application.
+    watch: bool = False
 
 
 Args = Mapping[str, Any] | Callable[[Run], Mapping[str, Any]]
@@ -603,6 +612,14 @@ async def _drive(demo: Demo, run: Run, stderr_path: Path, norm: Normaliser) -> O
                         out.code = EXIT_INVALID if line.startswith("INVALID") else EXIT_FAIL
                         break
                     passed += 1
+                    if run.watch and step.tool == "start":
+                        shown = await _show_window(client)
+                        out.lines.append(norm.text(shown[0]))
+                        out.transcripts.whole.append(f"Watched `{WINDOW_TOOL}`:\n\n"
+                                                     + example.fenced(shown[1].data))
+                        if shown[1].get("status") != "ok":
+                            out.code = EXIT_FAIL
+                            break
                 if not closed:
                     await _cleanup(client, out)
         except Exception as e:  # outside a step
@@ -678,6 +695,19 @@ async def _step(client: Client, step: Step, run: Run,
 def _status(reply: Reply | None, ok: bool) -> str:
     """A call's status in the timeline: the reply's own, `ended` when there was none."""
     return "ended" if reply is None else str(reply.get("status", "ok" if ok else "failed"))
+
+
+async def _show_window(client: Client) -> tuple[str, Reply]:
+    """A watched run's window brought to the front once it is up, its line and the reply: the
+    window is read back, never inferred from the launch."""
+    try:
+        reply = _reply(await client.call_tool(WINDOW_TOOL, {"front": True}))
+    except Exception as e:
+        return f"FAIL {WINDOW_TOOL}: the window could not be brought forward ({_why(e)})", Reply(
+            {"status": "broken", "summary": _why(e)})
+    said = _one_line(str(reply.get("summary", "")).strip()) or "the emulator's window"
+    return (f"OK {WINDOW_TOOL}: {said}" if reply.get("status") == "ok"
+            else f"FAIL {WINDOW_TOOL}: {said}"), reply
 
 
 async def _cleanup(client: Client, out: Outcome) -> None:
@@ -1003,6 +1033,9 @@ def _parser(demo: Demo) -> argparse.ArgumentParser:
     if "display" in demo.offers:
         p.add_argument("--display", type=int,
                        help="the display the emulator's window opens on, 0 the main one")
+    p.add_argument("--watch", action="store_true",
+                   help="show the run: bring the emulator's window to the front once it is up, "
+                        "and read back that it is there. Every run opens behind by itself")
     p.add_argument("--transcript", type=Path,
                    help="where the whole transcript goes; the run's other files go beside it")
     p.add_argument("--update-readme", action="store_true",
@@ -1024,7 +1057,8 @@ def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
     if empty := [k for k in ("binary", "cwd", "rompath") if given[k] == ""]:
         print(f"INVALID: --{empty[0]} names a path, and an empty one names nothing")
         return EXIT_INVALID
-    run = Run(dir=transcript.parent, options={k: v for k, v in given.items() if v is not None})
+    run = Run(dir=transcript.parent, options={k: v for k, v in given.items() if v is not None},
+              watch=ns.watch)
     try:
         code = execute(demo, run, transcript, ns.update_readme)
     except Invalid as e:
@@ -1039,7 +1073,8 @@ def main(demo: Demo, argv: Sequence[str] | None = None) -> int:
 
 def execute(demo: Demo, run: Run, transcript: Path, update_readme: bool = False) -> int:
     """Run `demo`, write its transcripts at `transcript`, answer the exit code; `Invalid` stops
-    it before a verdict."""
+    it before a verdict. A run somebody watches (`run.watch`) brings the window to the front once
+    the machine is up."""
     if not demo.steps:
         raise Invalid(f"the demo {demo.name} declares zero steps, so it demonstrates nothing")
     untaken = set(run.options) - _taken(demo)

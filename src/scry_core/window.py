@@ -294,12 +294,18 @@ def bring_front(pid: int, host: Host, bound_s: float,
     first = _read(pid, host)
     if first is not None and first.front:
         return first
+    listed = main_window(pid, host.windows())
     why = ""
-    if (listed := main_window(pid, host.windows())) is not None:
-        why = host.activate(listed)
-    state = _wait(pid, host, bound_s, clock, sleep, lambda s: s is not None and s.front)
-    if state is not None and state.front:
-        return state
+    # The first request can land while the window is still opening, and there it does nothing:
+    # it is asked twice, half the bound apart.
+    state: WindowState | None = None
+    for _ in range(2):
+        if listed is not None and not why:
+            why = host.activate(listed)
+        state = _wait(pid, host, bound_s / 2, clock, sleep,
+                      lambda s: s is not None and s.front)
+        if state is not None and state.front:
+            return state
     if state is None:
         raise _not_visible(f"no window of pid {pid} is listed to bring forward: call `status`",
                            activation=why or "none was tried")

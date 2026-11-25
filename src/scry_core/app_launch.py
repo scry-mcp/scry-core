@@ -18,6 +18,7 @@ from collections import deque
 from pathlib import Path
 from typing import IO, Any, Protocol, cast
 
+from scry_core.live_host import BACKGROUND_VAR
 from scry_core.reply_contract import Invalid, unavailable
 
 BUNDLE_SUFFIX = ".app"
@@ -156,8 +157,12 @@ def open_argv(bundle: str | Path, argv: list[str], *, stdout: str | None,
     """The `open` command: the bundle and its channels, then the emulator's own argv.
 
     `-n` keeps a stale instance from swallowing the launch; `-o` and `--stderr` share one path
-    opened `O_APPEND`, so they interleave."""
-    cmd = [OPEN, "-n", "-a", str(bundle)]
+    opened `O_APPEND`, so they interleave. `-g` when `env` asks for a launch behind, so `open`
+    does not activate the app: a launch a person watches is the standard one, in front."""
+    cmd = [OPEN, "-n"]
+    if (env or {}).get(BACKGROUND_VAR):
+        cmd += ["-g"]
+    cmd += ["-a", str(bundle)]
     if stdin_fifo:
         cmd += ["-i", stdin_fifo]
     if stdout:

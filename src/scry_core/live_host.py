@@ -31,6 +31,9 @@ from scry_core.prose import counted
 
 #: SDL hint that keeps a newly launched app from taking focus (macOS makes it frontmost).
 BACKGROUND_VAR = "SDL_MAC_BACKGROUND_APP"
+#: What a canary runs on: a probe never shows a window, and a window may take the owner's Space.
+#: MAME's own `-video none` is not enough: its SDL build still opens one.
+VIDEO_VAR = "SDL_VIDEODRIVER"
 #: A healthy host ends the canary in seconds; a blocked one never returns.
 CANARY_S = 20.0
 LEDGER_VAR = "SCRY_LIVE_LEDGER"
@@ -62,7 +65,8 @@ def canary(argv: Sequence[str]) -> str:
     name = Path(argv[0]).name
     try:
         try:
-            proc = subprocess.Popen(list(argv), env={**os.environ, BACKGROUND_VAR: "1"},
+            proc = subprocess.Popen(list(argv), env={**os.environ, BACKGROUND_VAR: "1",
+                                                      VIDEO_VAR: "dummy"},
                                     cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, start_new_session=True)
         except OSError as e:
