@@ -153,7 +153,6 @@ def _document(**call: Any) -> str:
     ("not json", "is not JSON"),
     (json.dumps({"version": 1, "demo": "x", "calls": []}), "not a version 3 document"),
     (json.dumps({"version": True, "demo": "x", "calls": []}), "not a version 3 document"),
-    (json.dumps({"version": 2, "demo": "x", "calls": []}), "version 2 document"),
     (json.dumps({"version": 3, "demo": "x"}), "not \\['calls', 'demo', 'version'\\]"),
     (json.dumps({"version": 3, "demo": "x", "calls": [], "more": 1}), "holds \\['calls'"),
     (_document(n=2), "call 1 of the timeline is not numbered 1"),

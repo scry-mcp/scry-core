@@ -162,9 +162,6 @@ def _frame(value: Any, what: str) -> None:
 
 def _check(document: Any) -> None:
     version = document.get("version") if isinstance(document, dict) else None
-    if version == 2:
-        raise Invalid("the timeline is a version 2 document, the format a demo's transcript "
-                      f"carried; this reader is version {VERSION}")
     if not isinstance(document, dict) or type(version) is not int or version != VERSION:
         raise Invalid(f"the timeline is not a version {VERSION} document")
     calls = document.get("calls")
