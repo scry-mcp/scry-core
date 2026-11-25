@@ -95,6 +95,16 @@ def test_the_open_command_connects_the_channels_and_hands_over_the_emulator_argv
     assert argv[10:] == ["--env", "A=1", "--env", "B=two words", "--args", "circus", "-debug"]
 
 
+def test_a_launch_behind_opens_without_activating_the_app(tmp_path: Path) -> None:
+    # `open` activates the app otherwise, and a launch a person watches is the standard one.
+    bundle = _bundle(tmp_path)
+    behind = app_launch.open_argv(bundle, ["emu", "circus"], stdout="/s/out.log",
+                                  env={"SDL_MAC_BACKGROUND_APP": "1"})
+    watched = app_launch.open_argv(bundle, ["emu", "circus"], stdout="/s/out.log")
+    assert behind[:3] == ["/usr/bin/open", "-n", "-g"]
+    assert watched[:2] == ["/usr/bin/open", "-n"] and "-g" not in watched
+
+
 def test_without_a_fifo_or_env_the_route_passes_neither(tmp_path: Path) -> None:
     argv = app_launch.open_argv(_bundle(tmp_path), ["emu", "circus"], stdout="/s/out.log")
     assert "-i" not in argv

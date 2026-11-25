@@ -102,11 +102,9 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.window_host` | The window system behind `window`: CoreGraphics on macOS, user32 on Windows. |
 | `scry_core.window_cli` | `python -m scry_core.window_cli`: the same display index, words and window check from a shell. |
 | `scry_core.window_capture` | What the host shows of an emulator's window: captured, and two captures compared. |
-| `scry_core.presence` | The coloured border both emulators draw while a session holds the window, the layers drawn over it (`Payload`), the keys, pointer and recordings a server reports, and the tints and timings (`Look`). |
+| `scry_core.presence` | The coloured border both emulators draw while a session holds the window, the layers drawn over it (`Payload`), the pointer and recordings a server reports, and the timings (`Look`). |
 | `scry_core.overlay` | `start`'s `overlay` argument, which layers presence draws, and the `overlay` field of `start`'s and `status`'s replies. |
-| `scry_core.overlay_timeline` | What the overlay shows at a moment: a caption's minimum time, a burst joined with a count, its tint, its exit, and a keycap kept long enough to be seen. |
-| `scry_core.abbreviation` | A call as its caption reads: the tool and its values, each cut short, a path by its last name and never a home folder's, a named value as `name (number)`, the whole at most 160 bytes. |
-| `scry_core.placement` | Whether captions go to the top or the bottom of the picture, and `placement_vectors.txt`, the cases each emulator's drawer replays. |
+| `scry_core.abbreviation` | A name as a summary writes it: cut to its width with the cut marked, printable ASCII, and the offset inside a symbol or a range beside it. |
 | `scry_core.app_launch` | An emulator launched as a macOS `.app` through `open`, and the process id found for it. |
 | `scry_core.binaries` | Which emulator a session runs: the caller's `binary`, else the server's variable, else the one on `PATH`. |
 | `scry_core.guardian` | What ends an emulator when its server ends: a watcher process on POSIX, a job object on Windows. |
@@ -138,9 +136,8 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 | `scry_core.example` | The one shape of an example: the ask, the call, an excerpt of the reply, how to read it. |
 | `scry_core.motion` | A demo's `loop.webp` and `screen.png`: stretches cut from a run's recordings and assembled with ffmpeg and `img2webp`, both shown at 4:3. |
 | `scry_core.aspect` | The shape a game's picture is shown in: the whole frame at 4:3, one function for the loop and the still. |
-| `scry_core.committed_run` | A demo's committed run read back as its steps, and the timeline its steps' `events` name for it, standing in for an emulator in a server's tests. |
 | `scry_core.timeline` | What a demo run did, call by call, in the emulator's frames: the file the demo decorator reads. |
-| `scry_core.decorate` | A demo's clip with the presence layers drawn in from its run's timeline, richer than live; `python -m scry_core.decorate` makes one decorated loop. The only module that needs the `decorate` extra (Pillow and numpy). |
+| `scry_core.decorate` | A demo's clip with the edge and the pointer drawn from its run's timeline, when the demo declares a decorator; no demo of the two servers declares one today. `python -m scry_core.decorate` makes one decorated clip. The only module that needs the `decorate` extra (Pillow and numpy). |
 | `scry_core.install` | The table of MCP clients and the block of a server's README that says how to add it to each. |
 | `scry_core.game_demo` | One game's demo written once for both servers, with a `Binding` for what each emulator does differently. |
 | `scry_core.games` | The scripts of the games both servers run, one module per game. |
@@ -149,20 +146,21 @@ are in the groups the [README](../README.md#what-the-package-holds) names.
 
 A run writes `<transcript>-timeline.json` beside its transcript: the calls it made, in order, with the emulator frame each began and ended at. `scry_core.timeline.loads` reads it back and refuses a document the writer never writes.
 
-The document is `{"version": 2, "demo": <name>, "calls": [...]}`. Each call holds:
+The document is `{"version": 3, "demo": <name>, "calls": [...]}`. Each call holds:
 
 | Field | Holds |
 |---|---|
 | `n`, `step`, `tool` | Its position in the run from 1, the demo's name for it, and the tool called. |
 | `args` | The arguments as the demo gave them: a symbol stays the symbol written, with host paths spelled as in the transcript. |
 | `status` | The reply's `status`, or `ended` when there was no reply. |
-| `caption` | What the overlay's caption reads for the call: `text`, made by `abbreviation.caption` from `args` and the names the reply gave them (`naming.arguments_of`), and `tint`: `refused` when `status` is not `ok`, else `read` for a tool its server marks `readOnlyHint`, else `write`. The decorator draws this text and never makes its own. |
 | `before`, `after` | The frame the call began and ended at, or null before any reply counted one. |
 | `events` | The input the call fired, each with its `frame`. |
 
 `before` and `after` come from the reply's `frame_before` and `frame_after`, else its last `frame`; a call that counts none stays where the call before left the machine. Loading a saved state rewinds the machine, so `after` can be smaller than `before`.
 
-An event is `{"kind": "key", "name", "down", "frame"}`, `{"kind": "button", "name", "down", "frame"}` or `{"kind": "pointer", "x", "y", "frame"}`. A pointer's `x` and `y` are the position the reply reports, in the emulator's screen pixels. A step names its events with `Step.events`, and an event's `frame` lies between its call's `before` and `after`.
+A wrapper (`perform`, `drive`, `start` with a plan) is not an entry. Each call it ran is one of its own, at its row's frames, with the inner tool and the wrapper's step name. Its reply's rows are `ran`, or `act.ran` for a `drive`; a wrapper whose reply names no row stays one entry.
+
+An event is `{"kind": "key", "name", "down", "frame"}`, `{"kind": "button", "name", "down", "frame"}` or `{"kind": "pointer", "x", "y", "frame"}`. A pointer's `x` and `y` are the position the reply reports, in the emulator's screen pixels. A button's `name` is the button as the server names it (`left`). A step names its events with `Step.events`, and an event's `frame` lies between its call's `before` and `after`.
 
 A demo draws its clip from this file when it declares `Demo.decorator`: a callable given the demo, the run and the loaded timeline that returns the `motion.Decorator` `motion.build` draws each cut with. `demo.execute` reads the timeline it just wrote and passes the result to `motion.build`; with no decorator the loop is built as the recordings are, and with one a missing `decorate` extra is refused before the emulator runs.
 

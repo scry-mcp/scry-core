@@ -10,18 +10,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
-from scry_core import abbreviation
-from scry_core.naming import Named
 from scry_core.verdict import Invalid
 
-VERSION = 2
+VERSION = 3
 Kind = Literal["key", "button", "pointer"]
 KINDS: tuple[Kind, ...] = ("key", "button", "pointer")
-Tint = Literal["write", "read", "refused"]
-TINTS: tuple[Tint, ...] = ("write", "read", "refused")
 DOCUMENT_KEYS = {"version", "demo", "calls"}
-CALL_KEYS = {"n", "step", "tool", "args", "status", "caption", "before", "after", "events"}
-CAPTION_KEYS = {"text", "tint"}
+CALL_KEYS = {"n", "step", "tool", "args", "status", "before", "after", "events"}
 
 
 @dataclass(frozen=True)
@@ -42,14 +37,6 @@ class Event:
         return {"kind": self.kind, "name": self.name, "down": self.down, "frame": frame}
 
 
-def key(name: str, down: bool, frame: int | None = None) -> Event:
-    return Event("key", frame, name=name, down=down)
-
-
-def button(name: str, down: bool, frame: int | None = None) -> Event:
-    return Event("button", frame, name=name, down=down)
-
-
 def pointer(x: int, y: int, frame: int | None = None) -> Event:
     return Event("pointer", frame, x=x, y=y)
 
@@ -64,26 +51,98 @@ class Builder:
 
     def add(self, step: str, tool: str, args: Mapping[str, Any], status: str,
             counted: tuple[int | None, int | None], events: Sequence[Event] = (),
-            read_only: bool = False, named: Mapping[str, Named] | None = None) -> None:
-        """A call made: `counted` is the frames its reply said it began and ended at, or None;
-        `read_only` is the tool's `readOnlyHint`, which tints its caption; `named` is what its
-        arguments are called, as its reply's `names` says (`naming.arguments_of`)."""
+            rows: Sequence[Mapping[str, Any]] = ()) -> None:
+        """A call made: `counted` is the frames its reply said it began and ended at, or None.
+
+        `rows` are the calls a wrapper ran, as its reply names them (`ran`): the timeline holds
+        one entry per row, in order, at the frames that row ran for, and none for the wrapper,
+        because a wrapper is not what a viewer follows. A row that counted no frame stays where
+        the machine was. A reply that names no row stays one entry, so a server that cannot
+        report the calls a wrapper ran is not invented."""
+        if rows:
+            self._ran(step, tool, args, list(rows), list(events))
+            return
+        self._one(step, tool, args, status, counted, events)
+
+    def _one(self, step: str, tool: str, args: Mapping[str, Any], status: str,
+             counted: tuple[int | None, int | None], events: Sequence[Event]) -> None:
+        """One call as one entry."""
         before = counted[0] if counted[0] is not None else self._frame
         after = counted[1] if counted[1] is not None else before
         if after is not None:
             self._frame = after
-        tint: Tint = "refused" if status != "ok" else "read" if read_only else "write"
         self.calls.append({"n": len(self.calls) + 1, "step": step, "tool": tool,
                            "args": dict(args), "status": status,
-                           "caption": {"text": abbreviation.caption(tool, args, named),
-                                       "tint": tint},
                            "before": before, "after": after,
                            "events": [e.fields(after) for e in events]})
+
+    def _ran(self, step: str, tool: str, args: Mapping[str, Any],
+             rows: list[Mapping[str, Any]], events: list[Event]) -> None:
+        """The calls a wrapper ran, each an entry of its own; the wrapper's arguments give each
+        step's."""
+        steps = _steps_of(args)
+        bounds: list[tuple[int | None, int | None]] = []
+        first = len(self.calls)
+        for n, row in enumerate(rows):
+            op, reply = row.get("op"), row.get("reply")
+            if not isinstance(op, str) or not isinstance(reply, Mapping):
+                raise Invalid(f"step {n + 1} of the `{tool}` in the run's timeline names no "
+                              f"`op` and no `reply`")
+            before = _number(row.get("frame_before"))
+            after = _number(row.get("frame_after"))
+            before = before if before is not None else self._frame
+            after = after if after is not None else before
+            if after is not None:
+                self._frame = after
+            bounds.append((before, after))
+            status = str(reply.get("status", "ok"))
+            self.calls.append({"n": len(self.calls) + 1, "step": step, "tool": op,
+                               "args": _step_arguments(steps, n, op), "status": status,
+                               "before": before, "after": after, "events": []})
+        placed: list[list[Event]] = [[] for _ in rows]
+        for event in events:
+            placed[_row_of(bounds, event.frame)].append(event)
+        for entry, got in zip(self.calls[first:], placed, strict=True):
+            entry["events"] = [e.fields(entry["after"]) for e in got]
 
     def dumps(self) -> str:
         document = {"version": VERSION, "demo": self.demo, "calls": self.calls}
         _check(document)
         return json.dumps(document, indent=2) + "\n"
+
+
+def _number(value: Any) -> int | None:
+    """A row's frame, when it counted one."""
+    return value if type(value) is int and value >= 0 else None
+
+
+def _steps_of(args: Mapping[str, Any]) -> list[Any]:
+    """The steps a wrapper was given: `steps` (`perform`), `act` (`drive`) or `plan` (`start`)."""
+    for key in ("steps", "act", "plan"):
+        given = args.get(key)
+        if isinstance(given, list):
+            return given
+    return []
+
+
+def _step_arguments(steps: Sequence[Any], n: int, op: str) -> dict[str, Any]:
+    """The arguments of step `n` (counted from 0), when the wrapper's own list names that step
+    and the row names the same operation; a list that repeats gives `n` modulo its length."""
+    step = steps[n % len(steps)] if steps else None
+    if not isinstance(step, Mapping) or step.get("op") != op:
+        return {}
+    return {k: v for k, v in step.items() if k != "op"}
+
+
+def _row_of(bounds: Sequence[tuple[int | None, int | None]], frame: int | None) -> int:
+    """Which row of a wrapper an event belongs to: the one whose frames hold it, else the last
+    row that counted frames, else the last."""
+    for n, (before, after) in enumerate(bounds):
+        if frame is not None and before is not None and after is not None \
+                and min(before, after) <= frame <= max(before, after):
+            return n
+    framed = [n for n, (_, after) in enumerate(bounds) if after is not None]
+    return framed[-1] if framed else len(bounds) - 1
 
 
 def loads(text: str) -> dict[str, Any]:
@@ -102,8 +161,8 @@ def _frame(value: Any, what: str) -> None:
 
 
 def _check(document: Any) -> None:
-    if not isinstance(document, dict) or type(document.get("version")) is not int \
-            or document["version"] != VERSION:
+    version = document.get("version") if isinstance(document, dict) else None
+    if not isinstance(document, dict) or type(version) is not int or version != VERSION:
         raise Invalid(f"the timeline is not a version {VERSION} document")
     calls = document.get("calls")
     if set(document) != DOCUMENT_KEYS or not isinstance(document["demo"], str) \
@@ -120,11 +179,6 @@ def _check(document: Any) -> None:
                 raise Invalid(f"call {n} of the timeline has no `{name}` text")
         if not isinstance(call.get("args"), dict) or not isinstance(call.get("events"), list):
             raise Invalid(f"call {n} of the timeline has no `args` object or `events` list")
-        caption = call["caption"]
-        if not isinstance(caption, dict) or set(caption) != CAPTION_KEYS \
-                or not isinstance(caption["text"], str) or caption["tint"] not in TINTS:
-            raise Invalid(f"call {n}'s caption is not a `text` and a `tint` of "
-                          f"{', '.join(TINTS)}")
         before, after = call.get("before"), call.get("after")
         _frame(before, f"call {n} `before`")
         _frame(after, f"call {n} `after`")

@@ -20,6 +20,7 @@ import functools
 import json
 import os
 import platform
+import re
 import subprocess
 import sys
 import time
@@ -314,8 +315,30 @@ def activation_error(run: subprocess.CompletedProcess[str] | str) -> str:
     return "" if run.returncode == 0 else f"activation refused: {run.stderr.strip()}"
 
 
+LSAPPINFO = "/usr/bin/lsappinfo"
+OPEN = "/usr/bin/open"
+
+
+def bundle_path(text: str) -> str:
+    """The `LSBundlePath` of an `lsappinfo` answer, or ""."""
+    found = re.search(r'"?LSBundlePath"?\s*=\s*"([^"]*)"', text)
+    return found.group(1) if found else ""
+
+
 def activate_app(pid: int) -> str:  # needs the desk
-    """Make the application owning `pid` frontmost: why not, or ''."""
+    """Make the application owning `pid` frontmost: why not, or ''.
+
+    A bundle goes through LaunchServices (`open -a`), as a Dock click does: System Events'
+    `frontmost` is refused with rc 0 from a background process, which every server is."""
+    run = subprocess.run([LSAPPINFO, "info", "-only", "bundlepath", "-pid", str(pid)],
+                         capture_output=True, text=True, check=False)
+    bundle = bundle_path(run.stdout) if run.returncode == 0 else ""
+    if bundle:
+        opened = subprocess.run([OPEN, "-a", bundle], capture_output=True, text=True,
+                                check=False)
+        if opened.returncode == 0:
+            return ""
+        return activation_error(opened)
     return activation_error(focus_watch.osascript(
         f'tell application "System Events" to set frontmost of '
         f"(first process whose unix id is {pid}) to true"))

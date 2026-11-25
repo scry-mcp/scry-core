@@ -180,54 +180,70 @@ public source each fact was checked against. A server ships dictionaries and one
 `knowledge_find` tool both servers register.
 
 - **Dictionaries**: JSON files `scry-knowledge/1` in `<package>/knowledge/`, one dictionary per
-  file: a header (`kind`, `scope`, what it `covers`, the list it must cover as
-  `complete_against`, `left_out` with a reason per key, `reached` for registers, `both` when the
-  documentation and the emulator both exist) and its `entries`. An entry holds its `key` in the
-  one spelling of its kind (`scry_core.knowledge.keys`), a `name` of at most 24 ASCII
-  characters, a `description`, a `behaviour` that summarises the source without losing
-  precision, and one to three `sources`, each a `ref` of a known scheme and the source's own line
-  in `cites`: at most one `documentation`, and two `emulator` sources only when one is
-  `dosbox-x:` and the other `mame:` (a chip both emulators model); `differs` says how the
-  sources disagree, and is required when the index's read and write marks of two sources
-  differ. An entry with no source is not written. A placed device may map its ports to
-  handlers in `handlers` (`"0x388:write": "data_w"`): each port must lie in its `ports` and each
-  value must be a handler of a chip it `contains` (or of the chip that has its own key), which
-  the relations case checks. A `register` or `command` key may be a
-  range (`0x20..0x35`, a bank as one entry) and a number inside it finds the entry; two
-  registers or two commands of one dictionary may not overlap unless their `access` tells them
-  apart. `access` (`read` or `write`) is for a port, a register or a command that differs by
-  direction, and it is part of the id (`ym:register:0x0F:read`). A `call` key is `INT/AH` or
-  `INT/AH/AL`, and may end in one selector, a register and its value (`0x10/0x12/BL=0x36`, or a
-  range of values `BL=0x31..0x36`), for a call whose variants a register other than AH or AL
-  picks; the registers are `BL BH CL CH DL DH BX CX DX SI DI`, never `AH`, `AL` or `AX`, which
-  the key's own parts already say (`0x21/0x44/0x00`, not `0x21/0x44/AL=0x00`). A variant sorts and
-  ranges with its parent, which may be an entry too: `knowledge_find` for the parent lists the
-  variants, for a key with the selector answers the variant. The variants of one call select on
-  one register and no value picks two, or the second is a load fault. A list section keyed by
-  the parent (`0x10/0x12`) is the source of every variant that cites it, so a variant needs no
-  key of its own in the source index.
+  file. A header names what it covers, and its `entries` hold the facts:
+
+| header field | what it says |
+|---|---|
+| `kind` | what the dictionary holds |
+| `scope` | the system or cpu it is about |
+| `covers` | what it answers |
+| `complete_against` | the list it must cover |
+| `left_out` | a reason per key it leaves out |
+| `reached` | how a register is reached |
+| `both` | set when the documentation and the emulator both exist |
+
+| entry field | what it says |
+|---|---|
+| `key` | the key, in the one spelling of its kind (`scry_core.knowledge.keys`) |
+| `name` | at most 24 ASCII characters |
+| `description` | what it is |
+| `behaviour` | the source summarised without losing precision |
+| `sources` | one to three: a `ref` of a known scheme and the source's own line in `cites` |
+| `differs` | how the sources disagree; required when their read and write marks differ |
+| `handlers` | a placed device's ports to handlers (`"0x388:write": "data_w"`) |
+
+- **Sources**: at most one `documentation` source, and two `emulator` sources only when one is
+  `dosbox-x:` and the other `mame:` (a chip both emulators model). An entry with no source is
+  not written.
+- **Handlers**: a handler must be one of a chip the device `contains`, and each port must lie in
+  its `ports`; the relations case checks both.
+- **Keys**: a `register` or `command` key may be a range (`0x20..0x35`, a bank as one entry),
+  and a number inside it finds the entry. Two registers or two commands of one dictionary may
+  not overlap unless their `access` tells them apart.
+- **Direction**: `access` (`read` or `write`) is for a port, a register or a command that
+  differs by direction, and it is part of the id (`ym:register:0x0F:read`).
+- **Calls**: a `call` key is `INT/AH` or `INT/AH/AL`, and may end in one selector, a register and
+  its value (`0x10/0x12/BL=0x36`, or a range `BL=0x31..0x36`). The registers are
+  `BL BH CL CH DL DH BX CX DX SI DI`, never `AH`, `AL` or `AX`, which the key's own parts say
+  (`0x21/0x44/0x00`).
+- **Variants**: a variant sorts and ranges with its parent, which may be an entry too.
+  `knowledge_find` for the parent lists the variants, and for a key with the selector answers the
+  variant. The variants of one call select on one register, and no value picks two.
+- **A variant's source**: a list section keyed by the parent (`0x10/0x12`) is the source of
+  every variant that cites it, so a variant needs no key of its own in the source index.
 - **Checked entries**: a second session reads an entry against its source and adds `checked`
-  with `by`, `writer` and `against` (per source `ref`, the line it compared: the entry's own
-  `cites`, or a part of the line the source index holds for it). Then one command seals it:
+  with `by`, `writer` and `against` (per source `ref`, the line it compared: the entry's `cites`,
+  or a part of the line the source index holds). One command seals it:
 
   ```sh
   python -m scry_core.knowledge.seal <dictionary.json> <entry id>... --lock <lock.json>
   ```
 
-  It stamps the seal into `checked.digest` (a hash of the entry's text, of the check itself and, for a register, of the ports its
-  dictionary header says it is reached by)
-  and writes the entry's id, its seal, who checked it and the lines compared to the
-  repository's lock (`scry-knowledge-lock/2`). The dictionary file must already
-  be written the way the command writes it (two-space JSON, a final newline); a file that is
-  not is refused untouched. From then on the entry is never touched: the contract fails when a
-  checked entry no longer gives its seal, when a locked entry is gone or has lost its `checked`
-  record, and when a checked entry is not in the lock. The lock sits beside the package's
-  `knowledge/` directory, never inside it: every `.json` there is read as a dictionary. A correction is a new write and a new
-  check by another session, sealed with the same command, which replaces the lock's row and
-  refuses a re-check whose `by` and `against` are the ones already locked while the entry
-  changed: the check has to be by another session or against other lines. An
-  entry retired for good has its line deleted from the lock by hand, in the commit that removes
-  it.
+  It stamps the seal into `checked.digest`: a hash of the entry's text, of the check itself and,
+  for a register, of the ports its header says it is reached by. It also writes the id, the
+  seal, who checked it and the lines compared to the repository's lock
+  (`scry-knowledge-lock/2`).
+
+  The dictionary must already be written the way the command writes it (two-space JSON, a final
+  newline); a file that is not is refused untouched.
+- **A sealed entry is never touched.** The contract fails when a checked entry no longer gives
+  its seal, when a locked entry is gone or has lost its `checked` record, and when a checked
+  entry is not in the lock. The lock sits beside the package's `knowledge/` directory, never
+  inside it: every `.json` there is read as a dictionary.
+- **A correction** is a new write and a new check by another session, sealed with the same
+  command. That command replaces the lock's row and refuses a re-check whose `by` and `against`
+  are the ones already locked while the entry changed. An entry retired for good has its line
+  deleted from the lock by hand, in the commit that removes it.
 - **Reopening a sealed entry**: an entry a check or a reading finds wrong or incomplete is
   reopened with its own command, never by editing the lock or the dictionary by hand:
 
@@ -236,71 +252,71 @@ public source each fact was checked against. A server ships dictionaries and one
       --by <who reopens> --why <what is wrong>
   ```
 
-  It removes the entry's `checked` record and its lock row and adds to the lock's `reopened`
+  It removes the entry's `checked` record and its lock row, and adds to the lock's `reopened`
   list the id, the digest the entry had, who reopened it and why, and who had checked it against
-  which lines, so the lock tells the history and `seal` still refuses a re-check by that checker
-  against those lines. It refuses
-  an entry that is not locked, and writes both files or neither. The entry is then rewritten,
-  checked by another session and sealed again with `seal`. The contract fails when a
-  reopening is recorded for an entry that is sealed at the digest it had, and when a checked
-  entry has no lock row.
-- **Confirmed entries**: a reply serves an entry only when it is confirmed, that is when the
-  lock holds it sealed at the digest it has now and the second check, which carried its
-  evidence, recorded that same digest (`scry_core.knowledge.confirmed`). An entry that is
-  unsealed, reopened, sealed once only, changed since it was sealed or recorded under another
-  digest is held back. The second check is one file format for every repository,
+  which lines.
+
+  It refuses an entry that is not locked, and writes both files or neither.
+- **After a reopening** the entry is rewritten, checked by another session and sealed again with
+  `seal`. The contract fails when a reopening is recorded for an entry sealed at the digest it
+  had, and when a checked entry has no lock row.
+- **Confirmed entries**: a reply serves an entry only when it is confirmed: the lock holds it
+  sealed at the digest it has now, and the second check recorded that same digest
+  (`scry_core.knowledge.confirmed`). An entry that is unsealed, reopened, sealed once only,
+  changed since it was sealed or recorded under another digest is held back.
+- **The second check** is one file format for every repository,
   `scry-knowledge-second-check/1`: `{"format": ..., "confirmed": [{"id", "by", "digest"}, ...]}`,
-  read by `read_second_check`; a file of another shape is refused by name. A server builds
-  `Confirmation.of(locks, second_checks)` from its own lock and second check (and
-  `shared.locks()` and `shared.second_check()` for the shared dictionaries) and passes it to
-  `Base.load(..., confirmation=...)`. That is the one place the filter lives: the namer, the
-  line notes, the summary, the captions and `machine_map`'s rows read a base that cannot hold a
-  held-back entry, a `device` or `contains` that points at one is dropped when the base loads,
-  and `knowledge_find` answers a key whose entry is held back as an entry that exists and is not
-  confirmed, with its id in `unconfirmed`. A server's `status` carries `knowledge_tool.counts`.
-  A base with no second check serves nothing of its own.
+  read by `read_second_check`; a file of another shape is refused by name.
+- **The confirmation** is built with `Confirmation.of(locks, second_checks)` from a server's own
+  lock and second check (and `shared.locks()` and `shared.second_check()` for the shared
+  dictionaries) and passed to `Base.load(..., confirmation=...)`. A base with no second check
+  serves nothing of its own.
+- **One filter**: the namer, the line notes, the summary and `machine_map`'s rows read a base
+  that cannot hold a held-back entry. A `device` or `contains` that points at one is dropped when
+  the base loads.
+- **A held-back answer**: `knowledge_find` answers a key whose entry is held back with its id in
+  `unconfirmed`, never its text. A server's `status` carries `knowledge_tool.counts`.
 - **The declaration**: `knowledge/support.py` holds one `Support` listing the `Scope`s (a system
   or a cpu, with the kinds it owes; `support="named"` for a cpu the base names and the server
   does not claim to run), the `Device`s and the `Chip`s. Adding one there is the only step; the
   suite is red until its dictionaries exist.
 - **The shared chips**: a chip both emulators model is written once, in this package.
   `scry_core.knowledge.shared` holds `CHIPS` (their declarations, so
-  `Support(chips=shared.CHIPS)` is complete by construction), `CPUS` (cpus named for any
-  system built on them, which a server that runs one adds to its `scopes`) and `PINS` (the
-  commit or tag each `dosbox-x:` and `mame:` ref is read at, the one pin of each emulator for
-  every repository: a server takes it from there and the contract fails when it declares
-  another). `knowledge/chips/` is loaded by
-  every server and `knowledge/cpus/` only by a server that declares those cpus, as
-  `Base.load(<own package>, files("scry_core.knowledge") / "chips")`. A register of a shared
-  chip has the id `<chip>:register:<key>` on both servers, and its `reached` names handlers,
-  never a port: the board that places the chip says which port is which handler, in the
-  `handlers` of its own device entry. The rows these dictionaries cite are in
-  `knowledge_index/shared.json`, which a server's subject merges with its own index;
-  `tools/knowledge_sources.py` writes it from the real sources, and `--check` compares it.
+  `Support(chips=shared.CHIPS)` is complete by construction), `CPUS` (cpus named for any system
+  built on them) and `PINS` (the commit or tag each `dosbox-x:` and `mame:` ref is read at).
+- **Where the shared files load**: `knowledge/chips/` is loaded by every server and
+  `knowledge/cpus/` only by a server that declares those cpus, as
+  `Base.load(<own package>, files("scry_core.knowledge") / "chips")`. A server takes its pins
+  from `PINS`, and the contract fails when it declares another.
+- **A shared register** has the id `<chip>:register:<key>` on both servers, and its `reached`
+  names handlers, never a port: the board that places the chip says which port is which handler,
+  in the `handlers` of its own device entry.
+- **The shared rows** are in `knowledge_index/shared.json`, which a server's subject merges with
+  its own index. `tools/knowledge_sources.py` writes it from the real sources, and `--check`
+  compares it.
 - **The source index**: a tool of the server captures, from the real sources, the rows its
   dictionaries cite (the line, the key the locator carries, the read and write marks) and the
-  lists they must cover (`scry-knowledge-sources/1`, `scry_core.knowledge.sources`), and the
-  result is committed. The tests need no network. A row holds the `line` or, where the index
-  must not copy a third party's text, the `digest` of it (`sources.digest`: the SHA-256 of the
-  line's UTF-8 bytes, in lower-case hex), never both; an entry's `cites` is then held to the
-  digest, and a check's `against` line to the whole `cites`, since a digest cannot say what part
-  of a line it came from.
+  lists they must cover (`scry-knowledge-sources/1`, `scry_core.knowledge.sources`). The result
+  is committed, and the tests need no network.
+- **A row** holds the `line` or, where the index must not copy a third party's text, the
+  `digest` of it (`sources.digest`: the SHA-256 of the line's UTF-8 bytes, in lower-case hex),
+  never both. An entry's `cites` is held to the digest, and a check's `against` line to the whole
+  `cites`.
 - **The tests**: a subclass of `conformance.KnowledgeContract` with a `subject` that gives the
-  declaration, the loaded `Base` as the server serves it (`fts5=False` forces the search index of
-  our own; the contract judges the files on `Base.unfiltered()`), the source index, the lock of
-  the checked entries (`scry_core.knowledge.read_lock`), the second check
-  (`scry_core.knowledge.read_second_check`) and the scopes the code depends on. `tests/null_server.py`'s `NullKnowledge` is the
-  model.
+  declaration, the loaded `Base` as the server serves it (`fts5=False` uses the search index this
+  package builds; the contract judges the files on `Base.unfiltered()`), the source index, the
+  lock of the checked entries (`scry_core.knowledge.read_lock`), the second check
+  (`scry_core.knowledge.read_second_check`) and the scopes the code depends on.
+- **The model** for those tests is `tests/null_server.py`'s `NullKnowledge`.
 - **The tool**: `knowledge_tool.register(wrap, answer, base, live)`. `live` says what the running
   machine can answer by itself (MAME's inputs and device tags, which a model may give as
-  `kind=device key=:tag` or `device=:tag`); a server with none passes nothing. The registered
-  description lists the scopes of `base`, so a server types none, and a scope that is a near
-  miss of one (`6809` for `m6809`) is read as it, with a `note` saying so. `knowledge_tool.judge`
-  goes in the pre-gate table.
-
+  `kind=device key=:tag` or `device=:tag`); a server with none passes nothing.
+- **The description** lists the scopes of `base`, so a server types none. A scope that is a near
+  miss of one (`6809` for `m6809`) is read as it, with a `note` saying so.
+  `knowledge_tool.judge` goes in the pre-gate table.
 ## Naming what the replies show
 
-A reply and a caption call a number by its name where the server knows one (`DAC write address
+A reply calls a number by its name where the server knows one (`DAC write address
 (0x3C8)`), so a reader does not look it up. The server writes one namer and a table of its replies'
 number fields; `scry_core.naming` does the rest.
 
@@ -312,21 +328,19 @@ number fields; `scry_core.naming` does the rest.
   every example, and expects zero calls.
 - **The wiring**: `naming.Guarded(namer)` goes to `Boundary(namer=..., names_on=...)`. A failure
   of the namer gives no names and is counted: `Guarded.failed()` is what `status` says as
-  `names_failed`, and never a call's own reply. `Boundary` puts the names on `Call.named`, which
-  the caption uses, and, while `names_on()` holds, adds `names` and `names_cut` to every reply and
+  `names_failed`, and never a call's own reply. `Boundary` puts the names on `Call.named` and, while `names_on()` holds,
+  adds `names` and `names_cut` to every reply and
   names the numbers its summary prints, at the first whole occurrence: a short number such as `1`
   is ambiguous in a line, so a tool gives its field a `shown` spelling (`irq {}`) that is not. The
-  block also names the call's own arguments, under `given.<argument>`; the demo runner builds its
-  captions from those with the function the window's captions use.
+  block also names the call's own arguments, under `given.<argument>`.
 - **The switch**: `start` takes `names: naming.Switch = True`, whose description is
   `naming.ARGUMENT`, and `naming.ASK` is the sentence for `asks.json`. Off, a reply has no
-  `names`, no names in its summary and no note on a disassembled line; the window's captions
-  keep theirs.
+  `names`, no names in its summary and no note on a disassembled line.
 - **A call with variants**: `naming.named_call(base, scope, interrupt, registers)` names `INT
   interrupt` from the registers a stop holds (upper-case names, `AH`, `BX`; a word or its two
   bytes serve either way). It answers the variant whose selector's register is known and holds
   the variant's value, else the call itself, else None; a register the stop does not say never
-  picks a variant, so a caption never names one it cannot know. A namer calls it where it names
+  picks a variant, so a name never says one it cannot know. A namer calls it where it names
   a call.
 - **A disassembled line's note**: `notes.note(base, scope, operands, names_on=...)` returns what
   the base calls the operands the server parsed (a port, an interrupt, an address), and None when

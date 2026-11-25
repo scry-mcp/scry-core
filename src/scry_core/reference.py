@@ -54,8 +54,9 @@ EXAMPLES_PATH = f"{PAGES_DIR}/examples.json"
 
 INDEX_BLOCK, ENVELOPE_BLOCK = "index", "envelope"
 
-#: Reply fields an example leaves out; `REFERENCE.md` documents `session` once.
-LEFT_OUT = frozenset({"session"})
+#: Reply fields an example leaves out: `REFERENCE.md` documents `session` once, and the base's
+#: served and held-back counts are its own backlog, not what a tool answers.
+LEFT_OUT = frozenset({"session", "knowledge", "served", "held_back"})
 
 
 def begin_marker(name: str) -> str:

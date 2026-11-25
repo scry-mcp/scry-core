@@ -1,7 +1,7 @@
 """`scry_core.presence`: the states a session's calls set, the one writer that delivers only the
 latest (a quick call still shown, a failed delivery sent again), a delivery that fails said in
-`reply` and never in a call's own reply, and the declaration of which tools drive held against a
-registry."""
+`reply` and never in a call's own reply, the pointer a session moves, and the declaration of
+which tools drive held against a registry."""
 
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ import pytest
 
 from scry_core import boundary, overlay, presence
 from scry_core.envelope import Envelope
-from scry_core.naming import Named
 
 #: Long enough for an idle writer to have sent anything it was going to.
 QUIET_S = 0.2
@@ -113,28 +112,15 @@ def test_a_driving_call_turns_it_acting_and_its_end_back_to_held() -> None:
     p.close()
 
 
-def test_a_still_call_leaves_the_state_held_and_only_captions_itself() -> None:
+def test_a_still_call_leaves_the_state_held() -> None:
     a = _Adapter()
     p = _open(a)
     p.began(_call("registers", read_only=True))
     with p._cv:
         assert (p._want, p._pulse) == ("held", False), "a still call set no state"
     p.ended(_call("registers", read_only=True), "ok")
-    _settle(a, 2)
-    assert a.shown == ["held", "held"]
-    caption = a.payloads[-1].caption
-    assert caption is not None and (caption.text, caption.kind) == ("registers", "read")
-    p.close()
-
-
-def test_a_still_call_changes_nothing_with_the_calls_layer_off() -> None:
-    a = _Adapter()
-    p = _open(a, asked=overlay.Overlay(calls=False))
-    p.began(_call("registers", read_only=True))
-    p.ended(_call("registers", read_only=True), "ok")
     time.sleep(QUIET_S)
-    assert a.shown == ["held"] and a.payloads[0].layers == (
-        "edge", "pointer", "keys", "pause", "record")
+    assert a.shown == ["held"]
     p.close()
 
 
@@ -389,60 +375,16 @@ def _until(a: _Adapter, ok: Callable[[presence.Payload], bool], after: int = 0
     raise AssertionError(f"never delivered; delivered {a.payloads}")
 
 
-def test_a_call_s_caption_is_delivered_with_its_state_and_leaves_on_its_own() -> None:
-    a = _Adapter()
-    look = presence.Look(caption_min_s=0.05, caption_hold_s=0.1)
-    p = _open(a, look=look)
-    assert a.payloads[0] == presence.Payload(layers=overlay.OVERLAY.asked())
-    p.began(_call("run_for", seconds=2.0))
-    _settle(a, 2)
-    assert a.shown[-1] == "acting"
-    caption = a.payloads[-1].caption
-    assert caption is not None and (caption.text, caption.rgb) == ("run_for 2", look.write_rgb)
-    p.ended(_call("run_for", seconds=2.0), "ok")
-    gone = _until(a, lambda pl: pl.caption is None, after=1)
-    assert gone.layers == overlay.OVERLAY.asked(), "no call came: the writer woke on its own"
-    p.close()
-
-
-def test_a_caption_is_delivered_with_the_names_the_boundary_gave_the_call() -> None:
+def test_the_pointer_and_its_buttons_reported_reach_the_payload() -> None:
     a = _Adapter()
     p = _open(a)
-    p.began(boundary.Call("read_memory", {"ref": "score", "length": 2}, False, True,
-                          {"ref": Named("symbol", "score", "0x9405")}))
-    caption = _until(a, lambda pl: pl.caption is not None).caption
-    assert caption is not None and caption.text == "read_memory score (0x9405) 2"
-    p.close()
-
-
-def test_a_call_that_ends_refused_is_delivered_in_the_refused_tint() -> None:
-    a = _Adapter()
-    p = _open(a)
-    p.began(_call("run_for"))
-    p.ended(_call("run_for"), "refused")
-    refused = _until(a, lambda pl: pl.caption is not None and pl.caption.kind == "refused")
-    assert refused.caption is not None and refused.caption.rgb == presence.LOOK.refused_rgb
-    p.close()
-
-
-def test_the_keys_pointer_and_pause_reported_reach_the_payload() -> None:
-    a = _Adapter()
-    p = _open(a)
-    p.key("Enter", True)
-    p.key("Enter", False)
-    _until(a, lambda pl: pl.keys == ("Enter",))
-    p.button("left", True)                       # no pointer yet: nothing to press
+    p.button("left", True)                       # no pointer yet: nothing to report
     p.moved(10, 20)
     p.button("left", True)
     p.button("right", True)
     p.button("left", False)
     p.moved(11, 21)
     _until(a, lambda pl: pl.pointer == presence.Pointer(11, 21, ("right",)))
-    p.paused(True)
-    _until(a, lambda pl: pl.paused)
-    before = len(a.payloads)
-    p.paused(False)
-    _until(a, lambda pl: not pl.paused, after=before)
     p.close()
 
 
@@ -497,42 +439,25 @@ def test_the_record_mark_is_red_and_blinks_once_a_second() -> None:
     assert (presence.LOOK.record_rgb, presence.LOOK.record_blink_s) == (0xFF3B30, 1.0)
 
 
-def test_a_key_tapped_on_an_idle_session_leaves_on_its_own() -> None:
-    a = _Adapter()
-    p = _open(a, look=presence.Look(keycap_min_s=0.05))
-    p.key("Enter", True)
-    p.key("Enter", False)
-    _until(a, lambda pl: pl.keys == ("Enter",))
-    shown = _until(a, lambda pl: pl.keys == (), after=1)
-    assert shown.layers == overlay.OVERLAY.asked(), "nothing came: the writer woke on its own"
-    p.close()
-
-
 def test_a_layer_not_asked_is_never_delivered() -> None:
     a = _Adapter()
-    p = _open(a, asked=overlay.Overlay(calls=False, keys=False, pointer=False, pause=False,
-                                       record=False, place="top"))
-    p.key("Enter", True)
+    p = _open(a, asked=overlay.Overlay(pointer=False, record=False))
     p.moved(1, 2)
-    p.paused(True)
     p.recording("video", True)
     p.began(_call("run_for"))
     p.ended(_call("run_for"), "ok")
     _settle(a, 3)
-    assert all(pl == presence.Payload(layers=("edge",), place="top") for pl in a.payloads)
+    assert all(pl == presence.Payload(layers=("edge",)) for pl in a.payloads)
     p.close()
 
 
 def test_a_session_without_presence_takes_input_reports_and_does_nothing() -> None:
     shown = presence.Shown()
-    shown.key("A", True)
     shown.moved(1, 1)
     shown.button("left", True)
-    shown.paused(True)
     shown.recording("video", True)
     a = _Adapter()
     held = presence.Presence.open(a, ())
-    held.key("A", True)
-    held.paused(True)
-    _until(a, lambda pl: pl.keys == ("A",) and pl.paused)
+    held.moved(1, 2)
+    _until(a, lambda pl: pl.pointer == presence.Pointer(1, 2))
     held.close()

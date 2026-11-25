@@ -100,6 +100,22 @@ class Machine:
 UNREAD = Machine(running=True, seq=None, known=False)
 
 
+def jsonable(value: Any) -> Any:
+    """`value` as a document holds it: a model (an `overlay`) as its mapping, a `Path` as its
+    text, a sequence as a list. A replay document is JSON, and the arguments a recording keeps
+    are what a replayed `start` is handed back."""
+    dump = getattr(value, "model_dump", None)
+    if callable(dump):
+        return dump(mode="json")
+    if isinstance(value, Mapping):
+        return {str(k): jsonable(v) for k, v in value.items()}
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, list | tuple):
+        return [jsonable(v) for v in value]
+    return value
+
+
 @dataclass(frozen=True)
 class Call:
     """One recorded call: `status` is the reply's, or `ended` when there was no reply."""
@@ -208,7 +224,8 @@ class Recorder:
         if parent is None and tool == self.start_tool:
             planned = self.plan is not None and bool(given.get(self.plan))
             dropped = {self.plan, *self.plan_with} if planned else {self.plan}
-            self._starting = Recording({k: v for k, v in given.items() if k not in dropped})
+            self._starting = Recording({k: jsonable(v) for k, v in given.items()
+                                        if k not in dropped})
             self._found_live = self._was_live()
             self._found_declared = None
             return None

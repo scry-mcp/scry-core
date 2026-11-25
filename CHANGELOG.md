@@ -2,6 +2,93 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## Unreleased
+
+- The overlay no longer narrates: it draws the edge, the pointer and the recording mark, and the
+  chat says what a call is doing. `overlay` takes `pointer` and `record`; `Look` and `Payload`
+  lose the caption, the keycaps and the pause mark; `scry_core.timeline` holds version 3.
+- A server answers what a number is called on its machine, citing the source each answer was
+  checked against. `knowledge_tool.register` adds `knowledge_find`, and a `knowledge.Base` loads
+  the server's dictionaries (`scry-knowledge/1` in `<package>/knowledge/`, declared in
+  `knowledge/support.py`).
+- The base finds an entry by key, address, name, alias, words or device. A register key may be a
+  range, an `access` tells a read from a write at one key, and a call's key may end in a register
+  selector (`0x10/0x12/BL=0x36`).
+- `conformance.KnowledgeContract` holds a base's files to their sources. *The knowledge base* in
+  `docs/new-emulator.md` says how a server writes them.
+- An entry cites a documentation source, an emulator, or both, by a `ref` in the source index a
+  server commits (`scry-knowledge-sources/1`, `knowledge.sources`).
+- A second check is sealed with `python -m scry_core.knowledge.seal`, and a sealed entry that
+  proves wrong is lifted with `python -m scry_core.knowledge.reopen`, which keeps who and why.
+- The chips both emulators model are written once, in `knowledge.shared`: their declarations
+  (`CHIPS`), the cpus built on them (`CPUS`) and the one pin of each emulator's source (`PINS`).
+- A server loads `knowledge/chips/` and, if it declares those cpus, `knowledge/cpus/`.
+  `tools/knowledge_sources.py` writes the index of the sources they cite from each emulator's
+  source at its pin.
+- `scry_core.decorate` draws the edge and the pointer into a demo's clip from its run's timeline,
+  when the demo declares a decorator. It needs the `decorate` extra (`scry-core[decorate]`:
+  Pillow and numpy), which a server and its users never load.
+- A moment of a session's video is placed by the frame a reply ended at, so an input sent to a
+  running guest cuts where it happened.
+- `knowledge_find` points at the "Knowledge base" section of a server's `REFERENCE.md`
+  (`knowledge_tool.REFERENCE`); a server's reference carries a section of that name.
+- A server serves only the entries its lock seals and the second check records under the same
+  seal (`knowledge.confirmed`). `Base.load` takes a `Confirmation` and loads those only, counts
+  the rest (`Base.held_back`) and drops a `device` or `contains` that points at one.
+- `Base.unfiltered()` is the view the checks of the files take. The second check is
+  `scry-knowledge-second-check/1`, a `confirmed` list of `id`, `by` and `digest`, and another
+  shape is refused by name.
+- `knowledge_find` answers an entry it holds with its id in `unconfirmed`, never its text. Every
+  reply carries `served` and `held_back`, and `knowledge_tool.counts` is the block a server's
+  `status` carries.
+- `conformance.KnowledgeContract` takes the second check from its subject (`second_check()`), and
+  its cases cover the filter and the emulator pins of `knowledge.shared.PINS`.
+- A `boundary.CallListener` hears every call, a step of `perform` or `drive` included, as a
+  `boundary.Call`: the tool, what it was given, whether it is a step, whether it only reads.
+  `began(call)` and `ended(call, outcome)` say when and how it ended.
+- `presence.Adapter.show(state, payload)` takes a `presence.Payload`: whether the machine is
+  held stopped, the pointer, the layers asked and what is being recorded. A server reports input
+  with `Shown.moved` and `button`, which do nothing without presence.
+- `Presence.open` takes the session's `overlay.Overlay`, `start`'s `overlay` argument with its
+  description (`overlay.ARGUMENT`), and `overlay.reply` builds the reply's `overlay`. `Look`
+  carries the edge's colour, steps and alphas, the fade, and the record mark's blink.
+- `decorate.Style.layers` names the layers a clip can carry, `ClipLayer` (`edge` and `pointer`),
+  and draws only those: the record mark is a live state, not a clip's.
+- A demo's `loop.webp` and `screen.png` are written at the game's display aspect, 4:3, from one
+  function (`aspect`, `motion.Box.display`): a 320x200 game comes out 4:3 and no page has to
+  stretch it.
+- `motion.FIT` is 960 by 720, `motion.factor` takes a `Box`, `motion.scaled` is
+  `motion.displayed`, and `demo.same_picture` and `demo.cut_from` are `motion.shows_capture`.
+  A demo's capture must be a picture `scry_core.png` reads.
+- A demo run writes `<transcript>-timeline.json` beside its transcript: each call with its
+  arguments as given and the emulator frame it began and ended at, and the input its step names
+  (`Step.events`; `timeline.pointer` makes one). The format is in `docs/modules.md`;
+  `timeline.loads` reads it.
+- A demo draws its clip's cuts from its run's timeline when it declares `Demo.decorator`: given
+  the demo, the run and the timeline (`demo.Decoration`), it returns the `motion.Decorator` that
+  `motion.build` draws each cut with.
+- A missing `decorate` extra refuses the update before the emulator runs. A demo without a
+  decorator builds as before, and `demo.beside_transcript` and `demo.last_under` are public.
+- The reference's examples leave out `session`, `knowledge`, `served` and `held_back`: the
+  first is documented once, and the rest are the base's own backlog, not what a tool answers.
+- The reference generator (`scry_core.reference`) leaves a blank line after every block's end
+  marker, so an entry's closing `</details>` no longer swallows the next tool's heading. Its
+  check names a page whose blocks touch.
+- The overlay's `record` layer: a blinking mark while the session records video or audio, on by
+  default (`overlay.Overlay.record`, last in `overlay.LAYERS`).
+- A server tells the presence with `Shown.recording(kind, on)`, `kind` being `video` or
+  `audio`; the payload's `recording` is `none`, `video`, `audio` or `both`. `Look.record_rgb`
+  and `record_blink_s` give the mark's colour and period. A demo's decorated clip never draws it.
+- A reply names what it shows. A server writes a namer (`naming.Namer`) and a table of its
+  replies' number fields (`naming.Field`); `Boundary(namer=naming.Guarded(namer), names_on=...)`
+  puts `Call.named` on every call and adds `names` and `names_cut` to every reply.
+- The summary's numbers are named through `abbreviation.name_text`. A namer that fails gives no
+  names and is counted (`Guarded.failed`), never raised. `start` takes the shared `names` switch
+  (`naming.Switch`, `naming.ASK`).
+- `notes.note` gives a disassembled line the note the base has for its operands, kept apart from
+  a person's comments (`instruction.StopInstruction.note`). `overlay.reply` takes `notes`, a
+  word per layer drawn with a limit.
+
 ## 0.121.0
 
 - A server answers what a number is called on its machine, with the source each answer was

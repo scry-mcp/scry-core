@@ -717,6 +717,17 @@ def test_an_example_keeps_the_shape_of_a_long_reply_and_spells_the_host_s_paths(
     assert shown["reply"]["pid"] == demo.VOLATILE_MARK, "a pid is the run's, not the tool's"
 
 
+def test_an_example_leaves_out_the_envelope_and_the_base_s_backlog(tmp_path: Path) -> None:
+    """`session` is documented once, and the base's served and held-back counts are not a
+    reader's."""
+    norm = Normaliser(tmp_path, Path.home(), {})
+    reply = {"status": "ok", "pid": 1, "session": {"alive": True},
+             "knowledge": {"served": 705, "held_back": 317},
+             "served": 705, "held_back": 317}
+    shown = reference.examples_from([_record("peek", "OK", reply)], {"peek"}, norm)["peek"]
+    assert not {"session", "knowledge", "served", "held_back"} & set(shown["reply"]), shown
+
+
 def test_an_example_hides_the_clock_the_pids_and_the_run_s_directory_name(
         tmp_path: Path) -> None:
     norm = Normaliser(tmp_path, Path.home(), {})

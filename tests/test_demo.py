@@ -14,21 +14,19 @@ import types
 from collections.abc import Mapping, Sequence
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
-import anyio
 import pytest
 from mcp.client import Client
 
-from scry_core import abbreviation, example, motion, png, timeline, verdict
 from scry_core import demo as d
-from scry_core.naming import Named
+from scry_core import example, motion, png, timeline, verdict
 from scry_core.verdict import EXIT_INVALID
 
 SERVER = Path(__file__).resolve().parent / "fixtures" / "demo" / "server.py"
 FIXTURE_AVI = SERVER.with_name("screen.avi")
-#: What the fixture's recording holds: 72 frames at 60 a second.
-FIXTURE_FRAMES, FIXTURE_MS = 72, 1200
+#: What the fixture's recording holds: 120 frames at 60 a second.
+FIXTURE_FRAMES, FIXTURE_MS = 120, 2000
 needs_loop_programs = pytest.mark.skipif(
     any(shutil.which(name) is None for name in motion.PROGRAMS),
     reason="a loop is made by ffmpeg and img2webp on PATH")
@@ -267,6 +265,22 @@ def test_the_window_a_demo_asks_for_is_watched_behind_and_on_its_display(tmp_pat
     assert d.window_args(d.Run(dir=tmp_path)) == {"shared": True, "background": True, "display": 0}
     named = d.Run(dir=tmp_path, options={"display": 1})
     assert d.window_args(named)["display"] == 1
+    watched = d.Run(dir=tmp_path, watch=True)
+    assert d.window_args(watched)["background"] is False, "a watched window must be activatable"
+    assert d.window_args(watched)["shared"] is True
+
+
+def test_a_watched_run_brings_the_window_forward_once_the_machine_is_up(
+        tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    demo = _demo(tmp_path, steps=[d.Step("boot", "start", {}, _said("value"), options=True),
+                                  d.Step("end", "close", {}, lambda reply, run: "closed")])
+    assert _run(demo, tmp_path) == verdict.EXIT_PASS
+    assert [c["summary"] for c in _calls(log)] == ["started", "closed"], "behind: no window call"
+    assert _run(demo, tmp_path, "--watch") == verdict.EXIT_PASS
+    calls = _calls(log)[2:]
+    assert [c["summary"] for c in calls] == ["started", "the window on display 0, in front",
+                                             "closed"], calls
+    assert "OK window: the window on display 0, in front" in capsys.readouterr().out
 
 
 def test_a_step_takes_only_the_options_it_names(tmp_path: Path, log: Path) -> None:
@@ -332,11 +346,6 @@ def test_update_readme_rewrites_the_block_and_the_capture(
     assert d.readme_drift(_readme(demo), examples).startswith("line 1: the README has ")
 
 
-def _pressed(args: Mapping[str, Any], reply: d.Reply) -> list[timeline.Event]:
-    return [timeline.key(args["key"], True, reply["frame_set"]),
-            timeline.key(args["key"], False, reply["frame_released"])]
-
-
 def _pointed(args: Mapping[str, Any], reply: d.Reply) -> list[timeline.Event]:
     return [timeline.pointer(reply["pointer"]["x"], reply["pointer"]["y"])]
 
@@ -347,8 +356,7 @@ def test_a_run_writes_its_timeline_beside_the_transcript_with_the_frames_each_ca
     run's own directory is spelled as the transcript spells it."""
     steps = [
         d.Step("boot", "start", {"value": 7}, _said("value")),
-        d.Step("fire", "press", {"key": "Fire 1", "frames": 4}, _said("summary"),
-               events=_pressed),
+        d.Step("fire", "press", {"key": "Fire 1", "frames": 4}, _said("summary")),
         d.Step("aim", "point", {"x": 12, "y": 34}, _said("summary"), events=_pointed),
         d.Step("shot", "picture", lambda run: {"dest": run.dir / "shot.png"},
                lambda reply, run: "a picture"),
@@ -362,47 +370,20 @@ def test_a_run_writes_its_timeline_beside_the_transcript_with_the_frames_each_ca
         ("start", None, None), ("press", 0, 5), ("point", 5, 8), ("picture", 8, 8),
         ("read", 8, 8), ("close", 8, 8)]
     assert calls[1]["args"] == {"key": "Fire 1", "frames": 4}
-    assert calls[1]["caption"] == {"text": "press Fire 1 4", "tint": "write"}
-    assert calls[4]["caption"] == {"text": "read", "tint": "read"}, "the server marks it read-only"
-    assert calls[1]["events"] == [
-        {"kind": "key", "name": "Fire 1", "down": True, "frame": 0},
-        {"kind": "key", "name": "Fire 1", "down": False, "frame": 4}]
     assert calls[2]["events"] == [{"kind": "pointer", "x": 12, "y": 34, "frame": 8}], \
         "a reply that counts no `frame_after` ends at the frame it stopped at"
     assert str(tmp_path) not in json.dumps(calls[3]["args"]), "a path is spelled as the transcript"
 
 
-def test_a_calls_caption_in_the_timeline_carries_the_names_its_reply_gave_its_arguments(
-        tmp_path: Path, log: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    steps = [d.Step("look", "peek", {"ref": "score"}, _said("summary")),
-             d.Step("again", "peek", {"ref": "score"}, _said("summary"))]
-    assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_PASS
-    calls = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
-    assert [c["caption"]["text"] for c in calls[:2]] == ["peek score (0x9405)"] * 2
-    live = abbreviation.caption("peek", {"ref": "score"},
-                                {"ref": Named("symbol", "score", "0x9405")})
-    assert calls[0]["caption"]["text"] == live, "the overlay and the demo write one text"
-    monkeypatch.setenv("DEMO_NO_NAMES", "1")
-    assert _run(_demo(tmp_path, steps[:1]), tmp_path) == verdict.EXIT_PASS
-    bare = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
-    assert bare[0]["caption"]["text"] == "peek score", "a session with the names off has none"
-
-
-def test_the_read_only_tools_are_read_across_every_page_the_server_lists() -> None:
-    from mcp.types import ListToolsResult, Tool, ToolAnnotations
-
-    def tool(name: str, read_only: bool | None) -> Tool:
-        hint = None if read_only is None else ToolAnnotations(read_only_hint=read_only)
-        return Tool(name=name, input_schema={"type": "object"}, annotations=hint)
-
-    pages = {None: ListToolsResult(tools=[tool("a", True), tool("b", None)], next_cursor="2"),
-             "2": ListToolsResult(tools=[tool("c", True), tool("d", False)])}
-
-    class Listing:
-        async def list_tools(self, cursor: str | None = None) -> ListToolsResult:
-            return pages[cursor]
-
-    assert anyio.run(d._readers, cast(Client, Listing())) == frozenset({"a", "c"})
+def test_a_wrapper_s_rows_are_read_from_where_its_reply_names_them() -> None:
+    """A wrapper is shown as the calls it ran: `perform` and a `start` plan name them under
+    `ran`, `drive` under `act`."""
+    row = {"op": "send_keys", "frame_before": 1, "frame_after": 2, "reply": {"status": "ok"}}
+    assert d.ran(d.Reply({"ran": [row]})) == [row]
+    assert d.ran(d.Reply({"act": {"ran": [row]}, "verify": {"verdict": "TARGET"}})) == [row]
+    assert d.ran(d.Reply({"status": "ok", "act": [{"op": "send_keys"}]})) == [], \
+        "an argument is no row"
+    assert d.ran(None) == []
 
 
 def test_a_failed_step_is_in_the_timeline_with_its_status_and_no_events(
@@ -411,7 +392,7 @@ def test_a_failed_step_is_in_the_timeline_with_its_status_and_no_events(
         raise d.StepFailed("the check says no")
 
     steps = [d.Step("boot", "start", {}, _said("value")),
-             d.Step("fire", "press", {"key": "A"}, refused, events=_pressed)]
+             d.Step("fire", "press", {"key": "A"}, refused)]
     assert _run(_demo(tmp_path, steps), tmp_path) == verdict.EXIT_FAIL
     calls = timeline.loads((tmp_path / "out" / "transcript-timeline.json").read_text())["calls"]
     assert [(c["step"], c["status"], c["events"]) for c in calls] == [
@@ -431,7 +412,7 @@ def test_a_pointer_in_the_first_call_that_counts_a_frame_does_not_end_the_run_in
 def test_an_event_outside_the_frames_of_its_call_makes_the_run_invalid(
         tmp_path: Path, log: Path, capsys: pytest.CaptureFixture[str]) -> None:
     def early(args: Mapping[str, Any], reply: d.Reply) -> list[timeline.Event]:
-        return [timeline.key("A", True, reply["frame_after"] + 1)]
+        return [timeline.pointer(1, 1, reply["frame_after"] + 1)]
 
     steps = [d.Step("boot", "start", {}, _said("value")),
              d.Step("fire", "press", {"key": "A"}, _said("summary"), events=early)]
@@ -545,7 +526,7 @@ def test_update_readme_makes_the_loop_beside_the_capture_and_writes_the_motion_b
     assert d.block_of(text, d.MOTION_BEGIN, d.MOTION_END) == (
         tmp_path / "out" / "transcript-motion.md").read_text().strip("\n")
     assert "old motion" not in text and "1. The pattern moves." in text
-    assert f"{loop} rewritten: {len(data)} bytes, lossless, 1.2 s in 1 moment" \
+    assert f"{loop} rewritten: {len(data)} bytes, lossless, 2 s in 1 moment" \
         in capsys.readouterr().out
 
 
@@ -765,7 +746,7 @@ def test_a_still_that_cannot_be_cut_as_its_loop_leaves_every_file_as_it_was(
     ((d.Moment("shot", "film", ""),), {}, "its caption is one sentence"),
     ((d.Moment("shot", "film", "It moves.", skip=-1),), {}, "neither is negative"),
     ((d.Moment("shot", "film", "It moves."),), {"alt": " "}, "does not say what moves"),
-    ((d.Moment("shot", "film", "It moves."),) * 4, {}, "a loop shows at most 3"),
+    ((d.Moment("shot", "film", "It moves."),) * 6, {}, "a loop shows at most 5"),
 ])
 def test_a_moment_the_demo_s_steps_cannot_give_is_refused_before_a_call(
         tmp_path: Path, log: Path, moments: tuple[d.Moment, ...], kw: dict[str, Any],
@@ -858,21 +839,21 @@ def _session_video(tmp_path: Path) -> Path:
 
 def test_a_moment_between_two_steps_is_cut_from_the_session_s_video_by_the_replies_frames(
         tmp_path: Path) -> None:
-    """The video's last frame is the last one a reply counted: 144 frames ending at frame 150,
-    so the stretch after frame 100 begins at the video's frame 94, the second file's 22."""
+    """The video's last frame is the last one a reply counted: 240 frames ending at frame 240,
+    so the stretch after frame 190 begins at the video's frame 190, the second file's 70."""
     folder = _session_video(tmp_path)
     demo = _moment_demo(tmp_path, video=lambda run: folder, moments=(
         d.Moment("boot", "shot", "It moves."),
         d.Moment("boot", "shot", "It moves on.", skip=6, frames=20)))
     run = d.Run(dir=tmp_path, replies=_replies(
-        boot={"frame": 100}, shot={"ran": [{"reply": {"frame": 110}}, {"reply": {"frame": 130}}]},
-        film={"note": "counts none"}, end={"frame": 150}))
-    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 22, 30),
-                                 motion.Cut(folder / "x_001.avi", 28, 20)]
+        boot={"frame": 190}, shot={"ran": [{"reply": {"frame": 200}}, {"reply": {"frame": 220}}]},
+        film={"note": "counts none"}, end={"frame": 240}))
+    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 70, 30),
+                                 motion.Cut(folder / "x_001.avi", 76, 20)]
     still = d.Demo(**{**demo.__dict__, "moments": (d.Moment("shot", "end", "It moves."),)})
     assert d.cuts(still, d.Run(dir=tmp_path, replies=_replies(
-        boot={"frame": 100}, shot={"read": "a step that moved nothing"}, film={"frame": 150},
-        end={"note": "nor this one"}))) == [motion.Cut(folder / "x_001.avi", 22, 50)], \
+        boot={"frame": 190}, shot={"read": "a step that moved nothing"}, film={"frame": 240},
+        end={"note": "nor this one"}))) == [motion.Cut(folder / "x_001.avi", 70, 50)], \
         "a step that counts no frame stands at the last one counted before it"
 
 
@@ -882,19 +863,19 @@ def test_a_reply_that_names_the_frame_it_ended_at_places_a_moment_as_one_that_co
     demo = _moment_demo(tmp_path, video=lambda run: folder,
                         moments=(d.Moment("boot", "shot", "It moves."),))
     run = d.Run(dir=tmp_path, replies=_replies(
-        boot={"frame_before": 90, "frame_after": 100}, shot={"frame_before": 100,
-                                                              "frame_after": 130},
-        film={"note": "counts none"}, end={"frame_before": 140, "frame_after": 150}))
-    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 22, 30)]
+        boot={"frame_before": 180, "frame_after": 190}, shot={"frame_before": 190,
+                                                              "frame_after": 220},
+        film={"note": "counts none"}, end={"frame_before": 230, "frame_after": 240}))
+    assert d.cuts(demo, run) == [motion.Cut(folder / "x_001.avi", 70, 30)]
 
 
 @pytest.mark.parametrize(("frames", "why"), [
-    ({"boot": {"frame": 60}, "shot": {"frame": 100}, "end": {"frame": 150}},
+    ({"boot": {"frame": 100}, "shot": {"frame": 240}, "end": {"frame": 240}},
      "which no one file of"),
     ({"boot": {}, "shot": {"frame": 100}, "end": {"frame": 150}},
      "no reply up to step 'boot' counts a `frame`"),
-    ({"boot": {"frame": 100}, "shot": {"frame": 130}, "end": {"note": "moved, uncounted"}},
-     "the session's video holds 144 frames and the last reply to count one counts frame 130"),
+    ({"boot": {"frame": 190}, "shot": {"frame": 220}, "end": {"note": "moved, uncounted"}},
+     "the session's video holds 240 frames and the last reply to count one counts frame 220"),
     ({"boot": {"frame": True}, "shot": {"frame": 100}}, "no reply up to step 'boot' counts a"),
 ])
 def test_a_moment_the_session_s_video_does_not_hold_is_invalid(
@@ -920,21 +901,21 @@ def test_a_moment_between_two_steps_of_a_demo_with_no_video_is_invalid(tmp_path:
 def test_a_moment_longer_than_its_stretch_is_invalid_and_one_with_a_skip_ends_with_it(
         tmp_path: Path) -> None:
     folder = _session_video(tmp_path)
-    replies = _replies(boot={"frame": 100}, shot={"frame": 130}, end={"frame": 150})
+    replies = _replies(boot={"frame": 190}, shot={"frame": 220}, end={"frame": 240})
     long = _moment_demo(tmp_path, video=lambda run: folder,
                         moments=(d.Moment("boot", "shot", "It moves.", skip=6, frames=40),))
     with pytest.raises(verdict.Invalid, match="shows frames 6 to 45 of a stretch of 30"):
         d.cuts(long, d.Run(dir=tmp_path, replies=replies))
     whole = d.Demo(**{**long.__dict__, "moments": (d.Moment("boot", "shot", "It moves.", skip=6),)})
     assert d.cuts(whole, d.Run(dir=tmp_path, replies=replies)) == [
-        motion.Cut(folder / "x_001.avi", 28, 24)]
+        motion.Cut(folder / "x_001.avi", 76, 24)]
     film = {"film": {"path": str(FIXTURE_AVI), "avi_frames": FIXTURE_FRAMES}}
     skipped = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.", skip=10),))
     assert d.cuts(skipped, d.Run(dir=tmp_path, replies=_replies(**film))) == [
         motion.Cut(FIXTURE_AVI, 10, FIXTURE_FRAMES - 10)]
     past = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.", skip=10,
                                                     frames=FIXTURE_FRAMES),))
-    with pytest.raises(verdict.Invalid, match="shows frames 10 to 81 of a stretch of 72"):
+    with pytest.raises(verdict.Invalid, match="shows frames 10 to 129 of a stretch of 120"):
         d.cuts(past, d.Run(dir=tmp_path, replies=_replies(**film)))
 
 
@@ -956,10 +937,11 @@ def test_a_recording_is_given_the_seconds_a_slow_host_needs() -> None:
 
 
 def test_a_moment_that_skips_its_whole_stretch_is_invalid(tmp_path: Path) -> None:
-    demo = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.", skip=72),))
+    demo = _moment_demo(tmp_path, moments=(d.Moment("shot", "film", "It moves.",
+                                                    skip=FIXTURE_FRAMES),))
     run = d.Run(dir=tmp_path, replies=_replies(film={"path": str(FIXTURE_AVI),
                                                      "avi_frames": FIXTURE_FRAMES}))
-    with pytest.raises(verdict.Invalid, match="skips 72 frames of a stretch of 72"):
+    with pytest.raises(verdict.Invalid, match="skips 120 frames of a stretch of 120"):
         d.cuts(demo, run)
 
 
