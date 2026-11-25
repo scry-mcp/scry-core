@@ -43,11 +43,6 @@ class Look:
     def held_alpha(self) -> float:
         return self.acting_alpha * self.held_share
 
-    @property
-    def write_rgb(self) -> int:
-        """The edge's own colour."""
-        return self.rgb
-
 
 LOOK = Look()
 
