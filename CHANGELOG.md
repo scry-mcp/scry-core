@@ -61,6 +61,8 @@ What a server author notices. A client's view of each server is in that server's
   its description (`overlay.ARGUMENT`); `overlay.reply` builds the `overlay` field of `start`'s
   and `status`'s replies. `Look` carries the edge's colour, steps and alphas, the fade, and the
   record mark's colour and blink.
+- `decorate.Style.layers` names the layers a clip can carry, `ClipLayer` (`edge` and `pointer`),
+  and draws only those: the record mark is a live state and a clip holds frames the machine ran.
 - A demo's `loop.webp` and `screen.png` are written at the game's display aspect, 4:3, from one
   function (`aspect`, `motion.Box.display`): a 320x200 game comes out 4:3 and no page has to
   stretch it. `motion.FIT` is 960 by 720, `motion.factor` takes a `Box`, `motion.scaled` is
