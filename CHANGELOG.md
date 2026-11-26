@@ -32,6 +32,9 @@ What a server author notices. A client's view of each server is in that server's
   model (`Confirmation`, `SecondCheck`) and the checks that read the old base are gone, leaving
   the rows base and the declaration, check and sealing helpers beside it; a server that still
   imports the old reader moves to `scry_core.knowledge.base`.
+- The old seal of a `scry-knowledge/1` entry is gone from `scry_core.knowledge`: `seal.py`,
+  `reopen.py`, `lock.py` and the `Lock`, `Locked` and `read_lock` exports. A `scry-knowledge/2`
+  dictionary seals and reopens through `rows seal` and `rows reopen`.
 
 ## 0.121.0
 
