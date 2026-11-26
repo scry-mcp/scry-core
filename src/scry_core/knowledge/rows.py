@@ -1,5 +1,6 @@
 """The format `scry-knowledge/2`: an entry as rows that carry their evidence, and the command
-`rows` (`python -m scry_core.knowledge.rows`) that stamps, lists, checks and reads them.
+`rows` (`python -m scry_core.knowledge.rows`) that stamps, lists, checks, reads and indexes
+them.
 
 A dictionary file holds a header (its source, the official documents and the lines of them that
 are the programming model, what it covers, the code that answers its keys, what the build defines,
@@ -29,6 +30,7 @@ from scry_core.knowledge.quote import (
     BODY_LINES,
     PARTY,
     QUOTE_LINES,
+    Datasheet,
     Invalid,
     Quote,
     Sources,
@@ -786,6 +788,79 @@ def _run_migrate(got: argparse.Namespace) -> int:
     return 0
 
 
+def _index_files(paths: Sequence[Path]) -> list[Path]:
+    """The dictionary files at `paths`: each a file, or the `.json` of a folder that hold a
+    dictionary (the callee table and the index beside them do not)."""
+    out: list[Path] = []
+    for path in paths:
+        if path.is_dir():
+            out += [p for p in sorted(path.rglob("*.json"))
+                    if f'"{FORMAT}"' in p.read_text(encoding="utf-8")]
+        elif path.is_file():
+            out.append(path)
+        else:
+            raise Invalid(f"{path} is neither a file nor a folder")
+    return out
+
+
+def _index_table(files: Sequence[Path]) -> dict[str, Datasheet]:
+    """The documents the dictionaries may quote: scry-core's table and each package's, as
+    `table_for` gives them, refused when two hold one document in two forms."""
+    from scry_core.knowledge import quote
+    table = quote.default_datasheets()
+    for path in files:
+        for name, held in quote.table_for(path).items():
+            if table.setdefault(name, held) != held:
+                raise Invalid(f"{name}: two packages hold the document in two forms")
+    return table
+
+
+def _run_index(got: argparse.Namespace) -> int:
+    """Write the index of every quote's lines and the digest the source gives them."""
+    from scry_core.knowledge import quote
+    files = _index_files(got.dictionaries)
+    if not files:
+        raise Invalid("nothing was examined: no dictionary of rows was found")
+    sources = Sources(mame=got.mame, dosbox=got.dosbox, rbil=got.rbil,
+                      datasheets=got.datasheets, table=_index_table(files))
+    held: dict[tuple[str, str], str] = {}
+    faults: list[str] = []
+    quotes = 0
+    for path in files:
+        dictionary, bad = read(path)
+        faults += [f"{path.name}: {fault}" for fault in bad]
+        if dictionary is None:
+            continue
+        for entry in dictionary.entries:
+            for row in entry.rows:
+                for held_quote in row.quotes:
+                    quotes += 1
+                    where = (f"{path.name}: {entry.id} row {row.n}: "
+                             f"{held_quote.ref}:{held_quote.lines}")
+                    try:
+                        sha = sources.stamped(held_quote.ref, held_quote.lines).sha
+                    except (Invalid, ValueError) as bad_source:
+                        faults.append(f"{where}: {bad_source}")
+                        continue
+                    same = held.setdefault((held_quote.ref, held_quote.lines), sha)
+                    if same != sha:
+                        faults.append(f"{where}: the index holds {same} and the source {sha}")
+    for fault in faults:
+        print(f"- {fault}")
+    if faults:
+        return 1
+    if not quotes:
+        raise Invalid("nothing was examined: the dictionaries hold no quote")
+    text = quote.Quotes(held).document()
+    if got.out:
+        got.out.write_text(text, encoding="utf-8")
+        print(f"{got.out.name}: {quotes} quotes, {len(held)} lines of source")
+    else:
+        sys.stdout.write(text)
+        print(f"{quotes} quotes, {len(held)} lines of source", file=sys.stderr)
+    return 0
+
+
 def _run_seal(got: argparse.Namespace) -> int:
     from scry_core.knowledge import sealed
     if got.command == "seal":
@@ -821,6 +896,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     quote.add_argument("lines", nargs="?")
     quote.add_argument("--stamp", type=Path, help="a dictionary: write the missing digests")
     quote.add_argument("--json", action="store_true", help="print the quote as JSON")
+    index = commands.add_parser("index", help="write the index of every quote's lines and the "
+                                "digest the source gives them")
+    index.add_argument("dictionaries", nargs="+", type=Path,
+                       help="a dictionary file, or a folder holding some")
+    index.add_argument("--out", type=Path, help="where to write the index; the standard output "
+                       "when not given")
     for name, text in (("cover", "list what the entries owe, and what closes each item"),
                        ("check", "prove the quotes and the closure of every item"),
                        ("review", "print each row with the text of its lines"),
@@ -855,8 +936,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                              "closed for an owner not yet written, instead of failing on them")
     got = ask.parse_args(argv)
     run = {"quote": _run_quote, "cover": _run_cover, "check": _run_check,
-           "review": _run_review, "migrate": _run_migrate, "seal": _run_seal,
-           "reopen": _run_seal}[got.command]
+           "review": _run_review, "migrate": _run_migrate, "index": _run_index,
+           "seal": _run_seal, "reopen": _run_seal}[got.command]
     try:
         return run(got)
     except (Invalid, ValueError, OSError) as bad:

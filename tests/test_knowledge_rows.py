@@ -756,3 +756,73 @@ def test_a_sweeping_word_next_to_punctuation_is_still_marked(cli: Cli, world: Wo
     world.edit("command", set_row("5", text="MAME accepts it always, and never twice."))
     _, out, _ = cli("review", str(world.root / "command.json"))
     assert "row 5  when  of mame differs row 2   [always, never]" in out
+
+
+def test_the_index_command_writes_every_quote_of_the_dictionaries(
+        cli: Cli, world: World, tmp_path: Path) -> None:
+    out = tmp_path / "quotes.json"
+    code, said, _ = cli("index", str(world.root), "--out", str(out))
+    assert code == 0 and "quotes" in said, said
+    index = quote.parse_quotes(out.read_text(encoding="utf-8"))
+    quoted = 0
+    for name in DICTIONARIES:
+        for entry in world.dictionary(name).entries:
+            for row in entry.rows:
+                for one in row.quotes:
+                    quoted += 1
+                    assert index.digest(one.ref, one.lines) == one.sha
+    assert quoted and len(index.held) <= quoted, (quoted, len(index.held))
+
+
+def test_the_index_command_prints_the_index_when_no_file_is_named(
+        cli: Cli, world: World) -> None:
+    code, out, _ = cli("index", str(world.root / "command.json"))
+    assert code == 0 and quote.parse_quotes(out).held
+
+
+def test_the_index_command_names_a_quote_whose_source_it_could_not_read(
+        world: World, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setitem(shared.PINS, "dosbox-x", world.pin)
+    monkeypatch.setattr(quote, "default_datasheets", lambda: world.sources().table)
+    code = rows.main(["--datasheets", str(world.datasheets), "index", str(world.root)])
+    out = capsys.readouterr().out
+    assert code == 1 and "no source for mame" in out, out
+
+
+def test_the_index_command_with_no_dictionary_is_invalid(cli: Cli, tmp_path: Path) -> None:
+    (tmp_path / "empty").mkdir()
+    code, _, err = cli("index", str(tmp_path / "empty"))
+    assert code == 3 and "nothing was examined" in err, err
+
+
+def test_the_index_command_on_a_dictionary_of_no_entry_examined_nothing(
+        cli: Cli, world: World) -> None:
+    path = world.edit("command", lambda doc: doc.update(entries=[]))
+    code, _, err = cli("index", str(path))
+    assert code == 3 and "no quote" in err, err
+
+
+def test_the_index_command_refuses_a_path_that_is_neither_a_file_nor_a_folder(
+        cli: Cli, tmp_path: Path) -> None:
+    code, _, err = cli("index", str(tmp_path / "gone"))
+    assert code == 3 and "neither a file nor a folder" in err, err
+
+
+def test_the_index_command_refuses_two_packages_holding_a_document_in_two_forms(
+        cli: Cli, tmp_path: Path) -> None:
+    def package(name: str, capture: str) -> Path:
+        package = tmp_path / name
+        (package / "knowledge_index").mkdir(parents=True)
+        (package / "knowledge_rows").mkdir()
+        one = {"title": "t", "url": "https://a.invalid/p.pdf",
+               "archive": "https://b.invalid/p.pdf", "class": "maker-datasheet", "text": "layer",
+               "tool": "pdftotext -raw", "tool_version": "1", "pdf": "3" * 64,
+               "capture": capture}
+        (package / "knowledge_index" / "datasheets.json").write_text(json.dumps(
+            {"format": "scry-knowledge-datasheets/1", "datasheets": {"a.raw.txt": one}}),
+            encoding="utf-8")
+        dictionary = package / "knowledge_rows" / "d.json"
+        dictionary.write_text('{"format": "scry-knowledge/2"}', encoding="utf-8")
+        return dictionary
+    code, _, err = cli("index", str(package("one", "1" * 64)), str(package("two", "2" * 64)))
+    assert code == 3 and "two forms" in err, err

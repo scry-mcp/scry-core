@@ -1,5 +1,5 @@
-"""The chips and cpus every server that loads `chips/` and `cpus/` declares, and the pins of the
-sources their entries cite."""
+"""The chips and cpus every server that loads `chips/` and `cpus/` declares, the pins of the
+sources their entries cite, and the lock and quote index of the shared dictionaries."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from scry_core.knowledge.support import NAMED, Chip, Scope
 
 if TYPE_CHECKING:
-    from scry_core.knowledge import sealed
+    from scry_core.knowledge import quote, sealed
 
 _INDEX = "knowledge_index"
 
@@ -55,4 +55,12 @@ def rows_lock() -> sealed.Lock:
     from scry_core.knowledge import sealed
     name = "rows-lock.json"
     return sealed.parse_lock((resources.files("scry_core") / _INDEX / name).read_text(
+        encoding="utf-8"), name)
+
+
+def rows_index() -> quote.Quotes:
+    """The index of the shared dictionaries of rows: every quote's lines and their digest."""
+    from scry_core.knowledge import quote
+    name = quote.QUOTES_NAME
+    return quote.parse_quotes((resources.files("scry_core") / _INDEX / name).read_text(
         encoding="utf-8"), name)

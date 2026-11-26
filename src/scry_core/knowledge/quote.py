@@ -4,6 +4,9 @@ there.
 A quote is `ref` (`<scheme>:<file>`), `lines` (`322-328`, or `259`) and `sha`, the SHA-256 of
 those lines with every run of white space folded to one space. The committed files hold no
 source text: a reader opens the lines through `Sources`, which reads each scheme at its pin.
+A seal keeps the digest of each row's quotes and not their `lines`, so `Quotes` is the
+committed index beside it: per tree, the digest the source gave each `(ref, lines)` a quote
+names, so a `lines` that moved while its text stayed is caught.
 """
 
 from __future__ import annotations
@@ -29,6 +32,8 @@ DOCUMENT_CLASSES = ("maker-datasheet", "maker-guide", "second-source")
 DOCUMENT_TEXTS = ("layer", "ocr")
 _SPAN = re.compile(r"([1-9][0-9]*)(?:-([1-9][0-9]*))?")
 _SHA = re.compile(r"[0-9a-f]{64}")
+QUOTES_FORMAT = "scry-knowledge-quotes/1"
+QUOTES_NAME = "quotes.json"
 
 
 class Invalid(Exception):
@@ -299,3 +304,61 @@ class Sources:
             out.append(f"{where} no longer gives its digest: the source changed or the row "
                        "names other lines")
         return out
+
+
+@dataclass(frozen=True)
+class Quotes:
+    """The index of a tree's quotes: `(ref, lines)` to the digest the pinned source gave them.
+    A quote's own `sha` and this entry change together when the source or the lines move, so a
+    `lines` edited with the text left alone is caught, where the seal cannot see it."""
+
+    held: Mapping[tuple[str, str], str]
+
+    def digest(self, ref: str, lines: str) -> str:
+        """The digest the index holds for `lines` of `ref`, or `""` when it does not hold them."""
+        return self.held.get((ref, lines), "")
+
+    def document(self) -> str:
+        """The index as its file holds it: one quote a line, sorted, so a diff shows the quotes
+        that were added, removed or moved."""
+        quotes = ",\n".join(
+            "  " + json.dumps([ref, lines, sha], ensure_ascii=False, separators=(", ", ": "))
+            for (ref, lines), sha in sorted(self.held.items()))
+        body = f"\n{quotes}\n " if quotes else ""
+        return ('{\n "format": "' + QUOTES_FORMAT + '",\n "quotes": [' + body + "]\n}\n")
+
+
+def parse_quotes(text: str, where: str = QUOTES_NAME) -> Quotes:
+    """The index a file holds, or `ValueError` naming what is wrong."""
+    try:
+        doc = json.loads(text)
+    except json.JSONDecodeError as bad:
+        raise ValueError(f"{where} is not JSON: {bad}") from bad
+    if not (isinstance(doc, dict) and set(doc) == {"format", "quotes"}
+            and doc["format"] == QUOTES_FORMAT and isinstance(doc["quotes"], list)):
+        raise ValueError(f"{where} is `format` {QUOTES_FORMAT} and `quotes`")
+    held: dict[tuple[str, str], str] = {}
+    for number, raw in enumerate(doc["quotes"]):
+        if not (isinstance(raw, list) and len(raw) == 3
+                and all(isinstance(x, str) for x in raw) and _SHA.fullmatch(raw[2])):
+            raise ValueError(f"{where}, quote {number + 1} is `[ref, lines, sha]`, the digest "
+                             "64 hex digits")
+        try:
+            split_ref(raw[0])
+            span(raw[1])
+        except ValueError as bad:
+            raise ValueError(f"{where}, quote {number + 1}: {bad}") from bad
+        if held.setdefault((raw[0], raw[1]), raw[2]) != raw[2]:
+            raise ValueError(f"{where}: {raw[0]}:{raw[1]} is held twice, with two digests")
+    return Quotes(held)
+
+
+def merge(*parts: Quotes) -> Quotes:
+    """One index of several, refusing lines two of them give two digests: a `(ref, lines)` has
+    one digest at a pin."""
+    held: dict[tuple[str, str], str] = {}
+    for part in parts:
+        for (ref, lines), sha in part.held.items():
+            if held.setdefault((ref, lines), sha) != sha:
+                raise ValueError(f"{ref}:{lines} is held with two digests")
+    return Quotes(held)

@@ -10,7 +10,7 @@ from typing import Any
 
 from scry_core import session_block
 from scry_core import window as w
-from scry_core.knowledge import Device, Scope, Support, read_index, sealed
+from scry_core.knowledge import Device, Scope, Support, quote, read_index, sealed
 from scry_core.knowledge import base as rows_base
 from scry_core.reply_contract import Invalid
 
@@ -188,6 +188,10 @@ class NullKnowledge:
 
     def rows_lock(self) -> sealed.Lock:
         return sealed.read_lock(self.rows_locked)
+
+    def rows_index(self) -> quote.Quotes:
+        return quote.parse_quotes((KNOWLEDGE / quote.QUOTES_NAME).read_text(encoding="utf-8"),
+                                  quote.QUOTES_NAME)
 
 
 EXIT_REF = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"

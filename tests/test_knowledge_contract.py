@@ -26,6 +26,7 @@ ROWS_SCOPES = "test_the_rows_half_holds_the_code_to_a_declared_scope"
 ROWS_REOPENED = "test_a_reopened_part_of_rows_is_never_sealed_again_as_it_was"
 ROWS_ALIAS = "test_no_alias_of_rows_is_another_entry_s_name"
 ROWS_PINNED = "test_each_emulator_is_pinned_in_the_rows_base_where_scry_core_pins_it"
+ROWS_INDEX = "test_every_quote_of_rows_is_in_the_index_at_its_digest"
 
 
 class TestNullKnowledge(conformance.KnowledgeContract):
@@ -108,7 +109,7 @@ def rows_copy(tmp_path: Path, change: Callable[[dict[str, Any]], None]) -> NullK
 
 
 def test_the_fixture_base_passes_every_case_and_the_runner_can_tell_a_failure() -> None:
-    assert len(CASES) == 12 and run(NullKnowledge()) == set()
+    assert len(CASES) == 13 and run(NullKnowledge()) == set()
     assert run(NullKnowledge(declared=Support())) == {ROWS_EXAMINED, ROWS_SCOPES}
 
 
@@ -142,6 +143,24 @@ def test_a_dictionary_of_rows_that_does_not_parse_fails_the_parse_case_alone(
     (tmp_path / "rows" / "broken.json").write_text("{", encoding="utf-8")
     failed = run(subject)
     assert ROWS_PARSE in failed and FROZEN not in failed
+
+
+def test_a_quote_whose_lines_moved_with_its_digest_fails_the_index_case(tmp_path: Path) -> None:
+    """THE CONTROL the seal cannot see: the row's `lines` moves, its `sha` and its seal stay."""
+    def move_lines(doc: dict[str, Any]) -> None:
+        first = entry(doc, "0x20..0x27")["rows"][0]["quotes"][0]
+        assert first["lines"] == "564-571"
+        first["lines"] = "564-572"
+    subject = rows_copy(tmp_path, move_lines)
+    assert sealed.frozen(_first_row(subject)[0], subject.rows_lock()) == []
+    assert run(subject) == {ROWS_INDEX}
+
+
+def test_a_quote_the_index_does_not_know_fails_the_index_case(tmp_path: Path) -> None:
+    def add_quote(doc: dict[str, Any]) -> None:
+        entry(doc, "0x20..0x27")["rows"][0]["quotes"].append(
+            {"ref": "datasheet:8259A.raw.txt", "lines": "1-2", "sha": "0" * 64})
+    assert run(rows_copy(tmp_path, add_quote)) == {ROWS_INDEX}
 
 
 def test_an_alias_that_is_another_entry_s_name_fails_the_alias_case(tmp_path: Path) -> None:

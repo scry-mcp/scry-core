@@ -285,6 +285,11 @@ declaration; `scry_core.knowledge` loads, searches and checks them, and
     a region never reads the other class's body.
   - `rows quote <ref> <lines>` prints the lines and their digest (`--json` for the quote to
     paste); `rows quote --stamp <dictionary>` writes the digest into every quote that has none.
+  - `rows index <folder>... --out <file>` writes the tree's quote index: each quote's `ref` and
+    `lines` with the digest the pinned source gives those lines, one quote a line, sorted. A
+    package keeps it at `knowledge_index/quotes.json`, and `KnowledgeContract` holds every quote
+    to it, so a `lines` edited while its text kept its digest is red, which a seal cannot see.
+    Write the index again whenever a pin moves.
   - `rows cover <dictionary> [<id>...]` lists what each entry's code owes rows for, item by
     item (`path`, `before`, `branch`, `exit`, `call`, `store`, `key`, `build`, `empty`, `list`,
     `state`, `lookup`), each with what closes it; the `local` and `input` items a verdict may cite

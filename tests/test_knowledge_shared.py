@@ -7,7 +7,7 @@ from collections.abc import Iterable
 import pytest
 
 from scry_core import conformance
-from scry_core.knowledge import Scope, Support, sealed, shared
+from scry_core.knowledge import Scope, Support, quote, sealed, shared
 from scry_core.knowledge import base as rows_base
 
 
@@ -28,6 +28,9 @@ class Shared:
 
     def rows_lock(self) -> sealed.Lock:
         return shared.rows_lock()
+
+    def rows_index(self) -> quote.Quotes:
+        return shared.rows_index()
 
     def code_scopes(self) -> Iterable[str]:
         return ()

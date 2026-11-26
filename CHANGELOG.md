@@ -26,6 +26,12 @@ What a server author notices. A client's view of each server is in that server's
 - `naming.named_call`, `notes.note` and `knowledge.calls.resolve` take a base of rows as well as
   the dictionaries, so a server on its base of rows names a reply's calls, notes a disassembled
   line and logs its DOS calls from it.
+- A tree's quotes are held in a committed index (`knowledge_index/quotes.json`,
+  `scry-knowledge-quotes/1`), written by `rows index`: each quote's `ref` and `lines` with the
+  digest the pinned source gives them. `KnowledgeContract` holds every quote to it, so a row
+  whose `lines` moved while its text kept the digest is red, which the seal cannot see. A
+  `KnowledgeSubject` provides `rows_index()`, and a package writes its index again when its pin
+  moves.
 - The header field `stores` of `scry-knowledge/2` is gone: the callee table's `writes` says which
   calls write the guest.
 - `scry_core.knowledge` no longer loads the old dictionaries. `knowledge.Base`, the confirmation

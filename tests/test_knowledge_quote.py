@@ -256,3 +256,49 @@ def test_a_corrupt_archive_is_invalid(tmp_path: Path) -> None:
 def test_a_source_that_cannot_be_read_is_invalid_and_not_a_fault_of_the_quote() -> None:
     with pytest.raises(Invalid, match="no source for mame"):
         Sources().faults(Quote(MAME, "10", "a" * 64))
+
+
+def test_an_index_reads_back_what_it_wrote() -> None:
+    index = quote.Quotes({("mame:src/a.cpp", "10-12"): "a" * 64,
+                          ("datasheet:8259A.raw.txt", "5"): "b" * 64})
+    read = quote.parse_quotes(index.document())
+    assert read == index
+    assert read.digest("mame:src/a.cpp", "10-12") == "a" * 64
+    assert read.digest("mame:src/a.cpp", "9") == ""
+    one_a_line = [line.strip().rstrip(",") for line in index.document().splitlines()
+                  if line.strip().startswith("[")]
+    assert one_a_line == ['["datasheet:8259A.raw.txt", "5", "' + "b" * 64 + '"]',
+                          '["mame:src/a.cpp", "10-12", "' + "a" * 64 + '"]']
+
+
+def test_an_empty_index_is_a_document_of_no_quotes() -> None:
+    assert quote.parse_quotes(quote.Quotes({}).document()) == quote.Quotes({})
+
+
+def an_index(quotes: str) -> str:
+    return '{"format": "' + quote.QUOTES_FORMAT + '", "quotes": [' + quotes + "]}"
+
+
+@pytest.mark.parametrize(("doc", "fault"), [
+    ("not json", "not JSON"),
+    ("[]", "is `format`"),
+    ('{"format": "scry-knowledge-quotes/9", "quotes": []}', "is `format`"),
+    ('{"format": "' + quote.QUOTES_FORMAT + '"}', "is `format`"),
+    (an_index('["mame:a", "1"]'), "is `\\[ref, lines, sha\\]`"),
+    (an_index('["mame:a", "1", "x"]'), "64 hex"),
+    (an_index('["a:file", "1", "' + "a" * 64 + '"]'), "<scheme>:<file>"),
+    (an_index('["mame:a", "ten", "' + "a" * 64 + '"]'), "`lines` is"),
+    (an_index('["mame:a", "1", "' + "a" * 64 + '"], ["mame:a", "1", "' + "b" * 64 + '"]'),
+     "held twice")])
+def test_an_index_that_is_not_one_is_refused(doc: str, fault: str) -> None:
+    with pytest.raises(ValueError, match=fault):
+        quote.parse_quotes(doc)
+
+
+def test_two_indexes_merge_and_one_place_with_two_digests_is_refused() -> None:
+    one = quote.Quotes({("mame:a", "1"): "a" * 64})
+    other = quote.Quotes({("mame:b", "2"): "b" * 64})
+    assert quote.merge(one, other).held == {("mame:a", "1"): "a" * 64,
+                                            ("mame:b", "2"): "b" * 64}
+    with pytest.raises(ValueError, match="two digests"):
+        quote.merge(one, quote.Quotes({("mame:a", "1"): "c" * 64}))

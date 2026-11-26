@@ -14,7 +14,7 @@ import pytest
 
 from scry_core import session_block
 from scry_core import window as w
-from scry_core.knowledge import Support, check, sealed, shared, text
+from scry_core.knowledge import Support, check, quote, sealed, shared, text
 from scry_core.knowledge import base as rows_base
 from scry_core.knowledge import rows as rows_format
 from scry_core.knowledge.index import Found, Index, Keyed
@@ -394,6 +394,11 @@ class KnowledgeSubject(Protocol):
 
     def rows_lock(self) -> sealed.Lock: ...
 
+    def rows_index(self) -> quote.Quotes:
+        """The committed index of the quotes of those dictionaries: `(ref, lines)` to the
+        digest the pinned source gave them (`rows index` writes it)."""
+        ...
+
 
 def _none(faults: list[str]) -> None:
     assert not faults, "\n".join(faults)
@@ -528,8 +533,9 @@ class KnowledgeContract:
         """Every dictionary of rows parses, and its entries are whole with ids unique.
 
         The old half's other rules have no counterpart here, and each for a reason. A quote is
-        a place and the digest of its lines, and only `rows check`, reading the sources at
-        their pins, proves it: no committed index is held to. The format has no
+        a place and the digest of its lines; the digest is proved against the source only by
+        `rows check`, and its place against the committed index by the case below. The format
+        has no
         `complete_against` or `left_out`, so no list of keys is owed. It keeps no read and
         write marks and no `device` or `contains` of an entry, so no pair of sources is
         compared and no relation is resolved. The seal is what serves an entry: the rows lock
@@ -541,6 +547,39 @@ class KnowledgeContract:
         whole = _rows_whole(subject)
         assert whole.dictionaries, "INVALID: no dictionary of rows was examined"
         _none(whole.faults())
+
+    def test_every_quote_of_rows_is_in_the_index_at_its_digest(
+        self, subject: KnowledgeSubject
+    ) -> None:
+        """Every quote's `(ref, lines)` is in the committed index and holds the quote's `sha`.
+
+        The seal keeps a row's quote as `ref` and `sha` and not as `lines`, so a `lines` edited
+        while the text kept its digest passes it; the index is where the place is held.
+        """
+        index = subject.rows_index()
+        out: list[str] = []
+        examined = 0
+        for source in subject.rows_sources():
+            for label, dictionary, _ in rows_base.dictionaries(source):
+                if dictionary is None:
+                    continue
+                for entry in dictionary.entries:
+                    for row in entry.rows:
+                        for held in row.quotes:
+                            examined += 1
+                            got = index.digest(held.ref, held.lines)
+                            if not got:
+                                out.append(
+                                    f"{label}: {entry.id} row {row.n}: {held.ref}:{held.lines} "
+                                    "is not in the index: a quote whose lines moved is missing, "
+                                    "and `rows index` writes it")
+                            elif got != held.sha:
+                                digits = held.sha or "no digest"
+                                out.append(
+                                    f"{label}: {entry.id} row {row.n}: {held.ref}:{held.lines} "
+                                    f"gives the index {got} and the quote {digits}")
+        assert examined, "INVALID: no quote was examined"
+        _none(out)
 
     def test_the_rows_database_holds_what_its_dictionaries_hold(
         self, subject: KnowledgeSubject
