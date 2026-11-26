@@ -10,20 +10,7 @@ from typing import Any
 
 from scry_core import session_block
 from scry_core import window as w
-from scry_core.knowledge import (
-    Base,
-    Confirmation,
-    Device,
-    Lock,
-    Scope,
-    SecondCheck,
-    SourceIndex,
-    Support,
-    read_index,
-    read_lock,
-    read_second_check,
-    sealed,
-)
+from scry_core.knowledge import Device, Scope, Support, read_index, sealed
 from scry_core.knowledge import base as rows_base
 from scry_core.reply_contract import Invalid
 
@@ -174,41 +161,21 @@ class StatusDeniesASession(NullServer):
 
 
 class NullKnowledge:
-    """Six fixture entries, each citing a real line of DOSBox-X's source, the index captured from
-    those lines, the lock of the one checked entry and the second check that confirmed it, so the
-    base serves one and holds five back; and two entries written as rows, one sealed in all its
-    parts and served, the other held back. `root`, `sources`, `lock`, `second`, `rows` and
-    `rows_locked` name copies, for variants that break one rule."""
+    """Two fixture entries written as rows, one sealed in all its parts and served, the other
+    held back; `rows` and `rows_locked` name copies, for variants that break one rule."""
 
-    def __init__(self, root: Path = KNOWLEDGE / "null",
-                 sources: Path = KNOWLEDGE / "null-sources.json",
-                 lock: Path = KNOWLEDGE / "null-lock.json",
-                 declared: Support | None = None,
+    def __init__(self, declared: Support | None = None,
                  code: Iterable[str] = ("ibm-pc",),
-                 second: Path = KNOWLEDGE / "null-second-check.json",
                  rows: Path = KNOWLEDGE / "null-rows",
                  rows_locked: Path = KNOWLEDGE / "null-rows-lock.json") -> None:
-        self.root, self.index, self.locked, self.code = root, sources, lock, tuple(code)
-        self.second, self.rows, self.rows_locked = second, rows, rows_locked
+        self.code = tuple(code)
+        self.rows, self.rows_locked = rows, rows_locked
         self.declared = declared or Support(
             scopes=(Scope("ibm-pc", written=("call", "port", "device")),),
             devices=(Device("vga-seq", written=("register",)),))
 
     def support(self) -> Support:
         return self.declared
-
-    def base(self, fts5: bool | None = None) -> Base:
-        return Base.load(self.root, fts5=fts5, confirmation=Confirmation.of(
-            [self.lock()], [self.second_check()]))
-
-    def sources(self) -> SourceIndex:
-        return read_index(self.index)
-
-    def lock(self) -> Lock:
-        return read_lock(self.locked)
-
-    def second_check(self) -> SecondCheck:
-        return read_second_check(self.second)
 
     def code_scopes(self) -> Iterable[str]:
         return self.code
@@ -243,6 +210,32 @@ def write_dictionary(folder: Path, dictionary: str, kind: str, scope: str,
         "format": "scry-knowledge/1", "dictionary": dictionary, "kind": kind, "scope": scope,
         "covers": "FIXTURE of a test", "complete_against": EXIT_REF.rsplit(" case", 1)[0],
         "entries": entries, **header}), encoding="utf-8")
+    return path
+
+
+#: A quote's digest is only compared when a source is read, so a fixture may give any 64 hex.
+FIXTURE_SHA = "0" * 64
+
+
+def a_row(n: int, on: str, text: str, *, of: str = "doc",
+          quotes: Iterable[tuple[str, str]] = ((EXIT_REF, "1"),)) -> dict[str, Any]:
+    """One row of a dictionary of rows, citing a fixture line."""
+    return {"n": str(n), "on": on, "of": of, "text": text,
+            "quotes": [{"ref": ref, "lines": lines, "sha": FIXTURE_SHA}
+                       for ref, lines in quotes]}
+
+
+def write_rows(folder: Path, dictionary: str, kind: str, scope: str,
+               entries: list[dict[str, Any]], *, title: str = "A synthetic dictionary",
+               source: str = "official", **header: Any) -> Path:
+    """A dictionary of rows (`scry-knowledge/2`) in `folder`, marked as a fixture in its
+    `covers`."""
+    path = folder / f"{dictionary}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "format": "scry-knowledge/2", "dictionary": dictionary, "title": title, "kind": kind,
+        "scope": scope, "covers": "FIXTURE of a test", "source": source, "entries": entries,
+        **header}), encoding="utf-8")
     return path
 
 

@@ -5,17 +5,18 @@ from __future__ import annotations
 
 import json
 import runpy
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
-from null_server import an_entry, write_dictionary
-from test_knowledge_contract import LOCKED, REWORDED, Copy, entry, run
+from null_server import KNOWLEDGE, an_entry, write_dictionary
 
 from scry_core import knowledge
-from scry_core.knowledge import check, lock, reopen, seal
+from scry_core.knowledge import entry as fmt
+from scry_core.knowledge import lock, reopen, seal
 
 EXIT = "ibm-pc:call:0x21/0x4C"
 GET_CODE = "ibm-pc:call:0x21/0x4D"
@@ -27,6 +28,28 @@ GET_CODE_LINE = "        case 0x4d:                  /* Get Return code */"
 
 def calls(copy: Copy) -> Path:
     return copy.root / "calls.json"
+
+
+class Copy:
+    """The null fixture's dictionaries of the old format and its lock, copied so a rule can be
+    broken."""
+
+    def __init__(self, tmp_path: Path) -> None:
+        self.root = tmp_path / "null"
+        shutil.copytree(KNOWLEDGE / "null", self.root)
+        self.lock_path = tmp_path / "lock.json"
+        shutil.copy(KNOWLEDGE / "null-lock.json", self.lock_path)
+
+    def edit(self, name: str, change: Any) -> None:
+        path = self.root / f"{name}.json"
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        change(doc)
+        path.write_text(lock.dumps(doc), encoding="utf-8")
+
+
+def entry(doc: dict[str, Any], key: str) -> dict[str, Any]:
+    found: dict[str, Any] = next(e for e in doc["entries"] if e["key"] == key)
+    return found
 
 
 def write(copy: Copy, change: Any) -> None:
@@ -45,15 +68,13 @@ def test_a_check_is_sealed_into_its_file_and_the_lock_and_the_contract_passes(
         tmp_path: Path) -> None:
     copy = Copy(tmp_path)
     write(copy, lambda d: entry(d, "0x21/0x4D").update(checked=checked()))
-    assert run(copy.subject()), "an unsealed check is not a whole entry"
     assert seal.seal(calls(copy), [GET_CODE], copy.lock_path) == []
-    assert run(copy.subject()) == set()
     sealed = knowledge.read_lock(copy.lock_path).checked
     assert set(sealed) == {EXIT, GET_CODE}
-    got = copy.subject().base().unfiltered().by_id(GET_CODE)
-    assert got is not None and got.checked is not None
-    assert got.checked.digest == got.digest == sealed[GET_CODE].digest
-    assert sealed[GET_CODE] == lock.Locked(got.digest, "second checker",
+    raw = entry(json.loads(calls(copy).read_text(encoding="utf-8")), "0x21/0x4D")
+    assert raw["checked"]["digest"] == fmt.digest("ibm-pc", "call", raw)
+    assert raw["checked"]["digest"] == sealed[GET_CODE].digest
+    assert sealed[GET_CODE] == lock.Locked(raw["checked"]["digest"], "second checker",
                                            ((GET_CODE_REF, GET_CODE_LINE),))
 
 
@@ -68,9 +89,7 @@ def test_a_correction_checked_anew_updates_the_entry_and_its_lock_with_one_comma
         raw["behaviour"] = "AL is the return code, and the program ends."
         raw["checked"]["by"] = "second checker"
     write(copy, reword)
-    assert {REWORDED, LOCKED} <= run(copy.subject())
     assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
-    assert run(copy.subject()) == set()
     after = knowledge.read_lock(copy.lock_path).checked[EXIT]
     assert after.digest != before.digest and after.by == "second checker"
     assert after.against == before.against
@@ -122,7 +141,6 @@ def test_a_re_check_is_accepted_when_the_checker_or_the_lines_are_not_the_locked
         copy = Copy(tmp_path / by.split()[0] / (line or "none"))
         reworded(copy, by, line)
         assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
-        assert run(copy.subject()) == set()
 
 
 def test_sealing_an_entry_that_has_not_changed_is_not_a_re_check(tmp_path: Path) -> None:
@@ -196,36 +214,6 @@ def test_a_lock_that_is_no_lock_is_refused_by_name(tmp_path: Path) -> None:
             lock.parse_lock(text)
     got = lock.parse_lock(json.dumps({"format": "scry-knowledge-lock/2", "checked": {"a": held}}))
     assert got.checked == {"a": lock.Locked("d", "b", (("r", "l"),))}
-
-
-def test_a_check_may_quote_a_part_of_the_indexed_line_and_nothing_else(tmp_path: Path) -> None:
-    copy = Copy(tmp_path)
-    for line, passes in (("case 0x4c:", True), ("case 0x4d:", False)):
-        write(copy, lambda d, line=line: entry(d, "0x21/0x4C")["checked"]["against"][0].update(
-            line=line))
-        assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
-        assert (check.against_sources(copy.subject().base().unfiltered(), copy.subject().sources())
-                == []) is passes
-
-
-def test_a_source_no_machine_opens_is_checked_against_the_line_the_entry_cites(
-        tmp_path: Path) -> None:
-    ref = "datasheet:Fixture sheet 1, table 2, page 3"
-    cites = "Bit 7 selects the bank."
-    raw = an_entry("0x10", "bank", sources=[{"role": "documentation", "ref": ref,
-                                            "cites": cites}])
-    raw["checked"] = {"by": "second checker", "writer": "fixture writer", "digest": "",
-                      "against": [{"ref": ref, "line": cites}]}
-    path = write_dictionary(tmp_path / "dictionaries", "ports", "port", "ibm-pc", [raw])
-    path.write_text(lock.dumps(json.loads(path.read_text(encoding="utf-8"))), encoding="utf-8")
-    where = tmp_path / "lock.json"
-    for line, faults in ((cites, 0), ("Bit 7 selects another bank.", 1)):
-        doc = json.loads(path.read_text(encoding="utf-8"))
-        doc["entries"][0]["checked"]["against"][0]["line"] = line
-        path.write_text(lock.dumps(doc), encoding="utf-8")
-        assert seal.seal(path, ["ibm-pc:port:0x10"], where) == []
-        assert len(check.against_sources(knowledge.Base.load(path.parent),
-                                         knowledge.SourceIndex())) == faults
 
 
 def test_what_cannot_be_read_or_written_is_refused_and_not_a_traceback(
@@ -308,13 +296,12 @@ def test_the_ports_a_register_goes_by_are_part_of_what_its_seal_covers(tmp_path:
     path.write_text(lock.dumps(json.loads(path.read_text(encoding="utf-8"))), encoding="utf-8")
     where = tmp_path / "lock.json"
     assert seal.seal(path, ["vga-seq:register:0x04"], where) == []
-    assert check.reworded(knowledge.Base.load(path.parent)) == []
+    assert knowledge.read_lock(where).checked["vga-seq:register:0x04"].digest
     doc = json.loads(path.read_text(encoding="utf-8"))
     doc["reached"] = {"index": "0x3C6", "data": "0x3C7"}
     path.write_text(lock.dumps(doc), encoding="utf-8")
-    base = knowledge.Base.load(path.parent)
-    assert len(check.reworded(base)) == 1
-    assert len(check.locked(base, knowledge.read_lock(where))) == 1
+    [fault] = seal.seal(path, ["vga-seq:register:0x04"], where)
+    assert "the entry changed since" in fault
 
 
 def test_a_first_seal_creates_the_lock(tmp_path: Path) -> None:
@@ -322,16 +309,6 @@ def test_a_first_seal_creates_the_lock(tmp_path: Path) -> None:
     copy.lock_path.unlink()
     assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
     assert set(knowledge.read_lock(copy.lock_path).checked) == {EXIT}
-
-
-def test_the_lock_says_what_became_of_each_entry(tmp_path: Path) -> None:
-    copy = Copy(tmp_path)
-    copy.edit("calls", lambda d: entry(d, "0x21/0x4C").pop("checked"))
-    [gone] = check.locked(copy.subject().base().unfiltered(), copy.subject().lock())
-    assert "no longer checked" in gone and lock.COMMAND in gone
-    copy.edit("calls", lambda d: d["entries"].remove(entry(d, "0x21/0x4C")))
-    [removed] = check.locked(copy.subject().base().unfiltered(), copy.subject().lock())
-    assert "no entry any more" in removed
 
 
 def test_the_command_exits_zero_sealed_and_two_refused_and_knows_its_options(
@@ -360,7 +337,6 @@ def test_reopening_removes_the_check_and_the_lock_row_and_records_who_and_why(
     assert EXIT not in got.checked
     assert got.reopened == (lock.Reopened(EXIT, held.digest, "second checker",
                                           "it leaves a bit out", held.by, held.against),)
-    assert run(copy.subject()) == set()
 
 
 def test_a_reopened_entry_is_sealed_again_and_the_lock_keeps_the_history(tmp_path: Path) -> None:
@@ -376,7 +352,6 @@ def test_a_reopened_entry_is_sealed_again_and_the_lock_keeps_the_history(tmp_pat
     assert seal.seal(calls(copy), [EXIT], copy.lock_path) == []
     got = knowledge.read_lock(copy.lock_path)
     assert got.checked[EXIT].by == "third checker" and len(got.reopened) == 1
-    assert run(copy.subject()) == set()
 
 
 def test_a_reopened_entry_is_not_re_checked_by_the_checker_and_against_the_lines_it_had(
@@ -433,3 +408,17 @@ def test_a_lock_with_reopenings_parses_and_one_without_is_still_a_lock() -> None
         with pytest.raises(ValueError, match="lock"):
             lock.parse_lock(json.dumps({"format": "scry-knowledge-lock/2", "checked": {},
                                         "reopened": bad}))
+
+
+def test_reopening_a_dictionary_that_cannot_be_read_is_refused(tmp_path: Path) -> None:
+    faults = reopen.reopen(tmp_path / "none.json", ["x"], tmp_path / "gone" / "lock.json",
+                           "who", "why")
+    assert any("no directory" in fault for fault in faults)
+
+
+def test_reopening_runs_as_a_script(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                    capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(sys, "argv", ["reopen", "--help"])
+    with pytest.raises(SystemExit) as ended:
+        runpy.run_path(reopen.__file__, run_name="__main__")
+    assert ended.value.code == 0 and "--lock" in capsys.readouterr().out

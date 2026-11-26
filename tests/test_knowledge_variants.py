@@ -6,10 +6,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from null_server import an_entry, write_dictionary
+from null_server import a_row, write_rows
 
-from scry_core import knowledge, knowledge_tool
-from scry_core.knowledge import KeyFault, check, keys, sources
+from scry_core import knowledge_tool
+from scry_core.knowledge import KeyFault, keys
+from scry_core.knowledge import base as rows_base
 from scry_core.reply_contract import Invalid
 
 
@@ -67,21 +68,28 @@ def test_a_query_with_a_selector_is_read_whole_and_a_range_of_calls_takes_none()
             keys.query("call", typed)
 
 
-def parent_with_variants(tmp_path: Path) -> knowledge.Base:
-    write_dictionary(tmp_path, "int10", "call", "ibm-pc", [
-        an_entry("0x10/0x12/BL=0x36", "video refresh"),
-        an_entry("0x10/0x13", "write string"),
-        an_entry("0x10/0x12/BL=0x31..0x32", "default palette"),
-        an_entry("0x10/0x12", "alternate select"),
-        an_entry("0x10/0x12/BL=0x10", "get config"),
-        an_entry("0x10/0x11", "character generator")])
-    got = knowledge.Base.load(tmp_path)
+def a_call(key: str, name: str) -> dict[str, object]:
+    """One call of the fixture, with the rows a call owes."""
+    return {"key": key, "name": name, "regions": [], "closed": [],
+            "rows": [a_row(1, "is", f"The function {name}."),
+                     a_row(2, "out AX", "The result.")]}
+
+
+def parent_with_variants(tmp_path: Path) -> rows_base.Base:
+    write_rows(tmp_path, "int10", "call", "ibm-pc", [
+        a_call("0x10/0x12/BL=0x36", "video refresh"),
+        a_call("0x10/0x13", "write string"),
+        a_call("0x10/0x12/BL=0x31..0x32", "default palette"),
+        a_call("0x10/0x12", "alternate select"),
+        a_call("0x10/0x12/BL=0x10", "get config"),
+        a_call("0x10/0x11", "character generator")])
+    got = rows_base.Base((tmp_path,), None)
     assert got.faults() == []
     return got
 
 
-def ids(found: knowledge.Found[knowledge.Entry]) -> list[str]:
-    return [e.key for e in found.entries]
+def ids(found: object) -> list[str]:
+    return [e.key for e in found.entries]  # type: ignore[attr-defined]
 
 
 def test_a_variant_sorts_and_ranges_with_its_parent(tmp_path: Path) -> None:
@@ -106,20 +114,13 @@ def test_the_parent_answers_with_its_variants_listed_and_a_selector_answers_the_
     assert ids(base.search("call", "0x10/0x12/BH=0x36")) == []
 
 
-def test_a_selector_nobody_holds_names_the_parent_and_its_variants_as_nearest(
+def test_the_variants_of_a_parent_read_one_register_and_do_not_overlap(
         tmp_path: Path) -> None:
-    missed = parent_with_variants(tmp_path).search("call", "0x10/0x12/BL=0x99")
-    assert missed.total == 0
-    assert [e.key for e in missed.nearest] == [
-        "0x10/0x12", "0x10/0x12/BL=0x10", "0x10/0x12/BL=0x31..0x32", "0x10/0x12/BL=0x36"]
-
-
-def test_the_variants_of_a_parent_read_one_register_and_do_not_overlap(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "int10", "call", "ibm-pc", [
-        an_entry("0x10/0x12/BL=0x31..0x36", "a"), an_entry("0x10/0x12/BL=0x36", "b"),
-        an_entry("0x10/0x12/BH=0x01", "c"), an_entry("0x10/0x12/BL=0x37", "d"),
-        an_entry("0x10/0x14/BL=0x01", "e")])
-    base = knowledge.Base.load(tmp_path)
+    write_rows(tmp_path, "int10", "call", "ibm-pc", [
+        a_call("0x10/0x12/BL=0x31..0x36", "a"), a_call("0x10/0x12/BL=0x36", "b"),
+        a_call("0x10/0x12/BH=0x01", "c"), a_call("0x10/0x12/BL=0x37", "d"),
+        a_call("0x10/0x14/BL=0x01", "e")])
+    base = rows_base.Base((tmp_path,), None)
     assert [e.key for e in base.entries()] == ["0x10/0x12/BL=0x31..0x36", "0x10/0x12/BL=0x37",
                                                "0x10/0x14/BL=0x01"]
     assert len(base.load_faults) == 2
@@ -128,13 +129,21 @@ def test_the_variants_of_a_parent_read_one_register_and_do_not_overlap(tmp_path:
 
 
 def test_variants_of_a_parent_in_two_dictionaries_still_clash(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "a", "call", "ibm-pc", [an_entry("0x10/0x12/BL=0x36", "a")])
-    write_dictionary(tmp_path, "b", "call", "ibm-pc", [an_entry("0x10/0x12/BL=0x36..0x37", "b")])
-    write_dictionary(tmp_path, "c", "call", "other", [an_entry("0x10/0x12/BL=0x36", "c")])
-    base = knowledge.Base.load(tmp_path)
+    write_rows(tmp_path, "a", "call", "ibm-pc", [a_call("0x10/0x12/BL=0x36", "a")])
+    write_rows(tmp_path, "b", "call", "ibm-pc", [a_call("0x10/0x12/BL=0x36..0x37", "b")])
+    write_rows(tmp_path, "c", "call", "other", [a_call("0x10/0x12/BL=0x36", "c")])
+    base = rows_base.Base((tmp_path,), None)
     assert [e.id for e in base.entries()] == ["ibm-pc:call:0x10/0x12/BL=0x36",
                                               "other:call:0x10/0x12/BL=0x36"]
     assert len(base.load_faults) == 1
+
+
+def test_a_selector_nobody_holds_names_the_parent_and_its_variants_as_nearest(
+        tmp_path: Path) -> None:
+    missed = parent_with_variants(tmp_path).search("call", "0x10/0x12/BL=0x99")
+    assert missed.total == 0
+    assert [e.key for e in missed.nearest] == [
+        "0x10/0x12", "0x10/0x12/BL=0x10", "0x10/0x12/BL=0x31..0x32", "0x10/0x12/BL=0x36"]
 
 
 def test_the_variants_of_a_parent_are_listed_by_the_base(tmp_path: Path) -> None:
@@ -160,10 +169,10 @@ def test_knowledge_find_answers_the_parent_with_its_variants_and_a_selector_with
 
 
 def test_the_variants_of_a_call_are_not_those_of_a_function_inside_it(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "int10", "call", "ibm-pc", [
-        an_entry("0x10/0x12", "parent"), an_entry("0x10/0x12/0x00/CL=0x01", "deep"),
-        an_entry("0x10/0x12/BL=0x36", "variant")])
-    base = knowledge.Base.load(tmp_path)
+    write_rows(tmp_path, "int10", "call", "ibm-pc", [
+        a_call("0x10/0x12", "parent"), a_call("0x10/0x12/0x00/CL=0x01", "deep"),
+        a_call("0x10/0x12/BL=0x36", "variant")])
+    base = rows_base.Base((tmp_path,), None)
     assert base.faults() == []
     assert [e.key for e in base.variants("ibm-pc", "0x10/0x12")] == ["0x10/0x12/BL=0x36"]
     assert [e.key for e in base.variants("ibm-pc", "0x10/0x12/0x00")] == ["0x10/0x12/0x00/CL=0x01"]
@@ -183,32 +192,3 @@ def test_a_selector_never_goes_with_a_range_of_calls(tmp_path: Path, kind: str) 
     for typed in ("0x10/0x12..0x10/0x13/BL=0x36", "0x10/0x12/BL=0x36..0x10/0x13"):
         with pytest.raises(KeyFault, match="one call"):
             base.search(kind, typed)
-
-
-def test_a_list_section_of_the_parent_is_the_source_of_the_variants_that_cite_it(
-        tmp_path: Path) -> None:
-    base = parent_with_variants(tmp_path)
-    ref = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
-    line = next(iter(base.entries())).sources[0].cites
-
-    def refused_for(row_key: str) -> set[str]:
-        index = sources.SourceIndex(rows={ref: sources.Row(line, row_key)})
-        return {problem.rsplit("not of ", 1)[1] for problem in check.against_sources(base, index)}
-
-    family = {"0x10/0x12", "0x10/0x12/BL=0x10", "0x10/0x12/BL=0x31..0x32", "0x10/0x12/BL=0x36"}
-    assert refused_for("0x10/0x12") == {"0x10/0x11", "0x10/0x13"}
-    assert refused_for("0x10/0x12/BL=0x10") == (family | {"0x10/0x11", "0x10/0x13"}) - {
-        "0x10/0x12/BL=0x10"}
-    assert refused_for("0x10/0x11") == (family | {"0x10/0x13"})
-    assert refused_for("0x10") == family | {"0x10/0x11", "0x10/0x13"}
-
-
-def test_a_key_with_an_equals_sign_of_another_kind_is_never_read_as_a_selector(
-        tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "inputs", "input", "ibm-pc", [an_entry(":IN0/Dip=1", "dip")])
-    base = knowledge.Base.load(tmp_path)
-    ref = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
-    line = next(iter(base.entries())).sources[0].cites
-    index = sources.SourceIndex(rows={ref: sources.Row(line, "0x10/0x12")})
-    assert check.against_sources(base, index) == [
-        f"inputs :IN0/Dip=1: {ref} is the source of 0x10/0x12, not of :IN0/Dip=1"]

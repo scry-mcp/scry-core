@@ -14,22 +14,10 @@ import pytest
 
 from scry_core import session_block
 from scry_core import window as w
-from scry_core.knowledge import (
-    Base,
-    Confirmation,
-    Found,
-    Lock,
-    SecondCheck,
-    SourceIndex,
-    Support,
-    check,
-    sealed,
-    shared,
-    text,
-)
+from scry_core.knowledge import Support, check, sealed, shared, text
 from scry_core.knowledge import base as rows_base
 from scry_core.knowledge import rows as rows_format
-from scry_core.knowledge.index import Index, Keyed
+from scry_core.knowledge.index import Found, Index, Keyed
 from scry_core.project_store import STORE
 from scry_core.window_stand_ins import hosts
 
@@ -407,28 +395,8 @@ class KnowledgeSubject(Protocol):
     def rows_lock(self) -> sealed.Lock: ...
 
 
-class LegacyKnowledgeSubject(KnowledgeSubject, Protocol):
-    """A subject of the old base: its loaded dictionaries, the source index they cite, the lock
-    of the checked entries and the second check. The rows contract no longer asks for them; the
-    core's own library still does."""
-
-    def base(self, fts5: bool | None = None) -> Base: ...
-
-    def sources(self) -> SourceIndex: ...
-
-    def lock(self) -> Lock: ...
-
-    def second_check(self) -> SecondCheck: ...
-
-
 def _none(faults: list[str]) -> None:
     assert not faults, "\n".join(faults)
-
-
-def _whole(subject: LegacyKnowledgeSubject) -> Base:
-    """The subject's dictionaries with every entry loaded, for the checks of the files: a base
-    that serves only what is confirmed is judged apart."""
-    return subject.base().unfiltered()
 
 
 def _rows_whole(subject: KnowledgeSubject) -> rows_base.Base:
@@ -672,127 +640,3 @@ def _standing(subject: KnowledgeSubject) -> dict[str, str]:
         if dictionary is not None
         for e in dictionary.entries
     }
-
-
-class LegacyKnowledgeContract(KnowledgeContract):
-    """The old base's rules, kept while the core's own library still runs them; a
-    server runs `KnowledgeContract`, which asks only for its dictionaries of rows."""
-
-    def test_the_check_examined_something(self, subject: LegacyKnowledgeSubject) -> None:
-        base, support = _whole(subject), subject.support()
-        assert support.scopes, (
-            "INVALID: no dictionary was examined: nothing here says what this server supports"
-        )
-        assert len(base) and base.dictionaries, "INVALID: the server's base holds no entry"
-        assert subject.sources().rows, (
-            "INVALID: the source index holds no row, so no entry was held to a source"
-        )
-
-    def test_the_declaration_is_well_formed(self, subject: LegacyKnowledgeSubject) -> None:
-        _none(subject.support().faults())
-
-    def test_every_declared_scope_device_and_chip_has_the_dictionaries_it_owes(
-        self, subject: LegacyKnowledgeSubject
-    ) -> None:
-        _none(check.owed_dictionaries(_whole(subject), subject.support()))
-
-    def test_every_dictionary_is_of_a_declared_scope_and_the_code_names_no_other(
-        self, subject: LegacyKnowledgeSubject
-    ) -> None:
-        _none(check.undeclared(_whole(subject), subject.support(), subject.code_scopes()))
-
-    def test_every_dictionary_file_parses(self, subject: LegacyKnowledgeSubject) -> None:
-        _none(_whole(subject).file_faults)
-
-    def test_every_entry_is_whole_and_ids_are_unique(self, subject: LegacyKnowledgeSubject) -> None:
-        base = _whole(subject)
-        _none([*base.entry_faults, *base.load_faults])
-
-    def test_every_entry_agrees_with_the_source_index(
-        self, subject: LegacyKnowledgeSubject
-    ) -> None:
-        _none(check.against_sources(_whole(subject), subject.sources()))
-
-    def test_every_key_of_the_list_a_dictionary_covers_is_named_or_left_out(
-        self, subject: LegacyKnowledgeSubject
-    ) -> None:
-        _none(check.covered(_whole(subject), subject.sources()))
-
-    def test_every_relation_resolves(self, subject: LegacyKnowledgeSubject) -> None:
-        _none(check.relations(_whole(subject)))
-
-    def test_two_sources_agree_or_the_entry_says_how_they_differ(
-        self, subject: LegacyKnowledgeSubject
-    ) -> None:
-        _none(check.both_sources(_whole(subject), subject.sources()))
-
-    def test_no_alias_is_another_entry_s_name(self, subject: LegacyKnowledgeSubject) -> None:
-        _none(check.names_unique(_whole(subject)))
-
-    def test_the_database_holds_what_the_files_hold(self, subject: LegacyKnowledgeSubject) -> None:
-        _none(check.held(_whole(subject)))
-
-    def test_the_fallback_answers_as_fts5_does(self, subject: LegacyKnowledgeSubject) -> None:
-        if not subject.base(None).uses_fts5:
-            pytest.skip("this host's SQLite has no FTS5, so the fallback is the only path")
-        _none(check.fallback_differs(lambda fts5: subject.base(fts5).unfiltered()))
-
-    def test_a_checked_entry_is_never_reworded(self, subject: LegacyKnowledgeSubject) -> None:
-        _none(check.reworded(_whole(subject)))
-
-    def test_every_checked_entry_is_locked_and_stays_as_it_was_locked(
-        self, subject: LegacyKnowledgeSubject
-    ) -> None:
-        _none(check.locked(_whole(subject), subject.lock()))
-
-    def test_each_emulator_is_pinned_where_scry_core_pins_it(
-        self, subject: LegacyKnowledgeSubject
-    ) -> None:
-        declared = {"its base": subject.base().pins, "its source index": subject.sources().pins}
-        _none(
-            [
-                f"{who} pins {scheme} at {got[scheme]!r}, and `scry_core.knowledge.shared.PINS` "
-                f"pins it at {pin!r}: take the pin from there"
-                for scheme, pin in shared.PINS.items()
-                for who, got in declared.items()
-                if scheme in got and got[scheme] != pin
-            ]
-        )
-
-    def test_the_base_serves_the_confirmed_entries_and_counts_the_rest(
-        self, subject: LegacyKnowledgeSubject
-    ) -> None:
-        served, whole = subject.base(), _whole(subject)
-        sure = Confirmation.of([subject.lock()], [subject.second_check()])
-        out = [
-            f"{e.id} is {sure.standing(e)} and the base serves it"
-            for e in whole.entries()
-            if not sure.confirms(e) and served.by_id(e.id) is not None
-        ]
-        out += [
-            f"{e.id} is confirmed and the base does not serve it"
-            for e in whole.entries()
-            if sure.confirms(e) and served.by_id(e.id) is None
-        ]
-        held = sum(not sure.confirms(e) for e in whole.entries())
-        if served.held_back != held:
-            out.append(
-                f"the base counts {served.held_back} entries held back and the files "
-                f"hold {held} that are not confirmed"
-            )
-        _none(out)
-
-    def test_no_query_shape_returns_an_entry_the_base_holds_back(
-        self, subject: LegacyKnowledgeSubject
-    ) -> None:
-        served, whole = subject.base(), _whole(subject)
-        sure = Confirmation.of([subject.lock()], [subject.second_check()])
-        _none(
-            [
-                f"{e.id} is held back and {how} returns it"
-                for e in whole.entries()
-                if not sure.confirms(e)
-                for how, found in _asked(served, e)
-                if e.id in {got.id for got in found}
-            ]
-        )

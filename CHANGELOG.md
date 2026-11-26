@@ -28,6 +28,10 @@ What a server author notices. A client's view of each server is in that server's
   line and logs its DOS calls from it.
 - The header field `stores` of `scry-knowledge/2` is gone: the callee table's `writes` says which
   calls write the guest.
+- `scry_core.knowledge` no longer loads the old dictionaries. `knowledge.Base`, the confirmation
+  model (`Confirmation`, `SecondCheck`) and the checks that read the old base are gone, leaving
+  the rows base and the declaration, check and sealing helpers beside it; a server that still
+  imports the old reader moves to `scry_core.knowledge.base`.
 
 ## 0.121.0
 
@@ -61,7 +65,7 @@ What a server author notices. A client's view of each server is in that server's
   (`knowledge_tool.REFERENCE`); a server's reference carries a section of that name.
 
 - A server serves only the knowledge entries that are confirmed: sealed in its lock and recorded
-  by the second check under the seal they have now (`knowledge.confirmed`). `Base.load` takes a
+  by the second check under the seal they have now. `Base.load` takes a
   `Confirmation` and loads those entries only, counts the rest (`Base.held_back`) and drops a
   `device` or `contains` that points at one; `Base.unfiltered()` is the view the checks of the
   files take. The second check is one file, `scry-knowledge-second-check/1` (a `confirmed` list of
@@ -70,7 +74,7 @@ What a server author notices. A client's view of each server is in that server's
   exists and is not confirmed, with its id in `unconfirmed` and never its text. Every reply
   carries `served` and `held_back`, and `knowledge_tool.counts` is the block a server's `status`
   carries.
-- `conformance.KnowledgeContract` takes the second check from its subject (`second_check()`) and
+- `conformance.KnowledgeContract` takes the confirmation's second check from its subject and
   gains cases for the filter and for the emulator pins, which `knowledge.shared.PINS` holds for
   every repository.
 - A `boundary.CallListener` hears every call, a step of `perform` or `drive` included, as a

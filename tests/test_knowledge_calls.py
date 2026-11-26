@@ -6,31 +6,38 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from null_server import an_entry, rows_of, write_dictionary
+from null_server import a_row, rows_of, write_rows
 
-from scry_core import knowledge
+from scry_core.knowledge import base as rows_base
 from scry_core.knowledge import calls
 
 
+def a_call(key: str, name: str) -> dict[str, object]:
+    """One call of the fixture, with the rows a call owes."""
+    return {"key": key, "name": name, "regions": [], "closed": [],
+            "rows": [a_row(1, "is", f"The function {name}."),
+                     a_row(2, "out AX", "The result.")]}
+
+
 @pytest.fixture
-def base(tmp_path: Path) -> knowledge.Base:
-    write_dictionary(tmp_path, "int10", "call", "ibm-pc", [
-        an_entry("0x10/0x12", "alternate select"),
-        an_entry("0x10/0x12/BL=0x36", "video refresh"),
-        an_entry("0x10/0x12/BL=0x31..0x32", "default palette"),
-        an_entry("0x10/0x13", "write string"),
-        an_entry("0x10/0x1C/BL=0x01", "save state"),
-        an_entry("0x15/0xC2", "pointing device"),
-        an_entry("0x15/0xC2/0x00", "enable"),
-        an_entry("0x15/0xC2/0x01", "disable"),
-        an_entry("0x15/0xC2/0x05", "set data size"),
-        an_entry("0x21/0x4C", "exit")])
-    loaded = knowledge.Base.load(tmp_path)
+def base(tmp_path: Path) -> rows_base.Base:
+    write_rows(tmp_path, "int10", "call", "ibm-pc", [
+        a_call("0x10/0x12", "alternate select"),
+        a_call("0x10/0x12/BL=0x36", "video refresh"),
+        a_call("0x10/0x12/BL=0x31..0x32", "default palette"),
+        a_call("0x10/0x13", "write string"),
+        a_call("0x10/0x1C/BL=0x01", "save state"),
+        a_call("0x15/0xC2", "pointing device"),
+        a_call("0x15/0xC2/0x00", "enable"),
+        a_call("0x15/0xC2/0x01", "disable"),
+        a_call("0x15/0xC2/0x05", "set data size"),
+        a_call("0x21/0x4C", "exit")])
+    loaded = rows_base.Base((tmp_path,), None)
     assert loaded.faults() == []
     return loaded
 
 
-def pick(base: knowledge.Base, interrupt: int, **registers: int) -> tuple[str, bool] | None:
+def pick(base: rows_base.Base, interrupt: int, **registers: int) -> tuple[str, bool] | None:
     got = calls.resolve(base, "ibm-pc", interrupt, registers)
     return (got.entry.key, got.selected) if got else None
 
@@ -49,12 +56,13 @@ def pick(base: knowledge.Base, interrupt: int, **registers: int) -> tuple[str, b
     ({"AH": 0x1C, "BL": 0x01}, ("0x10/0x1C/BL=0x01", True)),
     ({}, None), ({"BL": 0x36}, None)])
 def test_a_variant_is_named_only_when_its_register_is_known(
-        base: knowledge.Base, registers: dict[str, int], answer: tuple[str, bool] | None) -> None:
+        base: rows_base.Base, registers: dict[str, int],
+        answer: tuple[str, bool] | None) -> None:
     assert pick(base, 0x10, **registers) == answer
 
 
 def test_the_function_of_the_call_is_the_most_specific_entry_the_registers_reach(
-        base: knowledge.Base) -> None:
+        base: rows_base.Base) -> None:
     assert pick(base, 0x15, AH=0xC2, AL=0x05) == ("0x15/0xC2/0x05", False)
     assert pick(base, 0x15, AH=0xC2, AL=0x01) == ("0x15/0xC2/0x01", False)
     assert pick(base, 0x15, AX=0xC200) == ("0x15/0xC2/0x00", False)

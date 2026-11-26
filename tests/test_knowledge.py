@@ -1,24 +1,20 @@
-"""`scry_core.knowledge`: the key spellings, the entry format and its digest, the database's
-lookups, and the text search through FTS5 and through the index of our own."""
+"""`scry_core.knowledge`: the key spellings, the entry format and its digest, the source index,
+and the text search through FTS5 and through the index of our own."""
 
 from __future__ import annotations
 
 import copy
-import gc
 import json
-import tracemalloc
 from pathlib import Path
 from typing import Any
 
 import pytest
-from null_server import KNOWLEDGE, an_entry, write_dictionary
+from null_server import KNOWLEDGE, a_row, an_entry, write_rows
 
-from scry_core import knowledge
 from scry_core.knowledge import KeyFault, check, keys, sources, text
+from scry_core.knowledge import base as rows_base
 from scry_core.knowledge import entry as fmt
 from scry_core.knowledge.support import Chip, Device, Scope, Support
-
-NULL = KNOWLEDGE / "null"
 
 
 def header(kind: str = "port", scope: str = "ibm-pc") -> fmt.Header:
@@ -119,6 +115,7 @@ ENTRY_FAULTS: list[tuple[dict[str, Any], str]] = [
     ({"device": None}, "a key is text"),
     ({"device": []}, "a key is text"),
     ({"key": 5}, "`key`: a key is text"),
+    ({"name": ""}, "`name` is text"),
 ]
 
 
@@ -210,17 +207,6 @@ def test_a_check_record_that_is_not_a_check_is_refused(change: dict[str, Any], s
     assert got is None and any(says in f for f in faults), faults
 
 
-def test_the_digest_of_a_reworded_checked_entry_no_longer_matches_but_the_entry_loads(
-        tmp_path: Path) -> None:
-    raw = stamp(valid())
-    raw["behaviour"] = "Reworded after the check."
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [raw])
-    base = knowledge.Base.load(tmp_path)
-    [only] = base.entries()
-    assert base.faults() == [] and only.checked is not None
-    assert only.checked.digest != only.digest
-
-
 def test_a_header_is_judged_whole() -> None:
     got, faults = fmt.parse_header({"format": "scry-knowledge/2", "kind": "nope", "entries": 1,
                                     "left_out": [{"key": "1"}], "reached": {"x": "1"},
@@ -232,248 +218,6 @@ def test_a_header_is_judged_whole() -> None:
     assert fmt.parse_header([], "t.json")[0] is None
 
 
-def sample(tmp_path: Path) -> knowledge.Base:
-    """Ports with ranges and devices, calls, a vector and a memory area, in two scopes."""
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
-        an_entry("0x3C4", "sequencer index", aliases=["SEQ index"], device="vga-seq"),
-        an_entry("0x3C5", "sequencer data", device="vga-seq"),
-        an_entry("0x3C8", "DAC write address", aliases=["PEL address"], device="vga-dac",
-                 description="Selects the palette entry the next data write sets.",
-                 behaviour="Write the entry, then three values for red, green and blue."),
-        an_entry("0x3C9", "DAC data", device="vga-dac"),
-        an_entry("0x21", "PIC mask", description="The mask of the interrupt controller."),
-        an_entry("0x40..0x43", "8253 timer counters", device="pit8253"),
-        an_entry("0x226", "reset", access="write", device="sb"),
-        an_entry("0x226", "reset status", access="read", device="sb")])
-    write_dictionary(tmp_path, "calls", "call", "ibm-pc", [
-        an_entry("0x21/0x4C", "exit", aliases=["terminate"]),
-        an_entry("0x21/0x4D", "get return code"),
-        an_entry("0x33/0x00", "mouse reset"),
-        an_entry("0x33/0x00/0x03", "mouse reset subfunction")])
-    write_dictionary(tmp_path, "vectors", "vector", "ibm-pc", [
-        an_entry("0x21", "DOS", address=0x84, length=4)])
-    write_dictionary(tmp_path, "irqs", "irq", "ibm-pc", [an_entry("0", "system timer",
-                                                                    device="pit8253")])
-    write_dictionary(tmp_path, "memory", "memory", "ibm-pc", [
-        an_entry("0040:0049", "video mode", address=0x449, length=1),
-        an_entry("0x400..0x4FF", "BIOS data area", address=0x400, length=0x100)])
-    write_dictionary(tmp_path, "devices", "device", "ibm-pc", [
-        an_entry("sb", "Sound Blaster", contains=["sb-dsp"], irq=[5, 7], dma=[1],
-                 ports=[{"base": "0x220", "length": 16}]),
-        an_entry("sb-dsp", "Sound Blaster DSP"),
-        an_entry("pit8253", "8253 timer", irq=[0], ports=[{"base": "0x40", "length": 4}]),
-        an_entry("vga-seq", "VGA sequencer"), an_entry("vga-dac", "VGA DAC")])
-    write_dictionary(tmp_path, "sb-dsp", "command", "sb-dsp", [
-        an_entry("0xE1", "get DSP version")])
-    write_dictionary(tmp_path, "vga-seq", "register", "vga-seq", [
-        an_entry("0x04", "memory mode")], reached={"index": "0x3C4", "data": "0x3C5"})
-    write_dictionary(tmp_path, "m68000", "vector", "m68000", [
-        an_entry("2", "bus error vector", aliases=["BERR"], address=8, length=4)])
-    return knowledge.Base.load(tmp_path)
-
-
-@pytest.fixture
-def base(tmp_path: Path) -> knowledge.Base:
-    got = sample(tmp_path)
-    assert got.faults() == []
-    return got
-
-
-def ids(found: knowledge.Found[knowledge.Entry]) -> list[str]:
-    return [e.id for e in found.entries]
-
-
-def test_an_entry_is_found_by_id_by_key_and_by_name(base: knowledge.Base) -> None:
-    assert base.by_id("ibm-pc:port:0x3C8") == base.get("port", "0x3C8", "ibm-pc")
-    assert base.by_id("ibm-pc:port:0x226:write") != base.by_id("ibm-pc:port:0x226:read")
-    assert base.by_id("ibm-pc:port:0x999") is None and base.get("port", "0x3C8", "m68000") is None
-    assert [e.id for e in base.by_alias("pel ADDRESS")] == ["ibm-pc:port:0x3C8"]
-    assert [e.id for e in base.by_alias("dac write address")] == ["ibm-pc:port:0x3C8"]
-
-
-def test_a_number_is_exact_or_a_range_and_a_range_overlaps(base: knowledge.Base) -> None:
-    assert ids(base.search("port", "0x3c8")) == ["ibm-pc:port:0x3C8"]
-    assert ids(base.search("port", "0x3C4..0x3C9")) == [
-        "ibm-pc:port:0x3C4", "ibm-pc:port:0x3C5", "ibm-pc:port:0x3C8", "ibm-pc:port:0x3C9"]
-    assert ids(base.search("port", "0x41")) == ["ibm-pc:port:0x40..0x43"]
-    assert ids(base.search("memory", "0x449")) == ["ibm-pc:memory:0x400..0x4FF",
-                                                   "ibm-pc:memory:0040:0049"]
-    assert "ibm-pc:memory:0040:0049" in ids(base.search("memory", "0040:0049", scopes=("ibm-pc",)))
-
-
-def test_a_call_is_asked_by_its_leading_parts(base: knowledge.Base) -> None:
-    assert ids(base.search("call", "0x21")) == ["ibm-pc:call:0x21/0x4C", "ibm-pc:call:0x21/0x4D"]
-    assert ids(base.search("call", "0x33/0x00")) == ["ibm-pc:call:0x33/0x00",
-                                                      "ibm-pc:call:0x33/0x00/0x03"]
-    assert ids(base.search("call", "0x33/0x00/0x03")) == ["ibm-pc:call:0x33/0x00/0x03"]
-
-
-def test_a_number_with_no_kind_is_every_kind_that_has_it(base: knowledge.Base) -> None:
-    assert ids(base.search(key="0x21")) == ["ibm-pc:port:0x21", "ibm-pc:vector:0x21"]
-    assert ids(base.search(key="0x21/0x4C")) == ["ibm-pc:call:0x21/0x4C"]
-    assert ids(base.search(key="vga-seq")) == ["ibm-pc:device:vga-seq"]
-    assert ids(base.search(key="0")) == ["ibm-pc:irq:0"]
-    assert ids(base.search(key="0x3C4..0x3C5")) == ["ibm-pc:port:0x3C4", "ibm-pc:port:0x3C5"]
-
-
-def test_an_address_finds_the_narrowest_thing_that_sits_there(base: knowledge.Base) -> None:
-    assert [(e.id, d) for e, d in [base.at(0x449) or (None, 0)] if e] == [
-        ("ibm-pc:memory:0040:0049", 0)]
-    found = base.at(0x44A, "ibm-pc")
-    assert found is not None and found[0].name == "BIOS data area" and found[1] == 0x4A
-    assert base.at(0x86, "ibm-pc") is not None and base.at(0x86, "ibm-pc")[0].name == "DOS"  # type: ignore[index]
-    assert base.at(10, "m68000") is not None and base.at(10, "m68000")[1] == 2  # type: ignore[index]
-    assert base.at(0x86, "m68000") is None and base.at(0x5000) is None
-
-
-def test_a_search_by_words_puts_the_name_first_and_breaks_ties_by_number(
-        base: knowledge.Base) -> None:
-    assert ids(base.search(words="dac")) == ["ibm-pc:device:vga-dac", "ibm-pc:port:0x3C8",
-                                             "ibm-pc:port:0x3C9"]
-    assert ids(base.search(words="palette"))[0] == "ibm-pc:port:0x3C8"
-    assert ids(base.search(words="pel address")) == ["ibm-pc:port:0x3C8"]
-    assert ids(base.search(words="sequ*", kind="port")) == ["ibm-pc:port:0x3C4",
-                                                            "ibm-pc:port:0x3C5"]
-    assert ids(base.search(words="red green blue")) == ["ibm-pc:port:0x3C8"]
-    assert base.search(words="zebra").total == 0
-
-
-def test_a_hit_in_the_name_outranks_one_in_the_behaviour(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
-        an_entry("0x10", "alpha", behaviour="Mentions the zulu timer."),
-        an_entry("0x11", "bravo", description="A zulu timer."),
-        an_entry("0x12", "zulu timer"), an_entry("0x13", "charlie", aliases=["zulu timer"])])
-    for fts5 in (None, False):
-        found = knowledge.Base.load(tmp_path, fts5=fts5).search(words="zulu timer")
-        assert [e.name for e in found.entries] == ["zulu timer", "charlie", "bravo", "alpha"]
-
-
-def test_a_device_is_everything_of_it_and_of_what_it_holds(base: knowledge.Base) -> None:
-    assert ids(base.search(device="sb")) == [
-        "ibm-pc:device:sb", "ibm-pc:port:0x226:read", "ibm-pc:port:0x226:write",
-        "sb-dsp:command:0xE1"]
-    assert ids(base.search(device="vga-seq", kind="register")) == ["vga-seq:register:0x04"]
-    assert ids(base.search(device="vga-dac")) == [
-        "ibm-pc:device:vga-dac", "ibm-pc:port:0x3C8", "ibm-pc:port:0x3C9"]
-    assert base.search(device="sb-dsp", words="version").total == 1
-    assert ids(base.search(device="sb-dsp", kind="device")) == ["ibm-pc:device:sb-dsp"]
-
-
-def test_a_devices_own_entry_leads_what_is_found_of_it_and_only_its_own(
-        base: knowledge.Base) -> None:
-    found = base.search(device="vga-seq", limit=1)
-    assert ids(found) == ["ibm-pc:device:vga-seq"] and found.total == 4
-    assert "ibm-pc:device:sb-dsp" not in ids(base.search(device="sb"))
-    assert ids(base.search(device="vga-seq", words="sequencer"))[0] == "ibm-pc:device:vga-seq"
-
-
-def test_a_range_of_a_range_is_no_number_with_or_without_a_kind(tmp_path: Path) -> None:
-    base = bank(tmp_path, an_entry("0x20..0x35", "bank"))
-    with pytest.raises(KeyFault):
-        base.search("register", "0x20..0x30..0x40")
-    assert base.search(key="0x20..0x30..0x40").total == 0
-    assert base.search(key="0x20..0x30").total == 1
-
-
-def test_a_devices_own_entry_leads_a_words_search_too(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "devices", "device", "ibm-pc", [
-        an_entry("sb", "Card", description="A sound card.")])
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
-        an_entry("0x10", "sound port", device="sb")])
-    for fts5 in (None, False):
-        found = knowledge.Base.load(tmp_path, fts5=fts5).search(device="sb", words="sound")
-        assert ids(found) == ["ibm-pc:device:sb", "ibm-pc:port:0x10"]
-
-
-def test_a_devices_own_entry_leads_even_where_its_scope_sorts_last(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "ports", "port", "aaa", [an_entry("0x10", "p", device="dev")])
-    write_dictionary(tmp_path, "devices", "device", "zzz", [an_entry("dev", "Device")])
-    assert ids(knowledge.Base.load(tmp_path).search(device="dev")) == [
-        "zzz:device:dev", "aaa:port:0x10"]
-
-
-def test_nothing_found_says_how_much_was_searched_and_what_is_near(base: knowledge.Base) -> None:
-    found = base.search("port", "0x3C6", scopes=("ibm-pc",))
-    assert found.total == 0 and found.examined == 8
-    assert ids(knowledge.Found(entries=found.nearest)) == ["ibm-pc:port:0x3C5",
-                                                           "ibm-pc:port:0x3C8"]
-    assert [e.name for e in base.search(words="sequel").nearest] == [
-        "VGA sequencer", "sequencer index", "sequencer data"]
-    assert base.search(words="*").total == 0
-    with pytest.raises(KeyFault):
-        base.search("port", "nothing")
-
-
-def test_a_search_lists_the_first_limit_and_says_it_cut(base: knowledge.Base) -> None:
-    found = base.search("port", limit=3)
-    assert (len(found.entries), found.total, found.truncated) == (3, 8, True)
-    assert not base.search("port", limit=8).truncated
-
-
-def test_a_relation_leads_from_a_thing_to_its_hardware(base: knowledge.Base) -> None:
-    port = base.by_id("ibm-pc:port:0x3C8")
-    assert port is not None
-    assert base.related(port).device == base.by_id("ibm-pc:device:vga-dac")
-    sb = base.by_id("ibm-pc:device:sb")
-    assert sb is not None
-    related = base.related(sb)
-    assert [d.id for d in related.contains] == ["ibm-pc:device:sb-dsp"]
-    assert [u.id for u in related.used_by] == ["ibm-pc:port:0x226:read", "ibm-pc:port:0x226:write"]
-    register = base.by_id("vga-seq:register:0x04")
-    assert register is not None
-    shown = base.related(register)
-    assert shown.device == base.by_id("ibm-pc:device:vga-seq")
-    assert dict(shown.reached) == {"index": ("ibm-pc:port:0x3C4",), "data": ("ibm-pc:port:0x3C5",)}
-    seven = base.by_id("ibm-pc:irq:0")
-    assert seven is not None and [d.key for d in base.related(seven).used_by] == ["pit8253"]
-    pit_port = base.get("port", "0x21", "ibm-pc")
-    assert pit_port is not None and base.related(pit_port).used_by == ()
-
-
-def test_a_device_is_resolved_from_its_own_scope_then_the_shared_one(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "chips", "device", "chip", [an_entry("ym2151", "YM2151 OPM")])
-    write_dictionary(tmp_path, "pc", "device", "ibm-pc", [an_entry("opl", "OPL"),
-                                                           an_entry("ym2151", "PC YM2151")])
-    base = knowledge.Base.load(tmp_path)
-    assert base.device_entry("ibm-pc", "ym2151") == base.by_id("ibm-pc:device:ym2151")
-    assert base.device_entry("m6809", "ym2151") == base.by_id("chip:device:ym2151")
-    assert base.device_entry("", "ym2151") == base.by_id("chip:device:ym2151")
-    assert base.device_entry("", "opl") == base.by_id("ibm-pc:device:opl")
-    assert base.device_entry("", "none") is None
-
-
-def test_the_scopes_and_the_kinds_held_are_listed(base: knowledge.Base) -> None:
-    assert base.scopes() == ["ibm-pc", "m68000", "sb-dsp", "vga-seq"]
-    assert base.scopes("vector") == ["ibm-pc", "m68000"]
-    assert base.kinds("m68000") == ["vector"] and base.kinds()[0] == "vector"
-    assert len(base) == len(list(base.entries()))
-
-
-def test_a_run_skips_what_it_cannot_read_and_counts_it(tmp_path: Path) -> None:
-    entries: list[Any] = [an_entry("0x10", "ok"), an_entry("0x10", "twice"), {"key": "0x11"}, 5]
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", entries)
-    (tmp_path / "broken.json").write_text("{not json", encoding="utf-8")
-    (tmp_path / "other.json").write_text('{"format": "scry-knowledge/2"}', encoding="utf-8")
-    base = knowledge.Base.load(tmp_path)
-    assert [e.name for e in base.entries()] == ["ok"]
-    assert any("not JSON" in f for f in base.file_faults)
-    assert any("`format`" in f for f in base.file_faults)
-    assert any("is already an entry" in f for f in base.load_faults)
-    assert any("`name` is text" in f for f in base.entry_faults)
-    assert any("an entry is an object" in f for f in base.entry_faults)
-
-
-def test_a_missing_directory_is_a_fault_not_a_crash(tmp_path: Path) -> None:
-    base = knowledge.Base.load(tmp_path / "none", "scry_core_absent_package")
-    assert len(base) == 0 and len(base.file_faults) == 2
-
-
-def test_a_base_from_the_fixture_directory_answers_what_the_checks_hold() -> None:
-    base = knowledge.Base.load(NULL)
-    assert len(base) == 6
-    assert knowledge.Base.load(NULL, fts5=False).uses_fts5 is False
-
-
 def test_words_are_letters_and_digits_without_accents() -> None:
     assert text.words("Sound-Blaster 2.0, über_café 0x3C8") == [
         "sound", "blaster", "2", "0", "uber", "cafe", "0x3c8"]
@@ -481,108 +225,6 @@ def test_words_are_letters_and_digits_without_accents() -> None:
         text.Term("timer", True), text.Term("a", False), text.Term("b", False),
         text.Term("c", False), text.Term("d", True)]
     assert text.terms('"; DROP * --') == [text.Term("drop", False)] and text.terms("*") == []
-
-
-def synthetic(folder: Path, count: int) -> None:
-    pool = ["timer", "counter", "palette", "index", "status", "latch", "channel", "volume",
-            "sprite", "vector", "mask", "reset", "clock", "buffer", "cursor", "noise", "sample",
-            "select", "plane", "colour"]
-    entries = [an_entry(f"0x{0x100 + n:X}", f"{pool[n % 20]} {pool[(n * 7) % 20]} {n}",
-                        aliases=[pool[(n * 3) % 20].upper()],
-                        description=f"{pool[(n * 5) % 20]} {pool[(n * 11) % 20]} of {n}.",
-                        behaviour=f"Sets the {pool[(n * 13) % 20]} and the {pool[(n * 17) % 20]}.")
-               for n in range(count)]
-    write_dictionary(folder, "ports", "port", "ibm-pc", entries)
-
-
-@pytest.mark.parametrize("asked", ["timer", "timer counter", "tim*", "reset clo*", "colour 7",
-                                   "nothingatall", "SAMPLE", "plane* sprite*"])
-def test_the_fallback_answers_what_fts5_answers_in_the_same_order(
-        tmp_path: Path, asked: str) -> None:
-    synthetic(tmp_path, 200)
-    ours, host = knowledge.Base.load(tmp_path, fts5=False), knowledge.Base.load(tmp_path)
-    if not host.uses_fts5:
-        pytest.skip("this host's SQLite has no FTS5")
-    assert ids(ours.search(words=asked, limit=50)) == ids(host.search(words=asked, limit=50))
-    assert ours.search(words=asked).total == host.search(words=asked).total
-
-
-def test_an_entry_built_from_its_row_is_the_entry_the_file_parsed(tmp_path: Path) -> None:
-    device = an_entry("sb", "Sound Blaster", aliases=["SB", "SB16"], differs="The list says more.",
-                      contains=["sb-dsp"], irq=[5, 7], dma=[1, 5], classes=["sound"],
-                      ports=[{"base": "0x220", "length": 16}, {"base": "0x388", "length": 4}],
-                      handlers={"write+0": "register select"})
-    area = an_entry("0040:0049", "video mode", address=0x449, length=1)
-    port = stamp(an_entry("0x3C4", "sequencer index", device="vga-seq"))
-    register = an_entry("0x04", "memory mode")
-    plan = [("devices", "device", "ibm-pc", [device], None), ("memory", "memory", "ibm-pc",
-                                                              [area], None),
-            ("ports", "port", "ibm-pc", [port], None),
-            ("vga-seq", "register", "vga-seq", [register], {"index": "0x3C4", "data": "0x3C5"})]
-    for dictionary, kind, scope, raws, reached in plan:
-        write_dictionary(tmp_path, dictionary, kind, scope, raws, **(
-            {"reached": reached} if reached else {}))
-    base = knowledge.Base.load(tmp_path)
-    assert base.faults() == []
-    for dictionary, kind, scope, raws, reached in plan:
-        made = fmt.Header("t.json", dictionary, kind, scope, "covers", "list", (), reached, False)
-        for raw in raws:
-            want, faults = fmt.parse_entry(raw, made)
-            assert faults == [] and want is not None
-            assert base.by_id(want.id) == want
-    got = base.by_id("ibm-pc:port:0x3C4")
-    assert got is not None and got.checked is not None and got.checked.digest == got.digest
-
-
-def sized(folder: Path, count: int) -> None:
-    """`count` entries the size a real dictionary's are: two aliases, a description and a
-    behaviour of a few dozen words, a device and a source, in files of sixty."""
-    pool = ["register", "port", "timer", "counter", "palette", "index", "status", "write", "read",
-            "latch", "channel", "volume", "sprite", "vector", "interrupt", "mask", "enable",
-            "reset", "data", "address", "control", "mode", "clock"]
-
-    def sentence(n: int, words: int) -> str:
-        return " ".join(pool[(n * k + k * k) % len(pool)] for k in range(1, words + 1)) + "."
-
-    for first in range(0, count, 60):
-        write_dictionary(folder, f"d{first // 60:03d}", "port", f"scope{first // 60}", [
-            an_entry(f"0x{0x100 + n:X}",
-                     f"{pool[n % len(pool)]} {pool[(n * 7) % len(pool)]} {n}"[:24],
-                     aliases=[f"A{n}", f"R{n}"], description=sentence(n, 22),
-                     behaviour=sentence(n, 18) + " " + sentence(n + 1, 14), device="dev0")
-            for n in range(first, min(first + 60, count))])
-
-
-#: What the base may keep in Python objects per entry, in bytes. The loader keeps the rows in
-#: SQLite and builds an `Entry` when asked, so what stays is a header per file and a few
-#: constants: a few dozen bytes an entry at this size. The bound sits above that and below the
-#: size of one `Entry` (a frozen dataclass of dozens of fields), so keeping even one object per
-#: entry fails it.
-KEPT_PER_ENTRY = 64
-
-
-def test_a_loaded_base_keeps_no_python_object_per_entry(tmp_path: Path) -> None:
-    count = 2000
-    sized(tmp_path, count)
-    if not knowledge.Base.load(tmp_path).uses_fts5:
-        pytest.skip("this host's SQLite has no FTS5, so the index of our own is built in Python")
-    gc.collect()
-    tracemalloc.start()
-    try:
-        base = knowledge.Base.load(tmp_path)
-        gc.collect()
-        kept, _ = tracemalloc.get_traced_memory()
-    finally:
-        tracemalloc.stop()
-    assert len(base) == count and base.faults() == []
-    assert kept / count < KEPT_PER_ENTRY, f"{kept / count:.0f} bytes kept an entry"
-
-
-def test_the_comparison_of_the_two_paths_runs_on_every_base(tmp_path: Path) -> None:
-    synthetic(tmp_path, 60)
-    from scry_core.knowledge import check
-    assert check.fallback_differs(lambda fts5: knowledge.Base.load(tmp_path, fts5=fts5)) == []
-    assert len(check._asked(knowledge.Base.load(tmp_path))) > 20
 
 
 def test_a_source_names_a_scheme_and_a_locator_that_fits_it() -> None:
@@ -652,348 +294,269 @@ def test_more_faults_an_entry_can_have_are_each_named() -> None:
         assert got is None and any(says in f for f in faults), (says, faults)
 
 
-def bank(tmp_path: Path, *entries: dict[str, Any], kind: str = "register") -> knowledge.Base:
-    write_dictionary(tmp_path, "regs", kind, "ym", list(entries))
-    return knowledge.Base.load(tmp_path)
 
 
-def test_a_bank_of_registers_is_one_entry_and_a_number_inside_it_finds_it(
-        tmp_path: Path) -> None:
-    base = bank(tmp_path, an_entry("0x20..0x35", "operator control"),
-                an_entry("0x40", "level"), an_entry("0xE0..0xE3", "bank"))
-    assert base.faults() == []
-    assert ids(base.search("register", "0x23")) == ["ym:register:0x20..0x35"]
-    assert ids(base.search("register", "0x35")) == ["ym:register:0x20..0x35"]
-    assert ids(base.search("register", "0x36")) == []
-    assert ids(base.search("register", "0x30..0x40")) == [
-        "ym:register:0x20..0x35", "ym:register:0x40"]
-    assert ids(base.search(key="0x2a", scopes=("ym",))) == ["ym:register:0x20..0x35"]
-    assert base.get("register", "0x20..0x35", "ym") is not None
-    commands = bank(tmp_path / "c", an_entry("0xE0..0xE3", "bank"), kind="command")
-    assert ids(commands.search("command", "0xe2")) == ["ym:command:0xE0..0xE3"]
+def test_the_comparison_of_the_two_paths_runs_on_every_base_of_rows(tmp_path: object) -> None:
+    write_rows(tmp_path, "errors", "error", "ibm-pc", [  # type: ignore[arg-type]
+        {"key": str(n), "name": f"error {n} alpha beta", "regions": [], "closed": [],
+         "rows": [a_row(1, "is", f"The error {n}.")]} for n in range(150)])
+    assert check.fallback_differs(
+        lambda fts5: rows_base.Base((tmp_path,), None, fts5=fts5)) == []  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize(("second", "lone"), [
-    ("0x30..0x40", "0x20..0x35"), ("0x35", "0x20..0x35"), ("0x20", "0x20..0x35"),
-    ("0x28..0x29", "0x10..0x40")])
-def test_two_registers_of_one_dictionary_may_not_overlap(
-        tmp_path: Path, second: str, lone: str) -> None:
-    for n, order in enumerate(((lone, second), (second, lone))):
-        base = bank(tmp_path / str(n), an_entry(order[0], "first"), an_entry(order[1], "second"))
-        assert len(base) == 1 and len(base.faults()) == 1, (order, base.faults())
-        assert "overlaps" in base.faults()[0] and "ym:register:" in base.faults()[0]
+def a_placed(key: str, name: str, **fields: Any) -> dict[str, Any]:
+    """One entry of the sample with the rows its kind owes; `place` is an emulator's row."""
+    rows = [a_row(1, "is", f"The {name}.")]
+    if fields.pop("placed", False):
+        rows.append({**a_row(2, "place", "The emulator reaches it here.", of="dosbox-x"),
+                     "vs": "place"})
+    return {"key": key, "name": name, "regions": [], "closed": [], **fields, "rows": rows}
 
 
-def test_a_register_or_a_command_has_a_read_and_a_write_of_one_number(tmp_path: Path) -> None:
-    for kind in ("register", "command"):
-        base = bank(tmp_path / kind, an_entry("0x0F", "status", access="read"),
-                    an_entry("0x0F", "reset", access="write"),
-                    an_entry("0x10..0x13", "bank", access="write"), kind=kind)
-        assert base.faults() == [] and len(base) == 3
-        got = base.by_id(f"ym:{kind}:0x0F:read")
-        assert got is not None and got.access == "read" and got.name == "status"
-        assert base.get(kind, "0x0F", "ym", "write") is not None
-        assert base.get(kind, "0x0F", "ym") is None
-        assert ids(base.search(kind, "0x0f")) == [f"ym:{kind}:0x0F:read",
-                                                  f"ym:{kind}:0x0F:write"]
-        assert ids(base.search(kind, "0x11")) == [f"ym:{kind}:0x10..0x13:write"]
+def a_call(key: str, name: str) -> dict[str, Any]:
+    return {"key": key, "name": name, "regions": [], "closed": [],
+            "rows": [a_row(1, "is", f"The function {name}."),
+                     a_row(2, "out AX", "The result.")]}
 
 
-def test_access_is_for_a_port_a_register_or_a_command_and_no_other_kind() -> None:
-    for kind in ("call", "vector", "memory", "irq", "error", "input", "device"):
-        key = {"call": "0x21/0x4C", "vector": "2", "memory": "0x9000", "irq": "1",
-               "error": "2", "input": "a", "device": "a"}[kind]
-        got, faults = parsed(an_entry(key, "x", access="read"), kind)
-        assert got is None and any("only for a port, a register or a command" in f
-                                   for f in faults), (kind, faults)
+@pytest.fixture
+def base(tmp_path: Path) -> rows_base.Base:
+    """Ports with a range, an access and an alias, a vector, a memory area, a device and calls,
+    in two scopes."""
+    write_rows(tmp_path, "ports", "port", "ibm-pc", [
+        a_placed("0x3C4", "sequencer index", aliases=["SEQ index"], device="vga-seq",
+                 placed=True),
+        a_placed("0x3C5", "sequencer data", device="vga-seq", placed=True),
+        a_placed("0x3C8", "DAC write address", access="write", placed=True),
+        a_placed("0x3C8", "DAC address, read back", access="read", placed=True),
+        a_placed("0x3D0..0x3D7", "VGA misc", placed=True),
+        a_placed("0x61", "speaker control", placed=True)])
+    write_rows(tmp_path, "devices", "device", "ibm-pc", [
+        {"key": "vga-seq", "name": "VGA sequencer", "regions": [], "closed": [],
+         "rows": [a_row(1, "is", "The sequencer."), a_row(2, "reset", "It comes up at 0.")]}])
+    write_rows(tmp_path, "vectors", "vector", "ibm-pc", [
+        a_placed("0x21", "DOS"), a_placed("0x10", "video BIOS")])
+    write_rows(tmp_path, "memory", "memory", "ibm-pc", [
+        a_placed("0x449", "video mode", placed=True),
+        a_placed("0x400..0x4FF", "BIOS data area", placed=True)])
+    write_rows(tmp_path, "calls", "call", "ibm-pc", [
+        a_call("0x21/0x4C", "exit"), a_call("0x21/0x4D", "get return code"),
+        a_call("0x10/0x12", "alternate select"), a_call("0x10/0x12/BL=0x36", "video refresh")])
+    write_rows(tmp_path, "vga-seq", "register", "vga-seq", [
+        {"key": "0x04", "name": "memory mode", "regions": [], "closed": [],
+         "rows": [a_row(1, "is", "The memory mode register."), a_row(2, "read", "Readable.")]}])
+    loaded = rows_base.Base((tmp_path,), None)
+    assert loaded.faults() == []
+    return loaded
 
 
-def test_two_registers_that_overlap_are_both_kept_when_access_tells_them_apart(
-        tmp_path: Path) -> None:
-    base = bank(tmp_path, an_entry("0x20..0x35", "written", access="write"),
-                an_entry("0x28", "read back", access="read"),
-                an_entry("0x28", "written again", access="write"))
-    assert [f for f in base.faults()] == [
-        "regs 0x28: ym:register:0x28:write overlaps ym:register:0x20..0x35:write in its "
-        "dictionary and access does not tell them apart; the second is skipped"]
-    assert len(base) == 2
-    assert ids(base.search("register", "0x28")) == [
-        "ym:register:0x20..0x35:write", "ym:register:0x28:read"]
-    both = bank(tmp_path / "x", an_entry("0x20..0x35", "any direction"),
-                an_entry("0x28", "read back", access="read"))
-    assert len(both) == 1 and len(both.faults()) == 1
+def test_an_entry_is_found_by_id_by_key_and_by_name(base: rows_base.Base) -> None:
+    got = base.by_id("ibm-pc:port:0x3C4")
+    assert got is not None and got.name == "sequencer index"
+    assert base.get("port", "0x3C4", "ibm-pc") == got
+    write = base.get("port", "0x3C8", "ibm-pc", "write")
+    assert write is not None and write.name == "DAC write address"
+    assert [e.id for e in base.by_alias("SEQ index")] == ["ibm-pc:port:0x3C4"]
 
 
-def test_two_dictionaries_may_share_a_range_of_registers(
-        tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "one", "register", "ym", [an_entry("0x20..0x35", "a")])
-    write_dictionary(tmp_path, "two", "register", "other", [an_entry("0x20..0x35", "b")])
-    assert knowledge.Base.load(tmp_path).faults() == []
+def test_a_number_is_exact_or_a_range_and_a_range_overlaps(base: rows_base.Base) -> None:
+    assert [e.key for e in base.search("port", "0x3D2").entries] == ["0x3D0..0x3D7"]
+    assert [e.key for e in base.search("port", "0x3D0..0x3D3").entries] == ["0x3D0..0x3D7"]
+    assert [e.key for e in base.search("port", "0x3C4").entries] == ["0x3C4"]
 
 
-def test_a_memory_area_sits_where_its_key_says_and_a_device_holds_its_ranges() -> None:
-    got, faults = parsed(an_entry("0x400..0x4FF", "BIOS data"), "memory")
-    assert faults == [] and got is not None and (got.a_lo, got.a_hi) == (0x400, 0x4FF)
-    device, _ = parsed(an_entry("sb", "Sound Blaster", ports=[{"base": "0x220", "length": 16}],
-                                handlers={"write+0": "register select"}, classes=["ym"]), "device")
-    assert device is not None and device.ports == ((0x220, 16),) and device.handlers
+def test_a_call_is_asked_by_its_leading_parts(base: rows_base.Base) -> None:
+    assert [e.key for e in base.search("call", "0x21").entries] == ["0x21/0x4C", "0x21/0x4D"]
+    assert [e.key for e in base.search("call", "0x10/0x12").entries] == [
+        "0x10/0x12", "0x10/0x12/BL=0x36"]
 
 
-def test_a_package_names_its_dictionaries_and_a_folder_of_none_is_not_a_crash(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    package = tmp_path / "fixturepkg" / "knowledge" / "deeper"
-    write_dictionary(package, "ports", "port", "ibm-pc", [an_entry("0x10", "ok")])
-    (tmp_path / "fixturepkg" / "__init__.py").write_text("", encoding="utf-8")
-    (tmp_path / "fixturepkg" / "knowledge" / "__init__.py").write_text("", encoding="utf-8")
-    monkeypatch.syspath_prepend(str(tmp_path))
-    base = knowledge.Base.load("fixturepkg")
-    assert [e.id for e in base.entries()] == ["ibm-pc:port:0x10"] and base.faults() == []
+def test_a_number_with_no_kind_is_every_kind_that_has_it(base: rows_base.Base) -> None:
+    assert [e.kind for e in base.search(key="0x21", limit=50).entries] == ["vector"]
+    assert [e.kind for e in base.search(key="0x21/0x4C", limit=50).entries] == ["call"]
 
 
-def test_a_host_with_no_fts5_answers_through_the_index_of_our_own(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    synthetic(tmp_path, 40)
-    wanted = knowledge.Base.load(tmp_path, fts5=False)
-    monkeypatch.setattr("scry_core.knowledge.database._FTS", "CREATE VIRTUAL TABLE entry_text "
-                        "USING nosuchmodule (name)")
-    host = knowledge.Base.load(tmp_path)
-    assert host.uses_fts5 is False
-    assert ids(host.search(words="timer*", limit=50)) == ids(wanted.search(words="timer*",
-                                                                          limit=50))
+def test_an_address_finds_the_narrowest_thing_that_sits_there(base: rows_base.Base) -> None:
+    found = base.at(0x449, "ibm-pc")
+    assert found is not None and (found[0].name, found[1]) == ("video mode", 0)
+    found = base.at(0x450, "ibm-pc")
+    assert found is not None and (found[0].name, found[1]) == ("BIOS data area", 0x50)
+    assert base.at(0x999, "ibm-pc") is None
 
 
-def test_a_base_whose_load_failed_is_still_released() -> None:
-    knowledge.Base.__new__(knowledge.Base).__del__()
-    knowledge.Base().close()
+def test_a_search_by_words_puts_the_name_first_and_breaks_ties_by_number(
+        base: rows_base.Base) -> None:
+    assert [e.key for e in base.search(words="sequencer", limit=10).entries] == [
+        "vga-seq", "0x3C4", "0x3C5"]
+    found = base.search(words="DAC", limit=10)
+    assert [e.key for e in found.entries] == ["0x3C8", "0x3C8"]
 
 
-def test_a_cycle_of_devices_holding_each_other_ends(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "devices", "device", "ibm-pc", [
-        an_entry("a", "A", contains=["b"]), an_entry("b", "B", contains=["a"])])
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [an_entry("0x10", "p", device="b")])
-    assert ids(knowledge.Base.load(tmp_path).search(device="a")) == [
-        "ibm-pc:device:a", "ibm-pc:port:0x10"]
+def test_a_device_is_itself_and_the_entries_of_its_scope(base: rows_base.Base) -> None:
+    assert {e.key for e in base.search(device="vga-seq", limit=20).entries} == {"vga-seq", "0x04"}
+    assert base.device_keys() == ["vga-seq"]
 
 
-def test_a_number_with_no_kind_may_be_a_segment_an_odd_range_or_a_name(
-        base: knowledge.Base) -> None:
-    assert ids(base.search(key="0040:0049")) == ["ibm-pc:memory:0x400..0x4FF",
-                                                 "ibm-pc:memory:0040:0049"]
-    assert base.search(key="0x10..0x5").total == 0 and base.search(key="1..zz").total == 0
+def test_nothing_found_says_how_much_was_searched_and_what_is_near(
+        base: rows_base.Base) -> None:
+    found = base.search("port", "0x3CF")
+    assert found.total == 0 and found.examined == 6 and found.entries == []
+    assert [e.key for e in found.nearest] == ["0x3C8", "0x3D0..0x3D7"]
 
 
-def test_a_register_reached_by_handlers_names_them_and_not_ports(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "devices", "device", "chip", [an_entry("ym", "YM")])
-    write_dictionary(tmp_path, "ym", "register", "ym", [an_entry("0x14", "timer")],
-                     reached={"index": "address_w", "data": ["register_r", "register_w"]})
-    base = knowledge.Base.load(tmp_path)
-    [register] = [e for e in base.entries() if e.kind == "register"]
-    assert dict(base.related(register).reached) == {
-        "index": ("address_w",), "data": ("register_r", "register_w")}
-    assert check.relations(base) == []
+def test_a_search_lists_the_first_limit_and_says_it_cut(base: rows_base.Base) -> None:
+    found = base.search("port", limit=1)
+    assert len(found.entries) == 1 and found.total == 6
 
 
-
-def test_a_datasheet_is_not_held_to_the_index_and_a_missing_list_is_named(
-        tmp_path: Path) -> None:
-    datasheet = {"role": "documentation", "ref": "datasheet:MC6845 data sheet, table 3",
-                 "cites": "R12 start address high"}
-    write_dictionary(tmp_path, "regs", "register", "mc6845", [
-        {**an_entry("0x0C", "start address high"), "sources": [datasheet]}], complete_against="x")
-    base = knowledge.Base.load(tmp_path)
-    assert check.against_sources(base, sources.SourceIndex()) == []
-    assert check.covered(base, sources.SourceIndex()) == [
-        "regs must cover 'x' and the source index has no such list"]
+def test_the_scopes_and_the_kinds_held_are_listed(base: rows_base.Base) -> None:
+    assert base.scopes() == ["ibm-pc", "vga-seq"]
+    assert base.kinds() == ["vector", "call", "port", "memory", "device", "register"]
+    assert base.kinds("vga-seq") == ["register"]
 
 
-def test_a_source_row_whose_key_is_no_key_is_compared_as_it_stands(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [an_entry("0x10", "p")])
-    base = knowledge.Base.load(tmp_path)
-    ref = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
-    line = base.by_id("ibm-pc:port:0x10").sources[0].cites  # type: ignore[union-attr]
-    index = sources.SourceIndex(rows={ref: sources.Row(line, "garbage")})
-    assert check.against_sources(base, index) == [
-        f"ports 0x10: {ref} is the source of garbage, not of 0x10"]
+def test_a_missing_directory_is_a_fault_not_a_crash(tmp_path: Path) -> None:
+    loaded = rows_base.Base((tmp_path / "none", "scry_core_absent_package"), None)
+    assert len(loaded) == 0 and len(loaded.file_faults) == 2
 
 
-def test_a_declared_device_that_holds_one_with_no_entry_is_told_so() -> None:
-    from null_server import NullKnowledge
-    subject = NullKnowledge(declared=Support(
-        scopes=(Scope("ibm-pc", written=("call", "port", "device")),),
-        devices=(Device("vga-seq", written=("register",), inside=("vga-core",)),)))
-    assert check.owed_dictionaries(subject.base().unfiltered(), subject.support()) == [
-        "vga-seq holds vga-core, which has no `device` entry"]
+def a_register(key: str, name: str, **fields: Any) -> dict[str, Any]:
+    return {"key": key, "name": name, "regions": [], "closed": [], **fields,
+            "rows": [a_row(1, "is", f"The {name}."), a_row(2, "read", "Readable.")]}
 
 
-def test_a_contains_that_names_no_device_fails_the_relations(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "devices", "device", "ibm-pc", [an_entry("a", "A",
-                                                                       contains=["zz"])])
-    assert check.relations(knowledge.Base.load(tmp_path)) == [
-        "device a: contains 'zz', which is no device entry"]
-
-
-def placed(tmp_path: Path, handlers: dict[str, str], ports: list[dict[str, Any]] | None = None,
-           **device: Any) -> knowledge.Base:
-    """An OPL chip with its two handlers and a board function that holds it at 0x388, with
-    `handlers` mapping its ports to them."""
-    write_dictionary(tmp_path, "chips", "device", "chip", [
-        an_entry("ym3812", "YM3812 OPL2", handlers={"address_w": "register select",
-                                                    "data_w": "register data"})])
-    write_dictionary(tmp_path, "boards", "device", "ibm-pc", [
-        an_entry("adlib", "AdLib", contains=["ym3812"], handlers=handlers, **device,
-                 ports=ports if ports is not None else [{"base": "0x388", "length": 2}])])
-    return knowledge.Base.load(tmp_path)
-
-
-def test_a_placed_device_whose_handlers_resolve_passes_the_relations(tmp_path: Path) -> None:
-    base = placed(tmp_path, {"0x388": "address_w", "0x389:write": "data_w",
-                             "0x388:read": "address_w"})
-    assert base.faults() == [] and check.relations(base) == []
-
-
-@pytest.mark.parametrize(("handlers", "ports", "says"), [
-    ({"0x38A": "address_w"}, None, "0x38A lies in none of the device's `ports`"),
-    ({"0x388": "address_w"}, [], "0x388 lies in none of the device's `ports`"),
-    ({"0x389:write": "status_r"}, None, "`status_r`, which is no handler of a chip it holds"),
-    ({"0x3": "address_w"}, None, "0x3 lies in none"),
-    ({"0xZZ": "address_w"}, None, "`0xZZ` is no port"),
-])
-def test_a_handler_outside_the_ports_or_of_no_chip_it_holds_fails_the_relations(
-        tmp_path: Path, handlers: dict[str, str], ports: list[dict[str, Any]] | None,
-        says: str) -> None:
-    got = check.relations(placed(tmp_path, handlers, ports))
-    assert len(got) == 1 and says in got[0] and got[0].startswith("device adlib: "), got
-
-
-def test_a_device_that_shares_a_chips_key_is_held_to_that_chips_handlers(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "chips", "device", "chip", [
-        an_entry("pit8253", "8253 timer", handlers={"read": "counter read", "write": "write"})])
-    write_dictionary(tmp_path, "boards", "device", "ibm-pc", [
-        an_entry("pit8253", "PIT", ports=[{"base": "0x40", "length": 4}],
-                 handlers={"0x40": "read", "0x43:write": "write", "0x41": "nope"})])
-    assert check.relations(knowledge.Base.load(tmp_path)) == [
-        "device pit8253: handler 0x41 names `nope`, which is no handler of a chip it holds"]
-
-
-def test_handlers_that_are_not_ports_are_not_checked(tmp_path: Path) -> None:
-    base = placed(tmp_path, {"write+0": "anything"})
-    assert check.relations(base) == []
+def a_device(key: str, name: str, **fields: Any) -> dict[str, Any]:
+    return {"key": key, "name": name, "regions": [], "closed": [], **fields,
+            "rows": [a_row(1, "is", f"The {name}."), a_row(2, "reset", "It resets.")]}
 
 
 @pytest.mark.parametrize(("broken", "says"), [
     ("by_id", "did not load by id"), ("get", "is not found by its kind, key and scope"),
     ("by_alias", "is not found by its name"), ("search", "is not found by the words of its name")])
 def test_a_database_that_lost_an_entry_is_told_so(
-        base: knowledge.Base, monkeypatch: pytest.MonkeyPatch, broken: str, says: str) -> None:
+        base: rows_base.Base, monkeypatch: pytest.MonkeyPatch, broken: str, says: str) -> None:
     lost: dict[str, Any] = {"by_id": None, "get": None, "by_alias": [],
-                            "search": knowledge.Found()}
-    monkeypatch.setattr(knowledge.Base, broken, lambda self, *a, **k: lost[broken])
+                            "search": rows_base.Found()}
+    monkeypatch.setattr(rows_base.Base, broken, lambda self, *a, **k: lost[broken])
     assert any(says in fault for fault in check.held(base))
+
+
+def test_an_entry_the_base_cannot_find_by_its_key_is_told_so(
+        base: rows_base.Base, monkeypatch: pytest.MonkeyPatch) -> None:
+    real = rows_base.Base.search
+
+    def search(self: rows_base.Base, kind: str = "", key: str = "", words: str = "",
+               device: str = "", scopes: object = (), limit: int = 10) -> rows_base.Found[Any]:
+        if key and not words:
+            return rows_base.Found()
+        return real(self, kind, key, words, device, scopes, limit)  # type: ignore[arg-type]
+    monkeypatch.setattr(rows_base.Base, "search", search)
+    assert any("not found by its key" in fault for fault in check.held(base))
 
 
 def test_the_words_a_comparison_asks_are_bounded_and_cover_a_name_of_one_word(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
-        an_entry("0x10", "alpha"), an_entry("0x11", "beta gamma delta"),
-        an_entry("0x12", "epsilon zeta")])
-    base = knowledge.Base.load(tmp_path)
-    asked = check._asked(base)
+    write_rows(tmp_path, "errors", "error", "ibm-pc", [
+        {"key": str(n), "name": name, "regions": [], "closed": [],
+         "rows": [a_row(1, "is", "An error.")]}
+        for n, name in ((1, "alpha"), (2, "beta gamma delta"), (3, "epsilon zeta"))])
+    base_ = rows_base.Base((tmp_path,), None)
+    asked = check._asked(base_)
     assert "alpha" in asked and any(" " in a for a in asked)
     monkeypatch.setattr(check, "WORDS_ASKED", 1)
-    assert len(check._asked(base)) < len(asked)
+    assert len(check._asked(base_)) < len(asked)
 
 
 def test_a_comparison_that_cannot_tell_the_paths_apart_says_so(tmp_path: Path) -> None:
-    synthetic(tmp_path, 5)
-    if not knowledge.Base.load(tmp_path).uses_fts5:
+    write_rows(tmp_path, "errors", "error", "ibm-pc", [
+        {"key": str(n), "name": f"error {n}", "regions": [], "closed": [],
+         "rows": [a_row(1, "is", "An error.")]} for n in range(3)])
+    if not rows_base.Base((tmp_path,), None).uses_fts5:
         pytest.skip("this host's SQLite has no FTS5")
-    assert check.fallback_differs(lambda fts5: knowledge.Base.load(tmp_path)) == [
-        "the base asked for no FTS5 and used it"]
-    assert check.fallback_differs(lambda fts5: knowledge.Base.load(tmp_path, fts5=False)) == []
+    assert check.fallback_differs(
+        lambda fts5: rows_base.Base((tmp_path,), None, fts5=True)) == [
+            "the base asked for no FTS5 and used it"]
+    assert check.fallback_differs(
+        lambda fts5: rows_base.Base((tmp_path,), None, fts5=False)) == []
 
 
-def test_a_number_too_wide_to_hold_is_a_fault_or_a_miss_and_never_a_crash(
+def test_two_registers_of_one_dictionary_may_not_overlap(tmp_path: Path) -> None:
+    write_rows(tmp_path, "regs", "register", "ym", [
+        a_register("0x10..0x13", "a"), a_register("0x11..0x12", "b")])
+    loaded = rows_base.Base((tmp_path,), None)
+    assert len(loaded) == 1 and any("overlaps" in f for f in loaded.load_faults)
+
+
+def test_two_registers_that_overlap_are_both_kept_when_access_tells_them_apart(
         tmp_path: Path) -> None:
-    entries = [an_entry("9" * 20, "wide"), an_entry("5", "ok", address=10**30, length=1)]
-    write_dictionary(tmp_path, "irqs", "irq", "ibm-pc", entries)
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [an_entry("0x10", "p", device=None)])
-    base = knowledge.Base.load(tmp_path)
-    assert len(base) == 0 and len(base.entry_faults) == 3
-    for wide in ("9" * 25, "0xFFFFFFFFFFFFFFFFFFFF", "9" * 5000):
-        assert base.search(key=wide).total == 0
+    write_rows(tmp_path, "regs", "register", "ym", [
+        a_register("0x10..0x13", "a", access="read"),
+        a_register("0x11..0x12", "b", access="write")])
+    loaded = rows_base.Base((tmp_path,), None)
+    assert len(loaded) == 2 and loaded.load_faults == []
 
 
-def test_a_port_range_too_long_to_hold_is_a_fault_and_never_a_crash(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "devices", "device", "ibm-pc", [
-        an_entry("sb", "SB", ports=[{"base": "0x220", "length": 10**30}]),
-        an_entry("ok", "OK", ports=[{"base": "0x220", "length": 16}])])
-    base = knowledge.Base.load(tmp_path)
-    assert [e.key for e in base.entries()] == ["ok"] and len(base.entry_faults) == 1
-    assert "`ports`" in base.entry_faults[0]
+def test_a_device_is_resolved_from_its_own_scope_then_the_shared_one(tmp_path: Path) -> None:
+    write_rows(tmp_path, "own", "device", "ibm-pc", [a_device("ym3812", "OPL2")])
+    write_rows(tmp_path, "shared", "device", "chip", [a_device("ym3812", "OPL2")])
+    write_rows(tmp_path, "solo", "device", "m6809", [a_device("solo", "Solo")])
+    write_rows(tmp_path, "pair", "device", "board", [a_device("pair", "Pair")])
+    write_rows(tmp_path, "pair2", "device", "board2", [a_device("pair", "Pair")])
+    loaded = rows_base.Base((tmp_path,), None)
+    own = loaded.device_entry("ibm-pc", "ym3812")
+    assert own is not None and own.scope == "ibm-pc"
+    shared = loaded.device_entry("other", "ym3812")
+    assert shared is not None and shared.scope == "chip"
+    solo = loaded.device_entry("other", "solo")
+    assert solo is not None and solo.scope == "m6809"
+    assert loaded.device_entry("other", "pair") is None
 
 
-def test_a_name_that_is_also_its_alias_is_found_once(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
-        an_entry("0x10", "exit", aliases=["EXIT", "quit", "Quit"])])
-    base = knowledge.Base.load(tmp_path)
-    assert ids(knowledge.Found(entries=base.by_alias("exit"))) == ["ibm-pc:port:0x10"]
-    assert len(base.by_alias("QUIT")) == 1
+def test_a_search_for_no_word_answers_nothing_and_examines_everything(
+        base: rows_base.Base) -> None:
+    found = base.search(words="***")
+    assert found.total == 0 and found.examined == len(base)
 
 
-def test_text_with_no_ascii_in_it_is_found_the_same_way_on_both_paths(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
-        an_entry("0x10", "timer", description="Stra\u00dfe timer \ufb01ne \u00b2.")])
-    host = knowledge.Base.load(tmp_path)
-    if not host.uses_fts5:
-        pytest.skip("this host's SQLite has no FTS5")
-    ours = knowledge.Base.load(tmp_path, fts5=False)
-    for asked in ("Stra\u00dfe", "strasse", "fine", "\ufb01ne", "2", "stra*"):
-        assert host.search(words=asked).total == ours.search(words=asked).total == 1, asked
+def test_the_neighbours_of_a_missed_call_are_the_nearest_below_and_above(
+        base: rows_base.Base) -> None:
+    found = base.search("call", "0x22/0x00")
+    assert found.total == 0 and [e.key for e in found.nearest] == ["0x21/0x4D"]
+    missed = base.search("call", "0x10/0x12/BL=0x99")
+    assert [e.key for e in missed.nearest] == ["0x10/0x12", "0x10/0x12/BL=0x36"]
 
 
-def test_the_neighbours_of_a_missed_call_tie_in_load_order(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "z", "call", "zz", [an_entry("0x21/0x4C", "exit")])
-    write_dictionary(tmp_path, "zz", "call", "aa", [an_entry("0x21/0x4C", "exit")])
-    base = knowledge.Base.load(tmp_path)
-    assert ids(knowledge.Found(entries=base.search("call", "0x21/0x4E").nearest)) == [
-        "zz:call:0x21/0x4C"]
+def test_a_key_with_no_kind_may_be_a_name_a_memory_address_or_a_range(
+        base: rows_base.Base) -> None:
+    assert base.search(key="speaker").total == 0
+    assert [e.key for e in base.search(key="0040:0049").entries] == ["0x400..0x4FF", "0x449"]
+    assert base.search(key="0x10..0x20..0x30").total == 0
+    assert base.search(key="0x10..speaker").total == 0
+    assert base.search(key="0xZZ").total == 0
 
 
-def test_a_range_of_calls_is_the_calls_inside_it_and_a_miss_names_its_neighbours(
-        base: knowledge.Base) -> None:
-    assert ids(base.search("call", "0x21/0x4C..0x21/0x4C")) == ["ibm-pc:call:0x21/0x4C"]
-    assert ids(base.search("call", "0x21/0x00..0x21/0x4C")) == ["ibm-pc:call:0x21/0x4C"]
-    assert ids(base.search("call", "0x21/0x4D..0x33/0x00")) == [
-        "ibm-pc:call:0x21/0x4D", "ibm-pc:call:0x33/0x00", "ibm-pc:call:0x33/0x00/0x03"]
-    assert ids(base.search(key="0x21/0x4C..0x21/0x4D")) == ["ibm-pc:call:0x21/0x4C",
-                                                            "ibm-pc:call:0x21/0x4D"]
-    with pytest.raises(KeyFault, match="runs upward"):
-        base.search("call", "0x21/0x4D..0x21/0x4C")
-    missed = base.search("call", "0x21/0x4E")
-    assert missed.total == 0 and ids(knowledge.Found(entries=missed.nearest)) == [
-        "ibm-pc:call:0x21/0x4D", "ibm-pc:call:0x33/0x00"]
+def test_a_search_that_cut_its_list_says_so(base: rows_base.Base) -> None:
+    assert base.search("port", limit=1).truncated is True
+    assert base.search("port", limit=50).truncated is False
 
 
-def test_what_is_nearest_to_a_word_stays_inside_the_kind_and_scope_asked(
-        base: knowledge.Base) -> None:
-    assert [e.name for e in base.search(kind="register", words="sequel").nearest] == []
-    assert [e.name for e in base.search(kind="port", words="sequel",
-                                        scopes=("m68000",)).nearest] == []
-    assert [e.id for e in base.search(kind="register", words="memo").nearest] == [
-        "vga-seq:register:0x04"]
-
-
-def test_a_reached_port_that_is_no_number_is_a_fault_and_a_name_is_a_handler(
+def test_a_folder_holding_a_file_that_is_not_a_dictionary_loads_the_rest(
         tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "devices", "device", "ibm-pc", [an_entry("d", "D")])
-    write_dictionary(tmp_path, "d", "register", "d", [an_entry("0x04", "r")],
-                     reached={"index": "0x3G4", "data": "address_w"})
-    assert check.relations(knowledge.Base.load(tmp_path)) == [
-        "registers 0x04: reached index names '0x3G4', which is no port entry"]
+    write_rows(tmp_path, "errors", "error", "ibm-pc", [
+        {"key": "1", "name": "one", "regions": [], "closed": [],
+         "rows": [a_row(1, "is", "An error.")]}])
+    (tmp_path / "notes.txt").write_text("not a dictionary", encoding="utf-8")
+    loaded = rows_base.Base((tmp_path,), None)
+    assert len(loaded) == 1
 
 
-def test_a_name_asked_for_by_its_words_is_found_whatever_many_others_share_them(
-        tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
-        an_entry(f"0x{0x100 + n:X}", "status") for n in range(60)])
-    assert check.held(knowledge.Base.load(tmp_path)) == []
+def test_a_non_object_entry_is_refused() -> None:
+    assert fmt.parse_entry([], header()) == (None, ["an entry is an object"])
+
+
+def test_an_entry_may_sit_at_an_address_and_a_memory_key_places_itself() -> None:
+    vector = {k: v for k, v in valid().items() if k != "device"}
+    got, faults = parsed({**vector, "address": 0x100, "length": 2}, "vector")
+    assert faults == [] and got is not None and (got.a_lo, got.a_hi) == (0x100, 0x101)
+    memory, faults = parsed(an_entry("0040:0049", "video mode"), "memory")
+    assert faults == [] and memory is not None and (memory.a_lo, memory.a_hi) == (0x449, 0x449)
