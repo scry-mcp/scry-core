@@ -412,12 +412,6 @@ declaration; `scry_core.knowledge` loads, searches and checks them, and
     rows that were), the base serves exactly the entries the lock seals, and no query shape
     returns one held back.
 
-||||||| /tmp/ne-base.md
-  `kind=device key=:tag` or `device=:tag`); a server with none passes nothing. The registered
-  description lists the scopes of `base`, so a server types none, and a scope that is a near
-  miss of one (`6809` for `m6809`) is read as it, with a `note` saying so. `knowledge_tool.judge`
-  goes in the pre-gate table.
-
 ## Naming what the replies show
 
 A reply calls a number by its name where the server knows one (`DAC write address
