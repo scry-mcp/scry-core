@@ -117,7 +117,7 @@ def entry(doc: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def test_the_fixture_base_passes_every_case_and_the_runner_can_tell_a_failure() -> None:
-    assert len(CASES) == 29 and run(NullKnowledge()) == set()
+    assert len(CASES) == 30 and run(NullKnowledge()) == set()
     assert run(NullKnowledge(declared=Support())) == {EXAMINED, ROWS_EXAMINED, UNDECLARED,
                                                      ROWS_SCOPES}
 

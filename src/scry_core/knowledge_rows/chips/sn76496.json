@@ -28,7 +28,6 @@
    "key": "0x00",
    "name": "tone 0 period",
    "aliases": [
-    "tone 1 frequency",
     "channel 0 period"
    ],
    "regions": [
@@ -282,7 +281,6 @@
    "key": "0x01",
    "name": "tone 0 attenuation",
    "aliases": [
-    "tone 1 attenuation",
     "channel 0 volume"
    ],
    "regions": [
@@ -415,7 +413,6 @@
    "key": "0x02",
    "name": "tone 1 period",
    "aliases": [
-    "tone 2 frequency",
     "channel 1 period"
    ],
    "regions": [
@@ -520,7 +517,6 @@
    "key": "0x03",
    "name": "tone 1 attenuation",
    "aliases": [
-    "tone 2 attenuation",
     "channel 1 volume"
    ],
    "regions": [
@@ -605,7 +601,6 @@
    "key": "0x04",
    "name": "tone 2 period",
    "aliases": [
-    "tone 3 frequency",
     "channel 2 period"
    ],
    "regions": [
@@ -718,7 +713,6 @@
    "key": "0x05",
    "name": "tone 2 attenuation",
    "aliases": [
-    "tone 3 attenuation",
     "channel 2 volume"
    ],
    "regions": [

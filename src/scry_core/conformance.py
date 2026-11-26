@@ -585,6 +585,11 @@ class KnowledgeContract:
         _none([f"the code names {c} and support.py does not declare it: declare it with the "
                "kinds it owes" for c in sorted(set(subject.code_scopes()) - names)])
 
+    def test_no_alias_of_rows_is_another_entry_s_name(
+            self, subject: KnowledgeSubject) -> None:
+        """One name per concept: an alias is never the name of another entry beside it."""
+        _none(check.names_unique(_rows_whole(subject)))
+
     def test_every_dictionary_of_rows_parses_and_ids_are_unique(
             self, subject: KnowledgeSubject) -> None:
         """Every dictionary of rows parses, and its entries are whole with ids unique.

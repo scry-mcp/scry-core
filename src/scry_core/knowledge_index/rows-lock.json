@@ -6787,45 +6787,6 @@
    }
   },
   "sn76496:register:0x00": {
-   "doc": {
-    "seal": "7deeaeca90c078c25c2b9eae4c24987b46927350872f04dd08c966f006963fe5",
-    "by": "slice core-sound-02 reader",
-    "writer": "slice core-sound-02 writer",
-    "rows": {
-     "1": {
-      "digest": "98f72d976ba27e9aa219da72b52b3964801fb42a850a3c4c51c775f7b5e875ff",
-      "by": "slice core-sound-02 reader"
-     },
-     "2": {
-      "digest": "b00f65fc3d3f4dbac17be4229ec328e867aaf79b3eb409034538dfad38b09cf4",
-      "by": "slice core-sound-02 reader"
-     },
-     "3": {
-      "digest": "b36aa1e9c35a63cf12a557a150306d8427803b086ff9ac418791263b6e34791d",
-      "by": "slice core-sound-02 reader"
-     },
-     "4": {
-      "digest": "b227f1658cb73ae5cfc64198b1cbe172bb692dd26b168ea2bbcd40e9b709e387",
-      "by": "slice core-sound-02 reader"
-     },
-     "5": {
-      "digest": "f5be20b7c4d15b621421ba7c502db629b3e51f8b1a6d997af0212cc34e0d6568",
-      "by": "slice core-sound-02 reader"
-     },
-     "6": {
-      "digest": "1b3262d1d3fed07b4aa7c19efc7e77d160eaae00f6ad76f6f6956708c07889d3",
-      "by": "slice core-sound-02 reader"
-     },
-     "7": {
-      "digest": "8ae8b431e329b3391a3ecdc6c9f6e7ddce43ed6b465bcda960969ea96527c740",
-      "by": "slice core-sound-02 reader"
-     },
-     "8": {
-      "digest": "d153f8efad03e54982eccc5bcc87134ffcba0cd70782235d1185da59d208ddaf",
-      "by": "slice core-sound-02 reader"
-     }
-    }
-   },
    "dosbox-x": {
     "seal": "a576ec2b09479ac286641c5cece59284ef8543bf89267312715631596ade4ed7",
     "by": "slice core-sound-02 reader",
@@ -6840,29 +6801,6 @@
    }
   },
   "sn76496:register:0x01": {
-   "doc": {
-    "seal": "148179924a3c616ec3fca9e767148478f51e7e66bd935018d38030636db6785a",
-    "by": "slice core-sound-02 reader",
-    "writer": "slice core-sound-02 writer",
-    "rows": {
-     "1": {
-      "digest": "794727f22550b35e77c7c16c193550ef876f08db154f4353d2af9722d42396e0",
-      "by": "slice core-sound-02 reader"
-     },
-     "2": {
-      "digest": "b633f99260e5b9b6180b831dad4c97d5988dc81907be3414c3b53d80978006ad",
-      "by": "slice core-sound-02 reader"
-     },
-     "3": {
-      "digest": "e9c0929b3f09f712e4230fd61224cdd0f0a625b9b472dce41425b052797dc518",
-      "by": "slice core-sound-02 reader"
-     },
-     "4": {
-      "digest": "5d296287e3fe54d6c65ff6b13e94627c9285701af0d576f55c270037818f3be8",
-      "by": "slice core-sound-02 reader"
-     }
-    }
-   },
    "dosbox-x": {
     "seal": "4bf5bf2c66e0ff4435d896194edf0e381bfc6a09226f9d75ccc6246d402f11f5",
     "by": "slice core-sound-02 reader",
@@ -6877,21 +6815,6 @@
    }
   },
   "sn76496:register:0x02": {
-   "doc": {
-    "seal": "a17b791ad8631cbd51235d82b23256f7f47048be96857602c23af5076882ad23",
-    "by": "slice core-sound-03 reader",
-    "writer": "slice core-sound-03 writer",
-    "rows": {
-     "1": {
-      "digest": "bc59ab70945ef2d311445d056d5e18028741bb29553459c772cd3b356d1175a5",
-      "by": "slice core-sound-03 reader"
-     },
-     "2": {
-      "digest": "b80da74414352573c714a755456893a4397aa8026dc4b2653da4eb651586d24e",
-      "by": "slice core-sound-03 reader"
-     }
-    }
-   },
    "dosbox-x": {
     "seal": "4fff053d064012b5953b255f2b9cfea7fa489a48d52d7bad52148c61a69bfe84",
     "by": "slice core-sound-03 reader",
@@ -6906,21 +6829,6 @@
    }
   },
   "sn76496:register:0x03": {
-   "doc": {
-    "seal": "1625ebc0d646e785650613cd21eccc819bafd7b8f12c84f254c1adc1f7ed2b87",
-    "by": "slice core-sound-03 reader",
-    "writer": "slice core-sound-03 writer",
-    "rows": {
-     "1": {
-      "digest": "07d380a74d45b01e286bbf8648f0dff78a730b0c6699052df4bf8797af78f5d9",
-      "by": "slice core-sound-03 reader"
-     },
-     "2": {
-      "digest": "b301288c35c1acd256459ca00cd96c149086d5476c5b1324df41c1997bd5af11",
-      "by": "slice core-sound-03 reader"
-     }
-    }
-   },
    "dosbox-x": {
     "seal": "b6f35a8b1e914f0f9cbbe9bb0e7687f7921deef5eeaedf738a88733be1f79e29",
     "by": "slice core-sound-03 reader",
@@ -6935,21 +6843,6 @@
    }
   },
   "sn76496:register:0x04": {
-   "doc": {
-    "seal": "7fa5ed43321c5f32468f4ff17f4fa441f8f0593c123338310ec92c6240944dca",
-    "by": "slice core-sound-03 reader",
-    "writer": "slice core-sound-03 writer",
-    "rows": {
-     "1": {
-      "digest": "689cda9dca0f6ec3aef531333a7070f1b3b5bfa3f719c95b691e5ae8dd575dbb",
-      "by": "slice core-sound-03 reader"
-     },
-     "2": {
-      "digest": "059e102891f316e76fa62d59704c9931d65483a2c907b72b1e8ce9b9ab70475c",
-      "by": "slice core-sound-03 reader"
-     }
-    }
-   },
    "dosbox-x": {
     "seal": "04ac76e9646fe685af0e155a62315ece7f3da7d6e2a15345fc19e6b9698ec8c3",
     "by": "slice core-sound-03 reader",
@@ -6974,21 +6867,6 @@
    }
   },
   "sn76496:register:0x05": {
-   "doc": {
-    "seal": "8c621a0d57926fd7fee6cb4ade07abf3ee7e8ed9e18625285bd9ff5518937608",
-    "by": "slice core-sound-03 reader",
-    "writer": "slice core-sound-03 writer",
-    "rows": {
-     "1": {
-      "digest": "5cdb0a17d778d48499c559acb0b78da9b2f528e16a56305bd45ccb2265981853",
-      "by": "slice core-sound-03 reader"
-     },
-     "2": {
-      "digest": "63fac983629f1d76bfc134b08158b9da0e4acf2267845199ba1d1cb8400dbad3",
-      "by": "slice core-sound-03 reader"
-     }
-    }
-   },
    "dosbox-x": {
     "seal": "f28d18fa9d869e22ad0f4e66f1b956a65b8aace0dc27389ddd96600062385d54",
     "by": "slice core-sound-03 reader",
@@ -9072,5 +8950,171 @@
     }
    }
   }
- }
+ },
+ "reopened": [
+  {
+   "id": "sn76496:register:0x00",
+   "part": "doc",
+   "rows": [],
+   "by": "K1b alias corrector",
+   "why": "the datasheet-numbered aliases collided with the names of the entries beside them; one name per concept, so the emulator numbering names the entries",
+   "was": {
+    "seal": "7deeaeca90c078c25c2b9eae4c24987b46927350872f04dd08c966f006963fe5",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {
+     "1": {
+      "digest": "98f72d976ba27e9aa219da72b52b3964801fb42a850a3c4c51c775f7b5e875ff",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "b00f65fc3d3f4dbac17be4229ec328e867aaf79b3eb409034538dfad38b09cf4",
+      "by": "slice core-sound-02 reader"
+     },
+     "3": {
+      "digest": "b36aa1e9c35a63cf12a557a150306d8427803b086ff9ac418791263b6e34791d",
+      "by": "slice core-sound-02 reader"
+     },
+     "4": {
+      "digest": "b227f1658cb73ae5cfc64198b1cbe172bb692dd26b168ea2bbcd40e9b709e387",
+      "by": "slice core-sound-02 reader"
+     },
+     "5": {
+      "digest": "f5be20b7c4d15b621421ba7c502db629b3e51f8b1a6d997af0212cc34e0d6568",
+      "by": "slice core-sound-02 reader"
+     },
+     "6": {
+      "digest": "1b3262d1d3fed07b4aa7c19efc7e77d160eaae00f6ad76f6f6956708c07889d3",
+      "by": "slice core-sound-02 reader"
+     },
+     "7": {
+      "digest": "8ae8b431e329b3391a3ecdc6c9f6e7ddce43ed6b465bcda960969ea96527c740",
+      "by": "slice core-sound-02 reader"
+     },
+     "8": {
+      "digest": "d153f8efad03e54982eccc5bcc87134ffcba0cd70782235d1185da59d208ddaf",
+      "by": "slice core-sound-02 reader"
+     }
+    }
+   }
+  },
+  {
+   "id": "sn76496:register:0x01",
+   "part": "doc",
+   "rows": [],
+   "by": "K1b alias corrector",
+   "why": "the datasheet-numbered aliases collided with the names of the entries beside them; one name per concept, so the emulator numbering names the entries",
+   "was": {
+    "seal": "148179924a3c616ec3fca9e767148478f51e7e66bd935018d38030636db6785a",
+    "by": "slice core-sound-02 reader",
+    "writer": "slice core-sound-02 writer",
+    "rows": {
+     "1": {
+      "digest": "794727f22550b35e77c7c16c193550ef876f08db154f4353d2af9722d42396e0",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "b633f99260e5b9b6180b831dad4c97d5988dc81907be3414c3b53d80978006ad",
+      "by": "slice core-sound-02 reader"
+     },
+     "3": {
+      "digest": "e9c0929b3f09f712e4230fd61224cdd0f0a625b9b472dce41425b052797dc518",
+      "by": "slice core-sound-02 reader"
+     },
+     "4": {
+      "digest": "5d296287e3fe54d6c65ff6b13e94627c9285701af0d576f55c270037818f3be8",
+      "by": "slice core-sound-02 reader"
+     }
+    }
+   }
+  },
+  {
+   "id": "sn76496:register:0x02",
+   "part": "doc",
+   "rows": [],
+   "by": "K1b alias corrector",
+   "why": "the datasheet-numbered aliases collided with the names of the entries beside them; one name per concept, so the emulator numbering names the entries",
+   "was": {
+    "seal": "a17b791ad8631cbd51235d82b23256f7f47048be96857602c23af5076882ad23",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "bc59ab70945ef2d311445d056d5e18028741bb29553459c772cd3b356d1175a5",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "b80da74414352573c714a755456893a4397aa8026dc4b2653da4eb651586d24e",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   }
+  },
+  {
+   "id": "sn76496:register:0x03",
+   "part": "doc",
+   "rows": [],
+   "by": "K1b alias corrector",
+   "why": "the datasheet-numbered aliases collided with the names of the entries beside them; one name per concept, so the emulator numbering names the entries",
+   "was": {
+    "seal": "1625ebc0d646e785650613cd21eccc819bafd7b8f12c84f254c1adc1f7ed2b87",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "07d380a74d45b01e286bbf8648f0dff78a730b0c6699052df4bf8797af78f5d9",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "b301288c35c1acd256459ca00cd96c149086d5476c5b1324df41c1997bd5af11",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   }
+  },
+  {
+   "id": "sn76496:register:0x04",
+   "part": "doc",
+   "rows": [],
+   "by": "K1b alias corrector",
+   "why": "the datasheet-numbered aliases collided with the names of the entries beside them; one name per concept, so the emulator numbering names the entries",
+   "was": {
+    "seal": "7fa5ed43321c5f32468f4ff17f4fa441f8f0593c123338310ec92c6240944dca",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "689cda9dca0f6ec3aef531333a7070f1b3b5bfa3f719c95b691e5ae8dd575dbb",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "059e102891f316e76fa62d59704c9931d65483a2c907b72b1e8ce9b9ab70475c",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   }
+  },
+  {
+   "id": "sn76496:register:0x05",
+   "part": "doc",
+   "rows": [],
+   "by": "K1b alias corrector",
+   "why": "the datasheet-numbered aliases collided with the names of the entries beside them; one name per concept, so the emulator numbering names the entries",
+   "was": {
+    "seal": "8c621a0d57926fd7fee6cb4ade07abf3ee7e8ed9e18625285bd9ff5518937608",
+    "by": "slice core-sound-03 reader",
+    "writer": "slice core-sound-03 writer",
+    "rows": {
+     "1": {
+      "digest": "5cdb0a17d778d48499c559acb0b78da9b2f528e16a56305bd45ccb2265981853",
+      "by": "slice core-sound-03 reader"
+     },
+     "2": {
+      "digest": "63fac983629f1d76bfc134b08158b9da0e4acf2267845199ba1d1cb8400dbad3",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   }
+  }
+ ]
 }
