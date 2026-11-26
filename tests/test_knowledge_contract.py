@@ -30,6 +30,8 @@ from scry_core.knowledge import (
 from scry_core.knowledge import base as rows_base
 
 CASES = sorted(n for n in dir(conformance.KnowledgeContract) if n.startswith("test_"))
+LEGACY_CASES = sorted(n for n in dir(conformance.LegacyKnowledgeContract)
+                      if n.startswith("test_"))
 OWED = "test_every_declared_scope_device_and_chip_has_the_dictionaries_it_owes"
 UNDECLARED = "test_every_dictionary_is_of_a_declared_scope_and_the_code_names_no_other"
 PARSES = "test_every_dictionary_file_parses"
@@ -99,9 +101,9 @@ class Copy:
 
 
 def run(subject: NullKnowledge) -> set[str]:
-    """The cases of the contract that fail on `subject`."""
-    contract, failed = conformance.KnowledgeContract(), set()
-    for name in CASES:
+    """The cases of the legacy contract that fail on `subject`."""
+    contract, failed = conformance.LegacyKnowledgeContract(), set()
+    for name in LEGACY_CASES:
         try:
             getattr(contract, name)(subject)
         except AssertionError:
@@ -117,7 +119,7 @@ def entry(doc: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def test_the_fixture_base_passes_every_case_and_the_runner_can_tell_a_failure() -> None:
-    assert len(CASES) == 30 and run(NullKnowledge()) == set()
+    assert len(CASES) == 12 and len(LEGACY_CASES) == 30 and run(NullKnowledge()) == set()
     assert run(NullKnowledge(declared=Support())) == {EXAMINED, ROWS_EXAMINED, UNDECLARED,
                                                      ROWS_SCOPES}
 
@@ -456,7 +458,7 @@ def test_text_searched_through_both_paths_that_differ_fails_the_fallback_case(
 def test_a_server_that_declares_nothing_has_examined_nothing() -> None:
     empty = NullKnowledge(declared=Support())
     with pytest.raises(AssertionError, match="nothing here says what this server supports"):
-        conformance.KnowledgeContract().test_the_check_examined_something(empty)
+        conformance.LegacyKnowledgeContract().test_the_check_examined_something(empty)
 
 
 def test_a_host_with_no_fts5_passes_the_contract_and_skips_the_comparison(

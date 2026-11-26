@@ -1,17 +1,15 @@
-"""`scry_core.knowledge.confirmed`: what makes an entry confirmed, the one format of the second
-check, and the shared base's own files read through it."""
+"""`scry_core.knowledge.confirmed`: what makes an entry confirmed, and the one format of the
+second check."""
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import pytest
 
-import scry_core
-from scry_core.knowledge import Base, Check, Entry, Lock, Locked, confirmed, shared
-from scry_core.knowledge.confirmed import Confirmation, SecondCheck, parse_second_check
+from scry_core.knowledge import Check, Entry, Lock, Locked, confirmed
+from scry_core.knowledge.confirmed import Confirmation, parse_second_check
 from scry_core.knowledge.lock import Reopened
 
 NOW = "a" * 64
@@ -108,20 +106,3 @@ class TestTheSecondCheckFile:
         assert "knowledge.second-check.json" in str(caught.value)
         assert "`confirmed`" in str(caught.value)
 
-
-class TestTheSharedBase:
-    def test_its_own_files_load_through_the_one_reader(self) -> None:
-        assert isinstance(shared.second_check(), SecondCheck)
-        assert shared.second_check().confirmed
-        assert shared.locks()
-
-    def test_every_row_of_its_second_check_is_still_the_digest_its_entry_has(self) -> None:
-        """A row recorded under a digest the entry no longer has holds the entry back for
-        nothing the second check said."""
-        folder = Path(scry_core.__file__).parent / "knowledge"
-        everything = Base.load(folder / "chips", folder / "cpus", pins=shared.PINS)
-        stale = [i for i, row in shared.second_check().confirmed.items()
-                 if (e := everything.by_id(i)) is None or e.digest != row.digest]
-        assert stale == []
-        got = shared.confirmation()
-        assert any(got.confirms(e) for e in everything.entries())
