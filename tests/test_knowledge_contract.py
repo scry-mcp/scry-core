@@ -23,6 +23,7 @@ from scry_core.knowledge import (
     digest,
     lock,
     seal,
+    sealed,
     shared,
     text,
 )
@@ -49,6 +50,10 @@ ROWS_PARSE = "test_every_dictionary_of_rows_parses_and_ids_are_unique"
 FROZEN = "test_a_sealed_row_is_never_reworded"
 ROWS_SERVED = "test_the_base_serves_the_sealed_entries_and_holds_the_rest_back"
 ROWS_RETURNED = "test_no_query_shape_returns_an_entry_of_rows_held_back"
+ROWS_EXAMINED = "test_the_rows_check_examined_something"
+ROWS_FALLBACK = "test_the_rows_fallback_answers_as_fts5_does"
+ROWS_SCOPES = "test_the_rows_half_holds_the_code_to_a_declared_scope"
+ROWS_REOPENED = "test_a_reopened_part_of_rows_is_never_sealed_again_as_it_was"
 EXIT = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
 EXIT_ID = "ibm-pc:call:0x21/0x4C"
 SEQ_PORT = "dosbox-x:src/hardware/vga_seq.cpp VGA_SetupSEQ 0x3c4"
@@ -112,8 +117,9 @@ def entry(doc: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def test_the_fixture_base_passes_every_case_and_the_runner_can_tell_a_failure() -> None:
-    assert len(CASES) == 22 and run(NullKnowledge()) == set()
-    assert run(NullKnowledge(declared=Support())) == {EXAMINED, UNDECLARED}
+    assert len(CASES) == 29 and run(NullKnowledge()) == set()
+    assert run(NullKnowledge(declared=Support())) == {EXAMINED, ROWS_EXAMINED, UNDECLARED,
+                                                     ROWS_SCOPES}
 
 
 class ServesEverything(NullKnowledge):
@@ -137,6 +143,35 @@ class ServesEveryRow(NullKnowledge):
         return rows_base.Base((self.rows,), None, fts5)
 
 
+class ResealedAsItWas(NullKnowledge):
+    """Seals again, at the seal it had, a part the lock says was reopened."""
+
+    def rows_lock(self) -> sealed.Lock:
+        dictionary, entry = _first_row(self)
+        seal = sealed.seal_of(dictionary, entry, sealed.OFFICIAL)
+        part = sealed.Part(seal, "a reader", "a writer", {})
+        again = sealed.Reopened(entry.id, sealed.OFFICIAL, (), "a reader", "why", part)
+        return sealed.Lock({entry.id: {sealed.OFFICIAL: part}}, (again,))
+
+
+class ReopenedAndNeverRewritten(NullKnowledge):
+    """Reopened a part, left it unsealed, and never rewrote a row."""
+
+    def rows_lock(self) -> sealed.Lock:
+        dictionary, entry = _first_row(self)
+        seal = sealed.seal_of(dictionary, entry, sealed.OFFICIAL)
+        part = sealed.Part(seal, "a reader", "a writer", {})
+        again = sealed.Reopened(entry.id, sealed.OFFICIAL, (), "a reader", "why", part)
+        return sealed.Lock({}, (again,))
+
+
+def _first_row(subject: NullKnowledge) -> tuple[Any, Any]:
+    """The first entry of the subject's dictionary of rows, with its dictionary."""
+    _, dictionary, faults = next(iter(rows_base.dictionaries(subject.rows)))
+    assert dictionary is not None and not faults, faults
+    return dictionary, dictionary.entries[0]
+
+
 def rows_copy(tmp_path: Path, change: Callable[[dict[str, Any]], None]) -> NullKnowledge:
     """The null subject over a copy of its dictionary of rows, changed by `change`."""
     folder = tmp_path / "rows"
@@ -150,6 +185,12 @@ def rows_copy(tmp_path: Path, change: Callable[[dict[str, Any]], None]) -> NullK
 
 def test_a_base_of_rows_served_with_no_lock_fails_the_cases_that_hold_it() -> None:
     assert run(ServesEveryRow()) == {ROWS_SERVED, ROWS_RETURNED}
+
+
+@pytest.mark.parametrize("subject", [ResealedAsItWas(), ReopenedAndNeverRewritten()])
+def test_a_reopened_part_left_at_the_seal_it_had_fails_the_reopening_case(
+        subject: NullKnowledge) -> None:
+    assert run(subject) == {ROWS_REOPENED}
 
 
 def test_a_sealed_row_reworded_is_held_back_and_fails_the_freeze_case(tmp_path: Path) -> None:
@@ -344,7 +385,7 @@ def reached_port_unknown(c: Copy) -> None:
     (lock_names_an_entry_that_was_never_checked, {LOCKED}),
     (checked_by_its_writer, {WHOLE, COVERED, LOCKED}),
     (scope_without_dictionary, {OWED}),
-    (dictionary_of_an_undeclared_scope, {UNDECLARED}),
+    (dictionary_of_an_undeclared_scope, {UNDECLARED, ROWS_SCOPES}),
     (device_entry_gone, {OWED, RELATIONS, COVERED}),
     (one_source_where_two_exist, {BOTH}),
     (alias_is_another_name, {ALIASES}),
@@ -409,7 +450,7 @@ def test_text_searched_through_both_paths_that_differ_fails_the_fallback_case(
         got = found(self, asked)
         return {n: t for n, t in got.items() if n != min(got)}
     monkeypatch.setattr(text.Fallback, "tiers", without_the_first)
-    assert run(subject) == {FALLBACK}
+    assert run(subject) == {FALLBACK, ROWS_FALLBACK}
 
 
 def test_a_server_that_declares_nothing_has_examined_nothing() -> None:

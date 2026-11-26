@@ -25,8 +25,10 @@ from scry_core.knowledge import (
     check,
     sealed,
     shared,
+    text,
 )
 from scry_core.knowledge import base as rows_base
+from scry_core.knowledge import rows as rows_format
 from scry_core.knowledge.index import Index, Keyed
 from scry_core.project_store import STORE
 from scry_core.window_stand_ins import hosts
@@ -395,6 +397,46 @@ def _whole(subject: KnowledgeSubject) -> Base:
     return subject.base().unfiltered()
 
 
+def _rows_whole(subject: KnowledgeSubject) -> rows_base.Base:
+    """The subject's dictionaries of rows with every entry loaded, for the checks of the files:
+    a base that serves only the sealed entries is judged apart."""
+    return subject.rows_base().unfiltered()
+
+
+def _rows_entries(
+        subject: KnowledgeSubject) -> dict[str, tuple[rows_format.Dictionary,
+                                                      rows_format.Entry]]:
+    """Each entry of rows the subject's files hold, with the dictionary that holds it."""
+    held: dict[str, tuple[rows_format.Dictionary, rows_format.Entry]] = {}
+    for source in subject.rows_sources():
+        for _, dictionary, _ in rows_base.dictionaries(source):
+            if dictionary is not None:
+                for entry in dictionary.entries:
+                    held.setdefault(entry.id, (dictionary, entry))
+    return held
+
+
+def _rows_asked(subject: KnowledgeSubject) -> list[str]:
+    """The words a search can ask of a rows base, from each entry's name and its rows' text, so
+    the two search paths are compared over every field the base indexes."""
+    asked: set[str] = set()
+    for source in subject.rows_sources():
+        for _, dictionary, _ in rows_base.dictionaries(source):
+            if dictionary is None:
+                continue
+            for entry in dictionary.entries:
+                for said in (entry.name, *(r.text for r in entry.rows)):
+                    words = text.words(said)
+                    if not words:
+                        continue
+                    asked |= {words[0], f"{words[0][:3]}*"}
+                    if len(words) > 1:
+                        asked.add(f"{words[0]} {words[-1]}")
+            if len(asked) >= check.WORDS_ASKED:
+                return sorted(asked)[:check.WORDS_ASKED]
+    return sorted(asked)
+
+
 def _asked(served: Index[Any], e: Keyed) -> Iterable[tuple[str, list[Any]]]:
     """What `served` answers to each query shape that would reach `e`: by id, by key and scope,
     by a key alone, by a range over its number, by its name, by its words, by its address, by its
@@ -523,11 +565,75 @@ class KnowledgeContract:
                if not sure.confirms(e) for how, found in _asked(served, e)
                if e.id in {got.id for got in found}])
 
+    def test_the_rows_check_examined_something(self, subject: KnowledgeSubject) -> None:
+        whole = _rows_whole(subject)
+        assert subject.support().scopes, "INVALID: no scope is declared: nothing here says what " \
+            "this server supports"
+        assert len(whole) and whole.dictionaries, "INVALID: the server's base of rows holds no " \
+            "entry"
+
+    def test_the_rows_half_holds_the_declaration_well_formed(
+            self, subject: KnowledgeSubject) -> None:
+        """The declaration has one shape for both halves of the base; this case keeps it once
+        the old base's tests are gone, since the rows contract is then the whole of the suite."""
+        _none(subject.support().faults())
+
+    def test_the_rows_half_holds_the_code_to_a_declared_scope(
+            self, subject: KnowledgeSubject) -> None:
+        """The scopes the code depends on need no base to judge, and they outlive the old one."""
+        names = subject.support().names()
+        _none([f"the code names {c} and support.py does not declare it: declare it with the "
+               "kinds it owes" for c in sorted(set(subject.code_scopes()) - names)])
+
     def test_every_dictionary_of_rows_parses_and_ids_are_unique(
             self, subject: KnowledgeSubject) -> None:
-        whole = subject.rows_base().unfiltered()
+        """Every dictionary of rows parses, and its entries are whole with ids unique.
+
+        The old half's other rules have no counterpart here, and each for a reason. A quote is
+        a place and the digest of its lines, and only `rows check`, reading the sources at
+        their pins, proves it: no committed index is held to. The format has no
+        `complete_against` or `left_out`, so no list of keys is owed. It keeps no read and
+        write marks and no `device` or `contains` of an entry, so no pair of sources is
+        compared and no relation is resolved. The seal is what serves an entry: the rows lock
+        records one reader who did not write the part, and no second check. The declaration
+        names the systems, devices and chips a server answers for, and the rows dictionaries
+        go further (a board's chips, a set of ports), so the two are not held to each other
+        here.
+        """
+        whole = _rows_whole(subject)
         assert whole.dictionaries, "INVALID: no dictionary of rows was examined"
         _none(whole.faults())
+
+    def test_the_rows_database_holds_what_its_dictionaries_hold(
+            self, subject: KnowledgeSubject) -> None:
+        _none(check.held(_rows_whole(subject)))
+
+    def test_the_rows_fallback_answers_as_fts5_does(self, subject: KnowledgeSubject) -> None:
+        if not subject.rows_base(None).uses_fts5:
+            pytest.skip("this host's SQLite has no FTS5, so the fallback is the only path")
+        _none(check.fallback_differs(lambda fts5: subject.rows_base(fts5).unfiltered(),
+                                     _rows_asked(subject)))
+
+    def test_each_emulator_is_pinned_in_the_rows_base_where_scry_core_pins_it(
+            self, subject: KnowledgeSubject) -> None:
+        got = subject.rows_base().pins
+        _none([f"the base of rows pins {scheme} at {got[scheme]!r}, and "
+               f"`scry_core.knowledge.shared.PINS` pins it at {pin!r}: take the pin from there"
+               for scheme, pin in shared.PINS.items() if scheme in got and got[scheme] != pin])
+
+    def test_a_reopened_part_of_rows_is_never_sealed_again_as_it_was(
+            self, subject: KnowledgeSubject) -> None:
+        lock, held = subject.rows_lock(), _rows_entries(subject)
+        out: list[str] = []
+        for again in lock.reopened:
+            found = held.get(again.id)
+            if found is None or again.part not in sealed.parts(found[0]):
+                continue
+            if sealed.seal_of(found[0], found[1], again.part) == again.was.seal:
+                out.append(f"{again.id} ({again.part}) was reopened by {again.by!r} and is at "
+                           "the seal it had: rewrite the rows at fault first, and seal the "
+                           "rewrite")
+        _none(out)
 
     def test_a_sealed_row_is_never_reworded(self, subject: KnowledgeSubject) -> None:
         lock = subject.rows_lock()

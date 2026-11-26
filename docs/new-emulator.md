@@ -306,7 +306,13 @@ public source each fact was checked against. A server ships dictionaries and one
   declaration, the loaded `Base` as the server serves it (`fts5=False` uses the search index this
   package builds; the contract judges the files on `Base.unfiltered()`), the source index, the
   lock of the checked entries (`scry_core.knowledge.read_lock`), the second check
-  (`scry_core.knowledge.read_second_check`) and the scopes the code depends on.
+  (`scry_core.knowledge.read_second_check`) and the scopes the code depends on. It also gives the
+  base of rows, where its dictionaries of rows are and the lock of their seals (`rows_base`,
+  `rows_sources`, `rows_lock`).
+- **What the half of rows judges**: every dictionary parses and its entries are whole, the
+  database answers every lookup, and both search paths agree. A sealed row is never reworded, a
+  reopened part is never sealed as it was, and no query shape reaches an entry held back. A
+  quote's line is `rows check`'s to prove against the sources at their pins.
 - **The model** for those tests is `tests/null_server.py`'s `NullKnowledge`.
 - **The tool**: `knowledge_tool.register(wrap, answer, base, live)`. `live` says what the running
   machine can answer by itself (MAME's inputs and device tags, which a model may give as
