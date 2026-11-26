@@ -8,7 +8,9 @@ What a server author notices. A client's view of each server is in that server's
   the chat says what a call is doing. `overlay` takes `pointer` and `record`; `Look` and
   `Payload` lose the caption, the keycaps and the pause mark. `abbreviation.caption`,
   `placement`, `placement_vectors.txt` and `overlay_timeline` go with them, and `committed_run`
-  goes too: `scry_core.timeline` holds the run. The reference's examples leave out `session`,
+  goes too: `scry_core.timeline` holds the run. `timeline.key` and `timeline.button` go as well
+  (a step's events are `timeline.pointer` or a `timeline.Event`), and the `overlay` reply no
+  longer carries `place`. The reference's examples leave out `session`,
   `knowledge`, `served` and `held_back`, the base's own backlog rather than a tool's answer.
 - `scry_core.timeline` holds one version, 3: a wrapper (`perform`, `drive`, `start(plan=...)`)
   is one entry per call it ran, each at that call's own frames and with the arguments the
@@ -20,8 +22,13 @@ What a server author notices. A client's view of each server is in that server's
   count reads `unavailable` with its reason, because a reply carries no null.
 - A replay document keeps the `start` arguments as the JSON it received
   (`recording.jsonable`), so an `overlay` the model held replays as the mapping it was.
-- A launch behind goes through `open -g`, so only a run somebody watches takes the desk, and
-  the canary that checks the host runs with a dummy video driver, opening no window.
+- A clip carries up to 5 moments (`motion.CUTS_MAX`), each lasting 1.5 to 4 s
+  (`motion.CUT_SECONDS`), all of them at most 16 s (`motion.LOOP_SECONDS`): a moment under the
+  minimum is refused, which is what a demo's one-second recording now hits.
+- A demo run takes `--watch`: the emulator opens in front once it is up and the runner reads its
+  window back, and the transcript carries a `Watched \`window\`` block. Every other run opens
+  behind, through `open -g`, so only a watched one takes the desk; the canary that checks the
+  host runs with a dummy video driver, opening no window.
 - Bringing a session's window forward asks twice, half the bound apart, and activates a bundle
   through LaunchServices (`lsappinfo`, then `open -a`), as a Dock click does.
 
