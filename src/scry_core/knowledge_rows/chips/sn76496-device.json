@@ -1,0 +1,274 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "sn76496-device",
+ "title": "The SN76496 as a device: bus, READY, reset",
+ "kind": "device",
+ "scope": "chip",
+ "covers": "the SN76496 as a chip: its data bus and control lines, the READY line and the transfer timing, as the SN76494/96 manual describes them and MAME and DOSBox-X implement them",
+ "source": "official",
+ "documents": [
+  {
+   "name": "SN76494.raw.txt",
+   "variant": "sn76496"
+  }
+ ],
+ "official": {
+  "SN76494.raw.txt": [
+   "152-174",
+   "229-243",
+   "277-284",
+   "298-301"
+  ]
+ },
+ "engine": [
+  "update",
+  "adjust",
+  "from_hz"
+ ],
+ "entries": [
+  {
+   "key": "sn76496",
+   "name": "SN76496 PSG",
+   "aliases": [
+    "PSG",
+    "SN76496"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "152-174"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "229-243"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "277-284"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "298-301"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "function": "sn76496_base_device::write"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "308-373"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The data bus is D0 to D7; CE enables the device and WE strobes a write.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "154",
+       "sha": "1ab04b819b926052af89de7af636a8bdbdaf6776d8b336b40c00bdbf6d0cbbba"
+      },
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "159-162",
+       "sha": "c025d4b2a52fbbb1cbb13a660c8e4b1e4940d9ccac35f309f95eea4a4546b9c3"
+      },
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "166-170",
+       "sha": "74ec58558bb5134ae2b024b165bdbd8105d371507db32040598577db38298df9"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "READY is an open-collector output, pulled low for a write cycle and raised when the transfer completes.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "171-172",
+       "sha": "5503b0abe5645fb16ef918627b298c162434f3e62c21627cc4ad08d8fedd34b0"
+      },
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "240-243",
+       "sha": "8ced55df452b250218c92bf4cb1e49ff2a40ed72a9541b41579c85dd32e15ebc"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "AUDIO IN is the audio input from an external source and AUDIO OUT the audio drive output.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "173-174",
+       "sha": "9fd5b39e6d0436e315d0e35ef0a8f1d82dfe75482e0352906947a49069ca52ab"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The microprocessor selects the chip by taking CE low, and with CE low WE strobes the data bus into the control register.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "230-232",
+       "sha": "2034812c48016fad006247eb627f4418c46ac7bbcfcb81b51461a258126f3fcc"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "A transfer takes about four clock cycles on the SN76494 and 32 on the SN76496; WE must then return high.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "239-240",
+       "sha": "58bcff3ae6d9083a23e18bd3d4e67278f20ea3e062b97ef041a4d68f605ef949"
+      },
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "167-170",
+       "sha": "2f9503d937d36da9b9ce88c3e1329bf7918d68e897deb8e555fe2e583b6184c9"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "The first byte of a transfer carries a three-bit address field selecting the destination control register.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "298-301",
+       "sha": "603f2df575aeeba23668739f774135dd5409027bf25d54901b9780ab9cb83b27"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "reset",
+     "of": "doc",
+     "text": "Table 4 says the device is initialized by pulling WE and CE high.",
+     "quotes": [
+      {
+       "ref": "datasheet:SN76494.raw.txt",
+       "lines": "277-284",
+       "sha": "0ccc91923ff8715b0915a3444a6d0b6ada67d6c460e9c72514e5384470d9f8e0"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "reset",
+     "of": "mame",
+     "vs": "differs",
+     "text": "MAME sets the tone periods to 0x400 and the volumes to maximum at device start, with register 0x00 selected.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/sound/sn76496.cpp",
+       "lines": "152-163",
+       "sha": "7b82b2daa95e3ad2587b74216a2c914048fdb227d697c25ffba66c334133f6b9"
+      },
+      {
+       "ref": "mame:src/devices/sound/sn76496.cpp",
+       "lines": "180-181",
+       "sha": "1202a72ca83133236516bc07007410f15b11526118732adfdb2d47d72722ffdc"
+      },
+      {
+       "ref": "mame:src/devices/sound/sn76496.cpp",
+       "lines": "231",
+       "sha": "9c89e0d034d1eefb2db7d1a2c95776b15e9d88501f80be82d5e4c0e736b4d944"
+      },
+      {
+       "ref": "mame:src/devices/sound/sn76496.cpp",
+       "lines": "238-249",
+       "sha": "eaa0f04653c484622eb5d25f73fada649a76899f50dec198e043ddc2077ee93b"
+      }
+     ],
+     "row": "7"
+    },
+    {
+     "n": "102",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "text": "DOSBox-X initialises at device start; its SN76496 is constructed with the Sega flag set, so the last selected register starts at 0x03.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+       "lines": "146-157",
+       "sha": "7b82b2daa95e3ad2587b74216a2c914048fdb227d697c25ffba66c334133f6b9"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+       "lines": "176",
+       "sha": "11477f5cc13224d4b4d34037b3034323c61f53951d2fb8c0ce29ead0b57807f0"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+       "lines": "230",
+       "sha": "9c89e0d034d1eefb2db7d1a2c95776b15e9d88501f80be82d5e4c0e736b4d944"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+       "lines": "246-257",
+       "sha": "82134bd979b37b25cce1b2a11803bbb25c07d25a744ad5a5a604e593b8dd6d4d"
+      }
+     ],
+     "row": "7"
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "152-153",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "229",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "233-238",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "155-158",
+     "as": "electrical"
+    },
+    {
+     "ref": "datasheet:SN76494.raw.txt",
+     "lines": "163-165",
+     "as": "electrical"
+    },
+    {
+     "ref": "mame:src/devices/sound/sn76496.cpp",
+     "lines": "327-393",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/sn76496.cpp",
+     "lines": "308-373",
+     "as": "structure"
+    }
+   ]
+  }
+ ]
+}

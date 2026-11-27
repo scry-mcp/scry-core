@@ -1,0 +1,8 @@
+{
+ "format": "scry-knowledge-callees/1",
+ "callees": {
+  "mame:leave_halt": "engine",
+  "mame:set_service_attention": "engine",
+  "mame:total_cycles": "none:accessor"
+ }
+}

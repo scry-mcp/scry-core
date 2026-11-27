@@ -1,0 +1,4403 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "ins8250",
+ "title": "The INS8250 UART, its registers",
+ "kind": "register",
+ "scope": "ins8250",
+ "covers": "The eight register offsets of the INS8250 UART and the divisor latches that share two of them",
+ "source": "official",
+ "documents": [
+  {
+   "name": "INS8250.raw.txt",
+   "variant": "8250"
+  }
+ ],
+ "official": {
+  "INS8250.raw.txt": [
+   "422-430",
+   "432-446",
+   "603-623",
+   "793-834",
+   "1051-1092",
+   "917-975",
+   "1093-1128",
+   "895-916",
+   "976-1005",
+   "1009-1050"
+  ]
+ },
+ "defines": {
+  "dosbox-x": [
+   "SERIAL_DEBUG"
+  ]
+ },
+ "handlers": [
+  {
+   "ref": "mame:src/devices/machine/ins8250.cpp",
+   "function": "ins8250_uart_device::ins8250_w",
+   "value": "offset"
+  },
+  {
+   "ref": "mame:src/devices/machine/ins8250.cpp",
+   "function": "ins8250_uart_device::ins8250_r",
+   "value": "offset"
+  }
+ ],
+ "engine": [
+  "update_msr",
+  "setRTSDTR",
+  "setRTS",
+  "setDTR",
+  "set_data_frame",
+  "rx_w",
+  "setBreak",
+  "updatePortConfig",
+  "PIC_ActivateIRQ",
+  "PIC_DeActivateIRQ",
+  "m_out_int_cb",
+  "set_fcr",
+  "setSize",
+  "updateMSR",
+  "update_baud_rate",
+  "set_rate",
+  "push_tx",
+  "pop_rx",
+  "tra_complete",
+  "addb",
+  "setEvent",
+  "transmitByte",
+  "getUsage",
+  "log_ser",
+  "removeEvent",
+  "isEmpty",
+  "getb",
+  "probeByte",
+  "changeLineProperties"
+ ],
+ "entries": [
+  {
+   "key": "0x00",
+   "name": "data / divisor low",
+   "aliases": [
+    "RBR",
+    "THR",
+    "DLL"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "422-430"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "432-435"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "443-444"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "895-916"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Write_THR"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Read_RHR"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address inputs A0, A1 and A2 select a UART register; the Divisor Latch Access Bit, the top bit of the Line Control Register, changes which register an address selects.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "422-430",
+       "sha": "0e0e800b7892ef19771766db699cb3e0a0b53e1a8c9d844edaf6d5a515d5c982"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "With the Divisor Latch Access Bit 0, a read at address 0 returns the Receiver Buffer register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "433-435",
+       "sha": "a93fdfd1168a45c8131c8bbb1a819f8211bd9efac04aec535e137f506329f1f3"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "With the Divisor Latch Access Bit 0, a write at address 0 goes to the Transmitter Holding register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "433-435",
+       "sha": "a93fdfd1168a45c8131c8bbb1a819f8211bd9efac04aec535e137f506329f1f3"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "read",
+     "of": "doc",
+     "text": "With the Divisor Latch Access Bit 1, a read at address 0 returns the least significant byte of the Divisor Latch.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "443-444",
+       "sha": "5899a26e4e64abdc8482af2cfcd9b50283d531c2265bc56d641efd907818a9e3"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "text": "With the Divisor Latch Access Bit 1, a write at address 0 loads the least significant byte of the Divisor Latch.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "443-444",
+       "sha": "5899a26e4e64abdc8482af2cfcd9b50283d531c2265bc56d641efd907818a9e3"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "write",
+     "of": "doc",
+     "text": "Upon loading either of the Divisor Latches, a 16-bit Baud counter is immediately loaded.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "903-905",
+       "sha": "f5194181167756ad9ff66be8defeda849003bc39cae8a416c0cd705b63404d02"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "The Baud Generator divides a clock input from DC to 3.1 MHz by any divisor from 1 to 2^16-1 and outputs 16 times the baud rate.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "896-900",
+       "sha": "b299f0606a3928149a42a3023422c34a113c9e18214e099077dbae0969787c75"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "is",
+     "of": "doc",
+     "text": "Two 8-bit Divisor Latches store the divisor in 16-bit binary format and must be loaded during initialization for proper operation.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "900-903",
+       "sha": "4bd74795b0ebe6de9ba7d92a15f2f78f0dcc8be0954144f8bf4667ea6422984a"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "is",
+     "of": "doc",
+     "text": "Using a divisor of 0 is not recommended.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "911",
+       "sha": "f6733fd2ed26c7ea5b174a66e6af39d3b5b2bbe8f8794d3e03f5972a39006dd7"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A byte written to the holding register while the shift register is transmitting is added to the transmit FIFO; a full FIFO drops it and counts an overrun.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "541-543",
+       "sha": "ab17d61f76560869641663af4475edbb81ad02c69fccb069430d23b067244795"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "547",
+       "sha": "888239cba7688d28027cea652a813ad2c5ae19a59ac022a928dfee4ceab2be29"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "A byte written while the shift register is idle sets sync_guardtime, is added to the transmit FIFO and clears the transmitter-empty bit of LSR.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "526",
+       "sha": "07b01a318ac0e1661cfc9fbb5f241c9556ef6f61c4c4374689a7e8f6dc735208"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "528",
+       "sha": "3a9a090d438ae5e1212773cec5a91d08c535456c5f89ed8878e29396b87c7d0a"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "530",
+       "sha": "445f0336a1a3e2df201fc83bb451282527eb34d8f07376859cd93e015befa67d"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "6",
+     "text": "A byte of either divisor latch is stored, then changeLineProperties recomputes the byte time from the divisor and hands the baud rate to updatePortConfig at once.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "511-513",
+       "sha": "dd0909299712d8e61c22f49d1da225526db189cdf250c0127d118b7fb40955f4"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "236-242",
+       "sha": "c0120853e4ddf17b3a444f400d449c1a471328404cb3e17b2796eb46ec36ab35"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "249",
+       "sha": "7ec1c9a466c7c04f15032b2d96c4992c6743077c96066dcf4a9e94706e253bca"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "605-608",
+       "sha": "faeab755507096a4c2cd5c81f91a0b759145ad44a79e5be58e698b5f7082f758"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "is",
+     "of": "doc",
+     "text": "The tables of decimal divisors for 1.8432 MHz and 3.072 MHz crystals give the divisors for common baud rates, with minimal error up to 38400 baud.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "906-910",
+       "sha": "fbd967c64a9009bf6e5bc370e0495a4151e0ba261f882a3186321303c697df61"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "432",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "895",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "912-916",
+     "as": "electrical"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "268",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "274",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "439",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "442",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "270",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "271",
+     "as": "unfollowed",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "275",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "439-440",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "449-454",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "506",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "277-278",
+     "as": "unseen",
+     "reason": "FIFO path taken only by device types from NS16550 up"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "445-446",
+     "as": "unseen",
+     "reason": "FIFO read path taken only by device types from NS16550 up"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "443",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "448",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "276",
+     "as": "parent",
+     "owner": "ins8250:register:0x05"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "280",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "450",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "451",
+     "as": "parent",
+     "owner": "ins8250:register:0x05"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "563",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "565-568",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "584",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "511-512",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "509",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "531",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "514",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "518",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "540",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "532",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "542",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "548",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "564",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "533-537",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "544-546",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "549-550",
+     "as": "unseen",
+     "reason": "deferred error-count message, no counterpart in the datasheet"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "566-577",
+     "as": "unseen",
+     "reason": "16550 FIFO error tracking, outside the INS8250 datasheet"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "581",
+     "as": "parent",
+     "owner": "ins8250:register:0x02"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "582-583",
+     "as": "unseen",
+     "reason": "16550 FIFO receive timeout, outside the INS8250 datasheet"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "582",
+     "as": "parent",
+     "owner": "ins8250:register:0x05"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1044",
+     "as": "parent",
+     "owner": "chip:device:ins8250"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1102",
+     "as": "unseen",
+     "reason": "constructor zero, replaced by Init_Registers, which every port type calls, loading divisor 12"
+    }
+   ]
+  },
+  {
+   "key": "0x01",
+   "name": "interrupt enable",
+   "aliases": [
+    "IER",
+    "DLM"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "436"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "445-446"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1030-1050"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Write_IER"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Read_IER"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "With the Divisor Latch Access Bit 0, address 1 selects the Interrupt Enable register; with it 1, the most significant byte of the Divisor Latch.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "436",
+       "sha": "b598eba611bcaf1572eed7d9271aa564b1ae26f719babd1b44cf2f7303a5262f"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "445-446",
+       "sha": "aa5a99bf3b32eda428b1a02953bd00ccdbabff0a816c721d07cd54b1ae5e5f81"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "With the Divisor Latch Access Bit 1, a read at address 1 returns the most significant byte of the Divisor Latch.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "445-446",
+       "sha": "aa5a99bf3b32eda428b1a02953bd00ccdbabff0a816c721d07cd54b1ae5e5f81"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "With the Divisor Latch Access Bit 1, a write at address 1 loads the most significant byte of the Divisor Latch.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "445-446",
+       "sha": "aa5a99bf3b32eda428b1a02953bd00ccdbabff0a816c721d07cd54b1ae5e5f81"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The Interrupt Enable register enables the four types of UART interrupt, and each interrupt can individually activate the INTR output.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1031-1033",
+       "sha": "6c1750103d8868d6634ab8c3de1099a62d71c9491ec92b0c9dccc51c33399985"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "write",
+     "of": "doc",
+     "text": "Setting bits of the Interrupt Enable register to logic 1 enables the selected interrupts; resetting bits 0 through 3 totally disables the interrupt system.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1033-1036",
+       "sha": "bd585f36f675b38c4e37661b3c5a133f05b022ba9a291f6128addb87162e4658"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "when",
+     "of": "doc",
+     "text": "A disabled interrupt is not indicated as active in the register the capture garbles as \"HRand\" (presumably Interrupt Identification) and does not activate INTR; Line and MODEM Status still update.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1036-1040",
+       "sha": "d351ed71ddc1a45856af8e700784339ccc6866ade4e6d6b767d3e2e4cee2639d"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "Bit 0 enables the Received Data Available interrupt when set to logic 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1042-1043",
+       "sha": "9c7e8e6e30d3fd4ed7d97947acbbbc5066679ce8fdd22f6250178d50b4c2c70d"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "bit 1",
+     "of": "doc",
+     "text": "Bit 1 enables the Transmitter Holding Register Empty interrupt when set to logic 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1044-1045",
+       "sha": "d9c0415fbe7bb1f58b046642a9d54d2ac1de2fcdbdb246babc1b80b0ac67c721"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "bit 2",
+     "of": "doc",
+     "text": "Bit 2 enables the Receiver Line Status interrupt when set to logic 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1046-1047",
+       "sha": "2debead7c37602644145209e91f630f9518f2b24b464efc95e2932e2905366ef"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "bit 3",
+     "of": "doc",
+     "text": "Bit 3 enables the MODEM Status interrupt when set to logic 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1048-1049",
+       "sha": "d1d52aaa95b9bfb3a540bd7e4aa84def7d062fdc3cf16b45f9fe4cb63b1bf3a5"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "bits 4-7",
+     "of": "doc",
+     "text": "Bits 4 through 7 of the Interrupt Enable register are always logic 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1050",
+       "sha": "c61d231e2a44e2dff6b770e829ce0e89ee0d1f11dd149358f67701751661c882"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1030",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1041",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "285",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "291",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "458",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "287",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "458-459",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "294",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "294",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "294",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "294",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "294",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "295",
+     "as": "unfollowed",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "460-461",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "506",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "506",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "292-293",
+     "as": "parent",
+     "owner": "ins8250:register:0x05"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "600",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "605",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "609",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "606-607",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "614",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "614",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "614",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "614",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "614",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "616",
+     "as": "unfollowed",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "601",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "611-612",
+     "as": "parent",
+     "owner": "ins8250:register:0x05"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "615",
+     "as": "unseen",
+     "reason": "16550 FIFO timeout interrupt enable, outside the INS8250 datasheet"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "127",
+     "as": "unseen",
+     "reason": "constructor zero, set again to 0 by device_reset before any access"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "703",
+     "as": "parent",
+     "owner": "chip:device:ins8250"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "511",
+     "as": "unseen",
+     "reason": "divisor-low write keeps the high byte this entry returns"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1044",
+     "as": "parent",
+     "owner": "chip:device:ins8250"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1102",
+     "as": "unseen",
+     "reason": "constructor zero, replaced by Init_Registers, which every port type calls, loading divisor 12"
+    }
+   ]
+  },
+  {
+   "key": "0x02",
+   "name": "interrupt id, FIFO ctl",
+   "aliases": [
+    "IIR",
+    "FCR"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "437-438"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "976-1005"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1009-1029"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "function": "ins8250_uart_device::update_interrupt"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "function": "ins8250_uart_device::trigger_int"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "function": "ins8250_uart_device::clear_int"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "279"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "449"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "486"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "496"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.h",
+     "lines": "57"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Read_ISR"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Write_FCR"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "ComputeInterrupts"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "rise"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "clear"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "516"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "581"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "837"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "886"
+    },
+    {
+     "ref": "dosbox-x:include/serialport.h",
+     "lines": "309-314"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address 2 selects the Interrupt Identification register, read only, whatever the Divisor Latch Access Bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "437-438",
+       "sha": "683bcb19bd2e53627f91f5ea85846f2d50530281701e0c6622d5c8f393a2f267"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "when",
+     "of": "doc",
+     "text": "Interrupts have four priorities, highest first: Receiver Line Status, Received Data Available, Transmitter Holding Register Empty, MODEM Status.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1013-1015",
+       "sha": "2e4828ac71edbe5e7e4158e8a13a9dca15fe24b4b1410cf8b631d9791bb3c192"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "Bit 0 of the Interrupt Identification register is logic 0 when an interrupt is pending and logic 1 when none is.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1022-1026",
+       "sha": "26939e08af30a0c0aebe7ac3b5d5cbe73111359f5ab10e5d21ad798e30bdaab5"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bits 1-2",
+     "of": "doc",
+     "text": "Bits 2, 1 and 0 read 110 for Receiver Line Status, 100 for Received Data Available, 010 for Transmitter Holding Register Empty and 000 for MODEM Status.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "980",
+       "sha": "e026a0d2a588f569142cc8bc72cf3c4f1c2aa5176b6980a836d2ec2590605491"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "985",
+       "sha": "dfd6f0c39fbcaab5a72a4b0a385e7df166e0e97b5005835d5450e24af73f7c97"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "990",
+       "sha": "8773a310f8fc649ee9ae65f8ef807c30e594e44c9235928d2f4a8c4c050d2ef6"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "992",
+       "sha": "75dddc9ceff242ceafb9d9a9a5059e7201b8021f5ee42fff675c092e39ddfff9"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1000",
+       "sha": "80810840f12069552aed2225dd50a6c309e762144751eb1dcf0f4a6a232a2974"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1027-1028",
+       "sha": "affa62b751a8b0139c7ba0cc50eb1b75283f26383657caecc3b090cef17e162c"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "bits 3-7",
+     "of": "doc",
+     "text": "Bits 3 through 7 of the Interrupt Identification register are always logic 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1029",
+       "sha": "278acf3d587ed409bc0bc87a1f8ea99f0162ea5f3aee20c215baf9993afea5da"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "when",
+     "of": "doc",
+     "text": "Reading the Line Status register resets the Receiver Line Status interrupt.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "983",
+       "sha": "8a2a35b6b29c340bc4c7ca7a70c1263df9ec1b0a655cc0abb11da254f85ef3e6"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "985",
+       "sha": "dfd6f0c39fbcaab5a72a4b0a385e7df166e0e97b5005835d5450e24af73f7c97"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "988-989",
+       "sha": "55ccc620502d7287798e7cf8910bc0ad33f4e2bc19b2699e043d6ce2b9b1925a"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "when",
+     "of": "doc",
+     "text": "Reading the Receiver Buffer register resets the Received Data Available interrupt.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "983",
+       "sha": "8a2a35b6b29c340bc4c7ca7a70c1263df9ec1b0a655cc0abb11da254f85ef3e6"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "990-991",
+       "sha": "387193aa0548715bccf87cd18cbbef320d204bbcf195330de634588cd066611d"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "when",
+     "of": "doc",
+     "text": "Reading the Interrupt Identification register, if it is the source, or writing the Transmitter Holding register resets the Holding Register Empty interrupt.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "983",
+       "sha": "8a2a35b6b29c340bc4c7ca7a70c1263df9ec1b0a655cc0abb11da254f85ef3e6"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "992-993",
+       "sha": "4c9622e4d63baf50bd141d65848bff3db1ab5daefa25733605d05cdc6097ed93"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "996-999",
+       "sha": "1118978e8ed3d34980fcd6dca12765cfabcbfbd786cb3835d9539e25a19f477a"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "when",
+     "of": "doc",
+     "text": "Reading the MODEM Status register resets the MODEM Status interrupt.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "983",
+       "sha": "8a2a35b6b29c340bc4c7ca7a70c1263df9ec1b0a655cc0abb11da254f85ef3e6"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1000",
+       "sha": "80810840f12069552aed2225dd50a6c309e762144751eb1dcf0f4a6a232a2974"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1004-1005",
+       "sha": "064f5429d565e2f6865db9f9d74dfc2525b9a1a29345f3fd9e12d9dfacce7fa9"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "write",
+     "of": "doc",
+     "text": "Address 2 selects the Interrupt Identification register, which the register table marks read only.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "437-438",
+       "sha": "683bcb19bd2e53627f91f5ea85846f2d50530281701e0c6622d5c8f393a2f267"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "is",
+     "of": "doc",
+     "text": "Table V lists the sources: overrun, parity or framing error or break; received data; holding register empty; clear to send, data set ready, ring indicator or data carrier detect.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "976",
+       "sha": "8d545f1a7047d0c106c90c53f050642c90b9dd058f7540ccfb3a6072102aa1c2"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "985-987",
+       "sha": "11964af24937f0707b515af0e2b1a297a699237651d964ccd8f25a64543ed73e"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "990",
+       "sha": "8773a310f8fc649ee9ae65f8ef807c30e594e44c9235928d2f4a8c4c050d2ef6"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "993-995",
+       "sha": "3ceb445535cb2ce792f538108c826dc46a1680fe714d8781dbc8b91971b093f0"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1000-1003",
+       "sha": "1333e251786497f1b43a1be949cf3bdabee9583ac76be51a132b3aa5a2f4fab7"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "is",
+     "of": "doc",
+     "text": "The UART prioritizes interrupts into four levels and records them in the Interrupt Identification register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1010-1012",
+       "sha": "c88e6179d40120e01b1413b023252768304d7f9126e89936573b7513dd14cebc"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "is",
+     "of": "doc",
+     "text": "While the CPU accesses the Interrupt Identification register the UART freezes its indication and records new interrupts until the access is complete.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1016-1020",
+       "sha": "d13dab9ff271b1f451484c8b9f030d289d2248c9c63575c812ea8c1f226b9637"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "read",
+     "of": "doc",
+     "text": "A read at address 2 returns the Interrupt Identification register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "437-438",
+       "sha": "683bcb19bd2e53627f91f5ea85846f2d50530281701e0c6622d5c8f393a2f267"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "bits 3-7",
+     "of": "mame",
+     "vs": "differs",
+     "row": "5",
+     "text": "Bit 3 of the identification value is set inside the Received Data Available branch when the pending bits equal 0x11, the character-timeout constant.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "202-206",
+       "sha": "3d36a20d22f090b044a0e90a8cf25328bf5297d773896552b67bfb865858077b"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "161",
+       "sha": "d9d71fbea4537165a50f1c9c2d41073669be11dd7e1b4206ddcd090208c203a5"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "write",
+     "of": "mame",
+     "vs": "absent",
+     "row": "10",
+     "text": "The base-class set_fcr virtual has an empty body.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.h",
+       "lines": "57",
+       "sha": "007f938cd777d62c86cc3abdf1196115523d5b8af5dd9b140c769ec8eb8c0e64"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "bits 3-7",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "When FIFOs are switched on, a read ORs 0xC0 into the returned value, and a pending FIFO timeout sets the stored identification value to 0xC.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "637",
+       "sha": "79d3fc2236a7d932bf289ea2ca9fd532b985b8673cae1b6afd2fe7bbceb24b96"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "641",
+       "sha": "89f0bf3f3c977e8e2843d9f0e73b44a6c55d89831e5bff0dc585d17e7646823c"
+      },
+      {
+       "ref": "dosbox-x:include/serialport.h",
+       "lines": "430",
+       "sha": "2f7ad5456cbc77e0f60c499e67e30dac034143147dbaa249a17b582daf3e4d7c"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "354",
+       "sha": "8298c2248a03b0543e836289930baf44ee93a15bcbad5e770e1d1b7b23343d0f"
+      },
+      {
+       "ref": "dosbox-x:include/serialport.h",
+       "lines": "310",
+       "sha": "8118c96d1ba5f3467faf8bfef1c5e8463c71ee0bf6b235fd05235eb5996fe3fd"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "10",
+     "text": "A write at register 0x02 stores FIFO control and clears the receive or transmit FIFO when a FIFO-clear bit is set.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "664-671",
+       "sha": "263bae40afca0c7687f8942f588c8d8e92cc97a9dbd0a45a31da78a47dfb7c40"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A FIFO character timeout ranks between Receiver Line Status and Received Data Available.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "353",
+       "sha": "7ba1d685746e96ee18c753d922d192d473ece3f039bcb7adbe028f440e1f45f3"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "354",
+       "sha": "8298c2248a03b0543e836289930baf44ee93a15bcbad5e770e1d1b7b23343d0f"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "355",
+       "sha": "fb64c38b6271e32920f3aca86f7b526322c92c56d267ce51945bc4b28161d504"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "7",
+     "text": "A read of the receive buffer clears the Received Data Available interrupt only while the receive FIFO holds fewer bytes than the receive threshold.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "581",
+       "sha": "b74768ab5be020f34eab9b700c620d6eeab5a04780ea367b648d471ce8db0d19"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "bits 3-7",
+     "of": "mame",
+     "vs": "differs",
+     "row": "5",
+     "text": "In the NS16550 a write at 0x02 clears bits 7, 6 and 3 of the identification value when FCR bit 0 is clear, else sets bits 7 and 6.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "299",
+       "sha": "86574a8fa96fbe4c2e5f8fe26a120e228cbb762c0a9c9389815718c32e1f45d1"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "795-799",
+       "sha": "8f8cfe2990cf57b050e98dea35c67fd4a4b50f4bcbc948badd7454264352b2a4"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "819",
+       "sha": "d5603568c8f31f96e326ed938c50b3038d023c8d23ce5517f4b3273d59766435"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "977-979",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "981-982",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "984",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1009",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1021",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "191",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "215",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "232",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "467",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "197-201",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "202-204",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "208-209",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "211-212",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "197-201",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "202-204",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "208-209",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "211-212",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "212",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "220",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "222",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "469-470",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "279",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "486",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "449",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "496",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "240",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "240",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "240",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "240",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "464-470",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "506",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.h",
+     "lines": "57",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "353",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "355-357",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "353",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "355-357",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:include/serialport.h",
+     "lines": "311-314",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "358",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:include/serialport.h",
+     "lines": "309-314",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "640",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "516",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "837",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "886",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "345",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "345",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "345",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "637-643",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "636",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "650-663",
+     "as": "unseen",
+     "reason": "switches the FIFOs on or off, a 16550 feature outside the datasheet"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "672-676",
+     "as": "unseen",
+     "reason": "selects the receive trigger level, a 16550 feature outside the datasheet"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "317-327",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "335-344",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "328",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "360-377",
+     "as": "unseen",
+     "reason": "drives the PIC interrupt line, which is the INTR pin outside the programming model"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "704",
+     "as": "parent",
+     "owner": "chip:device:ins8250"
+    }
+   ]
+  },
+  {
+   "key": "0x03",
+   "name": "line control",
+   "aliases": [
+    "LCR"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "439"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "603-623"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "793-834"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Write_LCR"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Read_LCR"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address 3 selects the Line Control register whatever the Divisor Latch Access Bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "439",
+       "sha": "f844ccee7f4f4f78bc4e81976299be5189bd7b5ffdd3241febfa7add30c11c59"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "The programmer specifies the format of the asynchronous data exchange and sets the Divisor Latch Access bit through the Line Control register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "604-607",
+       "sha": "dc145b01cf9f5c1bb815ca03e1aa7c666e76babd285bbae163035c6297caa504"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "The programmer can also read the contents of the Line Control register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "607-611",
+       "sha": "e1c41e3b6a2dcec05880a6b93410d37ef25e0929cdb946bd63d31eeb39550a94"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bits 0-1",
+     "of": "doc",
+     "text": "Bits 0 and 1 specify 5, 6, 7 or 8 bits in each transmitted or received serial character.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "612-619",
+       "sha": "7607a734dbdb9edc4cf9a61327bffc9f869f112387cb94972c278018440c9d0f"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "bit 2",
+     "of": "doc",
+     "text": "Bit 2 selects one stop bit when 0; when 1 it selects one and a half stop bits for 5-bit words and two for 6, 7 or 8 bits.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "620-623",
+       "sha": "ec952f0b9d946107a004f4b29794b5208b1f0cd64cf9cc94b4f5ec2376592c10"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "793-795",
+       "sha": "d9803514218b6feee56cf0863d02395ce5ccfec4d41d72beb4c6b7de6b508bd0"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bit 2",
+     "of": "doc",
+     "text": "The receiver checks the first stop bit only, whatever number of stop bits is selected.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "795-797",
+       "sha": "a363c0bc4451936d4b6188ecea5bd98ef3ef0e8a23ab3c8c0565132fcf3b57fd"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bit 3",
+     "of": "doc",
+     "text": "Bit 3 enables a parity bit between the last data bit and the stop bit, generated when transmitting and checked when receiving.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "798-803",
+       "sha": "106fa494960dbffcba64b3396bc0edb1979316e4055a96bb62000ecb9f28ef3b"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "bit 4",
+     "of": "doc",
+     "text": "With bit 3 set, bit 4 at logic 0 selects an odd number of 1s and bit 4 at logic 1 an even number of 1s.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "804-808",
+       "sha": "1d55abbf67fa2c32f8b0a94925bee9d409280193b60e299b1151068c2563fb80"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "With bits 3, 4 and 5 set the parity bit is sent and checked as 0; with bit 4 clear it is 1; bit 5 clear disables stick parity.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "809-813",
+       "sha": "8b8f18d5ea1db9a90e4eee09682478555d05d4a08b217c2cb801e93bc13d1b38"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "Bit 6 at logic 1 forces the serial output to the spacing state, and clearing it ends the break; it has no effect on the transmitter logic.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "814-819",
+       "sha": "35f964b0d7c10ded4b0360f3a25a5721ee3abd2aaada4ac9204d85168359ec1c"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "is",
+     "of": "doc",
+     "text": "To send a break without stray characters: load zeros on THRE, set break after the next THRE, wait for the transmitter to be idle, then clear break.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "820-828",
+       "sha": "436f216236d04d3f2d78be149ae6926dce833c380466f747ddf6cc07a20e8f29"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "Bit 7, the Divisor Latch Access Bit, must be 1 to access the Divisor Latches and 0 to access the Receiver Buffer, Transmitter Holding or Interrupt Enable.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "829-834",
+       "sha": "15ffd10d355c6055641431476b0cbbc08c2921655f1b3879913a50994286dda5"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "bit 6",
+     "of": "mame",
+     "vs": "differs",
+     "row": "10",
+     "text": "Changing break drives SOUT with 0 or the last transmitted bit, but in loopback it feeds that value to the receiver instead of SOUT.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "342-353",
+       "sha": "9856c83d8a9ad4563955f738475b91bd38392cbfc0488f6af05ec574f17aefc8"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "603",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "306",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "306",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "306",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "306",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "306",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "306",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "306",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "312-322",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "323-332",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "312-322",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "323-332",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "312-322",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "323-332",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "335-340",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "506",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "355",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "357",
+     "as": "unfollowed",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "702",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "702",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "702",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "702",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "702",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "702",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "697",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "703",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "704",
+     "as": "unfollowed",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "704",
+     "as": "unfollowed",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "706",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "707",
+     "as": "unfollowed",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "708",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "711-714",
+     "as": "log"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "705",
+     "as": "parent",
+     "owner": "chip:device:ins8250"
+    }
+   ]
+  },
+  {
+   "key": "0x04",
+   "name": "modem control",
+   "aliases": [
+    "MCR"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "440"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1051-1092"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Write_MCR"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Read_MCR"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address 4 selects the MODEM Control register whatever the Divisor Latch Access Bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "440",
+       "sha": "9e9850e2462de904558fccf9a010b546733f0aa54be4a72401bcc6c27df1947b"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "The MODEM Control register controls the interface with the MODEM or data set, or with a peripheral device emulating a MODEM.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1052-1054",
+       "sha": "ba9f2c056bcc8c4cd6acd9c46856ccfd47ca5d1475ac6fef0e633922adf49687"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "Bit 0 at logic 1 forces the DTR output to logic 0, and at logic 0 forces it to logic 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1057-1060",
+       "sha": "c9cf16bac602fd6038d0009d564ffbd6b953a579ff2cff497a9a90dd1490a05a"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The DTR output may be applied to an EIA inverting line driver such as the DS1488 to obtain the proper polarity at the MODEM.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1061-1063",
+       "sha": "bc82742d2afd1efa744eefabbc74bee19c0d986c503221a2a293fb457528fcb0"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "bit 1",
+     "of": "doc",
+     "text": "Bit 1 affects the Request to Send output in the same way as bit 0 affects DTR.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1064-1066",
+       "sha": "96193002a9517aeb0fa4a15a37a79d4d659d3dc7329068d2c3b47b484dbb10e1"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bit 2",
+     "of": "doc",
+     "text": "Bit 2 controls the user-designated OUT 1 output in the same way as bit 0 affects DTR.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1067-1069",
+       "sha": "9c5b536bd0c1bb540659e092ffb88c6d40e3713d6f09ff6fe50d5de0a03414c7"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bit 3",
+     "of": "doc",
+     "text": "Bit 3 controls the user-designated OUT 2 output in the same way as bit 0 affects DTR.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1070-1072",
+       "sha": "9270305fd1218c12fa80d899966ed8ff9409918157ba118c621e1259be8fdd8a"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "bit 4",
+     "of": "doc",
+     "text": "Bit 4 at logic 1 provides a local loopback feature for diagnostic testing of the UART.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1073-1075",
+       "sha": "b46af531021bb106930c45cbf80cc117f8a7a425ffa3dbe07a80d2b8f76933dc"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "when",
+     "of": "doc",
+     "text": "In loopback the transmitter Serial Output is set to the marking state.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1075-1078",
+       "sha": "65e6d73943af97da3d641b7919ab7f34400ed64b124c7a490e3993449a0de421"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "when",
+     "of": "doc",
+     "text": "In loopback the four MODEM Control inputs are disconnected and the four MODEM Control outputs are internally connected to them.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1079-1082",
+       "sha": "1f260d5bf442b9c21cc498716d11e073705d6c83b5fb0b5e74492bcac9df5f79"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "bits 5-7",
+     "of": "doc",
+     "text": "Bits 5 through 7 of the MODEM Control register are permanently logic 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1092",
+       "sha": "3aae46b5c51e805ed189f4d1cae8454c2875a87ee99e1cefc9a9145fcb931bc3"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "is",
+     "of": "doc",
+     "text": "In loopback, transmitted data is immediately received, the receiver and transmitter interrupts work, and MODEM interrupts take the four low MCR bits as sources.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1082-1091",
+       "sha": "afa480cb221c166be002d5213508985cbbb2bdb35d6eea1fa9cf3689a8e5ca1c"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "text": "In loopback MAME calls update_msr, then drives the DTR, RTS, OUT 1 and OUT 2 output pins to 1.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "366",
+       "sha": "ea180eff9ba35f7f6495c23e9c4ad5b1cad856aa57da7417025a1f916f341bb1"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "375-378",
+       "sha": "34ebb58af5b3e3228059945716629f33da00c07a867496b205ce4fefde2b2bd8"
+      }
+     ],
+     "row": "10"
+    },
+    {
+     "n": "102",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "Leaving loopback restores the serial output to the last transmitted bit unless break is set, and passes the receive pin to the receiver.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "382-386",
+       "sha": "ca0e08a27319fda38384fa1d2eca9fdff59177e905e96a4758f0a84de040aa8e"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "10",
+     "text": "Enabling loopback lowers the real RTS and DTR lines through setRTSDTR with both false, and leaving it sets them from the new bits.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "748-751",
+       "sha": "107b3c8e4a321064660285335fbe529d0facc6158e888d81dab0ea50de103e95"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "10",
+     "text": "In loopback a changed DTR, OUT 1 or OUT 2 sets a MODEM Status delta flag and raises the MODEM Status interrupt, OUT 1 only on its falling edge.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "758-761",
+       "sha": "fa1460d5ff613d02799e05f50b80dfc66abcfde034965d2aa5273bb9628e0d4d"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "762-765",
+       "sha": "fa1460d5ff613d02799e05f50b80dfc66abcfde034965d2aa5273bb9628e0d4d"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "766-772",
+       "sha": "09b75d42f66928c8deb0d2d4843c99235ce0e19ecf17d8d6e76ef56d389ad53f"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "773-776",
+       "sha": "a3d3759a371fb78c238da9c585712133b281d48ab7f35cba792fe572ebd02f86"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "text": "OUT 2 gates the interrupt: while an IRQ is active, clearing bit 3 takes the IRQ from the PIC and setting it asserts it again.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "807-815",
+       "sha": "2455250362b727d6f33e955e992d001fc090d153fa1bb91e9c0b82515ce720f5"
+      }
+     ],
+     "row": "7"
+    },
+    {
+     "n": "204",
+     "on": "bit 2",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "6",
+     "text": "Bit 2 is stored as the op1 state; the setRTSDTR, setRTS and setDTR calls that drive lines pass only the RTS and DTR values.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "745",
+       "sha": "78e6b2651fa5f4b40886d80f70ee8b8dcd12d8988d50c5d6d58b97ff48d749cf"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "750",
+       "sha": "bd0ffd898ac8ebcab630ebd080174977a567daf6aabc146fc1b6eb250422504a"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "788",
+       "sha": "2975543493878c0c59bcc7605af8c269251706cb2cb0a9e93ab747b6dcdce1a9"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "795",
+       "sha": "7c6e6c3cb45096ac47c9c840ff099a02f5ef15d3b956a585beff47fed424439a"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "802",
+       "sha": "e153279ebb334bfd0f2330c47eed3b7596c87e9f8d2d268510c1d26e64626af3"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "819",
+       "sha": "e2ee0332b0e4a4afd23f738185e56fd3a223c7c47633ed934304c37eab739883"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "9",
+     "text": "Switching loopback on in Write_MCR does not put the serial output in the marking state.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "748-751",
+       "sha": "107b3c8e4a321064660285335fbe529d0facc6158e888d81dab0ea50de103e95"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1051",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1056",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1055-1056",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "362",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "368",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "371",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "382",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "364",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "364",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "364",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "506",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "370",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "387",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "388",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "389",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "390",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "381",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "821",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "817-821",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "743-747",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "781",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "789",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "731-737",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "742",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "784-787",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "792-794",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "799-801",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "748",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "753",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "777",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "779",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "768",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "797",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "807",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "811",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "750",
+     "as": "unfollowed",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "788",
+     "as": "unfollowed",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "802",
+     "as": "unfollowed",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "750",
+     "as": "unfollowed",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "788",
+     "as": "unfollowed",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "795",
+     "as": "unfollowed",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "817",
+     "as": "unseen",
+     "reason": "keeps the DTR state for the next change test"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "818",
+     "as": "unseen",
+     "reason": "keeps the RTS state for the next change test"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "820",
+     "as": "unseen",
+     "reason": "keeps the OUT 2 state for the IRQ gating test above"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "706",
+     "as": "parent",
+     "owner": "chip:device:ins8250"
+    }
+   ]
+  },
+  {
+   "key": "0x05",
+   "name": "line status",
+   "aliases": [
+    "LSR"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "441"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "917-975"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "276"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "292-293"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "451"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "568-583"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "591-593"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "596"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "395-398"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "405"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "429-430"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "499"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "530"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "565"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "611-612"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Read_LSR"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "905-910"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address 5 selects the Line Status register whatever the Divisor Latch Access Bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "441",
+       "sha": "8aec1bc6f88a2afbdb649668228d1354648cc5eaebc9404f06ea2a21cd98f100"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read at address 5 returns the Line Status register, an 8-bit register that gives the CPU status information about the data transfer.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "441",
+       "sha": "8aec1bc6f88a2afbdb649668228d1354648cc5eaebc9404f06ea2a21cd98f100"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "918-920",
+       "sha": "9c9ef0d7b982924599528c581c38478b796145395705f911088777964fcbcae0"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "973",
+       "sha": "d9a793dd66e16c600f63674ab4536f1fb8f2b595de2108fc5ba6185bfc2f0bb8"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "Bit 0, Data Ready, is set when a complete incoming character has been received and transferred into the Receiver Buffer register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "921-923",
+       "sha": "5106236dfb664bc88bb40747d4f7c9a296982d3bc1ef6e8b7d842ffc89fd54c5"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "Bit 0 is reset to logic 0 by reading the data in the Receiver Buffer register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "924-925",
+       "sha": "dedd6ecca6a761db6cd1c6023fcd5afc47454613e1762746a9b2fe398ccb4538"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "bit 1",
+     "of": "doc",
+     "text": "Bit 1, Overrun Error, is set when the Receiver Buffer was not read before the next character arrived, and reset whenever the CPU reads the Line Status register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "926-932",
+       "sha": "bf7feb34c2a4b874a11834666d49bbbe057bf7fb95ede3ef2d90dc988c0dd257"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bit 2",
+     "of": "doc",
+     "text": "Bit 2, Parity Error, is set when a received character has the wrong parity.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "933-936",
+       "sha": "2ebf613ab79306a390f10aa2c9118f462935dcded764ba62b0183461cb168804"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bit 3",
+     "of": "doc",
+     "text": "Bit 3, Framing Error, is set when the stop bit following the last data or parity bit is a logic 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "939-942",
+       "sha": "bd3f4e372d325e3948b8b0f0d1833d1a0131b87a02d26fe3f63e432dfde3239d"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "bit 4",
+     "of": "doc",
+     "text": "Bit 4, Break Interrupt, is set when the received data input is held spacing for longer than a full word transmission time.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "948-951",
+       "sha": "28f34e625f2efd7eb59a09d0618e1a44be3a2cc86269432a38237f86ff3a435d"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "when",
+     "of": "doc",
+     "text": "Reading the Line Status register resets the Parity Error, Framing Error and Break Interrupt indicators, and the Overrun Error indicator.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "931-932",
+       "sha": "aa96349883a29571c3bf9e0d3df89401e77214ca8a8befe7a82ecb1da4048080"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "937-938",
+       "sha": "e2e1201fc7a6a8cf4901b52aa9c35eb8e14318a7c99069e3f847858b291aa97f"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "943-944",
+       "sha": "f34c98a5fc67f6d84c8dce7a7fd8157a7dab491efd649835eadcac4404da40bd"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "952-953",
+       "sha": "a5b661d42a12583f0f1e61aa14cf76ef064719377ae09e5d8560c106e6372bdb"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "is",
+     "of": "doc",
+     "text": "After a framing error the UART resynchronizes by assuming the error was the next start bit, sampling it twice and then taking in the data.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "944-947",
+       "sha": "c2a0c3be4e07217138229515365d0520fe89e960f27c9db27e39b9a4c0a9c1c4"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "is",
+     "of": "doc",
+     "text": "Restarting after a received break requires the SIN pin to be logical 1 for at least half a bit time.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "954-955",
+       "sha": "f82451453ba0c083b62b0013fb6da4ad5c802b0370d949090ebd7c3fba38aa38"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "when",
+     "of": "doc",
+     "text": "Bits 1 through 4 are the error conditions that produce a Receiver Line Status interrupt when detected and enabled.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "956-958",
+       "sha": "bde7565453ef0e0e11a011554b844381330137e6ddc5cd284e815e11893d3318"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "Bit 5, Transmitter Holding Register Empty, is set when a character moves from the Transmitter Holding register into the Transmitter Shift register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "964-966",
+       "sha": "cd86b8ad4424db42e2288bc88337bf00d380191f7e56ec5401dad88b1c734636"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "Bit 5 is reset to logic 0 whenever the CPU loads the Transmitter Holding register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "966-967",
+       "sha": "4bc42c95d234ec86a51f94e89d2c10a52dd6ad401bae30d7d42488bc45962866"
+      }
+     ]
+    },
+    {
+     "n": "15",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "Bit 5 shows the UART ready for a new character, and causes an interrupt to the CPU when the Holding Register Empty interrupt enable is set high.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "959-964",
+       "sha": "ec40e3109ddcc11859ef674e1019ff3051fa8a511f38de0ce84b384d9b18502d"
+      }
+     ]
+    },
+    {
+     "n": "16",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "Bit 6, Transmitter Shift Register Empty, is set when the shift register is empty and reset whenever a data character is transferred to it.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "968-971",
+       "sha": "3acaa49fad7c90eb3f18ea9c8308fce25847f9725b4bf010df074bb3d486f540"
+      }
+     ]
+    },
+    {
+     "n": "17",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "Bit 7 of the Line Status register is permanently logic 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "972",
+       "sha": "9ae4ef2d16ef2f31fc89ac267b4f135cff1b3d5c32cfa0e835328819ec72875f"
+      }
+     ]
+    },
+    {
+     "n": "18",
+     "on": "write",
+     "of": "doc",
+     "text": "The Line Status register is intended for read operations only; writing to it is not recommended, being used only for factory testing.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "973-975",
+       "sha": "ddfa25063286074a312877893ebf2c37c42e8bbce04d9711907c956cccf582a4"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "bit 7",
+     "of": "mame",
+     "vs": "differs",
+     "row": "17",
+     "text": "A write at register 0x05 can set bit 7, which then reads as 1.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "400",
+       "sha": "f6add726a034fbb8e4ba5308db6968d169c8c25e7e9a5099bdf7b5af638966af"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "480",
+       "sha": "eaf1e97e1b807b6604cc7f856852f98c0f99af736524db01a27181920ca6e452"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "18",
+     "text": "A write at register 0x05 sets every bit except bits 5 and 6 from the data, then raises the interrupts those bits enable.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "400",
+       "sha": "f6add726a034fbb8e4ba5308db6968d169c8c25e7e9a5099bdf7b5af638966af"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "402-406",
+       "sha": "83d7eb74d4794774cda871ade6b0cb83380bd54e8d7dcfbc363ac103cde69c1a"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "bit 4",
+     "of": "mame",
+     "vs": "absent",
+     "row": "8",
+     "text": "The receive-complete path sets overrun, parity and framing errors; no line of it sets the break bit.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "568-575",
+       "sha": "76dacdf26651a8959f7e868c500b1c0ff51fb8d37d5a7ea1e673299d0094eb49"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "576-583",
+       "sha": "c20a053fdad393c844f91dad4c1159c42d9730d35ae7497b002ebb1e9023f186"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "bit 0",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "Data Ready reads as 1 whenever the receive FIFO holds data, computed at each read.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "834",
+       "sha": "bf1e70eb9f43e5e689fc3f787aca48906dbae5b2654f15c11190796f1a316447"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "bit 0",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "4",
+     "text": "Reading the receiver buffer takes the byte out of the receive FIFO, so Data Ready drops once the FIFO is empty.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "565",
+       "sha": "64b9a93f421941f1f6e951968e468d31aba3b5387f9f8300e656ef79f4597513"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "834",
+       "sha": "bf1e70eb9f43e5e689fc3f787aca48906dbae5b2654f15c11190796f1a316447"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "bit 5",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "13",
+     "text": "Holding Register Empty reads as 1 whenever the transmit FIFO is empty, computed at each read.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "833",
+       "sha": "4dc7c1d7c697d09033d4fe4658cc74fb0d228026d952b003976177c72b8a0936"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "bit 5",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "14",
+     "text": "The bit is computed at each read from whether the transmit FIFO is empty, so it reads 0 while a written byte waits in it.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "833",
+       "sha": "4dc7c1d7c697d09033d4fe4658cc74fb0d228026d952b003976177c72b8a0936"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "bit 7",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "17",
+     "text": "Bit 7 reads as 1 while the FIFO holds a byte received with an error.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "835",
+       "sha": "ccf9eb5d3ae40c028cd10532ff3ae3b3e6aa4bc807ff22512912a9c2b49a6403"
+      },
+      {
+       "ref": "dosbox-x:include/serialport.h",
+       "lines": "431",
+       "sha": "445f49c8100886dd4e17a421c29529416494d353ee0d8d18f89d1e7c3a25af56"
+      }
+     ]
+    },
+    {
+     "n": "208",
+     "on": "bit 2",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "6",
+     "text": "Bit 2 is set by ORing the caller-supplied error mask into LSR; the parity mask is 0x4.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "430",
+       "sha": "2e62484ebf6017651449645f4a45b4974c8fc6e4d92ba68ae40713eba62070e1"
+      },
+      {
+       "ref": "dosbox-x:include/serialport.h",
+       "lines": "369",
+       "sha": "be9b40636b2baccc3bd2c157d70073c648df4753fb95f46ee9c5a78256b2f7d7"
+      }
+     ]
+    },
+    {
+     "n": "209",
+     "on": "bit 3",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "7",
+     "text": "Bit 3 is set by ORing the caller-supplied error mask into LSR (framing mask 0x8), and a received break in that mask also adds the framing bit.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "405",
+       "sha": "26da6bb3841fb9c13dafb98dca7de66270d357db8c29febfbee5cee25de014c2"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "430",
+       "sha": "2e62484ebf6017651449645f4a45b4974c8fc6e4d92ba68ae40713eba62070e1"
+      },
+      {
+       "ref": "dosbox-x:include/serialport.h",
+       "lines": "370",
+       "sha": "221e1625ffb6aa85b91b40ec86cfbfec97c6f6f081aca83f807b1548b666da06"
+      }
+     ]
+    },
+    {
+     "n": "210",
+     "on": "bit 4",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "8",
+     "text": "Bit 4 is set by ORing the caller-supplied error mask into LSR; the break mask is 0x10.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "430",
+       "sha": "2e62484ebf6017651449645f4a45b4974c8fc6e4d92ba68ae40713eba62070e1"
+      },
+      {
+       "ref": "dosbox-x:include/serialport.h",
+       "lines": "371",
+       "sha": "3201ab58449f6eac4ee19b8bfab29109c22f9d6538ee0a2d110a2fa60af07133"
+      }
+     ]
+    },
+    {
+     "n": "207",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "18",
+     "text": "Write_reserved has a body that does nothing.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "905-910",
+       "sha": "326a4a4fcd2eaa8e8b454d3f967cad7cb1d52856bac1cd398a120aecef45aa15"
+      }
+     ]
+    },
+    {
+     "n": "104",
+     "on": "bit 0",
+     "of": "mame",
+     "vs": "differs",
+     "row": "4",
+     "text": "A read of the receiver buffer clears Data Ready; with the FIFO enabled it clears it when the FIFO is then empty.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "445-446",
+       "sha": "1474fa87cff15598cdebabafa0c5539aec2e715b89ce190da342813223ee36b6"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "450-451",
+       "sha": "ae05102442f633aeb652728afdaeff41d41f1452dbb8744127dc057efa23d9a5"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "765-768",
+       "sha": "8ac9d59a2a464172ebf39f4684b021e7384892cfe8cd9a45d669244e5b69df71"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "781-787",
+       "sha": "d475be2af5385549c6f5ae1919ff14c50da8297d5daf0a0f799975a684333f3e"
+      }
+     ]
+    },
+    {
+     "n": "105",
+     "on": "bit 1",
+     "of": "mame",
+     "vs": "differs",
+     "row": "5",
+     "text": "Overrun is set when Data Ready is still set at the next character; with the FIFO enabled, when 16 characters are held. A read of LSR clears it.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "569-572",
+       "sha": "f515d571f08f9064f84f8e13f2cc989c5ad70e75ade5fec308c8a9f6b82b9592"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "516-518",
+       "sha": "df9d070aa16c4d7122f57a539c501bf0d5e1659d07651c6c831cd001b035f4ac"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "481-483",
+       "sha": "cbad2d176d3b0ebbbff3663a3905cd9d64ec786dc68dbeca31cccd5707381a57"
+      }
+     ]
+    },
+    {
+     "n": "106",
+     "on": "bit 2",
+     "of": "mame",
+     "vs": "differs",
+     "row": "6",
+     "text": "Parity error is set when a character is received; with the FIFO enabled, for a character queued behind others it is set when the one before is read.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "577-578",
+       "sha": "637e1f87879f51ae9738af01e30808d79cfe5bf2882fa3b667f8a9f2a38d9add"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "528-532",
+       "sha": "7ff9a2808ec631b9d043211e7ca7f2ff737da631b245ba92f51ad8fd61f66c31"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "765-773",
+       "sha": "aef766caa25fc5cb77e0a8afd5e36e42bf19ea5d444f22a7d8c79ecce616ae63"
+      }
+     ]
+    },
+    {
+     "n": "107",
+     "on": "bit 3",
+     "of": "mame",
+     "vs": "differs",
+     "row": "7",
+     "text": "Framing error is set when a character is received; with the FIFO enabled, for a character queued behind others it is set when the one before is read.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "575-576",
+       "sha": "e0d0fe1ec8637e4d12b22c15252d3d29ba453814ef3f46aa0655a700c8d0f639"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "528-532",
+       "sha": "7ff9a2808ec631b9d043211e7ca7f2ff737da631b245ba92f51ad8fd61f66c31"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "765-773",
+       "sha": "aef766caa25fc5cb77e0a8afd5e36e42bf19ea5d444f22a7d8c79ecce616ae63"
+      }
+     ]
+    },
+    {
+     "n": "108",
+     "on": "bit 5",
+     "of": "mame",
+     "vs": "differs",
+     "row": "13",
+     "text": "Holding Register Empty is set when a character moves into the shift register; with the FIFO enabled, when that move leaves the transmit FIFO empty.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "590-592",
+       "sha": "25c9d15c652bcbffc852d2f17f22d872048b3c1e41a520bc3aaffeab7a7cc615"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "549-558",
+       "sha": "07ee1bf590e819007d1dc4b00bc80f136e0477133fa13bee62b92fa0f7fa1050"
+      }
+     ]
+    },
+    {
+     "n": "109",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A write at register 0x02 with FCR bits 0 and 2 set empties the transmit FIFO, sets Holding Register Empty and raises its interrupt.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "299",
+       "sha": "86574a8fa96fbe4c2e5f8fe26a120e228cbb762c0a9c9389815718c32e1f45d1"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "795-800",
+       "sha": "f656020644f4ea94db8f8fd714698d3e9bd34dd9c4e1012a5a3d3f95e5e1c6e9"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "811-817",
+       "sha": "4443a4cc47b8a77eb5bceb73ebb8a7b928e1d0a7a04abf37e98c1ad00fe15d61"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "917",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "573",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "483",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "481",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "579-580",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "568",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "582-583",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "593",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "292-293",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "276",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "591",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "596",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "506",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "480-483",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "481",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "395-398",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "430",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "836",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "836",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "429",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "611-612",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "499",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "530",
+     "as": "agrees",
+     "row": "16"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "832-838",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "905-910",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "833",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "834",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "835",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "582",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "707",
+     "as": "parent",
+     "owner": "chip:device:ins8250"
+    }
+   ]
+  },
+  {
+   "key": "0x06",
+   "name": "modem status",
+   "aliases": [
+    "MSR"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "442"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1093-1128"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "function": "ins8250_uart_device::update_msr"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Read_MSR"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Write_MSR"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "setRI"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "setDSR"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "setCD"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "setCTS"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address 6 selects the MODEM Status register whatever the Divisor Latch Access Bit.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "442",
+       "sha": "8b9714e42112a6236488359b885f673e9834086201861f9eb942537ba9953297"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "A read at address 6 returns the current state of the control lines from the MODEM or peripheral device to the CPU.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "442",
+       "sha": "8b9714e42112a6236488359b885f673e9834086201861f9eb942537ba9953297"
+      },
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1094-1096",
+       "sha": "ec48054583126fe9f31be1093cb460fd70bddfd3af81cbfc4236bed139d7ad8d"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "when",
+     "of": "doc",
+     "text": "Four bits give change information: they are set to 1 whenever a MODEM control input changes state, and reset to 0 whenever the CPU reads the register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1096-1100",
+       "sha": "a7a0034e9095b3b516b09203c9b1911329715f7df505232358bcd467dac85de7"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "Bit 0, Delta Clear to Send, shows that the CTS input has changed state since the CPU last read it.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1103-1105",
+       "sha": "1a18c70b5c8604d003173b083ea523f8a5b6f26dcf8a1b5d003bdd103a0fe8ae"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "bit 1",
+     "of": "doc",
+     "text": "Bit 1, Delta Data Set Ready, shows that the DSR input has changed state since the CPU last read it.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1106-1108",
+       "sha": "ee6c3a58269b1dc1331afa454673dd934dbec68f71d63992ae45d567078081d6"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bit 2",
+     "of": "doc",
+     "text": "Bit 2, Trailing Edge of Ring Indicator, shows that the RI input has changed from a low to a high state.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1109-1111",
+       "sha": "f4c3ba59e30cc055f1995105e5ed4d9e578867ee0d6412145a1e060ce34f64c6"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bit 3",
+     "of": "doc",
+     "text": "Bit 3, Delta Data Carrier Detect, shows that the DCD input has changed state.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1112-1114",
+       "sha": "363db18f3088a578a56cc5b3885e17b6852c2d163c58887c80bf4c51f2fb66ed"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "when",
+     "of": "doc",
+     "text": "Whenever bit 0, 1, 2 or 3 is set to logic 1, a MODEM Status interrupt is generated.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1115-1116",
+       "sha": "a08e996c38b0f89a202dab653be5b54fe451041de0d6bfa5b32b3026819a1739"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "bit 4",
+     "of": "doc",
+     "text": "Bit 4 is the complement of the CTS input; with MCR bit 4 set to 1 it equals RTS in the MODEM Control register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1117-1119",
+       "sha": "479787c1985d84c856347d43b73c1d3ebe9fbc7a04ca5ab1b67a11379862126d"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "Bit 5 is the complement of the DSR input; with MCR bit 4 set to 1 it equals DTR in the MODEM Control register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1120-1122",
+       "sha": "e6b468345bcf8e593c657a774513e3be53928f18f969b16c1d76d8194b1016ba"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "Bit 6 is the complement of the RI input; with MCR bit 4 set to 1 it equals OUT 1 in the MODEM Control register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1123-1125",
+       "sha": "a743643697f2e876a23dd143aca49754616be49d8925a855858811f6f88a431a"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "Bit 7 is the complement of the DCD input; with MCR bit 4 set to 1 it equals OUT 2 in the MODEM Control register.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "1126-1128",
+       "sha": "601625c2e5e42978be8ac865d7268bfe8b63fbddcee359a019a90e23eea82e77"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "bit 2",
+     "of": "mame",
+     "vs": "differs",
+     "row": "6",
+     "text": "Outside loopback, any change of the ring input sets bit 2, on the rising as well as the falling edge.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "632-636",
+       "sha": "4553e8f4b00ad2cb68f88ac71793a31e11681f10c90b0e8f8b164897d36bc6ff"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "write",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A write at register 0x06 stores bits 0 to 3 of the data as the change bits, and raises or clears the MODEM Status interrupt from them.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "416-421",
+       "sha": "532f0dc0b83e86f67f47e1bfe76b0142dd48f49b313ebfa508ae3e0037e6c018"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A write at register 0x06 sets or clears each change bit from bits 0 to 3 of the data.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "842-845",
+       "sha": "419485f367df8ab905c96524ad0f2fbf64cae9f2b8f403ea4175a5e1ec7710a6"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "bit 2",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "6",
+     "text": "Outside loopback, bit 2 is set when setRI receives a changed value that is false.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "945",
+       "sha": "12b32f9f2f38c453403c5b6258a4ea513096c7528d2594fa3e1bce03fc4f6897"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "951-953",
+       "sha": "813b14f194fdc515083a0d190bb7fecf1a2f77f69441fcf62aed33526141cd48"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "bit 4",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "9",
+     "text": "In loopback bit 4 is set from the rts flag; otherwise from the cts flag that setCTS stores.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "861",
+       "sha": "9a5b3194a81d767b9767ca93236089339b05206fc5c8be9b92e0f2423dddc774"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "872",
+       "sha": "7c784df4409c869095bfdb2ef0e41e785cb47b40ea6c5328ef6e25e95bf995a2"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "993",
+       "sha": "bc58e17312ea6c596cf9412736c37e7e23b1b99d5698ca4069ab1083877eb5b0"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "bit 5",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "10",
+     "text": "In loopback bit 5 is set from the dtr flag; otherwise from the dsr flag that setDSR stores.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "862",
+       "sha": "9511cf4f4c0febfcd60143640bf3dc86892821f63e810db9e6d0ffa644be904f"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "871",
+       "sha": "9bfee920ccc96612f064675c3703c22082d43adeb73125a8680dc21ccbb275ee"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "965",
+       "sha": "dc6a6f9d5d9070a4ccfa90461772c9a21b44a3c6a6d6df3625d26cb3ccc91b6a"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "bit 6",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "11",
+     "text": "In loopback bit 6 is set from the op1 flag; otherwise from the ri flag.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "863",
+       "sha": "b6f647dae8c89ba8b67c24e923f323041a1989796197ab2e9ad6dd6f21527e3d"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "870",
+       "sha": "01f785d2a92a3e2ba5dbabcdb8829a945bdca247620a5912c64f1f892f09bf4b"
+      }
+     ]
+    },
+    {
+     "n": "206",
+     "on": "bit 7",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "12",
+     "text": "In loopback bit 7 is set from the op2 flag; otherwise from the cd flag that setCD stores.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "864",
+       "sha": "856e9f7974526b6e2793c81a004ff19c37f2633472a94ab232ac0fc5b2a87633"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "869",
+       "sha": "330be796014ed0b7694db91404e1b9a19ccec2ae14be6f8244f543568a8c9ac1"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "979",
+       "sha": "5d91ac8178565721f125646f9133ffd0cffa1b6def99cae388feb8490ce6e267"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1093",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "1101-1102",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "632-638",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "632-638",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "632-638",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "632-638",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "493",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "640-641",
+     "as": "unfollowed",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "632-638",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "632-638",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "632-638",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "632-638",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "624-631",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "624-631",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "624-631",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "624-631",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "506",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "490-497",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "491",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "881-884",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "967",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "995",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "981",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "953",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "995",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "967",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "981",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "954",
+     "as": "unfollowed",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "968",
+     "as": "unfollowed",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "982",
+     "as": "unfollowed",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "996",
+     "as": "unfollowed",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "859-864",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "859",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "866",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "876-879",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "945",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "960",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "974",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "988",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "947-949",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "961-963",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "975-977",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "989-991",
+     "as": "log"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "952",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "966",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "980",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "994",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "869-872",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "876-879",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "887",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "709",
+     "as": "parent",
+     "owner": "chip:device:ins8250"
+    }
+   ]
+  },
+  {
+   "key": "0x07",
+   "name": "scratch",
+   "aliases": [
+    "SCR"
+   ],
+   "source": "emulator",
+   "searched": [
+    {
+     "where": "mame-header",
+     "gave": "Header cites the FreeBSD serial UART article and says the 8250 uses eight I/O ports; it names no scratch register."
+    },
+    {
+     "where": "maker",
+     "gave": "National INS8250 and INS8250-B datasheet: its register address table lists offsets 0 to 6 and no scratch register."
+    },
+    {
+     "where": "bitsavers",
+     "gave": "Directory listing refused with 403; a 1987 National data book PDF named by a web search was not read."
+    },
+    {
+     "where": "archive-org",
+     "gave": "No separate INS8250 datasheet found there; only a saved copy of the datasheet already used was made."
+    },
+    {
+     "where": "index",
+     "gave": "datasheet4u gave the INS8250-B PDF already used; the 1990 PC8250A datasheet lists a scratch register for that other part."
+    }
+   ],
+   "regions": [
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Read_SPR"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Write_SPR"
+    }
+   ],
+   "rows": [
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A write at register 0x07 is stored in the scratch register only when the device type is INS8250A or later, so the INS8250 type drops it.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "423-428",
+       "sha": "1918adf442662ce2d33a4ce866aac4ad9a229e6fa07e35c61da04619a74e6532"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "read",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A read at register 0x07 returns the stored scratch byte for the INS8250A type and later, and 0xFF for the INS8250 type.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "434",
+       "sha": "3ebe94e642c3ad0e86f9d0fc523df48ca9a66b5bc999079f7dbeb300bfdbccd7"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "499-504",
+       "sha": "992f19faef92df0b7d7547aff853ff427176af799caca4607e8a14c37531bd8d"
+      },
+      {
+       "ref": "mame:src/devices/machine/ins8250.cpp",
+       "lines": "506",
+       "sha": "28f9e6eed27c8992504ded5b7e13364d8867f2c9abe1291c7a2634b6f1e72ec1"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "is",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "Register 0x07 is a scratch byte: a write stores it and a read returns it, and the two functions do nothing else.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "894-896",
+       "sha": "323a010fb036c7ab6696bf659aa61bac314f9c1ad6ab101661c18a128c606798"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "898-900",
+       "sha": "e5623ef4f51dc169e8a983d7d8a364526d95e5c1bac95e4c85f7f39788406f0b"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "424",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "500",
+     "as": "structure"
+    }
+   ]
+  }
+ ]
+}

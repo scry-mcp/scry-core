@@ -1,0 +1,360 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "pic8259-commands",
+ "title": "The 8259A interrupt controller, its commands",
+ "kind": "command",
+ "scope": "pic8259",
+ "covers": "FIXTURE of a test: two commands of the 8259A, one sealed",
+ "source": "official",
+ "documents": [
+  {
+   "name": "8259A.raw.txt",
+   "variant": "8259A"
+  }
+ ],
+ "official": {
+  "8259A.raw.txt": [
+   "427-436",
+   "513-532",
+   "555-584",
+   "600-640",
+   "648-684",
+   "722-727"
+  ]
+ },
+ "handlers": [
+  {
+   "ref": "mame:src/devices/machine/pic8259.cpp",
+   "function": "pic8259_device::write",
+   "case": [
+    "0"
+   ],
+   "value": "data"
+  },
+  {
+   "ref": "dosbox-x:src/hardware/pic.cpp",
+   "function": "write_command",
+   "value": "val"
+  }
+ ],
+ "engine": [
+  "set_imr",
+  "check_for_irq",
+  "check_after_EOI",
+  "LOG_MSG",
+  "LOG",
+  "LOGICW",
+  "LOGOCW",
+  "adjust",
+  "m_out_int_func",
+  "update_active_irq",
+  "start_irq"
+ ],
+ "entries": [
+  {
+   "key": "0x20..0x27",
+   "name": "non-specific EOI",
+   "regions": [
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "513-522"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "555-573"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "582-584"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "A non-specific EOI resets the highest in-service bit, which in the fully nested mode is the last level acknowledged.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "564-571",
+       "sha": "df70e692109d21ec37ce039a1379f55e0ca74fe82f4ceb111ff1ca04920e21c2"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "A non-specific EOI is OCW2 with EOI = 1, SL = 0 and R = 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "572-573",
+       "sha": "72ee31fafc7a6e09f78f328769ee95f7d70f2955dc3b2fafa2a5486f40ced976"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "bits 7-5",
+     "of": "doc",
+     "text": "R, SL and EOI control the rotate and end of interrupt modes; L2 L1 L0 give the level acted upon when SL is active.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "513-520",
+       "sha": "4044df298f2ba0334ddab6ded3b8f9c75731c4e07dadb4980c83e635354b19f1"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "when",
+     "of": "doc",
+     "text": "The in-service bit is reset by an EOI command issued before returning from a service routine, or automatically in AEOI mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "555-560",
+       "sha": "f203a2ffb1a8c8e07d7345dd7523aca7b1f4d56032ebdfe64857c1a94e40846d"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "when",
+     "of": "doc",
+     "text": "In cascade mode an EOI command must be issued twice, once for the master and once for the corresponding slave.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "561-563",
+       "sha": "1231b13b7ba76d9c1c163ba732ff409afc2f341e72d586ad666d231d58e909ff"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "when",
+     "of": "doc",
+     "text": "An in-service bit masked by an IMR bit is not cleared by a non-specific EOI in the special mask mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "582-584",
+       "sha": "93bcffbbdc8e3b7522f173c007da4f99371f5c0fd4727cbd5f3786ac91fd576c"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "6",
+     "text": "A non-specific EOI scans from the priority base and tests only the in-service bits, never the mask bits, so a masked in-service bit is cleared too.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "288",
+       "sha": "fd7a83fa35885c8b9aeb83311bf2bb51a488c1be1f832c7d9b26d11540464419"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "290",
+       "sha": "1655dccbccbb4d8970e6f2e9836c6dc8ab39e416db4aee2c777fcf480b9e281f"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "6",
+     "text": "A non-specific EOI is carried out whenever a level is in service; the condition does not look at the mask or the special mask mode.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "279",
+       "sha": "af5f7248bfd8d2dcd26eb727db09fe0acc7517b96e21766dca84dff227050fa1"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "bits 7-5",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "Rotate commands are not supported: the R bit only logs a message and the EOI is carried out.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "272",
+       "sha": "72e6eddd766f5a7f81925bc2b8be7fa1c3f4e8aa09ebff9e04e80760657444c3"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "292",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "281-282",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "281-282",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "247",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "237",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "293",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "296",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "521-522",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "292",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "276-283",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "292",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "259",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    }
+   ]
+  },
+  {
+   "key": "0xE0..0xE7",
+   "name": "rotate on specific EOI",
+   "regions": [
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "636-640"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Rotate on specific EOI changes the priorities during an end of interrupt command.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "636-638",
+       "sha": "50c916d1aa76774b806c7a98fbf6a39dfe42949d47dbab67cf06f86b921532fd"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "Rotate on specific EOI is OCW2 with R = 1, SL = 1, EOI = 1 and L0-L2 the IR level that receives the bottom priority.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "638-640",
+       "sha": "22998808c8d8a2b7b4de00edaa3b90c65b5195d8885fc634dc45e8115f851539"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "The rotate bit is not supported: the command logs a message and acts as a plain specific EOI.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "272",
+       "sha": "72e6eddd766f5a7f81925bc2b8be7fa1c3f4e8aa09ebff9e04e80760657444c3"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "274-275",
+       "sha": "5b18531132ebb4cb1a6ddf4c3a46890aa214540bd37e45e8bca0c55d48deff47"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "323-327",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "237",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "259",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "247",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "328",
+     "as": "structure"
+    }
+   ]
+  }
+ ]
+}

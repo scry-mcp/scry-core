@@ -1,0 +1,106 @@
+{
+ "id": "chipx:command:0xE0..0xE7",
+ "verdict": "CONFIRMED",
+ "reason": "",
+ "statements": [
+  {
+   "field": "description",
+   "span": "Rotates priority.",
+   "claim": "The command rotates the priority.",
+   "status": "supported",
+   "support": [
+    {
+     "src": "mame:src/devices/machine/chipx.cpp",
+     "line": 24,
+     "quote": "if (m_isr & mask)"
+    }
+   ]
+  },
+  {
+   "field": "behaviour",
+   "span": "If the in-service bit is set it is cleared.",
+   "claim": "A set in-service bit is cleared.",
+   "status": "supported",
+   "support": [
+    {
+     "src": "mame:src/devices/machine/chipx.cpp",
+     "line": 26,
+     "quote": "m_isr &= ~mask;"
+    },
+    {
+     "src": "mame:src/devices/machine/chipx.cpp",
+     "line": 26,
+     "quote": "text that is not in the file"
+    }
+   ]
+  },
+  {
+   "field": "behaviour",
+   "span": "The base moves up.",
+   "claim": "The base becomes the level plus one.",
+   "status": "unsupported",
+   "support": [
+    {
+     "src": "mame:src/devices/machine/chipx.cpp",
+     "line": 27,
+     "quote": "m_base = (level + 1) & 7;"
+    }
+   ]
+  },
+  {
+   "field": "behaviour",
+   "span": "x",
+   "claim": "Only a wrong line is quoted.",
+   "status": "supported",
+   "support": [
+    {
+     "src": "mame:src/devices/machine/chipx.cpp",
+     "line": 3,
+     "quote": "m_base = (level + 1) & 7;"
+    }
+   ]
+  },
+  {
+   "field": "name",
+   "span": "rotate on specific EOI",
+   "claim": "The datasheet names the mode.",
+   "status": "supported",
+   "support": [
+    {
+     "src": "datasheet:chipx",
+     "line": 99,
+     "quote": "synthetic datasheet line 4: the control register holds the mode in bits 3 to 1"
+    }
+   ]
+  },
+  {
+   "field": "aliases",
+   "span": "rot",
+   "claim": "The mode appears in every line.",
+   "status": "supported",
+   "support": [
+    {
+     "src": "datasheet:chipx",
+     "line": 1,
+     "quote": "the control register holds the mode in bits 3 to 1"
+    }
+   ]
+  }
+ ],
+ "omissions": [
+  {
+   "fact": "MAME acts only in its ready state.",
+   "needed": true,
+   "src": "mame:src/devices/machine/chipx.cpp",
+   "line": 17,
+   "quote": "else if (m_state == state_t::READY)"
+  },
+  {
+   "fact": "A fact nobody needs.",
+   "needed": false,
+   "src": "mame:src/devices/machine/chipx.cpp",
+   "line": 17,
+   "quote": "x"
+  }
+ ]
+}

@@ -1,0 +1,18 @@
+{
+ "format": "scry-knowledge-quotes/1",
+ "quotes": [
+  ["datasheet:8259A.raw.txt", "513-520", "4044df298f2ba0334ddab6ded3b8f9c75731c4e07dadb4980c83e635354b19f1"],
+  ["datasheet:8259A.raw.txt", "555-560", "f203a2ffb1a8c8e07d7345dd7523aca7b1f4d56032ebdfe64857c1a94e40846d"],
+  ["datasheet:8259A.raw.txt", "561-563", "1231b13b7ba76d9c1c163ba732ff409afc2f341e72d586ad666d231d58e909ff"],
+  ["datasheet:8259A.raw.txt", "564-571", "df70e692109d21ec37ce039a1379f55e0ca74fe82f4ceb111ff1ca04920e21c2"],
+  ["datasheet:8259A.raw.txt", "572-573", "72ee31fafc7a6e09f78f328769ee95f7d70f2955dc3b2fafa2a5486f40ced976"],
+  ["datasheet:8259A.raw.txt", "582-584", "93bcffbbdc8e3b7522f173c007da4f99371f5c0fd4727cbd5f3786ac91fd576c"],
+  ["datasheet:8259A.raw.txt", "636-638", "50c916d1aa76774b806c7a98fbf6a39dfe42949d47dbab67cf06f86b921532fd"],
+  ["datasheet:8259A.raw.txt", "638-640", "22998808c8d8a2b7b4de00edaa3b90c65b5195d8885fc634dc45e8115f851539"],
+  ["dosbox-x:src/hardware/pic.cpp", "272", "72e6eddd766f5a7f81925bc2b8be7fa1c3f4e8aa09ebff9e04e80760657444c3"],
+  ["dosbox-x:src/hardware/pic.cpp", "274-275", "5b18531132ebb4cb1a6ddf4c3a46890aa214540bd37e45e8bca0c55d48deff47"],
+  ["dosbox-x:src/hardware/pic.cpp", "279", "af5f7248bfd8d2dcd26eb727db09fe0acc7517b96e21766dca84dff227050fa1"],
+  ["mame:src/devices/machine/pic8259.cpp", "288", "fd7a83fa35885c8b9aeb83311bf2bb51a488c1be1f832c7d9b26d11540464419"],
+  ["mame:src/devices/machine/pic8259.cpp", "290", "1655dccbccbb4d8970e6f2e9836c6dc8ab39e416db4aee2c777fcf480b9e281f"]
+ ]
+}

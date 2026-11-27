@@ -1,0 +1,137 @@
+{
+ "format": "scry-knowledge-datasheets/1",
+ "datasheets": {
+  "8237A.raw.txt": {
+   "title": "Intel 8237A programmable DMA controller",
+   "url": "https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf",
+   "archive": "https://web.archive.org/web/20250421053346/https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8237A.pdf",
+   "class": "maker-datasheet",
+   "text": "layer",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "2a1ac5bbf5b4be75ba9272647effb389bcc5e76cbfe293d5c56e75217e2bc8a8",
+   "capture": "babd6164c325a7ff5f3ab61c000b4770b27d0e4d37b58a6a4ea9e97f54706c38"
+  },
+  "8254.raw.txt": {
+   "title": "Intel 8254 programmable interval timer",
+   "url": "https://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf",
+   "archive": "https://web.archive.org/web/20261013214517/http://www.scs.stanford.edu/10wi-cs140/pintos/specs/8254.pdf",
+   "class": "maker-datasheet",
+   "text": "layer",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "e5397a387d24fff21c8b531a320251f89b103274bbce0c057a654873e494d726",
+   "capture": "62878e10a8c100348f0085f4914399eeaaa72af30dd57db239d9a442d958533e"
+  },
+  "8259A.raw.txt": {
+   "title": "Intel 8259A programmable interrupt controller",
+   "url": "https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf",
+   "archive": "https://web.archive.org/web/20260822090120/https://pdos.csail.mit.edu/6.828/2005/readings/hardware/8259A.pdf",
+   "class": "maker-datasheet",
+   "text": "layer",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "c15120c15ca70152d6432b8b0adaedc184973cc970129a6f499e4953f5594674",
+   "capture": "ce39e953294c4c9180e77ffa4227f17fb4a8af91d64eb5e113c6f96ea9c87aaa"
+  },
+  "z80cpu_um.raw.txt": {
+   "title": "Zilog Z80 CPU user manual",
+   "url": "http://www.z80.info/zip/z80cpu_um.pdf",
+   "archive": "https://web.archive.org/web/20261001181034/http://z80.info/zip/z80cpu_um.pdf",
+   "class": "maker-guide",
+   "text": "layer",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "e3c83da5a5d8e372364c20fa53665e6fbb165ec6ac38c8c1eebc359603447b5e",
+   "capture": "e75d769e64d3a8721118c59b54812bd3d991743009a0d385468c449aa18d890c"
+  },
+  "INS8250.raw.txt": {
+   "title": "National Semiconductor INS8250 and INS8250-B universal asynchronous receiver/transmitter",
+   "url": "https://datasheet4u.com/pdf/1529856/INS8250-B.pdf",
+   "archive": "https://web.archive.org/web/20261122135310/https://datasheet4u.com/pdf/1529856/INS8250-B.pdf",
+   "class": "maker-datasheet",
+   "text": "layer",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "eefeae3a27921280b5a2922bbfd851c9433953d02aa374ae0b861d0507b80f09",
+   "capture": "d912e52a07c85b4e026ff3950a63fbf06172e89e7ef268067ee602e20ba8ef02"
+  },
+  "MC146818A.raw.txt": {
+   "title": "Motorola MC146818A real-time clock plus RAM (advance information)",
+   "url": "https://www.scs.stanford.edu/22wi-cs212/pintos/specs/mc146818a.pdf",
+   "archive": "https://web.archive.org/web/20261122135352/https://www.scs.stanford.edu/22wi-cs212/pintos/specs/mc146818a.pdf",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "ab2a1a92080a6b1b5a66c24a25017a4bd6889a622993b695a79e95dfd88bbc7b",
+   "capture": "ef097553e393584809b394190654accecb5179bbf1e32228baf74c0f436f9b5d"
+  },
+  "MC6845.raw.txt": {
+   "title": "Motorola MC6845 CRT controller (CRTC)",
+   "url": "https://cdn.hackaday.io/files/1670897148735776/6845.pdf",
+   "archive": "https://web.archive.org/web/20221025224207/https://cdn.hackaday.io/files/1670897148735776/6845.pdf",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "84ae68617c23e3b3057dce86f4a04a5be5d890d108bce8e9bb928bfdd2759dcf",
+   "capture": "066a21a53a68003d604d4f2b8a230806457814108105209be098756ac02b0406"
+  },
+  "SY6545.raw.txt": {
+   "title": "Synertek SY6545-1 CRT controller (CRTC)",
+   "url": "https://vgamuseum.info/images/doc/misc/synertek_sy6545.pdf",
+   "archive": "http://web.archive.org/web/20241109213013/http://www.vgamuseum.info/images/doc/misc/synertek_sy6545.pdf",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "cfebee5548c63b84e766cd55891b2a00d8b06a35e3eebacb7de48711cb7f7214",
+   "capture": "7bd583e40ccaf96286a2d85479c2ff71af99b9f89757ae80ad2b2100a8d80f8f"
+  },
+  "YM3812.raw.txt": {
+   "title": "Yamaha YM3812 (OPL2) application manual",
+   "url": "https://archive.org/download/YamahaYM3812ApplicationManual/Yamaha%20YM3812%20Application%20Manual_text.pdf",
+   "archive": "https://archive.org/details/YamahaYM3812ApplicationManual",
+   "class": "maker-guide",
+   "text": "ocr",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "a4caed26a837721ddf86ab089c9bc69dc0fc71f657ec658f1acb9a9723baf20b",
+   "capture": "fe46cf7644f44a51cbb843b3def5c756023d7f986f2be40c58d77b52ba4a28c8"
+  },
+  "YMF262.raw.txt": {
+   "title": "Yamaha YMF262 (OPL3) datasheet",
+   "url": "https://bitsavers.org/components/yamaha/YMF262_199411.pdf",
+   "archive": "http://web.archive.org/web/20260223110211/https://www.bitsavers.org/components/yamaha/YMF262_199411.pdf",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "pdftotext -raw",
+   "tool_version": "26.10.0",
+   "pdf": "c0eefa8572dab706a8f05ea0a61d80c2c0f65f3a477abb3c416dde60c276abc2",
+   "capture": "70eb47703a3315fa8564d4599c83c9961c9efaa157557192b55795710ab25825"
+  },
+  "SAA1099.raw.txt": {
+   "title": "Philips SAA1099 stereo sound generator, data sheet 493200",
+   "url": "https://www.worldofsam.org/sites/default/files/dl-02/493200_DS.pdf",
+   "archive": "https://archive.org/details/saa-1099-493200-ds",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "ocrmypdf + pdftotext -raw",
+   "tool_version": "17.14.2 + 26.10.0",
+   "pdf": "7ff3cca05dd569e039dc14dd557b6efce2c300e49b0db7c17b05306fd2e2a173",
+   "capture": "d949cefe1262e40449c8d0ab446f942f93ff5e221de7f160f00ff72833501a45"
+  },
+  "SN76494.raw.txt": {
+   "title": "Texas Instruments SN76494/SN76496 programmable tone/noise generator",
+   "url": "https://www.vgmpf.com/Wiki/images/9/9c/SN76494_-_Manual.pdf",
+   "archive": "https://web.archive.org/web/20241220025416/https://www.vgmpf.com/Wiki/images/9/9c/SN76494_-_Manual.pdf",
+   "class": "maker-datasheet",
+   "text": "ocr",
+   "tool": "ocrmypdf + pdftotext -raw",
+   "tool_version": "17.14.2 + 26.10.0",
+   "pdf": "4a5f7326436c385b82db3864ba6fefd7900cf47ebd29fa5333fb76d2d9a9bbe6",
+   "capture": "2b52e15de5f9752b0dbbecfec0f4edf944f943b63050ccb8f6003a22ea67f133"
+  }
+ }
+}

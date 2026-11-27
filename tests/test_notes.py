@@ -6,30 +6,49 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from null_server import KNOWLEDGE, an_entry, write_dictionary
+from null_server import a_row, rows_of, write_rows
 
 from scry_core import notes
-from scry_core.knowledge import Base
+from scry_core.knowledge.base import Base
+from scry_core.knowledge.index import E, Index
 from scry_core.notes import Note, Operand
+
+
+def a_named(key: str, name: str, **fields: object) -> dict[str, object]:
+    """One entry of the fixture, with the rows its kind owes; `placed` adds the emulator's row
+    that reaches it, which a port or a memory area needs."""
+    placed = fields.pop("placed", False)
+    rows = [a_row(1, "is", f"The {name}.")]
+    if placed:
+        rows.append({**a_row(2, "place", "The emulator reaches it here.", of="dosbox-x"),
+                     "vs": "place"})
+    return {"key": key, "name": name, "regions": [], "closed": [], **fields, "rows": rows}
+
+
+def a_call(key: str, name: str) -> dict[str, object]:
+    return {"key": key, "name": name, "regions": [], "closed": [],
+            "rows": [a_row(1, "is", f"The function {name}."), a_row(2, "out AX", "The result.")]}
 
 
 @pytest.fixture
 def base(tmp_path: Path) -> Base:
-    write_dictionary(tmp_path, "vectors", "vector", "ibm-pc", [
-        an_entry("0x21", "DOS", address=0x84, length=4), an_entry("0x10", "video BIOS",
-                                                                   address=0x40, length=4)])
-    write_dictionary(tmp_path, "memory", "memory", "ibm-pc", [
-        an_entry("0x449", "video mode"), an_entry("0x400..0x4FF", "BIOS data area")])
-    write_dictionary(tmp_path, "ports", "port", "ibm-pc", [
-        an_entry("0x3C8", "DAC write address", access="write"),
-        an_entry("0x3C8", "DAC address, read back", access="read"),
-        an_entry("0x61", "speaker control")])
-    loaded = Base.load(KNOWLEDGE / "null", tmp_path)
+    write_rows(tmp_path, "vectors", "vector", "ibm-pc", [
+        a_named("0x21", "DOS"), a_named("0x10", "video BIOS")])
+    write_rows(tmp_path, "memory", "memory", "ibm-pc", [
+        a_named("0x449", "video mode", placed=True),
+        a_named("0x400..0x4FF", "BIOS data area", placed=True)])
+    write_rows(tmp_path, "ports", "port", "ibm-pc", [
+        a_named("0x3C8", "DAC write address", access="write", placed=True),
+        a_named("0x3C8", "DAC address, read back", access="read", placed=True),
+        a_named("0x61", "speaker control", placed=True)])
+    write_rows(tmp_path, "calls", "call", "ibm-pc", [
+        a_call("0x21/0x4C", "exit"), a_call("0x21/0x4D", "get return code")])
+    loaded = Base((tmp_path,), None)
     assert loaded.faults() == []
     return loaded
 
 
-def _note(base: Base, *operands: Operand) -> Note | None:
+def _note(base: Index[E], *operands: Operand) -> Note | None:
     return notes.note(base, "ibm-pc", operands, names_on=True)
 
 
@@ -107,11 +126,10 @@ def test_a_value_no_key_can_spell_names_nothing_and_raises_nothing(
 
 def test_a_variant_is_named_in_a_note_only_when_the_instruction_at_a_stop_holds_its_register(
         tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "vectors", "vector", "ibm-pc", [
-        an_entry("0x10", "video BIOS", address=0x40, length=4)])
-    write_dictionary(tmp_path, "calls", "call", "ibm-pc", [
-        an_entry("0x10/0x12", "alternate select"), an_entry("0x10/0x12/BL=0x36", "video refresh")])
-    base = Base.load(tmp_path)
+    write_rows(tmp_path, "vectors", "vector", "ibm-pc", [a_named("0x10", "video BIOS")])
+    write_rows(tmp_path, "calls", "call", "ibm-pc", [
+        a_call("0x10/0x12", "alternate select"), a_call("0x10/0x12/BL=0x36", "video refresh")])
+    base = Base((tmp_path,), None)
     assert base.faults() == []
     at_stop = Operand("interrupt", 0x10, function=(0x12,), live=True,
                       registers={"BL": 0x36})
@@ -129,3 +147,17 @@ def test_a_variant_is_named_in_a_note_only_when_the_instruction_at_a_stop_holds_
     assert _note(base, Operand("interrupt", 0x10, function=(0x13,),
                                registers={"AH": 0x12, "BL": 0x36})) == \
         Note("video BIOS (0x10); video refresh (BL=0x36)", True), "the stop's registers win"
+
+
+def test_a_base_of_rows_notes_the_call_a_line_makes(tmp_path: Path) -> None:
+    rows = rows_of(tmp_path, "call.json", "family.json")
+    assert notes.note(rows, "dos", [Operand("interrupt", 0x21, function=(0x5A,))],
+                      names_on=True) == Note("create temp file (0x5A)", False)
+    assert notes.note(rows, "video", [Operand("interrupt", 0x10, function=(0x12,),
+                                              registers={"BL": 0x31})],
+                      names_on=True) == Note("palette loading (BL=0x31)", True)
+
+
+def test_a_base_of_rows_names_an_address_its_memory_entry_covers(tmp_path: Path) -> None:
+    rows = rows_of(tmp_path, "memory.json")
+    assert _note(rows, Operand("address", 0x449)) == Note("video mode (0x449)", False)

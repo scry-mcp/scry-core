@@ -1,0 +1,118 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "video-calls",
+ "title": "A synthetic family of calls",
+ "kind": "call",
+ "scope": "video",
+ "covers": "a synthetic dictionary for the tests",
+ "source": "emulator",
+ "searched": [
+  {
+   "where": "mame-header",
+   "gave": "The source header cites no document."
+  },
+  {
+   "where": "maker",
+   "gave": "The maker's site lists no manual for it."
+  },
+  {
+   "where": "bitsavers",
+   "gave": "Nothing under its name."
+  },
+  {
+   "where": "archive-org",
+   "gave": "No capture of a datasheet."
+  },
+  {
+   "where": "index",
+   "gave": "datasheetarchive.example has no entry."
+  }
+ ],
+ "entries": [
+  {
+   "key": "0x10/0x12/BL=0x31",
+   "name": "palette loading",
+   "regions": [
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "function": "Video",
+     "case": [
+      "0x12",
+      "0x31"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "0",
+     "on": "is",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "Alternate function select, palette loading: says whether a default palette is loaded.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "49",
+       "sha": "5e5b431b04ff9ec9fc1b90b6684ae55cfc12a465652c2318a5202a83e87359a8"
+      }
+     ]
+    },
+    {
+     "n": "P2",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "With BH=55h and the ATI card the call leaves at once.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "46-48",
+       "sha": "3ed06c0841b365785373780e175f28eb247a607aaf4cd3cf35a343ad19917f93"
+      }
+     ]
+    },
+    {
+     "n": "1",
+     "on": "in AL",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "An AL above 1 returns AL = 0 and changes nothing else.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "51-54",
+       "sha": "75e9a778f37879ab4193efdf7269c7f09cf1763515689cf9cdaf04500fe5f4c0"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "out AL",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "AL = 12h on return says the function is supported.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "55",
+       "sha": "60ce454626ab66f3dd08cb533729ff46c211e52b45fe092b24be4ca640a24c42"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "lines": "43",
+     "as": "preamble",
+     "owner": "video:call:0x10"
+    },
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "lines": "44",
+     "as": "key"
+    }
+   ]
+  }
+ ]
+}

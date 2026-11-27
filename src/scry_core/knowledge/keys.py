@@ -15,7 +15,7 @@ KINDS = ("vector", "call", "error", "port", "irq", "memory", "input", "device", 
          "command")
 NUMBERED = ("vector", "call", "error", "port", "irq", "memory", "register", "command")
 #: Kinds whose key may be a range `A..B`: an area of memory, a bank of registers or of commands.
-RANGED = ("memory", "register", "command")
+RANGED = ("memory", "register", "command", "port")
 
 _DECIMAL = re.compile(r"0|[1-9][0-9]*")
 _HEX = re.compile(r"0[xX]([0-9a-fA-F]+)")
@@ -136,7 +136,8 @@ def canonical(kind: str, key: str) -> str:
     """`key` in the one spelling of `kind`, or `KeyFault`: hex as `0x` and upper-case digits, at
     least two; `error` and `irq` decimal; a `vector` either; a `call` its parts by `/`, and last
     maybe a selector, `BL=0x36`; a `memory` key `SSSS:OOOO`, an address or a range `A..B`; a
-    `register` or `command` an address or a range."""
+    `port`, `register` or `command` an address or a range, since the hardware decodes a port
+    as a range."""
     if not isinstance(key, str) or not key or key != key.strip():
         raise KeyFault(f"a key is text with no space around it; got {key!r}")
     if kind not in KINDS:

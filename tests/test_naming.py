@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from null_server import an_entry, write_dictionary
+from null_server import a_row, rows_of, write_rows
 from pydantic import TypeAdapter
 
 from scry_core import asks, naming
-from scry_core.knowledge import Base
+from scry_core.knowledge.base import Base
 from scry_core.naming import Field, Guarded, Named
 
 PORT = Named("port", "DAC write address", "0x03C8", id="ibm-pc:port:0x3C8", device="vga-dac")
@@ -256,13 +256,26 @@ def test_the_switchs_words_fit_a_line_of_a_servers_asks_file() -> None:
     assert asks.words(naming.ARGUMENT) <= 40
 
 
+def a_call(key: str, name: str) -> dict[str, object]:
+    return {"key": key, "name": name, "regions": [], "closed": [],
+            "rows": [a_row(1, "is", f"The function {name}."), a_row(2, "out AX", "The result.")]}
+
+
 def test_a_call_is_named_from_the_registers_the_variant_included(tmp_path: Path) -> None:
-    write_dictionary(tmp_path, "calls", "call", "ibm-pc", [
-        an_entry("0x10/0x12", "alternate select"), an_entry("0x10/0x12/BL=0x36", "video refresh")])
-    base = Base.load(tmp_path)
+    write_rows(tmp_path, "calls", "call", "ibm-pc", [
+        a_call("0x10/0x12", "alternate select"), a_call("0x10/0x12/BL=0x36", "video refresh")])
+    base = Base((tmp_path,), None)
     assert naming.named_call(base, "ibm-pc", 0x10, {"AH": 0x12, "BL": 0x36}) == Named(
         "call", "video refresh", "0x10/0x12/BL=0x36", id="ibm-pc:call:0x10/0x12/BL=0x36")
     assert naming.named_call(base, "ibm-pc", 0x10, {"AH": 0x12}) == Named(
         "call", "alternate select", "0x10/0x12", id="ibm-pc:call:0x10/0x12")
     assert naming.named_call(base, "ibm-pc", 0x10, {"AH": 0x14}) is None
     assert naming.named_call(base, "other", 0x10, {"AH": 0x12}) is None
+
+
+def test_a_call_is_named_from_a_base_of_rows(tmp_path: Path) -> None:
+    rows = rows_of(tmp_path, "call.json", "family.json")
+    assert naming.named_call(rows, "dos", 0x21, {"AH": 0x5A}) == Named(
+        "call", "create temp file", "0x21/0x5A", id="dos:call:0x21/0x5A")
+    assert naming.named_call(rows, "video", 0x10, {"AH": 0x12, "BL": 0x31}) == Named(
+        "call", "palette loading", "0x10/0x12/BL=0x31", id="video:call:0x10/0x12/BL=0x31")

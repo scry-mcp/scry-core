@@ -106,12 +106,6 @@ class Entry:
     a_lo: int | None = None
     a_hi: int | None = None
 
-    def short(self) -> dict[str, Any]:
-        """The row a list shows: `id`, `kind`, `key`, `name`, `scope`, and `device`."""
-        return {"id": self.id, "kind": self.kind, "key": self.key, "name": self.name,
-                "scope": self.scope, **({"device": self.device} if self.device else {})}
-
-
 def entry_id(scope: str, kind: str, key: str, access: str = "") -> str:
     """`<scope>:<kind>:<key>`, with `:<access>` when the entry has one."""
     return f"{scope}:{kind}:{key}" + (f":{access}" if access else "")

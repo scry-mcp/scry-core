@@ -1,0 +1,5254 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "ym3812",
+ "title": "The YM3812 OPL2 registers",
+ "kind": "register",
+ "scope": "ym3812",
+ "covers": "the registers of the YM3812 (OPL2) FM synthesizer as Yamaha's application manual describes them, and what MAME and DOSBox-X do for each",
+ "source": "official",
+ "documents": [
+  {
+   "name": "YM3812.raw.txt",
+   "variant": "ym3812"
+  }
+ ],
+ "official": {
+  "YM3812.raw.txt": [
+   "283-328",
+   "340-348",
+   "360-397",
+   "406-409",
+   "443-462",
+   "554-589",
+   "662-694"
+  ]
+ },
+ "engine": [
+  "ymfm_set_timer",
+  "PIC_FullIndex",
+  "ymfm_sync_check_interrupts",
+  "cache_operator_data",
+  "clock_keystate",
+  "ymfm_sync_mode_write",
+  "ymfm_update_irq",
+  "UpdateRates",
+  "UpdateFrequency",
+  "UpdateAttenuation",
+  "UpdateDecay",
+  "UpdateAttack",
+  "UpdateRelease",
+  "UpdateSynth",
+  "UpdateSynths",
+  "SetChanData",
+  "SetState"
+ ],
+ "entries": [
+  {
+   "key": "0x01",
+   "name": "test, waveform enable",
+   "aliases": [
+    "WSE"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "283-286"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0x01"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0x01"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0x01"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "203"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "246"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "517-518"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Address $01 is used only by Yamaha for testing the LSI, and its bits are normally all 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "284-285",
+       "sha": "c9fd301e1a4541c3075dbec8d34f0025996ac60e9dd219297f95183881e38a3a"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "A write to $01 with D5 set to 1 controls the output waveform.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "285-286",
+       "sha": "c1179c281b5ffe5c86b88448775fd95c34f916f638d5b40a6b8f7efefb5dc354"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "283",
+     "as": "key"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "203",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "246",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "517-518",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1130",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x02",
+   "name": "timer 1 value",
+   "aliases": [
+    "timer A"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "291-299"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0x02"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0x02"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::update_timer"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::engine_timer_expired"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "function": "fm_engine_base::set_reset_status"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_channel<RegisterType>::keyonoff"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_operator<RegisterType>::keyonoff"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_operator<RegisterType>::prepare"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "function": "Chip::Write",
+     "case": [
+      "0x02"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "function": "Timer::SetCounter"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "function": "Timer::Update"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "function": "Timer::Timer"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "write",
+     "of": "doc",
+     "text": "Timer 1 is an 8-bit presettable counter, preset by the value written to address $02.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "291-292",
+       "sha": "265034b54f1d1b1c183ac53bfc2a699446d700ad936902b156d8ae66f8023203"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "when",
+     "of": "doc",
+     "text": "When timer 1 overflows, its flag is set and the preset value is loaded again.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "292-293",
+       "sha": "8b49cafb94718fcbe10724fc849b7c91dde5bbf2683621cd7ccc5d9ee14e14a8"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "when",
+     "of": "doc",
+     "text": "In composite speech synthesis mode a timer 1 overflow sets all slots to Key-ON.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "293-295",
+       "sha": "ef7451b485e09d86a5aac97d950e47bd24ec919b87376fc67c87fe70227d6133"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "when",
+     "of": "doc",
+     "text": "In that mode the slots then go immediately to Key-OFF.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "294-296",
+       "sha": "3150f45ffa9f5d8b1f8151e430243e141ce334b35cd43d6cd97763d8e86082f4"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "Timer 1 overflows after (256-N1)*0.08 ms at 3.6 MHz; the multiplication sign and the sum for N1 are garbled in the capture.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "298-299",
+       "sha": "33d66c9b4f39f8cb3c6a5242c45b40af7707d632137b7e2347080ee1968649bc"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "text": "The timer's overflow branch sets the overflow flag and the next trigger time and does no key-on.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/adlib.h",
+       "lines": "62-73",
+       "sha": "06ec8753862901244a148e53a95afe1da771d3f3065da2ad11ae116a59ad309e"
+      }
+     ],
+     "row": "3"
+    },
+    {
+     "n": "102",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "text": "The timer's overflow branch sets the overflow flag and the next trigger time and does no key-off.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/adlib.h",
+       "lines": "62-73",
+       "sha": "06ec8753862901244a148e53a95afe1da771d3f3065da2ad11ae116a59ad309e"
+      }
+     ],
+     "row": "4"
+    },
+    {
+     "n": "103",
+     "on": "reset",
+     "of": "mame",
+     "vs": "extra",
+     "text": "MAME's operator reset sets the envelope attenuation to 0x3ff and the envelope state to release.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+       "lines": "398-399",
+       "sha": "4a1e674e219a858a91be21523371f31570007946bd6032ab9f5b1f0c4cf04182"
+      }
+     ]
+    },
+    {
+     "n": "104",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "When an operator starts its attack with a cached attack rate of 62 or more, MAME sets its attenuation to 0 at once.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+       "lines": "552-553",
+       "sha": "cd5963da7e98c22dcc1a9b667b421c58478925474e4e66e4515321e7d45d4eb6"
+      }
+     ]
+    },
+    {
+     "n": "105",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "On an envelope tick MAME moves an operator from attack to decay at attenuation 0, and from decay to sustain once attenuation reaches the cached sustain level.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+       "lines": "678-679",
+       "sha": "902003b71662ebef22b3a6218c535fcafcbad90a139cf8e7dc78777613b40839"
+      },
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+       "lines": "686-687",
+       "sha": "98207668f1ee2653538494096c1917f53752e30f3c3a7b359319d5d556a7890d"
+      }
+     ]
+    },
+    {
+     "n": "106",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "Outside attack MAME adds the rate's increment to the attenuation, clamped at 0x3ff; in attack, at a rate below 62, it adds (~attenuation*increment)>>4.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+       "lines": "713-714",
+       "sha": "cbb738cd5201604ea990e7d123ec8dd9e0f7009a3883885e1adea33c1ca41e7c"
+      },
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+       "lines": "721-722",
+       "sha": "1449b1493e65130fa4f25789ebe8f92b40a09fd1ba3b2c699f066b27648a3a94"
+      },
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+       "lines": "729-730",
+       "sha": "0a4d362135b405b5e3c73b4ae8a8d83eb031a73e0b39b9e93ecb9d7ed12959e8"
+      }
+     ]
+    },
+    {
+     "n": "107",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "MAME's start of an attack puts the operator in the attack state, and does nothing when it is already in attack.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+       "lines": "535-537",
+       "sha": "0329c0d27e1d52193c27a197d4e0284b97ca628938623c98b98d9f03c37effd2"
+      }
+     ]
+    },
+    {
+     "n": "108",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "MAME's start of a release puts the operator in the release state, and does nothing when it is already in release.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+       "lines": "566-568",
+       "sha": "a7e80b4b26b954fa51914bc17218dde84dafd65d16f531e82dc96a7dd1c4e989"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "297",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "83",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1511",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1525-1526",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1487",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "66-71",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1516-1522",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "843-845",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "521",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "434",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "lines": "387",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1477-1488",
+     "as": "parent",
+     "owner": "ym3812:register:0x04"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1491",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1493-1494",
+     "as": "parent",
+     "owner": "ym3812:register:0x04"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1510",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1512",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "lines": "388-389",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "842",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "846-850",
+     "as": "log"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "437",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1050",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1054",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "62",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "74",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "49-55",
+     "as": "unseen",
+     "reason": "constructor sets the timer's power-on state and clock interval"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "85",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "79",
+     "as": "parent",
+     "owner": "ym3812:register:0x04"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "103",
+     "as": "parent",
+     "owner": "ym3812:register:0x04"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "114",
+     "as": "parent",
+     "owner": "ym3812:register:0x04"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "574",
+     "as": "dead"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "601",
+     "as": "dead"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "645",
+     "as": "dead"
+    }
+   ]
+  },
+  {
+   "key": "0x03",
+   "name": "timer 2 value",
+   "aliases": [
+    "timer B"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "300-304"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0x03"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0x03"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "function": "Chip::Write",
+     "case": [
+      "0x03"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "function": "Timer::SetCounter"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "write",
+     "of": "doc",
+     "text": "Timer 2 is an 8-bit presettable counter like timer 1, and $03 is its register.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "300",
+       "sha": "37c949a91cfc93d843a908d922c9908bd79f7b371d8ea24a58b921bfa5e494cd"
+      },
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "302",
+       "sha": "e486bfce9cb6d27d8f2c474160807c565a90ce3dc81237c6e0785a682fcc1eb3"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "Timer 1 has a resolution of 80 and timer 2 of 320; the unit is garbled in the capture.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "301",
+       "sha": "4a34bbaf58a71ee7c093a8ca7fb25b88fa785eb91ebff366476d24823a489e2a"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "Timer 2 overflows after (256-N2)*0.32 ms at 3.6 MHz; the multiplication sign and the sum for N2 are garbled in the capture.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "303-304",
+       "sha": "4421d3bad42bdc88caa7a863f1389cae6e1fbf7ae04330d50ad71bbb4e8c1469"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "83",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "85",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1050",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1058",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x04",
+   "name": "timer control",
+   "aliases": [
+    "IRQ reset"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "287-290"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "305-321"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0x04"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0x04"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::engine_mode_write"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::update_timer"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::status"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "function": "fm_engine_base::set_reset_status"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "function": "opl_registers_base::load_timer_a"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "function": "opl_registers_base::load_timer_b"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "function": "opl_registers_base::irq_reset"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "function": "opl_registers_base::status_mask"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "function": "Chip::Write",
+     "case": [
+      "0x04"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "function": "Timer::Reset"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "function": "Timer::SetMask"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "function": "Timer::Stop"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "function": "Timer::Start"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "135"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "136"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "71"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "There are two timers, with resolutions of 80 and 320 (unit garbled in the capture), which can be started, stopped and flag-controlled.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "288-289",
+       "sha": "9f5f0b18a168a8983bd0de5aaa2edc06404b5961072595c58bee2871b5f6d6a6"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "This register starts, stops and flag-controls timers 1 and 2 through the bits D0, D1, D5, D6 and D7; some labels are garbled in the capture.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "306-307",
+       "sha": "e4283fc29889e449e98c8a07434eabb2d4644c025857965bde3f9ffb2ad3b198"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "ST1: with 1 the preset is loaded into timer 1 and counting starts; with 0 timer 1 does not operate.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "312-314",
+       "sha": "178eda8bf9d49c496cfea492750ef40e03f1d076003ec0cfc490993ee3dc5f85"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bit 1",
+     "of": "doc",
+     "text": "ST2 does the same for timer 2.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "315",
+       "sha": "8cce65727270af4145cbc655eb61f845e9d7fd68c07cb41139872dca6d7f9e10"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "MASK T2: with 1 the flag of timer 2 is masked (always 0) and does not affect how timer 2 operates; the capture reads this bit as Ds.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "316-317",
+       "sha": "28fec8246dc9eda7bd1ef988001a9cbe58fc3c20fcec9aeb2e6a6fc2c265a27e"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "MASK T1: masks the flag of timer 1; the capture reads this bit as De.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "318",
+       "sha": "8a0ae3ca7b24f389eac6259f8debd1fd8dd9e2e6aa2629955ccea49423833085"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "IRQ RESET: with 1 the flags of timers 1 and 2 are reset and the data of D0 to D5 is ignored.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "319-320",
+       "sha": "90985ee9384f4ab0616e63655f259fe4068e6a07d93ac9ce6b96370b724e9422"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "write",
+     "of": "doc",
+     "text": "After a write with D7 set, bit D7 is automatically reset to 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "320-321",
+       "sha": "88730f40cd4868d859fef8c4a35a3dee98ba1a188a0fd40b8190e21a2acad7f6"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "text": "A write with bit 7 set stores that bit as 1 on top of the old bits.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+       "lines": "200-201",
+       "sha": "e3d89618ab993728b2ad2bf514934de3d481820fc5f93b585f07f29e6e1ce3f3"
+      }
+     ],
+     "row": "8"
+    },
+    {
+     "n": "102",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "text": "The case body acts on the bits and stores no register data, so no D7 is kept to be reset.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/adlib.cpp",
+       "lines": "1059-1070",
+       "sha": "432d8efd18c6db197508e0342a3ad7aa85580552546f22e714a1cbb388f6fb49"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/adlib.cpp",
+       "lines": "1071-1081",
+       "sha": "9592d72917efa821bef77911e8a8b20986c55e7128769bbe3acad6a1922150db"
+      }
+     ],
+     "row": "8"
+    },
+    {
+     "n": "103",
+     "on": "read",
+     "of": "mame",
+     "vs": "extra",
+     "text": "MAME sets the status IRQ bit when a timer flag not hidden by the IRQ mask or the status mask is set, and clears the bit otherwise.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+       "lines": "1540-1546",
+       "sha": "765c5710315faabefb7398a1145f77b5830d0c46de3540c112222c801644fd94"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "287",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "305",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1050",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1081",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1064",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1563",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1575",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1578",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1580",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1477",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1480",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1491",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "lines": "389",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "290",
+     "as": "electrical"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "308-311",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "213",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1588",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1487",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1493-1494",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "212",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1587",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1487",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1493-1494",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1444",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1444",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "206",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "136",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "206",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "135",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1572-1582",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "lines": "387",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "207",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1587-1588",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1487",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1493-1494",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1066-1067",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1069-1071",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "107",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "112-119",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1072-1074",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1075-1077",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "107",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "112-119",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1079",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1078",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "101-103",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "70-71",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "101-103",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "70-71",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1061-1064",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.h",
+     "lines": "79",
+     "as": "agrees",
+     "row": "7"
+    }
+   ]
+  },
+  {
+   "key": "0x08",
+   "name": "CSM, note select",
+   "aliases": [
+    "NTS",
+    "keyboard split"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "322-328"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "340-341"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0x08"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0x08"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0x08"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "214-215"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "300-302"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "677-681"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The register selects music or speech synthesis mode and the keyboard split for rate key scaling.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "322-324",
+       "sha": "0b5116c815fffa89ac4eaf5574ef6cd0aa06efee3d7d63c7a788ddea882244d2"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "CSM (D7) set to 1 selects the composite sine wave speech synthesis mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "340",
+       "sha": "695fef5e37becd1bc66b5fef897103cec6ba283309573559885d7574ea47acb4"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "All channels must be in the Key-OFF state when CSM mode is selected.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "340-341",
+       "sha": "15a193bd0ac8b637cee97ef4353f9fdb581d47e1ce7eb895e0d24921d83c0dbf"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "NOTE SEL: with 0 the keyboard split is the second bit from the F-Number MSB, with 1 it is the MSB; the capture reads the bit label as De.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "326-328",
+       "sha": "4ec17cffa046da9eb6ffc72fe2f57e1bd363928c1a5e63a79881e737fc311a1c"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "bit 6",
+     "of": "mame",
+     "vs": "differs",
+     "text": "With NOTE SEL 0 the key code takes F-Number bit 9, the MSB, and with 1 bit 8, a comment says it is reversed from the manual.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+       "lines": "300-302",
+       "sha": "ec594022c22edd6316e89f1ac7bd8cf11dde3815a96c45b802ef65a4be2e824b"
+      },
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+       "lines": "215",
+       "sha": "6cfc82b4bcd51c43794f30f90e816732c6f6f88af794282ce04378ed0b856e1d"
+      }
+     ],
+     "row": "4"
+    },
+    {
+     "n": "102",
+     "on": "bit 6",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "text": "With NOTE SEL 0 the key code takes F-Number bit 9, the MSB, and with 1 bit 8.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "677-681",
+       "sha": "96415230ae8c9949998ad086d4c92c5318cb635543a540efc0bb4cf884270273"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "1148",
+       "sha": "206a9aafc842e6455d1b54291b05ee8ea5eef728cbfcac313b8c770bc891b198"
+      }
+     ],
+     "row": "4"
+    },
+    {
+     "n": "103",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "text": "The branch for $08 only stores the value in reg08 and starts no speech synthesis.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "1147-1149",
+       "sha": "454f00ce0fc98b0f339cbf385fae84267c62102d5c436a19ca23407e97e0706c"
+      }
+     ],
+     "row": "2"
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "325",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "214",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x20..0x35",
+   "name": "operator mode",
+   "aliases": [
+    "AM VIB EGT KSR MULT"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "342-348"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "360-389"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0x20..0x35"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0x20..0x35"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0x20..0x35"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Operator::Write20"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "235-239"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "309-312"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "335-335"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "338-338"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "This register controls the multiple that converts the frequency data given by the envelope shape and F-Number into carrier and modulating wave frequencies.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "343-345",
+       "sha": "8232deddbfe7e2596cc3b5150c242e7a7f1159b54081e910d9e2444e2f05c4d0"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "MULTIPLE (D0 to D3) holds the multiple of the carrier or modulating wave frequency, as Table 3-1 lists; the capture reads the range as Do~Ds3.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "347-348",
+       "sha": "cc4bdf15945e6558d01b3705677ec3f6c76b52f7a245861e8f41cddfed5e11c4"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "bit 4",
+     "of": "doc",
+     "text": "KSR gives the key scaling of the rate; the capture reads the bit as Ds.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "360",
+       "sha": "523ba61eb64f27a18b97e96685d343841eeda96951a904d362ab7f3cb746d890"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "Key scaling of the rate simulates that natural instruments attack and decay faster at higher pitch, adding an offset to each rate (Table 3-2).",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "361-365",
+       "sha": "9928a82cbaef83dad673eaf8c7bdc628aa60f95d29711a107e53611cec7efef6"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "RATE = 4*R + Rks, R being the rate set and Rks the key scaling offset; RATE is 0 when R is 0; the product sign is garbled.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "366-369",
+       "sha": "1353bc74272ee0ff4e53f4d078aa33cc19190779c3445263851ca0c6f4837f78"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "EG-TYP selects a diminishing sound with 0 and a connecting sound with 1, which differ in the use of the release rate; the capture reads the bit as Ds.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "371-374",
+       "sha": "03e0137b059d3507e93da9b708942507d14a21d125d280cf7ffc24afb11cd6fa"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "VIB is the vibrato on/off switch of the slot; the capture reads the bit as De.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "384-385",
+       "sha": "cbd422dca24b1c67903026b90f697bb8fc658d6ac7da202298ffd4322e5bca4e"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "is",
+     "of": "doc",
+     "text": "Vibrato runs at 6.4 Hz with a 3.6 MHz master clock and its depth is set by VIB-DEPTH of the $BD register.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "385-386",
+       "sha": "3ba1afd7e4696ce6e4631a2fdc57a373d736d7cb3a194a1ad73e7142d86ef00b"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "AM is the amplitude modulation on/off switch of the slot.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "387-388",
+       "sha": "e3a1d2db00d7cb191f4bdb3aae2442fa1b0b00f0164117997d0d74724e20470b"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "is",
+     "of": "doc",
+     "text": "Amplitude modulation runs at 3.7 Hz with a 3.6 MHz master clock and its depth is set by AM-DEPTH of the $BD register.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "388-389",
+       "sha": "4b7f5597afdc6c6b9bc649505338b9c5ea12d167a9b77a3a830f195852020f4b"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "342",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "346",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "370",
+     "as": "see-also"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "375-383",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "239",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "309-312",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "476",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "238",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "335",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "460",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "237",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "338",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "469-473",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "236",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "460",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "235",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "462-463",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "458",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "459",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "465",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "475",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x40..0x55",
+   "name": "operator level",
+   "aliases": [
+    "KSL TL"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "390-397"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "406-409"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0x40..0x55"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0x40..0x55"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0x40..0x55"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Operator::Write40"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "240-241"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "322-322"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "325-327"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The total level controls the modulation factor and volume of the envelope generator output; KSL, like rate key scaling, makes the level fall as the interval rises.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "391-393",
+       "sha": "3d24b01e48803ca068bf952264e0fba656c4cc510f66959c8da4d39e75b9d350"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "Bits D0 to D5 hold the total level, which attenuates 0.75 dB per step, up to 47.25 dB; the capture reads the range as Do~Ds.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "395-396",
+       "sha": "4c787104eed89ad7592c17010b29996447af41d6faf27e2b5b1c8f9ad3e623e6"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "bits 6-7",
+     "of": "doc",
+     "text": "KSL (D6 and D7) controls level key scaling, which attenuates the level as the interval increases; the capture reads D6 as De.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "406-407",
+       "sha": "e1f193e282c7f693196dfd141ebe6c9ae61b594b651ddfe95ac874eddfdf5ad7"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The level key scaling attenuation can be set to none, 1.5 dB, 3 dB or 6 dB per octave.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "407-408",
+       "sha": "917b62d6ee5dac766eecf8f2e9d6d78e1423c9917df91cdae187e9d63cf3e868"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "390",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "394",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "397",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "409",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "241",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "322",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "484",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "240",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "325-327",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "484",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "482",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "483",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x60..0x75",
+   "name": "attack, decay",
+   "aliases": [
+    "AR DR"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "443-448"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "554-554"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0x60..0x75"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0x60..0x75"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0x60..0x75"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Operator::Write60"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "242-243"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "336-337"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The attack rate sets the rising time of the sound and the decay rate the diminishing time after the attack; Table 3-6 gives the times.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "444-445",
+       "sha": "ae34b802c1e6f719293f728a88107aca14a6f62fb207c0d713248bf55594687a"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "The register holds the attack rate AR and the decay rate DR.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "446-447",
+       "sha": "95bc21ddebccf1360796df42ad65a3b3647003bccac6a8229097459465b7f426"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "The envelope does not change when the rate is 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "554",
+       "sha": "2454709a196d92e4c2a34dbb39e951d74eaed2b662a7b6095647a03e2779e5bb"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "443",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "448",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "242-243",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "336-337",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "490",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "491",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "494",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0x80..0x95",
+   "name": "sustain, release",
+   "aliases": [
+    "SL RR"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "449-462"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0x80..0x95"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0x80..0x95"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0x80..0x95"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Operator::Write80"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "244-245"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "330-332"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "339-339"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "For continuing sounds the sustain level is where the decaying sound becomes constant; for diminishing sounds it is where decay changes to release.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "450-452",
+       "sha": "b711b8675583120bf3c964daf76589314e102b8e6de1417f1dd129a9ddb9198d"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "For continuing sounds the release rate is how fast the sound dies after Key-OFF; for diminishing sounds it governs the attenuation after the sustain level.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "453-456",
+       "sha": "35fa55ecb6db35eba510a81ff499013d2dae2ac409f1fbcab113e7ddefb475c8"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "The register holds the sustain level SL in D4 to D7, where all four bits set mean 93 dB, and the release rate; the capture reads D4 as Da.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "449",
+       "sha": "a8d3c26f8a99cceaa28853de3af7def11ea726ad7a4ab4a1a8c42460a742d364"
+      },
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "457",
+       "sha": "c16e5cbb4beca90f28582d763bcc04298858341b5c574da39392dbc6744e262a"
+      },
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "460",
+       "sha": "813e64f43a977d2e9833265fbb1ce99a48dbb6d10c13817b6c84f08be0dc1391"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The attenuation time of the release rate is the same as that of the decay rate table.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "461-462",
+       "sha": "f4151ee5c0a99387f0a28182206bed04eba7638e3345da8d10b2a4c45dd513ff"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "458-459",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "244-245",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "330-332",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "339",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "503-507",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "501",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "502",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "508",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0xA0..0xA8",
+   "name": "F-number low",
+   "aliases": [
+    "F-NUMBER"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "555-564"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0xA0..0xA8"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0xA0..0xA8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0xA0..0xA8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Channel::WriteA0"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "225-225"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "354"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "342"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The registers give the interval and scale data; the F-Number is determined by both the $A* and the $B* registers.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "555-556",
+       "sha": "020e066824fb303eef3b60e2123df9fe0afb3f3640831454195d4a1d5861487b"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "The F-Number is ten bits: the eight bits of the $A* register and the lower two bits of the $B* register.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "561-562",
+       "sha": "cbcb6c6e5e62e995402bbcfd994b9b6ef77df16d39cc647d07bc29f65ca33808"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "The F-Number gives the scale and is determined by the procedure outlined below the entry.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "562-564",
+       "sha": "6ef59c1748cdec51f55e5bdcf34ebdd0c4e669bcbb7f172e716e56ce9c127b57"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "557-560",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "225",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "354",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "695-697",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "342",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "693",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "694",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0xB0..0xB8",
+   "name": "key on, block",
+   "aliases": [
+    "KON",
+    "BLOCK"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "565-589"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0xB0..0xB8"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0xB0..0xB8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0xB0..0xB8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Channel::WriteB0"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "225-225"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_channel<RegisterType>::keyonoff"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_operator<RegisterType>::keyonoff"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Operator::KeyOn"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Operator::KeyOff"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "364"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "343"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The required frequency is obtained by giving its phase increment, which is determined by the F-Number, Block and Multiple.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "569-571",
+       "sha": "0dca32243f15de7b1ad8560b741baf1557146c3783720d9af64c20083b584c36"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "BLOCK, in bits D2 to D4, gives the octave information; the capture reads D4 as Da4.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "565",
+       "sha": "c46824261adb6777d9f4399c12085d460e1859ff9860cc2fd1cb3a73f996fcfe"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "Key-ON: with 1 the channel is on and voiced, with 0 it is in Key-OFF; the capture reads the bit as Ds.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "566-567",
+       "sha": "c9bb45de5f509ee743a903e9354fc6ca96efab3c1288f1d4d7c6fd8721915e41"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The phase increment is AP = fmus*2^19/fsam with fsam = fM/72, 50 kHz at 3.6 MHz; the capture garbles some symbols.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "572-576",
+       "sha": "1751aba585f3457141905206ca8fd33753c30d12c63a2388a164792627f8de84"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The increment is kept for one octave and shifted per octave, as AP = 2^B*F'*MUL; the capture garbles the F-Number and Block formulas.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "577-579",
+       "sha": "02bb462d54b273bcbdd89eecf18444eda1fafdd9a68d6dc77055b8efb2029c81"
+      },
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "581-589",
+       "sha": "d8c0d2e22af87266546a246510403e270f8567fbb68876d77da1db0b00d622fb"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "568",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "580",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "225",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "364",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "707-711",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "343",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "214-222",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420-1423",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "843-845",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "521",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "713-722",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "723-730",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "557-565",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "569-572",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "705",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "706",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "842",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "846",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "847",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "848",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "849",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "555",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0xBD",
+   "name": "rhythm and depth",
+   "aliases": [
+    "AM VIB depth",
+    "rhythm"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "674-686"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0xBD"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0xBD"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0xBD"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteBD"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "216-218"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_channel<RegisterType>::keyonoff"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_operator<RegisterType>::keyonoff"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Operator::KeyOn"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Operator::KeyOff"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The register controls AM and vibrato depth, the selection of rhythm mode and the ON/OFF of the rhythm instruments.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "674-676",
+       "sha": "816e87a6d1853f246309e43883a5b221fa5c196adaff8baae26556f5c1a0a6ed"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "bit 5",
+     "of": "doc",
+     "text": "D5 (RHYTHM) set to 1 selects the rhythm sound mode; the capture reads the bit as Ds.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "678",
+       "sha": "289c4a2147f0938142cffed8d8c0c0a53ef68b2873b92a832016cb35d3a69acf"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "In rhythm mode channels 7 to 9 are used for rhythm sounds, so melody sounds are limited to six.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "678-680",
+       "sha": "1a05dae2652bce059fd8ab2b6df1bffd0a06fb760f2c07a40f2e708f5d25dfcd"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "Bits D0 to D4 switch the individual rhythm instruments on and off; the capture reads the range as Do~Ds.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "680-681",
+       "sha": "7d3b6a14661f71866d3dc890a69ddeef51cefaadb2f4e22efc38eb4f85af3471"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "The key-on registers $B6, $B7 and $B8 must always be 0 (the capture shows 9) and slot data must suit each rhythm sound.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "681-683",
+       "sha": "378403ed86830e00eea99502ab2d804810ed01e6af3030c47dfaabcb05b34e87"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "bit 6",
+     "of": "doc",
+     "text": "D6 (VIB-DEPTH) is the vibrato depth bit: 14 cent when 1 and 7 cent when 0; the capture reads the bit as De.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "685",
+       "sha": "8f4da974c69735d5559625015d0e0a12445332011c7ec4f62a701d232a4aff62"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "bit 7",
+     "of": "doc",
+     "text": "D7 (AM-DEPTH) is the AM depth bit: 4.8 dB when 1; the value for 0 is garbled in the capture.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "686",
+       "sha": "6775c6f00251acc2e53dbda08a4eda56c1b83454e696231c827878543964861f"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "bit 5",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "Turning rhythm mode off restores the melody synth of channel 6 and sets key-off on every rhythm operator.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "1089-1099",
+       "sha": "be49dd960dbe202dc042b1c369372888bcf1d5f716f4abbc1e41b4daddb48cd5"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "677",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "684",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "217",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "216",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "218",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "208-209",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "214-222",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "557-565",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428-1430",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "843-845",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "521",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1043",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1047-1055",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1045",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1046",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1057-1068",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1069-1080",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1081-1087",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "569",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "210",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1041",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1042",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "842",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "846",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "847",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "848",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "849",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "555",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "570",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "571",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0xC0..0xC8",
+   "name": "feedback, connection",
+   "aliases": [
+    "FB CNT"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "662-673"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0xC0..0xC8"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0xC0..0xC8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0xC0..0xC8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Channel::WriteC0"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "226-227"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The register determines the modulation factor of self-feedback and the type of FM modulation.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "663",
+       "sha": "68b43ecab36146bb90bb0cab151a5c93074b8e534a92eae5ef0b022f89f16bba"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "CONNECTION: 0 selects FM modulation of the two slots, 1 connects them in parallel for sine wave output in the composite mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "665-667",
+       "sha": "012ba191e873df11eed96047b7857920eb86b06dc0b3cb1377890c9ef367dac1"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "FEEDBACK holds the modulation factor of feedback FM modulation of the first slot; the capture reads the range as Di~Ds3.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "671",
+       "sha": "ea9376addc6b60afd6ded2837375abd3810a7c5bb376c727004af8efe3a06bae"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "662",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "664",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "668-670",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "672-673",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "227",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "737",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "226",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "737-745",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "735",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "736",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "0xE0..0xF5",
+   "name": "operator waveform",
+   "aliases": [
+    "WS"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "687-694"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::write",
+     "value": "index=0xE0..0xF5"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::write",
+     "value": "regnum=0xE0..0xF5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteReg",
+     "value": "reg=0xE0..0xF5"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Operator::WriteE0"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "246-246"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "203"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1130"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "With bit D5 of $01 at 0 the OPL2 is fully compatible with the YM3526 and a sine input stays a sine (bit and address garbled in the capture).",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "688-690",
+       "sha": "72cb7cccb0ddb3916ad59e92fcd587e8927250cf34b62f73941b7809ec55c2d5"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "when",
+     "of": "doc",
+     "text": "With bit D5 of $01 at 1 the input sine wave comes out as the distorted waves of Table 3-10; the capture garbles the bit and address.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "690-691",
+       "sha": "e3365bc98ec8c06408685aa183f08baac12843dd0f0213d0aa33d7720b7bd465"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "The registers $E0 to $F5 hold the wave select (Table 3-10).",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "694",
+       "sha": "e3470b0c149011851f21239c02084c7af6e9d7d4cf2f60647106d825b06658aa"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "place",
+     "of": "dosbox-x",
+     "vs": "place",
+     "text": "DOSBox-X picks an operator's wave by indexing a table of eight waveform handlers, WaveForm0 to WaveForm7, with the masked wave select value.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "280-283",
+       "sha": "0265c2a8fb810266d5c83170eb1d287bedced7a0afd0d4980824b5af99458c5c"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "520",
+       "sha": "001ed0c2d154c598384f41a7900ed7a58d1e48d6c8dfac94bdf32e11e1f623dd"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "200-201",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "225",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1405-1408",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1412",
+     "as": "unseen",
+     "reason": "marks every channel for re-preparation; no register behaviour"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1417",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1420",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1425",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1428",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "687",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "692-693",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "246",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "203",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "246",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "517-524",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1130",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "518-524",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1126",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1127",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1150",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1151",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1152",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1153",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1155",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1156",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1157",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1159",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1160",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1161",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1163",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1165",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1167",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1168",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1170",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1177",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1178",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1180",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1181",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1182",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1183",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1185",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "514",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "515",
+     "as": "structure"
+    }
+   ]
+  }
+ ]
+}

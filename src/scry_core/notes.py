@@ -9,8 +9,9 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from scry_core import abbreviation
-from scry_core.knowledge import Base, KeyFault, calls
+from scry_core.knowledge import KeyFault, calls
 from scry_core.knowledge import keys as keyspelling
+from scry_core.knowledge.index import E, Index
 from scry_core.naming import Named
 
 Access = Literal["read", "write", ""]
@@ -39,7 +40,7 @@ class Note:
     live: bool
 
 
-def note(base: Base, scope: str, operands: Sequence[Operand], *, names_on: bool) -> Note | None:
+def note(base: Index[E], scope: str, operands: Sequence[Operand], *, names_on: bool) -> Note | None:
     """The note for `operands` in `scope`, or None when the base names none or the session's
     `names` switch is off. A piece is live only when no operand states it outright."""
     if not names_on:
@@ -51,7 +52,7 @@ def note(base: Base, scope: str, operands: Sequence[Operand], *, names_on: bool)
     return Note("; ".join(parts), any(parts.values())) if parts else None
 
 
-def _named(base: Base, scope: str, o: Operand) -> list[tuple[str, bool]]:
+def _named(base: Index[E], scope: str, o: Operand) -> list[tuple[str, bool]]:
     try:
         if o.kind == "port":
             return [(t, o.live) for t in _entry(base, "port", o.value, scope, o.access)]
@@ -64,14 +65,14 @@ def _named(base: Base, scope: str, o: Operand) -> list[tuple[str, bool]]:
         return []
 
 
-def _entry(base: Base, kind: str, value: int, scope: str, access: Access = "") -> list[str]:
+def _entry(base: Index[E], kind: str, value: int, scope: str, access: Access = "") -> list[str]:
     key = keyspelling.canonical(kind, f"0x{value:X}")
     found = (base.get(kind, key, scope, access) if access else None) \
         or base.get(kind, key, scope)
     return [_text(found.name, value)] if found else []
 
 
-def _call(base: Base, scope: str, o: Operand) -> list[tuple[str, bool]]:
+def _call(base: Index[E], scope: str, o: Operand) -> list[tuple[str, bool]]:
     known = dict(o.registers)
     for name, byte in zip(("AH", "AL"), o.function, strict=False):
         known.setdefault(name, byte)

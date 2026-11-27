@@ -1,0 +1,2070 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "am9517a-device",
+ "title": "The 8237A DMA controller as a chip",
+ "kind": "device",
+ "scope": "chip",
+ "covers": "The 8237A DMA controller as a chip: reset state, end of process, transfer modes, transfer types, memory-to-memory, autoinitialize, priority and compressed timing",
+ "source": "official",
+ "documents": [
+  {
+   "name": "8237A.raw.txt",
+   "variant": "8237A"
+  }
+ ],
+ "official": {
+  "8237A.raw.txt": [
+   "53-56",
+   "98-112",
+   "261-431",
+   "659-682"
+  ]
+ },
+ "engine": [
+  "trigger",
+  "UpdateEMSMapping",
+  "DoCallBack",
+  "set_hreq",
+  "set_dack",
+  "m_out_eop_cb",
+  "transfer_size",
+  "is_request_active",
+  "is_software_request_active",
+  "get_state1",
+  "m_in_ior_cb",
+  "m_in_memr_cb",
+  "suspend_until_trigger",
+  "Set128KMode",
+  "psp",
+  "psp_mcb",
+  "GetFileName",
+  "page_bank_increment",
+  "DMA_BlockRead4KB",
+  "DMA_FreeControllers",
+  "GetSection",
+  "DMA_SetWrapping",
+  "Get_bool",
+  "Get_string",
+  "Install",
+  "DmaController"
+ ],
+ "entries": [
+  {
+   "key": "am9517a",
+   "name": "8237A DMA controller",
+   "aliases": [
+    "8237A",
+    "AM9517A",
+    "DMA controller"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:8237A.raw.txt",
+     "lines": "53-56"
+    },
+    {
+     "ref": "datasheet:8237A.raw.txt",
+     "lines": "98-112"
+    },
+    {
+     "ref": "datasheet:8237A.raw.txt",
+     "lines": "261-431"
+    },
+    {
+     "ref": "datasheet:8237A.raw.txt",
+     "lines": "659-682"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::dma_advance"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::end_of_process"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::dma_read"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::dma_write"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::device_reset"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::soft_reset"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::set_eop"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::mask_channel"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_SI"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_S0"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_SC"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_S2"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_S3"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_S4"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_S11"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_S14"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_S21"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_S23"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "function": "am9517a_device::execute_run",
+     "case": [
+      "STATE_S24"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "function": "DMA_Reset"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "function": "DmaChannel::DmaChannel"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "function": "DmaChannel::Read"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "function": "DmaChannel::Write"
+    },
+    {
+     "ref": "dosbox-x:include/dma.h",
+     "function": "DmaChannel::ReachedTC"
+    },
+    {
+     "ref": "dosbox-x:include/dma.h",
+     "lines": "161-167"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "function": "DmaController::WriteControllerReg",
+     "case": [
+      "0x8"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "function": "DmaController::WriteControllerReg",
+     "case": [
+      "0xb"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "reset",
+     "of": "doc",
+     "text": "Reset clears the Command, Request and Temporary registers and the first/last flip-flop.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "53-55",
+       "sha": "47caa5b6b3613b6dbc9eefda2b568f5750ee70ac49c3b95dbb0cafafa81c186d"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "reset",
+     "of": "doc",
+     "text": "Reset clears the Status register.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "53-55",
+       "sha": "47caa5b6b3613b6dbc9eefda2b568f5750ee70ac49c3b95dbb0cafafa81c186d"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "reset",
+     "of": "doc",
+     "text": "Reset sets the Mask register.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "55-56",
+       "sha": "b7296333d9057edbc8a351cb5652c220be5d0b9cbba3d6c40bfaa4f3a32bd98b"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "reset",
+     "of": "doc",
+     "text": "Following a Reset the device is in the Idle cycle.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "55-56",
+       "sha": "b7296333d9057edbc8a351cb5652c220be5d0b9cbba3d6c40bfaa4f3a32bd98b"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "EOP is a bidirectional signal that reports the completion of DMA services and lets an external signal terminate an active service.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "98-103",
+       "sha": "fd91c8f48fc93097f3fa160b9c4a92e3c5c500e4361e2d19f882de8c17da4c2b"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "when",
+     "of": "doc",
+     "text": "The 8237A generates a pulse on the EOP line when the terminal count of any channel is reached.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "103-105",
+       "sha": "738ff1c71eef87b49955a9fd1a86cb248faf0010f43c0ee5c6660a857cb5b97f"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "when",
+     "of": "doc",
+     "text": "On an internal EOP the service ends, the request is reset and, with Autoinitialize, the base registers are written to the current registers.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "105-108",
+       "sha": "b0cc6089898e9cab89e6281bc4441f4c9d8ef6e22fc3e20a7e0f7f52fd63b77c"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "when",
+     "of": "doc",
+     "text": "EOP sets the mask bit of the active channel unless it is programmed for Autoinitialize, in which case the mask bit remains unchanged.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "108-111",
+       "sha": "29cea633271495398855595bb5313ddf4b38b359e3666f8cfda645a2510e6910"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "when",
+     "of": "doc",
+     "text": "During memory-to-memory transfers EOP is output when the TC for channel 1 occurs.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "111-112",
+       "sha": "7a369ec07079ae9eed1fcf476a6b4e895876b485f0ad79c708e970798dd467ab"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "is",
+     "of": "doc",
+     "text": "When the 8237A is in the Idle cycle and a non-masked channel requests a DMA service, it outputs HRQ and enters the Active cycle.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "261-265",
+       "sha": "c3e92f10d1fc05781c5ad83aa32c2e42b708a35ccc04a9c83261ee84f2869488"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "when",
+     "of": "doc",
+     "text": "In Single Transfer mode the device is programmed to make one transfer only.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "266-267",
+       "sha": "5f4134fd7df7079cc15f9ce6d94651039e0ffd0d8867f48c02166bb815fac691"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "when",
+     "of": "doc",
+     "text": "The address is decremented or incremented following each transfer.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "268-269",
+       "sha": "6bc936ad3a14c9542d779b5886523a204ab85c70b611bbfd71dce7b34cb50e7d"
+      }
+     ]
+    },
+    {
+     "n": "12b",
+     "on": "is",
+     "of": "doc",
+     "text": "The word count is decremented following each transfer.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "268-269",
+       "sha": "6bc936ad3a14c9542d779b5886523a204ab85c70b611bbfd71dce7b34cb50e7d"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "when",
+     "of": "doc",
+     "text": "When the word count rolls over from zero to FFFFH, a TC causes an Autoinitialize if the channel has been programmed to do so.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "270-273",
+       "sha": "8562382a90307e005f0203de62cfd178001600c69092d4a4190b5190a1263ecb"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "is",
+     "of": "doc",
+     "text": "In Single Transfer mode DREQ must be held active until DACK becomes active; if it stays active, HRQ goes inactive and another single transfer follows.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "266",
+       "sha": "a95866be53e871f749907532c7628eb80da6e229d8ed88be5cdd876500e9407f"
+      },
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "274-284",
+       "sha": "b9ffd37db69964d0ad6c7ebc55c161768a1b2e580342a51daefeb5338d50f728"
+      }
+     ]
+    },
+    {
+     "n": "15",
+     "on": "when",
+     "of": "doc",
+     "text": "In Block Transfer mode the device continues making transfers until a TC, caused by the word count going to FFFFH, is encountered.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "285-289",
+       "sha": "d5c660fcb45d73ee62b2edfab369a6bb04bf186b143b0de705e9435efa642e5f"
+      }
+     ]
+    },
+    {
+     "n": "15x",
+     "on": "is",
+     "of": "doc",
+     "text": "In Block Transfer mode an external EOP also ends the service.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "288-289",
+       "sha": "1a6438aa2b0f9b5045c777487667657ec73222fd8bc4c192903594f285f05565"
+      }
+     ]
+    },
+    {
+     "n": "16",
+     "on": "is",
+     "of": "doc",
+     "text": "In Block Transfer mode DREQ need only be held active until DACK becomes active, and an Autoinitialization occurs at the end of the service if programmed.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "285",
+       "sha": "1171c97828d78138066307d6ed5b39b82dcfe773e1d495cc183a49a7870130a2"
+      },
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "289-292",
+       "sha": "f54180dcaadf8c2fc193674d70685598e3aecbf1636c48bc82657fc4abce80a2"
+      }
+     ]
+    },
+    {
+     "n": "17",
+     "on": "when",
+     "of": "doc",
+     "text": "In Demand Transfer mode the device continues making transfers until a TC is encountered or until DREQ goes inactive.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "293-297",
+       "sha": "b24f02bc6f218ba589643867d4d2c5e8af93a5f47a40a5ab335549642a41ced9"
+      }
+     ]
+    },
+    {
+     "n": "17x",
+     "on": "is",
+     "of": "doc",
+     "text": "In Demand Transfer mode an external EOP also ends the service.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "293-296",
+       "sha": "032ffeca858cfecb69f3ae736ea523e7db9c920de2d149b4f78b604ed4112549"
+      }
+     ]
+    },
+    {
+     "n": "18",
+     "on": "is",
+     "of": "doc",
+     "text": "In Demand mode the intermediate address and word count stay in the current registers between services; only an EOP can cause an Autoinitialize.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "293",
+       "sha": "3a0555c1d860fe59bf326ccd7855ae3cd776b9f5cd667f77bb58c48e1c96d5f3"
+      },
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "298-307",
+       "sha": "b4ea6a257806c5092f74a020eec491ff1ebd1a0cc1fdf283b95e516f117931c4"
+      }
+     ]
+    },
+    {
+     "n": "19",
+     "on": "is",
+     "of": "doc",
+     "text": "Cascade mode connects more than one 8237A: the HRQ and HLDA of an added device go to the DREQ and DACK of a channel of the initial device.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "308-319",
+       "sha": "fbb66db2516c12c799330a8dc2904cd3e293ac8e79b12a334176c90114437bcc"
+      }
+     ]
+    },
+    {
+     "n": "20",
+     "on": "when",
+     "of": "doc",
+     "text": "In Cascade mode the 8237A responds to DREQ and DACK, all other outputs except HRQ are disabled, and the ready input is ignored.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "308",
+       "sha": "238613e24158ebcab859dd28e13c39008a146f0345ec263f32d523f8b5b3f8a5"
+      },
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "323-327",
+       "sha": "3525479251229f24b555cc6700315b68edc566c9d599e0ec9db4b4c7ae3a60fd"
+      }
+     ]
+    },
+    {
+     "n": "21",
+     "on": "is",
+     "of": "doc",
+     "text": "Two additional devices can be cascaded into an initial device, forming two levels, and further devices into the second level channels, forming a third level.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "328-334",
+       "sha": "54f1ed6c92f63845831321fca542ba03c0788c13341f3e01e16a6673cb7d3d18"
+      }
+     ]
+    },
+    {
+     "n": "22",
+     "on": "is",
+     "of": "doc",
+     "text": "Each of the three active transfer modes can perform three types of transfer: Read, Write and Verify.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "335-338",
+       "sha": "b049250f137fa46be4fb4dab439213fdc502197196e6a53e40a1a063b5b74c53"
+      }
+     ]
+    },
+    {
+     "n": "23",
+     "on": "when",
+     "of": "doc",
+     "text": "Write transfers move data to memory by activating MEMW.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "338-340",
+       "sha": "9446f3ad7338f1664c4378bd1484e2e10538be0d7f9301bcc79e7afb5fd5dfe9"
+      }
+     ]
+    },
+    {
+     "n": "23b",
+     "on": "when",
+     "of": "doc",
+     "text": "Write transfers take data from an I/O device by activating IOR.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "338-340",
+       "sha": "9446f3ad7338f1664c4378bd1484e2e10538be0d7f9301bcc79e7afb5fd5dfe9"
+      }
+     ]
+    },
+    {
+     "n": "24",
+     "on": "when",
+     "of": "doc",
+     "text": "Read transfers move data from memory by activating MEMR.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "340-341",
+       "sha": "d69eab15639bd6e70701ecaecb595ad9f756bb9ff237ba22cb44bd5a480500fe"
+      }
+     ]
+    },
+    {
+     "n": "24b",
+     "on": "when",
+     "of": "doc",
+     "text": "Read transfers send data to an I/O device by activating IOW.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "340-341",
+       "sha": "d69eab15639bd6e70701ecaecb595ad9f756bb9ff237ba22cb44bd5a480500fe"
+      }
+     ]
+    },
+    {
+     "n": "25",
+     "on": "when",
+     "of": "doc",
+     "text": "Verify transfers generate addresses as in Read or Write and respond to EOP, but the memory and I/O control lines all remain inactive.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "341-346",
+       "sha": "7a8e7bd26f97e6bba4b48874226c833150e7b3367af3a54c575d8045012f8fe3"
+      }
+     ]
+    },
+    {
+     "n": "26",
+     "on": "is",
+     "of": "doc",
+     "text": "The memory-to-memory feature performs block moves of data from one memory address space to another.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "347-351",
+       "sha": "028dec11f13205b6eb39d9f92d4be1ab6c94f49abce6918f491a2464e47cadd5"
+      }
+     ]
+    },
+    {
+     "n": "27",
+     "on": "when",
+     "of": "doc",
+     "text": "Programming a bit in the Command register selects channels 0 and 1 for memory-to-memory transfer, started by the software DREQ for channel 0.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "351-355",
+       "sha": "c33831064279d2ce4da9c5e39420c712b5243a46a2f4e675a43cc37b1e8804c8"
+      }
+     ]
+    },
+    {
+     "n": "28",
+     "on": "when",
+     "of": "doc",
+     "text": "Memory-to-memory reads a byte from memory at the channel 0 address into the Temporary register.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "355-362",
+       "sha": "5fa612daeaef3de8df39fa04974c372ea5436af79b1c59426bc2cb1c39c692fc"
+      }
+     ]
+    },
+    {
+     "n": "28c",
+     "on": "when",
+     "of": "doc",
+     "text": "Channel 1 then writes the Temporary register to memory at the address in its own Current Address register.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "362-365",
+       "sha": "33f44acb3ed030bfeddbff7aeccb68da20e92d9322825990d917f40634babb54"
+      }
+     ]
+    },
+    {
+     "n": "28b",
+     "on": "is",
+     "of": "doc",
+     "text": "The channel 1 current word count is decremented; when it goes to FFFFH a TC is generated, causing an EOP output that terminates the service.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "365-369",
+       "sha": "7adcf9aa72860625f0f4ce5b27b5cc714c71908690754807ee800c61813da258"
+      }
+     ]
+    },
+    {
+     "n": "29",
+     "on": "is",
+     "of": "doc",
+     "text": "Channel 0 may be programmed to retain the same address for all transfers, which allows a single word to be written to a block of memory.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "370-372",
+       "sha": "5ec60b155861cfd14303339658760ef4862eeab96c6c11198832c5643889803d"
+      }
+     ]
+    },
+    {
+     "n": "30",
+     "on": "is",
+     "of": "doc",
+     "text": "The 8237A responds to external EOP signals during memory-to-memory transfers; memory-to-memory operations can be detected as an active AEN with no DACK outputs.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "373-379",
+       "sha": "61381a5801af5ff946436618496419591aa7d5739180af4b3320070cf426eb4c"
+      }
+     ]
+    },
+    {
+     "n": "31",
+     "on": "when",
+     "of": "doc",
+     "text": "A channel set to Autoinitialize by a Mode register bit has its Current Address and Word Count restored from the Base registers following EOP.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "380-386",
+       "sha": "5676e5ff43121ef179cc80701691f1c30febeaec956892a611f1f9d0d1598384"
+      }
+     ]
+    },
+    {
+     "n": "32",
+     "on": "is",
+     "of": "doc",
+     "text": "The base registers are loaded together with the current registers and unchanged throughout the service; the mask bit is not altered in Autoinitialize.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "386-390",
+       "sha": "6023c7e3a739f7a78792f869c90b9a22016f02a97b17d469571f3c8e399ffb4a"
+      }
+     ]
+    },
+    {
+     "n": "33",
+     "on": "is",
+     "of": "doc",
+     "text": "After Autoinitialize the channel is ready for another DMA service without CPU intervention as soon as a valid DREQ is detected.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "390-393",
+       "sha": "1b24401e0d9b226cc42c3561bd9c798e82b900d94fe94c1267794da493dd2e85"
+      }
+     ]
+    },
+    {
+     "n": "34",
+     "on": "is",
+     "of": "doc",
+     "text": "To Autoinitialize both channels of a memory-to-memory transfer, both word counts should be programmed identically.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "393-397",
+       "sha": "07cc04bf60634f787058d17bc84095a1b51973340ff5d9a52195b32e8b277b3c"
+      }
+     ]
+    },
+    {
+     "n": "35",
+     "on": "when",
+     "of": "doc",
+     "text": "Fixed Priority ranks the channels by descending number: channel 0 is the highest priority and channel 3 the lowest.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "398-403",
+       "sha": "4c5b64ffde75ef0e6e4ea9b7ba9f4a2e976f111352cb752aea2356f92be5c030"
+      }
+     ]
+    },
+    {
+     "n": "36",
+     "on": "is",
+     "of": "doc",
+     "text": "After the recognition of one channel the others cannot interfere until its service is completed; then HRQ goes inactive and the 8237A waits for HLDA to go low.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "403-409",
+       "sha": "8b4087cfe6596fbc9e0444a4c61595c15e2d972f1f96983ea7ec7e8aba6d1689"
+      }
+     ]
+    },
+    {
+     "n": "37",
+     "on": "when",
+     "of": "doc",
+     "text": "In Rotating Priority the last channel to get service becomes the lowest priority channel with the others rotating accordingly.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "410-412",
+       "sha": "22097fd287b588e6a35a6d78aa7ebced8f89420b15720e6346a71f61d7cb7a17"
+      }
+     ]
+    },
+    {
+     "n": "38",
+     "on": "is",
+     "of": "doc",
+     "text": "With Rotating Priority in a single chip system any requesting device is guaranteed recognition after no more than three higher priority services.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "415-419",
+       "sha": "3c8f8d07c8ffd8fed91fc2d73fd2830ed0db584d826fba5544c84012e6f0a6d1"
+      }
+     ]
+    },
+    {
+     "n": "39",
+     "on": "when",
+     "of": "doc",
+     "text": "In compressed timing state S3 is removed, so a transfer consists only of S2 and S4.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "420-428",
+       "sha": "2cd518e1af63f9bf6c2cb3b06c9c7f4cef402073b820bf56381aae54bb570012"
+      }
+     ]
+    },
+    {
+     "n": "40",
+     "on": "is",
+     "of": "doc",
+     "text": "In compressed timing S1 states still occur when A8 to A15 need updating; the timing is in Figure 14.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "428-431",
+       "sha": "bb32f4bc3fe70a0647a5582dd0f24d8d9a79327c3eb6d52bce67d9f9230f0b5c"
+      }
+     ]
+    },
+    {
+     "n": "41",
+     "on": "is",
+     "of": "doc",
+     "text": "The 8237A accepts programming from the host processor any time HLDA is inactive, even if HRQ is active; the host must keep programming and HLDA mutually exclusive.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "660-664",
+       "sha": "ebaa6d41fd1f22e4d426c72c5cf3ffa8bfcdc72f67d02d0932a69db9413a7614"
+      }
+     ]
+    },
+    {
+     "n": "42",
+     "on": "is",
+     "of": "doc",
+     "text": "A DMA request on an unmasked channel during programming can start a service after only one byte of an address register changes; disable the controller or mask the channel first.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "664-670",
+       "sha": "004a5919ac2c0b2459389401d30bdfa07a1c0b5314cf75cc73b3451e70d90688"
+      },
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "671-677",
+       "sha": "4f7b7aa7cd2a812e85460b6fc0f3d94c8915f2afb5a2d65e3adb8f8781858bdf"
+      }
+     ]
+    },
+    {
+     "n": "43",
+     "on": "is",
+     "of": "doc",
+     "text": "After power-up it is suggested that all internal locations, especially the Mode registers, be loaded with some valid value, even for unused channels.",
+     "quotes": [
+      {
+       "ref": "datasheet:8237A.raw.txt",
+       "lines": "678-682",
+       "sha": "50a480828712df5f297913bd6711f5b9f4fc7dd1f993ac0c26f46c3fdf7ca70c"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "reset",
+     "of": "mame",
+     "text": "Reset executes m_status &= 0xf0, which clears bits 0 to 3 of the Status register and keeps bits 4 to 7.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/am9517a.cpp",
+       "lines": "552",
+       "sha": "3aec1052ff2e4fb58f5a847359f47d8b0b59b321aab52cfb429f350d2f04f652"
+      }
+     ],
+     "vs": "differs",
+     "row": "2"
+    },
+    {
+     "n": "102",
+     "on": "when",
+     "of": "mame",
+     "text": "A Verify transfer calls m_in_ior_cb in dma_read and m_in_memr_cb in dma_write, reading the I/O port and memory.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/am9517a.cpp",
+       "lines": "276-285",
+       "sha": "874663683cbb28b02ff5a1945693e1d90f11ab2c69b3040045bde4a7da3f272a"
+      },
+      {
+       "ref": "mame:src/devices/machine/am9517a.cpp",
+       "lines": "298",
+       "sha": "0a4b8a7c9c75c013982223c3de10a11ff81b8df6e74b43e901264334c270c4de"
+      },
+      {
+       "ref": "mame:src/devices/machine/am9517a.cpp",
+       "lines": "304-310",
+       "sha": "8e68ee53d99c70ab513a83e653775dabec9088305fd3ed415ffd894a67027870"
+      }
+     ],
+     "vs": "differs",
+     "row": "25"
+    },
+    {
+     "n": "201",
+     "on": "reset",
+     "of": "dosbox-x",
+     "text": "A new DmaController starts with the flip-flop clear and each new DmaChannel with the request flag clear; neither constructor stores a Command or Temporary register.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "415-426",
+       "sha": "eefba6d2b5bbdb98fa2a18bf7e69cda94f912b1c205d9f9e2b669394f06da9e7"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "427-438",
+       "sha": "c3348f096aa42abc7981ab20b882c17e5cff17514830b2dd1595b7aff09f855f"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "439-440",
+       "sha": "1517bc20fe6e11bc0bed31d1136bfd0f7cb9a28e5647b126ed8dfa32ad91b1df"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "736-740",
+       "sha": "9d0d04cb35661837aad4b626b8969f51b865d2019a5bc3098b6fe951c07f8c82"
+      },
+      {
+       "ref": "dosbox-x:include/dma.h",
+       "lines": "161-167",
+       "sha": "d134a74287692365b97b994de11a6b26c11a39907ad2549730d96ddfc805dba2"
+      }
+     ],
+     "vs": "differs",
+     "row": "1"
+    },
+    {
+     "n": "202",
+     "on": "reset",
+     "of": "dosbox-x",
+     "text": "The channel constructor stores masked, masked_by, channum, the page, address and count bases and the flags, and logs the channel at 428-429; it stores no Idle cycle state.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "415-426",
+       "sha": "eefba6d2b5bbdb98fa2a18bf7e69cda94f912b1c205d9f9e2b669394f06da9e7"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "427-438",
+       "sha": "c3348f096aa42abc7981ab20b882c17e5cff17514830b2dd1595b7aff09f855f"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "439-440",
+       "sha": "1517bc20fe6e11bc0bed31d1136bfd0f7cb9a28e5647b126ed8dfa32ad91b1df"
+      }
+     ],
+     "vs": "differs",
+     "row": "4"
+    },
+    {
+     "n": "203",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "ReachedTC sets tcount and calls the channel callback with DMA_REACHED_TC; its body has no EOP line.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:include/dma.h",
+       "lines": "132-135",
+       "sha": "0b13d557b3caa5cdd78215bf9f29a839e56ac2c7d8004e668e7690989ef1737c"
+      }
+     ],
+     "vs": "differs",
+     "row": "6"
+    },
+    {
+     "n": "204",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "At TC with autoinit set, DmaChannel::Read reloads currcnt and curraddr from the base values; its TC block stores no request flag.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "442",
+       "sha": "be1e567c652b7ee4f75a9a6cdb77a68d6f3b945ce6291e5db803e558eef090a5"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "514-525",
+       "sha": "f171a76a730492c9508f0a842bb8602e75568a7ff02beeb7a9a50b12de24e364"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "526-537",
+       "sha": "b5fd3eacf921910fe5e06f455cc08f47755ab9f3c9785b208371bea24de43d1f"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "538-549",
+       "sha": "93e3f5b762e14d6861573a342ce687ed0b7428ea887dcb51ac12835847f9c2fb"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "550-553",
+       "sha": "9a951e4b631f9551502b2d0f6b0890d54306a0488ba3399deaf1bdd12a8c70b7"
+      }
+     ],
+     "vs": "differs",
+     "row": "7"
+    },
+    {
+     "n": "216",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "In Verify mode DmaChannel::Write counts and advances curraddr without writing memory, but DmaChannel::Read returns 0 for a channel not in Read mode unless the program is DIAGNOSE.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "442",
+       "sha": "be1e567c652b7ee4f75a9a6cdb77a68d6f3b945ce6291e5db803e558eef090a5"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "452-459",
+       "sha": "63514c957c87be5cba84807b8ad941af74b58b4e2ea7878dae34085c71b7dd78"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "571-574",
+       "sha": "b58233928962690850590d37d641c76831db2c3da95fd94955bc384f6f66beda"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "600-611",
+       "sha": "f5aa2d003c2badfa54b1ae126fa9f48cdfbbf94e8139846109479196e999c2ea"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "613-616",
+       "sha": "95361137d584caa3c697ac5c0fc9dfa2b42cbd4015ce5bcedd47af6a26e076a0"
+      }
+     ],
+     "vs": "differs",
+     "row": "25"
+    },
+    {
+     "n": "205",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A write at offset 0x08 stores nothing, so no Command bit selects memory-to-memory transfers.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "314-315",
+       "sha": "2a978ac310f1aa602ce2a927a4568171c0c19bce7f5378778c3bc706cea6c2b5"
+      }
+     ],
+     "vs": "absent",
+     "row": "9"
+    },
+    {
+     "n": "206",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A Mode write stores no bit 6 or 7 (a source comment questions it), so no Single mode is selected.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "325-332",
+       "sha": "2c60d34b4b95728aad8161cb36bdeff186057e7805129928e1a8669d3f074aeb"
+      }
+     ],
+     "vs": "absent",
+     "row": "11"
+    },
+    {
+     "n": "207",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A Mode write stores no bit 6 or 7, so no Block mode is selected.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "325-332",
+       "sha": "2c60d34b4b95728aad8161cb36bdeff186057e7805129928e1a8669d3f074aeb"
+      }
+     ],
+     "vs": "absent",
+     "row": "15"
+    },
+    {
+     "n": "208",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A Mode write stores no bit 6 or 7, so no Demand mode is selected.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "325-332",
+       "sha": "2c60d34b4b95728aad8161cb36bdeff186057e7805129928e1a8669d3f074aeb"
+      }
+     ],
+     "vs": "absent",
+     "row": "17"
+    },
+    {
+     "n": "209",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A Mode write stores no bit 6 or 7, so no Cascade mode is selected.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "325-332",
+       "sha": "2c60d34b4b95728aad8161cb36bdeff186057e7805129928e1a8669d3f074aeb"
+      }
+     ],
+     "vs": "absent",
+     "row": "20"
+    },
+    {
+     "n": "210",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A write at offset 0x08 does nothing, so no memory-to-memory selection exists.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "314-315",
+       "sha": "2a978ac310f1aa602ce2a927a4568171c0c19bce7f5378778c3bc706cea6c2b5"
+      }
+     ],
+     "vs": "absent",
+     "row": "27"
+    },
+    {
+     "n": "211",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A write at offset 0x08 stores nothing, so no Command bit starts a memory-to-memory sequence.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "314-315",
+       "sha": "2a978ac310f1aa602ce2a927a4568171c0c19bce7f5378778c3bc706cea6c2b5"
+      }
+     ],
+     "vs": "absent",
+     "row": "28"
+    },
+    {
+     "n": "212",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A write at offset 0x08 does nothing, so no priority scheme is selected.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "314-315",
+       "sha": "2a978ac310f1aa602ce2a927a4568171c0c19bce7f5378778c3bc706cea6c2b5"
+      }
+     ],
+     "vs": "absent",
+     "row": "35"
+    },
+    {
+     "n": "213",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A write at offset 0x08 does nothing, so no rotating priority is selected.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "314-315",
+       "sha": "2a978ac310f1aa602ce2a927a4568171c0c19bce7f5378778c3bc706cea6c2b5"
+      }
+     ],
+     "vs": "absent",
+     "row": "37"
+    },
+    {
+     "n": "214",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A write at offset 0x08 does nothing, so no compressed timing is selected.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "314-315",
+       "sha": "2a978ac310f1aa602ce2a927a4568171c0c19bce7f5378778c3bc706cea6c2b5"
+      }
+     ],
+     "vs": "absent",
+     "row": "39"
+    },
+    {
+     "n": "104",
+     "on": "when",
+     "of": "mame",
+     "text": "A service starts with COMMAND_MEM_TO_MEM when any channel in Single mode has its request bit set; later lines set the current channel to 0 and then to 1.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/am9517a.cpp",
+       "lines": "602-607",
+       "sha": "e0f1dbad643ab52fe92362686325347cd9599c884fb60311b0534b8c60bc40f6"
+      },
+      {
+       "ref": "mame:src/devices/machine/am9517a.cpp",
+       "lines": "699",
+       "sha": "1dc2b3c044aaf80951a3da182aed4a968d8f8428a8064579bae741323eb2dbe5"
+      },
+      {
+       "ref": "mame:src/devices/machine/am9517a.cpp",
+       "lines": "719",
+       "sha": "7de5dae4040c66f1f2f14eac5ea52cc0f6c0ccf5775caafa8099682a79b35ef6"
+      }
+     ],
+     "vs": "differs",
+     "row": "27"
+    },
+    {
+     "n": "103",
+     "on": "reset",
+     "of": "mame",
+     "text": "Reset sets the current channel to -1, the last served channel to 3 and the HRQ state to -1, then calls set_hreq(0).",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/am9517a.cpp",
+       "lines": "557-559",
+       "sha": "20fb52cca918183dac51ea04ac8c5545ba3bf1913bc40cf8b5d4d16394d85f15"
+      },
+      {
+       "ref": "mame:src/devices/machine/am9517a.cpp",
+       "lines": "561",
+       "sha": "ae65dfc7877124ab1fd88e4aeaf2b2ab3c6d7b363f600c392706a3554d784b5e"
+      }
+     ],
+     "vs": "extra"
+    },
+    {
+     "n": "215",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A transfer call on a masked channel logs a warning and moves no data, returning 0 units.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "447-450",
+       "sha": "e7395dd14364020e4913403ea2ebc73c74e1fe2531b76efcbb7d86feb7839c15"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "563-566",
+       "sha": "fc350003161a14a1b26175658b9f41aac6c51be651242a81d3f8f64019600800"
+      }
+     ],
+     "vs": "differs",
+     "row": "10"
+    },
+    {
+     "n": "217",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "DmaChannel::Write stores the data from the buffer its caller passes in.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "558",
+       "sha": "04f537903d2a8fd9813fdf2fecedd81995aeca3c5108ebe0ae37ef9c36e75e80"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "600-604",
+       "sha": "0ce3e8bf6daa48b06dc6a54ec7f23387955a862e149bd6d49b21b82b28319899"
+      }
+     ],
+     "vs": "differs",
+     "row": "23b"
+    },
+    {
+     "n": "218",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "DmaChannel::Read hands the data it reads from memory back in the buffer its caller passes in.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "442",
+       "sha": "be1e567c652b7ee4f75a9a6cdb77a68d6f3b945ce6291e5db803e558eef090a5"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "485-488",
+       "sha": "577a35e684231ddf5b3d509a296be8013c3e99d0fc678bef1f467dbb8f4e00d3"
+      }
+     ],
+     "vs": "differs",
+     "row": "24b"
+    },
+    {
+     "n": "219",
+     "on": "when",
+     "of": "dosbox-x",
+     "text": "A write at offset 0x08 stores nothing, so no Command bit starts a memory-to-memory sequence.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dma.cpp",
+       "lines": "314-315",
+       "sha": "2a978ac310f1aa602ce2a927a4568171c0c19bce7f5378778c3bc706cea6c2b5"
+      }
+     ],
+     "vs": "absent",
+     "row": "28c"
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "551",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "553",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "555",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "556",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "543-546",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "554",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "550",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "667-668",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "244-252",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "425",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "400-411",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "413-418",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "425-431",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "413-423",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "166-174",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "719",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "729-731",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "244-252",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "376-380",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "333-337",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "343-347",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "355-358",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "413-418",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "382-384",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "355-358",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "425-431",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "363-374",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "355-358",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "425-431",
+     "as": "agrees",
+     "row": "17"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "631-638",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "639-645",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "733",
+     "as": "unseen",
+     "reason": "cycle state change that no declared line speaks of"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "413-418",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "580",
+     "as": "agrees",
+     "row": "35"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "594-600",
+     "as": "agrees",
+     "row": "35"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "582-592",
+     "as": "agrees",
+     "row": "37"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "598",
+     "as": "agrees",
+     "row": "37"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "651-659",
+     "as": "agrees",
+     "row": "39"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "685-689",
+     "as": "agrees",
+     "row": "39"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "284-288",
+     "as": "agrees",
+     "row": "39"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "312-318",
+     "as": "agrees",
+     "row": "39"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "438-439",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "416",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "514-520",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "545-551",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "631-637",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "662-667",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "485-493",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "494-498",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "498",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "514-518",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "615",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "631-637",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "571-574",
+     "as": "agrees",
+     "row": "23"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "600-604",
+     "as": "agrees",
+     "row": "23"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "606-611",
+     "as": "agrees",
+     "row": "23"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "452-459",
+     "as": "agrees",
+     "row": "24"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "485-488",
+     "as": "agrees",
+     "row": "24"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "514-518",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "631-636",
+     "as": "agrees",
+     "row": "31"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "697-735",
+     "as": "unseen",
+     "reason": "host configuration and I/O port installation, not chip behaviour"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "746-787",
+     "as": "unseen",
+     "reason": "host configuration and I/O port installation, not chip behaviour"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "741-744",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:8237A.raw.txt",
+     "lines": "320-322",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8237A.raw.txt",
+     "lines": "413-414",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8237A.raw.txt",
+     "lines": "659",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "338",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "348",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "331",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "360",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "361",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "386-387",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "632",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "280",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "302",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "573",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "575",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "578",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "610",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "620",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "625",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "662",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "672",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "677",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "690",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "742",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "748",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "612-613",
+     "as": "unseen",
+     "reason": "scheduler suspension of the emulated cycle loop, not the chip"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "626-627",
+     "as": "unseen",
+     "reason": "scheduler suspension of the emulated cycle loop, not the chip"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "701",
+     "as": "unseen",
+     "reason": "cycle state change that no declared line speaks of"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "721",
+     "as": "unseen",
+     "reason": "cycle state change that no declared line speaks of"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "622",
+     "as": "agrees",
+     "row": "20"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "695",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "744-745",
+     "as": "unseen",
+     "reason": "address update of memory-to-memory channel 0, no declared line"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "749-750",
+     "as": "unseen",
+     "reason": "address update of memory-to-memory channel 0, no declared line"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "287",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "426",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "444",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "560",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "613",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "471",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "474",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "586",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "589",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "555",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "672",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "502-510",
+     "as": "unseen",
+     "reason": "PC-98 bank increment only"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "619-627",
+     "as": "unseen",
+     "reason": "PC-98 bank increment only"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "609",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "606",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "610",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "637",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dma.cpp",
+     "lines": "327-330",
+     "as": "parent",
+     "owner": "am9517a:register:0x0B:write"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "312-314",
+     "as": "agrees",
+     "row": "23"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "282-285",
+     "as": "agrees",
+     "row": "23b"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "287-289",
+     "as": "agrees",
+     "row": "24"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "312-318",
+     "as": "agrees",
+     "row": "24b"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "699",
+     "as": "agrees",
+     "row": "28"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "712-716",
+     "as": "agrees",
+     "row": "28"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "278-289",
+     "as": "agrees",
+     "row": "28"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "718-719",
+     "as": "agrees",
+     "row": "28c"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "737-741",
+     "as": "agrees",
+     "row": "28c"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "300-311",
+     "as": "agrees",
+     "row": "28c"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "312-314",
+     "as": "agrees",
+     "row": "28c"
+    },
+    {
+     "ref": "mame:src/devices/machine/am9517a.cpp",
+     "lines": "333-337",
+     "as": "agrees",
+     "row": "28c"
+    }
+   ]
+  }
+ ]
+}

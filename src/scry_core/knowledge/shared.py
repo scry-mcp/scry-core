@@ -1,17 +1,20 @@
-"""The chips and cpus every server that loads `chips/` and `cpus/` declares, and the pins of the
-sources their entries cite."""
+"""The chips and cpus every server that loads `chips/` and `cpus/` declares, the pins of the
+sources their entries cite, and the lock and quote index of the shared dictionaries."""
 
 from __future__ import annotations
 
 from importlib import resources
+from typing import TYPE_CHECKING
 
-from scry_core.knowledge.confirmed import Confirmation, SecondCheck, parse_second_check
-from scry_core.knowledge.lock import Lock, parse_lock
 from scry_core.knowledge.support import NAMED, Chip, Scope
+
+if TYPE_CHECKING:
+    from scry_core.knowledge import quote, sealed
 
 _INDEX = "knowledge_index"
 
-#: `rbil61` has no pin: its archives are checked by hash.
+#: `rbil61` has no pin of its own: the reader opens a folder or its archives, and `fetch.py
+#: --verify` checks them against `sources.tsv` before a run reads them.
 PINS = {
     "dosbox-x": "2a43c7335efd91f87bf5582245abdd5b3f18d5d4",
     "mame": "mame0289",
@@ -48,21 +51,17 @@ CHIPS: tuple[Chip, ...] = (
 CPUS: tuple[Scope, ...] = (Scope("z80", written=("vector",), types=("z80",), support=NAMED),)
 
 
-def locks() -> tuple[Lock, ...]:
-    """The locks of the shared dictionaries: the chips' and the cpus'."""
-    folder = resources.files("scry_core") / _INDEX
-    return tuple(parse_lock((folder / name).read_text(encoding="utf-8"), name)
-                 for name in ("shared-lock.json", "cpus-lock.json"))
-
-
-def second_check() -> SecondCheck:
-    """What the second check confirmed of the shared dictionaries."""
-    name = "second-check.json"
-    return parse_second_check((resources.files("scry_core") / _INDEX / name).read_text(
+def rows_lock() -> sealed.Lock:
+    """The seals of the shared dictionaries of rows."""
+    from scry_core.knowledge import sealed
+    name = "rows-lock.json"
+    return sealed.parse_lock((resources.files("scry_core") / _INDEX / name).read_text(
         encoding="utf-8"), name)
 
 
-def confirmation() -> Confirmation:
-    """The shared dictionaries' own confirmation, for a server that loads no dictionary of its
-    own; one that does adds its lock and its second check to `Confirmation.of`."""
-    return Confirmation.of(locks(), (second_check(),))
+def rows_index() -> quote.Quotes:
+    """The index of the shared dictionaries of rows: every quote's lines and their digest."""
+    from scry_core.knowledge import quote
+    name = quote.QUOTES_NAME
+    return quote.parse_quotes((resources.files("scry_core") / _INDEX / name).read_text(
+        encoding="utf-8"), name)

@@ -1,221 +1,21 @@
-"""The checks a server's dictionaries are held to, each one a list of faults in prose that names
-the file to write or the entry to fix. `scry_core.conformance.KnowledgeContract` runs them in a
-server's own test suite; an empty list is a pass only when the check examined something, which
-the contract asserts apart.
+"""The checks a base of rows is held to, each a list of faults naming the entry to fix.
+`scry_core.conformance.KnowledgeContract` runs them; an empty list passes only when the check
+examined something, which the contract asserts apart.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Sequence
+from typing import Any
 
-from scry_core.knowledge import keys, sources, text
-from scry_core.knowledge.database import Base
-from scry_core.knowledge.entry import Entry
-from scry_core.knowledge.lock import COMMAND, REOPEN_COMMAND, Lock
-from scry_core.knowledge.sources import SourceIndex
-from scry_core.knowledge.support import Support
+from scry_core.knowledge import text
+from scry_core.knowledge.index import Index
 
 #: How many words of the base's own names the fallback comparison asks, so it runs on any base.
 WORDS_ASKED = 400
 
 
-def _kinds_of(base: Base, scope: str) -> set[str]:
-    return {d.kind for d in base.dictionaries if d.scope == scope}
-
-
-def owed_dictionaries(base: Base, support: Support) -> list[str]:
-    """Every declared scope, device and chip has a dictionary of each kind it owes, and a
-    declared device or chip its `device` entry; a device only placed says why."""
-    out: list[str] = []
-    for s in support.scopes:
-        for kind in s.written:
-            if kind not in _kinds_of(base, s.name):
-                out.append(f"{s.name} is declared {s.support} and has no dictionary of kind "
-                           f"{kind}: write knowledge/{s.name}-{kind}s.json, each entry with "
-                           "its source")
-    for who, scope, owes in [(d, "", d.written) for d in support.devices] + [
-            (c, "chip", c.written) for c in support.chips]:
-        if base.device_entry(scope, who.name) is None:
-            out.append(f"{who.name} is declared and has no `device` entry: write it with its "
-                       "source")
-        placed = getattr(who, "placed_only", "")
-        for kind in owes:
-            if kind not in _kinds_of(base, who.name) and not placed:
-                out.append(f"{who.name} is declared and has no dictionary of kind {kind}: "
-                           f"write knowledge/{who.name}.json, or declare it placed_only with why")
-        for inner in getattr(who, "inside", ()):
-            if base.device_entry(scope, inner) is None:
-                out.append(f"{who.name} holds {inner}, which has no `device` entry")
-    return out
-
-
-def undeclared(base: Base, support: Support, code_scopes: Iterable[str]) -> list[str]:
-    """No dictionary is of a scope the declaration lacks, and the code names no scope the
-    declaration lacks."""
-    names = support.names()
-    out = [f"{d.file} is for {d.scope}, which support.py does not declare"
-           for d in base.dictionaries if d.scope not in names]
-    out += [f"the code names {c} and support.py does not declare it: declare it with its "
-            "dictionaries" for c in sorted(set(code_scopes) - names)]
-    return out
-
-
-def _checked_lines(e: Entry, index: SourceIndex) -> list[str]:
-    """What a check compared is the source's line: the entry's `cites` for that source, or a part
-    of what the index holds for it. Anything else is free text, and a check of it checks nothing."""
-    cites = {s.ref: s.cites for s in e.sources}
-    out: list[str] = []
-    for ref, line in e.checked.against if e.checked else ():
-        row = index.rows.get(ref)
-        if line != cites.get(ref) and not (row is not None and line in row.line):
-            out.append(f"{e.dictionary} {e.key}: checked against {line!r} for {ref}, which is "
-                       f"neither the line it cites ({cites.get(ref)!r}) nor in the source index: "
-                       "a check compares the source's own line")
-    return out
-
-
-def against_sources(base: Base, index: SourceIndex) -> list[str]:
-    """Every machine-checked source of every entry is a row of the index, quotes it character
-    for character, and carries the key the entry has; and the line a check compared is the
-    source's own."""
-    out: list[str] = []
-    for e in base.entries():
-        out += _checked_lines(e, index)
-        for src in e.sources:
-            scheme, _ = sources.split(src.ref)
-            if not sources.SCHEMES[scheme].machine_checked:
-                continue
-            row = index.rows.get(src.ref)
-            where = f"{e.dictionary} {e.key}"
-            if row is None:
-                out.append(f"{where} cites {src.ref}, which is no row of the source index")
-            elif not row.holds(src.cites):
-                reads = (f"holds a line of digest {row.digest[:12]}, which is not that line's"
-                         if row.digest else f"reads {row.line!r}")
-                out.append(f"{where} cites {src.cites!r}, and {src.ref} {reads}")
-            elif row.key and _same_key(e, row.key):
-                continue
-            elif row.key:
-                out.append(f"{where}: {src.ref} is the source of {row.key}, not of {e.key}")
-    return out
-
-
-def _same_key(e: Entry, other: str) -> bool:
-    """`other`, a list row's key, is the entry's, or for a call's variant its parent's: one section
-    of a list covers a whole family of variants."""
-    try:
-        asked = keys.canonical(e.kind, other)
-    except keys.KeyFault:
-        return other == e.key
-    return asked == e.key or (e.kind == "call" and asked == keys.without_selector(e.key))
-
-
-def covered(base: Base, index: SourceIndex) -> list[str]:
-    """Every key of the list a dictionary must cover is an entry or is left out with a reason,
-    and a left-out key is on the list and no entry."""
-    out: list[str] = []
-    groups: dict[str, list[str]] = {}
-    for d in base.dictionaries:
-        groups.setdefault(d.complete_against, []).append(d.dictionary)
-    for against, names in groups.items():
-        wanted = index.lists.get(against)
-        if wanted is None:
-            out.append(f"{', '.join(names)} must cover {against!r} and the source index has no "
-                       "such list")
-            continue
-        named = {e.key for e in base.entries() if e.dictionary in names}
-        left = {k for d in base.dictionaries if d.complete_against == against
-                for k, _ in d.left_out}
-        listed = {_canonical_loose(k) for k in wanted}
-        missing = sorted(listed - named - {_canonical_loose(k) for k in left})
-        if missing:
-            out.append(f"{', '.join(names)} covers {len(listed) - len(missing)} of the "
-                       f"{len(listed)} keys of {against}; missing: {', '.join(missing)}: name "
-                       "each, or list it under left_out with why")
-        out += [f"{', '.join(names)}: left_out names {k}, which {against} does not list"
-                for k in sorted({_canonical_loose(k) for k in left} - listed)]
-        out += [f"{', '.join(names)}: {k} is left out and is also an entry"
-                for k in sorted({_canonical_loose(k) for k in left} & named)]
-    return out
-
-
-def _canonical_loose(key: str) -> str:
-    for kind in ("call", "port", "vector"):
-        try:
-            return keys.canonical(kind, key)
-        except keys.KeyFault:
-            continue
-    return key
-
-
-def _handlers(base: Base, e: Entry, where: str) -> list[str]:
-    """The ports a placed device maps to handlers lie in its `ports`, and each handler is one of a
-    chip it holds (or one that has its own key): a port with no handler is left to the namer, so
-    a mistake here would silence it."""
-    chips = [c for k in e.contains if (c := base.device_entry(e.scope, k)) is not None]
-    own = base.device_entry("chip", e.key)
-    if own is not None and own.id != e.id:
-        chips.append(own)
-    known = {name for c in chips for name in c.handlers or {}}
-    out: list[str] = []
-    for typed, name in (e.handlers or {}).items():
-        if not typed.lower().startswith("0x"):
-            continue
-        try:
-            number = keys.span("port", keys.canonical("port", typed.partition(":")[0])).lo or 0
-        except keys.KeyFault:
-            out.append(f"{where}: handlers key `{typed}` is no port")
-            continue
-        if not any(base_ <= number < base_ + length for base_, length in e.ports):
-            out.append(f"{where}: handler {typed} lies in none of the device's `ports`")
-        if name not in known:
-            out.append(f"{where}: handler {typed} names `{name}`, which is no handler of a "
-                       "chip it holds")
-    return out
-
-
-def relations(base: Base) -> list[str]:
-    """Every relation resolves: a `device` names a device entry, `contains` and a register's
-    `reached` port name entries that exist, a register dictionary's scope is a device, and a
-    placed device's port-to-handler map lands in its ports and in its chips' handlers."""
-    out: list[str] = []
-    for e in base.entries():
-        where = f"{e.kind}s {e.key}" if e.kind != "device" else f"device {e.key}"
-        if e.device and base.device_entry(e.scope, e.device) is None:
-            out.append(f"{where}: device {e.device!r} names no device entry")
-        for inner in e.contains:
-            if base.device_entry(e.scope, inner) is None:
-                out.append(f"{where}: contains {inner!r}, which is no device entry")
-        out += _handlers(base, e, where) if e.kind == "device" else []
-        if e.kind in ("register", "command") and base.device_entry("", e.scope) is None:
-            out.append(f"{e.dictionary} is a dictionary of {e.kind}s of {e.scope!r}, which is "
-                       "no device entry")
-        for way, ids in base.related(e).reached.items():
-            out += [f"{where}: reached {way} names {i!r}, which is no port entry"
-                    for i in ids if i.lower().startswith("0x")]
-    return sorted(set(out))
-
-
-def both_sources(base: Base, index: SourceIndex) -> list[str]:
-    """A dictionary that says both sources exist has both on every entry, and where the sources
-    carry read and write marks that differ the entry says so in `differs`."""
-    out: list[str] = []
-    both = {d.dictionary for d in base.dictionaries if d.both}
-    for e in base.entries():
-        where = f"{e.dictionary} {e.key}"
-        if e.dictionary in both and {s.role for s in e.sources} != set(sources.ROLES):
-            out.append(f"{where} cites {sorted({s.role for s in e.sources})} and its dictionary "
-                       "says both sources exist: cite both, or list the key under left_out")
-        marks = {(s.ref.partition(":")[0] if s.role == "emulator" else s.role):
-                 index.rows[s.ref].marks for s in e.sources
-                 if s.ref in index.rows and index.rows[s.ref].marks}
-        if len(set(marks.values())) > 1 and not e.differs:
-            seen = ", ".join(f"{who} {mark}" for who, mark in marks.items())
-            out.append(f"{where}: the sources mark it differently ({seen}); say so in differs")
-    return out
-
-
-def names_unique(base: Base) -> list[str]:
+def names_unique(base: Index[Any]) -> list[str]:
     """An alias is not another entry's name in the same scope and kind."""
     names = {(e.scope, e.kind, e.name.casefold()): e for e in base.entries()}
     out: list[str] = []
@@ -227,46 +27,7 @@ def names_unique(base: Base) -> list[str]:
     return out
 
 
-def reworded(base: Base) -> list[str]:
-    """A checked entry is as it was checked: its seal, over its text and its check, equals the one
-    its `checked` record holds. A correction is a new write and a new check."""
-    return [f"{e.id} is checked and it changed (seal {e.digest[:12]}, checked "
-            f"{e.checked.digest[:12]}): a checked entry is never reworded; a correction is a "
-            f"new write and a new check by another session, sealed with {COMMAND}"
-            for e in base.entries() if e.checked is not None and e.checked.digest != e.digest]
-
-
-def locked(base: Base, lock: Lock) -> list[str]:
-    """The lock and the base agree: each locked entry is still an entry, still checked and at the
-    seal it was locked at, each checked entry is locked, and no reopening is recorded for an
-    entry sealed again as it was."""
-    out: list[str] = []
-    for id_, sealed in lock.checked.items():
-        e = base.by_id(id_)
-        if e is None:
-            out.append(f"{id_} is locked and is no entry any more: a checked entry is never "
-                       "removed; if it is retired for good, delete its line from the lock")
-        elif e.checked is None:
-            out.append(f"{id_} is locked and is no longer checked: its `checked` record is "
-                       f"gone; put it back, or check the entry again with {COMMAND}")
-        elif e.digest != sealed.digest:
-            out.append(f"{id_} is locked at {sealed.digest[:12]} and now seals as "
-                       f"{e.digest[:12]}: a checked entry is never touched; a correction is "
-                       f"checked anew by another session and sealed with {COMMAND}")
-    out += [f"{e.id} is checked and is not in the lock: seal it with {COMMAND}; a seal is lifted "
-            f"only with {REOPEN_COMMAND}, which removes the `checked` record too"
-            for e in base.entries() if e.checked is not None and e.id not in lock.checked]
-    for r in lock.reopened:
-        e, held = base.by_id(r.id), lock.checked.get(r.id)
-        if (held is not None and held.digest == r.digest) or (
-                e is not None and e.checked is not None and e.digest == r.digest):
-            out.append(f"{r.id} was reopened by {r.by!r} and is sealed at the digest it had "
-                       f"({r.digest[:12]}): a reopened entry is rewritten and checked anew, "
-                       "never sealed as it was")
-    return out
-
-
-def held(base: Base) -> list[str]:
+def held(base: Index[Any]) -> list[str]:
     """The database holds what the files hold: each entry is found by its id, its key, its
     name and its words, and a range over its number."""
     out: list[str] = []
@@ -287,10 +48,10 @@ def held(base: Base) -> list[str]:
     return out
 
 
-def _asked(base: Base) -> list[str]:
+def _asked(base: Index[Any]) -> list[str]:
     asked: list[str] = []
     for e in base.entries():
-        found = text.words(" ".join((e.name, *e.aliases, e.description)))
+        found = text.words(" ".join((e.name, *e.aliases, getattr(e, "description", ""))))
         asked += [found[0], f"{found[0][:3]}*"] if found else []
         if len(found) > 1:
             asked.append(f"{found[0]} {found[-1]}")
@@ -299,22 +60,23 @@ def _asked(base: Base) -> list[str]:
     return sorted(set(asked))
 
 
-def fallback_differs(of: Callable[[bool | None], Base]) -> list[str]:
+def fallback_differs(of: Callable[[bool | None], Index[Any]],
+                     asked: Sequence[str] | None = None) -> list[str]:
     """One set of searches over one base gives equal rows in equal order through FTS5 and
-    through the index of our own. `of(False)` is the base with FTS5 forced off; `of(None)` the
-    host's choice, which is only a second path where the host has FTS5."""
+    through the index of our own. `of(False)` forces FTS5 off; `of(None)` is the host's choice,
+    a second path only where the host has FTS5. `asked` defaults to the entries' own words."""
     ours, host = of(False), of(None)
     out: list[str] = []
     if ours.uses_fts5:
         return ["the base asked for no FTS5 and used it"]
     if not host.uses_fts5:
         return out
-    for asked in _asked(ours):
-        a = [e.id for e in ours.search(words=asked, limit=50).entries]
-        b = [e.id for e in host.search(words=asked, limit=50).entries]
+    for words in (asked if asked is not None else _asked(ours)):
+        a = [e.id for e in ours.search(words=words, limit=50).entries]
+        b = [e.id for e in host.search(words=words, limit=50).entries]
         if a != b:
             first = next((i for i, (x, y) in enumerate(zip(a, b, strict=False)) if x != y),
                          min(len(a), len(b)))
-            out.append(f"text {asked!r}: fts5 answers {len(b)} rows and the fallback {len(a)}; "
+            out.append(f"text {words!r}: fts5 answers {len(b)} rows and the fallback {len(a)}; "
                        f"the first difference is at row {first}")
     return out

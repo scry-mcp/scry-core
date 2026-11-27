@@ -1,0 +1,217 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "saa1099-device",
+ "title": "The SAA1099 as a device: bus, DTACK, reset",
+ "kind": "device",
+ "scope": "chip",
+ "covers": "the SAA1099 as a chip: its address and data bus, chip select and write, the DTACK handshake and the power-up state, as its data sheet describes them and MAME and DOSBox-X implement them",
+ "source": "official",
+ "documents": [
+  {
+   "name": "SAA1099.raw.txt",
+   "variant": "saa1099"
+  }
+ ],
+ "official": {
+  "SAA1099.raw.txt": [
+   "87-127",
+   "333-349",
+   "366-371",
+   "487-490"
+  ]
+ },
+ "engine": [
+  "update",
+  "freq"
+ ],
+ "entries": [
+  {
+   "key": "saa1099",
+   "name": "SAA1099 PSG",
+   "aliases": [
+    "SAA1099"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "87-127"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "333-349"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "366-371"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "487-490"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "function": "saa1099_device::data_w"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "386-469"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "150"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "154"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The SAA1099 is a write-only bus structure: the data bus takes a register address and then its data.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "339-341",
+       "sha": "74f60178549ac93ec8be0f41b731c0d5c3ee57ef18235be84075b312d6572847"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "A0 selects control data when 0 and the address buffer when 1, as the register maps show.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "342-343",
+       "sha": "e553b8aa27bddeea8cd2aaa9f3b80f9ec2d873f07b44cd51d54d37f0fc77843a"
+      },
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "366-371",
+       "sha": "54e43416673cbcd80d18f6d2904368ab4b5b372a626f0a26d9a9e40b71d04094"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "WR and CS control the transfer and DTACK acknowledges the completed cycle.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "121-122",
+       "sha": "aeb2e65911288721ac941a8a04128e946923b3be00ca9643a16cc07453eb5114"
+      },
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "344-346",
+       "sha": "a0a8765ca6fb36c3418c0698f6cdc5b37c174782ec9b8405a9b74d43175e1b2f"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The clock input is externally generated at a nominal frequency of 8 MHz.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "123-124",
+       "sha": "5845d5872a2439bff5caa46affe702da3c3fdd7e17a5021f6dace39ae291eb38"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "Pulse width modulation sets the amplitude and envelope levels at a minimum rate of 62,5 kHz.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "333-336",
+       "sha": "54af154bd5f9f3c12c3f31faba5ac8e3dcf42eabe7da2e2eb84c497432817eb1"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "Rates quoted are for an 8 MHz clock, and an amplitude load may need wait cycles before DTACK.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "337-338",
+       "sha": "6efde5830c7774e8078b09d258703a00318c7489a5ce8208acb8639410535481"
+      },
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "346-349",
+       "sha": "93adfa572fadbf7534b339109e38fe5e2acd380e38caacde329b9d00558a749c"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "reset",
+     "of": "doc",
+     "text": "The sound enable is reset to 0 at power-up, so all channels start disabled.",
+     "quotes": [
+      {
+       "ref": "datasheet:SAA1099.raw.txt",
+       "lines": "487-490",
+       "sha": "47bfca591bffcb47f9e0a98bf7b99a5fb1e17ea59649b0c39b71b805cfef6169"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "150",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "154",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "87-120",
+     "as": "electrical"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "78-83",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "125-127",
+     "as": "electrical"
+    },
+    {
+     "ref": "mame:src/devices/sound/saa1099.cpp",
+     "lines": "347-439",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/mame/saa1099.cpp",
+     "lines": "386-469",
+     "as": "structure"
+    }
+   ]
+  }
+ ]
+}

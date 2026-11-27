@@ -1,0 +1,19 @@
+{
+ "format": "scry-knowledge-callees/1",
+ "callees": {
+  "mame:LOG_CMD": "none:log",
+  "dosbox-x:LOG_MSG": "none:log",
+  "dosbox-x:check_after_eoi": "engine",
+  "mame:chipx_irq": "engine",
+  "mame:adjust": "engine",
+  "mame:from_usec": "none:accessor",
+  "mame:chipx_device::tick": "open",
+  "dosbox-x:MEM_StrCopy": "none:copy",
+  "dosbox-x:SegPhys": "none:accessor",
+  "dosbox-x:make_temp": "open",
+  "dosbox-x:CALLBACK_SCF": "none:macro",
+  "dosbox-x:strlen": "none:libc",
+  "dosbox-x:rand": "none:libc",
+  "dosbox-x:create_file": "shared:dos:call:0x21/0x3C"
+ }
+}

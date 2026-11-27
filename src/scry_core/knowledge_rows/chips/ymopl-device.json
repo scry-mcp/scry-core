@@ -1,0 +1,1616 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "ymopl-device",
+ "title": "The OPL2 and OPL3 chips: bus, reset, status",
+ "kind": "device",
+ "scope": "chip",
+ "covers": "the YM3812 (OPL2) and YMF262 (OPL3) as chips: how the CPU writes addresses and data, how status is read, the reset state, and what MAME and DOSBox-X do for them",
+ "source": "official",
+ "documents": [
+  {
+   "name": "YM3812.raw.txt",
+   "variant": "ym3812"
+  },
+  {
+   "name": "YMF262.raw.txt",
+   "variant": "ymf262"
+  }
+ ],
+ "official": {
+  "YM3812.raw.txt": [
+   "162-206",
+   "275-282",
+   "730-740"
+  ],
+  "YMF262.raw.txt": [
+   "150-173",
+   "315-315",
+   "644-654"
+  ]
+ },
+ "engine": [
+  "ymfm_set_timer",
+  "PIC_FullIndex",
+  "ymfm_sync_check_interrupts",
+  "cache_operator_data",
+  "clock_keystate",
+  "ymfm_sync_mode_write",
+  "ymfm_update_irq",
+  "UpdateRates",
+  "UpdateFrequency",
+  "UpdateAttenuation",
+  "UpdateDecay",
+  "UpdateAttack",
+  "UpdateRelease",
+  "UpdateSynth",
+  "UpdateSynths",
+  "SetChanData",
+  "SetState",
+  "ymfm_set_busy_end",
+  "ymfm_update_irq",
+  "CtrlWrite",
+  "DualWrite",
+  "ESFMSetEmulationMode",
+  "Enable",
+  "EnvelopeSelect",
+  "CacheWrite"
+ ],
+ "entries": [
+  {
+   "key": "ym3812",
+   "name": "YM3812 OPL2",
+   "aliases": [
+    "OPL2",
+    "AdLib chip",
+    "OPL"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "162-206"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "275-282"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "730-740"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ym3812::write_address"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ym3812::write_data"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ym3812::write"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ym3812::read_status"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ym3812::read"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::reset"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203-203"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::status"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::engine_timer_expired"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "function": "fm_engine_base::set_reset_status"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::engine_check_interrupts"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "function": "Module::PortWrite"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1143-1153"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1346-1353"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteAddr"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::Setup"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "135"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "136"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "138"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1185"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The CS, WR, RD and A0 signals control the reading and writing of the register addresses and data of the OPLII.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "163-165",
+       "sha": "92b2863b03c7365b1c441896267e4bd8dfcc6820f65b3a643d4882bb3ebbb7b2"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "when",
+     "of": "doc",
+     "text": "In address write mode the address of the designated internal register is set, after which data can be written.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "180-182",
+       "sha": "25a44b9062fa3e10a42b4997be5f4e0e0903d282cd9bc4c4bcc5a38a477499f0"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "when",
+     "of": "doc",
+     "text": "In data write mode the data bus is written to the register having the designated address.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "185-186",
+       "sha": "cc225bc74f5a2535cfda71098909a61326cbfaa65ed83c56458d1e3b11fdb253"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "when",
+     "of": "doc",
+     "text": "In status read mode the contents of the status register are output on the data bus.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "190-191",
+       "sha": "0d4d84ce4629c0c49c5e048f78a2b1ce5c4639a9432a2912b829c7070f3a4e10"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "when",
+     "of": "doc",
+     "text": "In inhibit mode the data on the bus is meaningless and cannot be controlled.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "193-195",
+       "sha": "84f499b0495ec7c5d6018174425110efcc647803ec9bf98f8ccac7f35fe8758e"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "is",
+     "of": "doc",
+     "text": "The registers are an area of 777 bits, addressed by subaddresses; the capture reads the bit count as 777.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "276-278",
+       "sha": "fbc2d003ae31f0e98632ab352e6ddbe5583a8cf6ad50dc09817205667efa255f"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "Data is stored by sending the subaddress first and then the music data; repeated access to one subaddress needs no new address.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "278-281",
+       "sha": "245533f04014728198b566d5abaa700c5d40942613b829a3563430ff84b1e263"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "reset",
+     "of": "doc",
+     "text": "The initial setting of all registers is 0, an initial clear; the capture shows the 0 as Q.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "282",
+       "sha": "8e0e9653e1bcccf276ea5c4c77e3a8a56121760bb45d7e412f9fa62a96384cf2"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "is",
+     "of": "doc",
+     "text": "The timers set flags after a set period, read as status or as interrupt signals; the interrupt signal is open drain.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "731-734",
+       "sha": "7dd75e64462652f3afdb8351fb1bd1b2a01e9e96f2c82d119028644c9b3cc337"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "when",
+     "of": "doc",
+     "text": "Status bit D5 is the timer 2 flag, set to 1 when timer 2 reaches its set time; the capture reads the bit as Ds.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "736",
+       "sha": "d5e22535f884845c01644723b571553122f8ea66fae229ebf3fce948a8ce1285"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "is",
+     "of": "doc",
+     "text": "The timer 2 flag remains set until reset.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "737",
+       "sha": "526373f863d49325872b31e4bb81052a9ba7368e81071d4e8635434b6ca00286"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "when",
+     "of": "doc",
+     "text": "Status bit D6 is the timer 1 flag and works like D5; the capture reads the bit as De.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "738",
+       "sha": "da22dabb081c150c7d0ee7677eb17d2cb768597b9785458c65a9684479ef6700"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "when",
+     "of": "doc",
+     "text": "Status bit D7 (IRQ) is set to 1 when D5 or D6 is 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:YM3812.raw.txt",
+       "lines": "739",
+       "sha": "059e799848ada51c035127b280b3d65243b6c5cc18774912fc65a2139a6a5681"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "when",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A status read also sets bits 1 and 2 of the byte, 0x06.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+       "lines": "1151",
+       "sha": "915e21ff7b9e211b27fda660b8d8aea96f8a161806ff0a31770ad3ec8ebfb337"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "A status read also sets bits 1 and 2 of the byte, 0x06, in OPL2 mode.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/adlib.cpp",
+       "lines": "1349-1350",
+       "sha": "d633f1cb56e19582e3afa1e0ba067541fc310d3d003881d0e90bb264b2a517d4"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "text": "A read at the second port offset returns 0xFF instead of undefined data.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+       "lines": "1161",
+       "sha": "91da7a6fbff27949398740298341cd6fc962f344176fffcdbe05c92d2c3efc3f"
+      },
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+       "lines": "1168-1169",
+       "sha": "97b410a8e94eb1ae51e88f49da14d6d5623e350af71b7ac92bde933abf7fb767"
+      }
+     ],
+     "row": "5"
+    },
+    {
+     "n": "104",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "text": "A read at a port whose two low bits are not 00 returns 0xFF instead of undefined data.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/adlib.cpp",
+       "lines": "1346-1353",
+       "sha": "ca9d8f8a153f8e5964f02ab0b150af1314762393619e123613bff082249146c1"
+      }
+     ],
+     "row": "5"
+    },
+    {
+     "n": "105",
+     "on": "is",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "DOSBox-X's 16-entry frequency multiple table, stored doubled, holds 0.5, then 1 to 10, then 10, 12, 12, 15 and 15.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "117-120",
+       "sha": "60d8963fd8ee7e3f8e002da3bbb06266340d438d2f799f535f37323df60b7034"
+      }
+     ]
+    },
+    {
+     "n": "106",
+     "on": "is",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "DOSBox-X's 13-entry attack table holds the sample counts 69, 55, 46, 40, 35, 29, 23, 20, 19, 15, 11, 10 and 9; its comment leaves out the highest attack rate.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "123-129",
+       "sha": "4c69953c15c06aa64d6497190078827a38711a432bfe68c015c7fbb4826fda56"
+      }
+     ]
+    },
+    {
+     "n": "107",
+     "on": "is",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "DOSBox-X's 13-entry envelope increase table holds 4 to 8, 10, 12, 14, 16, 20, 24, 28 and 32; its comment says a real OPL takes 8 samples to reach them.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "130-136",
+       "sha": "4943afd1ce50754df1c4c4eac0ad1b889046396310d815d588e6a8e97050bad4"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "162",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "166-177",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "178",
+     "as": "electrical"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "179",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "183",
+     "as": "electrical"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "184",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "187-188",
+     "as": "electrical"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "189",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "192",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "196-206",
+     "as": "electrical"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1187",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1302",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1193",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1196",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1198",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1200",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1192",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1194",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1195",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1191",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1151",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1444",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1346-1350",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1143-1144",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1153",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1267",
+     "as": "unfollowed",
+     "row": "3"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "118",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1341-1352",
+     "as": "unfollowed",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1225-1340",
+     "as": "unseen",
+     "reason": "builds the rate, frequency and channel tables, not register state"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1513",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "lines": "387",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "136",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1149-1152",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1511",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "lines": "387",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "135",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1145-1148",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1540-1546",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "138",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "135-136",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1185",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1147",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1151",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1516-1522",
+     "as": "parent",
+     "owner": "ym3812:register:0x02"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1525-1526",
+     "as": "parent",
+     "owner": "ym3812:register:0x02"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1510",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1512",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "lines": "388-389",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1549",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1219-1226",
+     "as": "unseen",
+     "reason": "records the last use time and enables the mixer channel on any port write"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1228-1252",
+     "as": "unseen",
+     "reason": "ESFM native mode, which belongs to no YM3812 or YMF262 mode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1257-1264",
+     "as": "unseen",
+     "reason": "OPL3 Gold control chip, not part of the YM3812"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1272-1296",
+     "as": "unseen",
+     "reason": "dual OPL2 and ESFM data writes, other modes than a single YM3812"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1304-1336",
+     "as": "unseen",
+     "reason": "OPL3 Gold, dual OPL2 and OPL3 address writes, other modes than a single YM3812"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "275",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "730",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "735",
+     "as": "key"
+    },
+    {
+     "ref": "datasheet:YM3812.raw.txt",
+     "lines": "740",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1214",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1216",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1218",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1220",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1222",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1162",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1164",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1166",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1171",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1550",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1255",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1256",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1265",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1266",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1271",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1297",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1300",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1301",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1303",
+     "as": "structure"
+    }
+   ]
+  },
+  {
+   "key": "ymf262",
+   "name": "YMF262 OPL3",
+   "aliases": [
+    "OPL3",
+    "AdLib chip 2",
+    "OPL3 FM"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:YMF262.raw.txt",
+     "lines": "150-173"
+    },
+    {
+     "ref": "datasheet:YMF262.raw.txt",
+     "lines": "315-315"
+    },
+    {
+     "ref": "datasheet:YMF262.raw.txt",
+     "lines": "644-654"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ymf262::write_address"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ymf262::write_address_hi"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ymf262::write_data"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ymf262::write"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ymf262::read_status"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "ymf262::read"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "function": "opl_registers_base<Revision>::reset"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203-203"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::status"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::engine_timer_expired"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "function": "fm_engine_base::set_reset_status"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "function": "fm_engine_base<RegisterType>::engine_check_interrupts"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "function": "Module::PortWrite"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1143-1153"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1363-1369"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::WriteAddr"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "function": "Chip::Setup"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "135-136"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1185"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The LSI is controlled by writing registers and reading status through an 8-bit parallel CPU interface, with D0 to D7 as the data bus.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "150-153",
+       "sha": "629f50677b34d440d1d7a03ecba46f73f614642f5b5f5a60960a712d032a29e7"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "The /CS, /RD, /WR, A0 and A1 levels select inactive, address write, data write or status read mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "154-160",
+       "sha": "5c5b4c9bb0ad8636077e3cde9733e0992d7b7ed86d46bd02416475a2417df71c"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "when",
+     "of": "doc",
+     "text": "Operation in states other than the listed access modes is not guaranteed.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "161",
+       "sha": "921e0c4f780a49ef9fd718b2d791bf0891e43bc641ab076536b841297a638743"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "when",
+     "of": "doc",
+     "text": "In address write mode the address is output on the data bus; A1 low selects register array 0 and A1 high selects register array 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "164-166",
+       "sha": "973b3f21d74871cad6e77999412e61d116eeb775e1b41ecfaf8f5cdb2497ad2a"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "is",
+     "of": "doc",
+     "text": "After an address write, data may be written in data write mode after a minimum of 32 master clock cycles.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "166-167",
+       "sha": "a223c384cab0b4aac500cc65941ace3eb98074fd5f41607964879fdc59fd37d9"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "when",
+     "of": "doc",
+     "text": "In data write mode the data on the data bus is written at the address specified previously.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "169-170",
+       "sha": "1d411d5bac9d77904605bf8818aac82dc8553eae70c75734936706a491af5986"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "is",
+     "of": "doc",
+     "text": "A wait of at least 32 master clock cycles is required before the next address write or data write.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "170-171",
+       "sha": "fa9d1708098179557804de2e99ed4876fa50eaebf9f19e7c8cadff77343c6605"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "when",
+     "of": "doc",
+     "text": "In status read mode the status of the LSI is output on the data bus.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "172-173",
+       "sha": "692b6aa7faed5c1c4a531e0118e639161a93968cd19dc113fcffaa331213c6c9"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "reset",
+     "of": "doc",
+     "text": "All registers are cleared at reset.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "315",
+       "sha": "a710822e27fcc5560fd1e655c0c44dacba3d5ab9c407fece2d78c22bd4f75b63"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "is",
+     "of": "doc",
+     "text": "The status register holds the bits IRQ, FT1 and FT2.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "645-646",
+       "sha": "7d4127db4b1080d883ef4a4afd34ef9bc43971fb168803edeb699d832eb9b4e9"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "when",
+     "of": "doc",
+     "text": "FT1, the timer 1 overflow flag, is set to 1 when timer 1 overflows.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "647-648",
+       "sha": "5229826fde1c66d5998ba813d04e5adb13c8c9f5b432080f3d7ebfebae606bb7"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "is",
+     "of": "doc",
+     "text": "FT1 is not reset unless RST is written.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "649",
+       "sha": "25e468dc758bb4e7d83e21064799cf2e61c76126e3270b22670602b4017013eb"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "when",
+     "of": "doc",
+     "text": "FT2, the timer 2 overflow flag, is set to 1 when timer 2 overflows.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "650-651",
+       "sha": "1271a2cfb99340bca759ba44955a30118a9d3853e659759cc6759eb5e918a111"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "is",
+     "of": "doc",
+     "text": "FT2 is not reset unless RST is written.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "652",
+       "sha": "25e468dc758bb4e7d83e21064799cf2e61c76126e3270b22670602b4017013eb"
+      }
+     ]
+    },
+    {
+     "n": "15",
+     "on": "when",
+     "of": "doc",
+     "text": "IRQ is set to 1 if FT1 or FT2 is set.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "653-654",
+       "sha": "eb5d0a48637feca7dd068e4b8fcab620fe5a2539ecbdd556f5ed22bcee5c546c"
+      }
+     ]
+    },
+    {
+     "n": "16",
+     "on": "is",
+     "of": "doc",
+     "text": "IRQ is not reset unless RST is written.",
+     "quotes": [
+      {
+       "ref": "datasheet:YMF262.raw.txt",
+       "lines": "654",
+       "sha": "56b80310d9e02c8355738f869952af485f3158b7c853d5e23f66c792136af020"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "text": "Port 0 stores the address as documented, but write_address_hi sets address bit 8 and masks it off again while NEW is 0, except for register 0x105.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+       "lines": "1331",
+       "sha": "a73fee75a057ed1d989573cf80fe03ea577dc0c1f215d82931a1591f273f2497"
+      },
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+       "lines": "1363-1368",
+       "sha": "768dc1dc5f933bce0d6d9632fa5305c69f739d627bcd1792b3532d84677870cb"
+      }
+     ],
+     "row": "4"
+    },
+    {
+     "n": "102",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "text": "A port 0 write returns the address as is, but a port 2 write gets bit 8 only when OPL3 mode is active or the address is 0x05.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "1192-1198",
+       "sha": "44aa587ffe119afae622f8e4ed08b198f4bec2198a618a107e8b319cacff0d61"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/adlib.cpp",
+       "lines": "1320",
+       "sha": "1abd000556062007dc22931e16109f1a324ab57dba61a622218cc1330557b416"
+      }
+     ],
+     "row": "4"
+    },
+    {
+     "n": "103",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "text": "A read at offsets 1 to 3 logs it and returns 0xFF.",
+     "quotes": [
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+       "lines": "1302",
+       "sha": "91da7a6fbff27949398740298341cd6fc962f344176fffcdbe05c92d2c3efc3f"
+      },
+      {
+       "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+       "lines": "1309-1313",
+       "sha": "f8b94efdcc7e88ae5b5f864124b6152140f7b87dc7f5c49699fc40ebfe8a418a"
+      }
+     ],
+     "row": "3"
+    },
+    {
+     "n": "104",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "text": "A read at a port other than the first returns 0xFF in OPL3 mode.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/adlib.cpp",
+       "lines": "1363-1369",
+       "sha": "759be1e7717a610b018006617d8365553dd7d4b7ab71baab15875952b039cdfe"
+      }
+     ],
+     "row": "3"
+    },
+    {
+     "n": "105",
+     "on": "is",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "DOSBox-X's 16-entry frequency multiple table, stored doubled, holds 0.5, then 1 to 10, then 10, 12, 12, 15 and 15.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "117-120",
+       "sha": "60d8963fd8ee7e3f8e002da3bbb06266340d438d2f799f535f37323df60b7034"
+      }
+     ]
+    },
+    {
+     "n": "106",
+     "on": "is",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "DOSBox-X's 13-entry attack table holds the sample counts 69, 55, 46, 40, 35, 29, 23, 20, 19, 15, 11, 10 and 9; its comment leaves out the highest attack rate.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "123-129",
+       "sha": "4c69953c15c06aa64d6497190078827a38711a432bfe68c015c7fbb4826fda56"
+      }
+     ]
+    },
+    {
+     "n": "107",
+     "on": "is",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "DOSBox-X's 13-entry envelope increase table holds 4 to 8, 10, 12, 14, 16, 20, 24, 28 and 32; its comment says a real OPL takes 8 samples to reach them.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/dbopl.cpp",
+       "lines": "130-136",
+       "sha": "4943afd1ce50754df1c4c4eac0ad1b889046396310d815d588e6a8e97050bad4"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:YMF262.raw.txt",
+     "lines": "162-163",
+     "as": "electrical"
+    },
+    {
+     "ref": "datasheet:YMF262.raw.txt",
+     "lines": "168",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:YMF262.raw.txt",
+     "lines": "644",
+     "as": "key"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "203",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1267",
+     "as": "unfollowed",
+     "row": "6"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1292",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1444",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1363-1366",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1143-1144",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1153",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "118",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1341-1352",
+     "as": "unfollowed",
+     "row": "9"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1225-1340",
+     "as": "unseen",
+     "reason": "builds the rate, frequency and channel tables, not register state"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1511",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "lines": "387",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1145-1148",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1513",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "lines": "387",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1149-1152",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1540-1546",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.h",
+     "lines": "135-136",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1185",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1147",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1151",
+     "as": "agrees",
+     "row": "15"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1516-1522",
+     "as": "parent",
+     "owner": "ymf262:register:0x02"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1525-1526",
+     "as": "parent",
+     "owner": "ymf262:register:0x02"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1510",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1512",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.h",
+     "lines": "388-389",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1549",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1219-1226",
+     "as": "unseen",
+     "reason": "records the last use time and enables the mixer channel on any port write"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1228-1252",
+     "as": "unseen",
+     "reason": "ESFM native mode, which belongs to no YM3812 or YMF262 mode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1257-1264",
+     "as": "unseen",
+     "reason": "OPL3 Gold control chip, not part of the YMF262"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1272-1296",
+     "as": "unseen",
+     "reason": "dual OPL2 and ESFM data writes, other modes than a single YMF262"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1304-1319",
+     "as": "unseen",
+     "reason": "OPL3 Gold and dual OPL2 address writes, other modes than a single YMF262"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1321-1336",
+     "as": "unseen",
+     "reason": "OPL3 Gold and dual OPL2 address writes, other modes than a single YMF262"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1191",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/dbopl.cpp",
+     "lines": "1199-1200",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1297-1303",
+     "as": "unseen",
+     "reason": "OPL2 mode address write, not the YMF262 mode"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1379",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1381",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1383",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1385",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1387",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1389",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1391",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1393",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1395",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1303",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1305",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1307",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_opl.cpp",
+     "lines": "1315",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:3rdparty/ymfm/src/ymfm_fm.ipp",
+     "lines": "1550",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1255",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1256",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1265",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1266",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/adlib.cpp",
+     "lines": "1271",
+     "as": "structure"
+    }
+   ]
+  }
+ ]
+}

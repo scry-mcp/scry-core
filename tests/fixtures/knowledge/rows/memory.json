@@ -1,0 +1,104 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "bios-data",
+ "title": "A synthetic memory location",
+ "kind": "memory",
+ "scope": "ibm-pc",
+ "covers": "a synthetic dictionary for the tests",
+ "source": "official",
+ "engine": [],
+ "entries": [
+  {
+   "key": "0x449",
+   "name": "video mode",
+   "regions": [
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "function": "Handler",
+     "case": [
+      "0x5a"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "function": "Handler",
+     "case": [
+      "0x5a"
+     ],
+     "preamble": true
+    },
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "function": "make_temp"
+    },
+    {
+     "ref": "rbil61:INTER.A",
+     "lines": "1-7"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "Create temporary file: makes a file with a unique name.",
+     "quotes": [
+      {
+       "ref": "rbil61:INTER.A",
+       "lines": "1",
+       "sha": "455ba13a437361e7e2da9e8dd8c1d49f9b5e66f5d2d02162e857f1d9b800a8b5"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "place",
+     "of": "dosbox-x",
+     "vs": "place",
+     "text": "The INT 21h handler reaches it by its case 0x5a.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/ints/call.cpp",
+       "lines": "9",
+       "sha": "64ea692038c13d3b1775930c919d6fb94b1e9e1f6d9a2a8431c7eeacbffbc394"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "lines": "10",
+     "as": "build"
+    },
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "lines": "7",
+     "as": "unseen",
+     "reason": "no program can see the flag"
+    },
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "lines": "8",
+     "as": "key"
+    },
+    {
+     "ref": "dosbox-x:src/ints/call.cpp",
+     "lines": "12-14",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "rbil61:INTER.A",
+     "lines": "2",
+     "as": "key"
+    },
+    {
+     "ref": "rbil61:INTER.A",
+     "lines": "7",
+     "as": "see-also"
+    }
+   ]
+  }
+ ]
+}

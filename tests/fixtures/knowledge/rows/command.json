@@ -1,0 +1,224 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "chipx-commands",
+ "title": "The commands of chip X",
+ "kind": "command",
+ "scope": "chipx",
+ "covers": "a synthetic dictionary for the tests",
+ "source": "official",
+ "documents": [
+  {
+   "name": "chipx.raw.txt",
+   "variant": "chipx"
+  },
+  {
+   "name": "chipx.raw.txt",
+   "variant": "chipx2"
+  }
+ ],
+ "official": {
+  "chipx.raw.txt": [
+   "10-16",
+   "31-33"
+  ]
+ },
+ "closed": [
+  {
+   "ref": "datasheet:chipx.raw.txt",
+   "lines": "32",
+   "as": "layout"
+  },
+  {
+   "ref": "datasheet:chipx.raw.txt",
+   "lines": "33",
+   "as": "electrical"
+  }
+ ],
+ "handlers": [
+  {
+   "ref": "mame:src/devices/machine/chipx.cpp",
+   "function": "chipx_device::write",
+   "case": [
+    "0"
+   ],
+   "value": "data"
+  },
+  {
+   "ref": "dosbox-x:src/hardware/chipx.cpp",
+   "function": "write_command",
+   "value": "val"
+  }
+ ],
+ "engine": [
+  "check_after_eoi"
+ ],
+ "entries": [
+  {
+   "key": "0xE0..0xE7",
+   "name": "rotate on specific EOI",
+   "aliases": [
+    "specific rotate"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:chipx.raw.txt",
+     "lines": "10-16"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "OCW2 with R, SL and EOI set: rotate priority on a specific end of interrupt.",
+     "quotes": [
+      {
+       "ref": "datasheet:chipx.raw.txt",
+       "lines": "10-11",
+       "sha": "9dc024be0316d46ad42b44468a2c2ef7ea4b38dc6d7929741905512f93a22cda"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "when",
+     "of": "doc",
+     "text": "The chip takes it whatever its initialisation state.",
+     "quotes": [
+      {
+       "ref": "datasheet:chipx.raw.txt",
+       "lines": "12",
+       "sha": "aabf379b2e55b158480ebb63f9687f3ef5f608dfb7df0c7d33839145915699bc"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "variant": "chipx2",
+     "text": "The level in bits 2-0 receives the lowest priority and its in-service bit is cleared.",
+     "quotes": [
+      {
+       "ref": "datasheet:chipx.raw.txt",
+       "lines": "13",
+       "sha": "8bbf9e91b391f9204b94b985222f76e668a5b18a40734f9fde26877a0687f785"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "place",
+     "of": "mame",
+     "vs": "place",
+     "text": "MAME takes it on a write at offset 0.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/chipx.cpp",
+       "lines": "10-12",
+       "sha": "46d52227eb7bb0bca061ccd93b0b4763ef5bac27f97811f4ef9d8d35ea94fc2f"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "row": "2",
+     "text": "MAME acts on it only while its state is READY.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/chipx.cpp",
+       "lines": "17",
+       "sha": "cd115ad5604f1244393990ad8b80e1b5ee65c9a21f080892d3e3e8e790fb3a45"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "place",
+     "of": "dosbox-x",
+     "vs": "place",
+     "text": "The port written picks the block: 0x20 the first, any other the second.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/chipx.cpp",
+       "lines": "4",
+       "sha": "6b3cb3052f3f8d5d039ba7a48766e6f55dc797fb062b769dc36f1c2b7815f42b"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "absent",
+     "row": "2",
+     "text": "An initialisation byte makes the handler return before it looks at a command.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/chipx.cpp",
+       "lines": "5-8",
+       "sha": "eff81bb56d4485a46244c3193484dd7e30be10bbbb04361e2ced0630f0ed01e7"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "3",
+     "text": "It logs that rotation is not supported and clears an in-service bit.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/chipx.cpp",
+       "lines": "10-12",
+       "sha": "3857494205c318a38f33c77d7fc274e6adb0cce3338fddf030285cb4b24bae4d"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "state": "undetermined",
+     "text": "The bit to clear is 1 shifted by the value less 0x60, which the source does not establish.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/chipx.cpp",
+       "lines": "11",
+       "sha": "4943bf5508c23e2457d852ea1eaea0879cd41edbead559393f76d16b6f1b4e4d"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:chipx.raw.txt",
+     "lines": "14",
+     "as": "elsewhere",
+     "owner": "chipx:command:0xE8..0xEF"
+    },
+    {
+     "ref": "datasheet:chipx.raw.txt",
+     "lines": "15",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:chipx.raw.txt",
+     "lines": "16",
+     "as": "electrical"
+    },
+    {
+     "ref": "mame:src/devices/machine/chipx.cpp",
+     "lines": "24-27",
+     "as": "agrees",
+     "row": "3"
+    }
+   ]
+  }
+ ]
+}

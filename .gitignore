@@ -16,5 +16,6 @@ tmp/
 /.claude/plans/
 /.claude/reports/
 /.claude/worktrees/
+/.claude/kb/
 /.claude/settings.local.json
 /CLAUDE.local.md

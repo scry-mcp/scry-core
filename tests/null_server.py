@@ -10,19 +10,8 @@ from typing import Any
 
 from scry_core import session_block
 from scry_core import window as w
-from scry_core.knowledge import (
-    Base,
-    Confirmation,
-    Device,
-    Lock,
-    Scope,
-    SecondCheck,
-    SourceIndex,
-    Support,
-    read_index,
-    read_lock,
-    read_second_check,
-)
+from scry_core.knowledge import Device, Scope, Support, quote, read_index, sealed
+from scry_core.knowledge import base as rows_base
 from scry_core.reply_contract import Invalid
 
 PID = 4242
@@ -94,6 +83,19 @@ class NoFullscreenServer(NullServer):
             self, shared: bool = False, display: int | None = None,
             background: bool | None = None) -> dict[str, Any]:
         return super().start(shared, display, None, background)
+
+
+class RefusesFullscreenServer(NullServer):
+    """Takes `fullscreen` because its emulator can, and refuses it by name on this host."""
+
+    shows_fullscreen = False
+
+    def start(self, shared: bool = False, display: int | None = None,
+              fullscreen: bool | None = None, background: bool | None = None) -> dict[str, Any]:
+        if fullscreen and shared:
+            return Invalid("bad_argument", "fullscreen: this host shows no full-screen window"
+                           ).reply()
+        return super().start(shared, display, fullscreen, background)
 
 
 class WithoutWindowTool(NullServer):
@@ -172,19 +174,15 @@ class StatusDeniesASession(NullServer):
 
 
 class NullKnowledge:
-    """Six fixture entries, each citing a real line of DOSBox-X's source, the index captured from
-    those lines, the lock of the one checked entry and the second check that confirmed it, so the
-    base serves one and holds five back. `root`, `sources`, `lock` and `second` name copies, for
-    variants that break one rule."""
+    """Two fixture entries written as rows, one sealed in all its parts and served, the other
+    held back; `rows` and `rows_locked` name copies, for variants that break one rule."""
 
-    def __init__(self, root: Path = KNOWLEDGE / "null",
-                 sources: Path = KNOWLEDGE / "null-sources.json",
-                 lock: Path = KNOWLEDGE / "null-lock.json",
-                 declared: Support | None = None,
+    def __init__(self, declared: Support | None = None,
                  code: Iterable[str] = ("ibm-pc",),
-                 second: Path = KNOWLEDGE / "null-second-check.json") -> None:
-        self.root, self.index, self.locked, self.code = root, sources, lock, tuple(code)
-        self.second = second
+                 rows: Path = KNOWLEDGE / "null-rows",
+                 rows_locked: Path = KNOWLEDGE / "null-rows-lock.json") -> None:
+        self.code = tuple(code)
+        self.rows, self.rows_locked = rows, rows_locked
         self.declared = declared or Support(
             scopes=(Scope("ibm-pc", written=("call", "port", "device")),),
             devices=(Device("vga-seq", written=("register",)),))
@@ -192,21 +190,21 @@ class NullKnowledge:
     def support(self) -> Support:
         return self.declared
 
-    def base(self, fts5: bool | None = None) -> Base:
-        return Base.load(self.root, fts5=fts5, confirmation=Confirmation.of(
-            [self.lock()], [self.second_check()]))
-
-    def sources(self) -> SourceIndex:
-        return read_index(self.index)
-
-    def lock(self) -> Lock:
-        return read_lock(self.locked)
-
-    def second_check(self) -> SecondCheck:
-        return read_second_check(self.second)
-
     def code_scopes(self) -> Iterable[str]:
         return self.code
+
+    def rows_base(self, fts5: bool | None = None) -> rows_base.Base:
+        return rows_base.Base.load(*self.rows_sources(), lock=self.rows_lock(), fts5=fts5)
+
+    def rows_sources(self) -> tuple[Path, ...]:
+        return (self.rows,)
+
+    def rows_lock(self) -> sealed.Lock:
+        return sealed.read_lock(self.rows_locked)
+
+    def rows_index(self) -> quote.Quotes:
+        return quote.parse_quotes((KNOWLEDGE / quote.QUOTES_NAME).read_text(encoding="utf-8"),
+                                  quote.QUOTES_NAME)
 
 
 EXIT_REF = "dosbox-x:src/dos/dos.cpp DOS_21Handler case 0x4c"
@@ -230,4 +228,41 @@ def write_dictionary(folder: Path, dictionary: str, kind: str, scope: str,
         "covers": "FIXTURE of a test", "complete_against": EXIT_REF.rsplit(" case", 1)[0],
         "entries": entries, **header}), encoding="utf-8")
     return path
+
+
+#: A quote's digest is only compared when a source is read, so a fixture may give any 64 hex.
+FIXTURE_SHA = "0" * 64
+
+
+def a_row(n: int, on: str, text: str, *, of: str = "doc",
+          quotes: Iterable[tuple[str, str]] = ((EXIT_REF, "1"),)) -> dict[str, Any]:
+    """One row of a dictionary of rows, citing a fixture line."""
+    return {"n": str(n), "on": on, "of": of, "text": text,
+            "quotes": [{"ref": ref, "lines": lines, "sha": FIXTURE_SHA}
+                       for ref, lines in quotes]}
+
+
+def write_rows(folder: Path, dictionary: str, kind: str, scope: str,
+               entries: list[dict[str, Any]], *, title: str = "A synthetic dictionary",
+               source: str = "official", **header: Any) -> Path:
+    """A dictionary of rows (`scry-knowledge/2`) in `folder`, marked as a fixture in its
+    `covers`."""
+    path = folder / f"{dictionary}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "format": "scry-knowledge/2", "dictionary": dictionary, "title": title, "kind": kind,
+        "scope": scope, "covers": "FIXTURE of a test", "source": source, "entries": entries,
+        **header}), encoding="utf-8")
+    return path
+
+
+def rows_of(folder: Path, *names: str) -> rows_base.Base:
+    """A base of rows holding every entry of the fixtures `names` (`rows/<name>`), copied into
+    `folder`."""
+    folder.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        (folder / name).write_bytes((KNOWLEDGE / "rows" / name).read_bytes())
+    base = rows_base.Base((folder,), None)
+    assert base.faults() == [] and len(base) == len(names)
+    return base
 

@@ -1,0 +1,20 @@
+{
+ "format": "scry-knowledge/1",
+ "dictionary": "chipx-old",
+ "kind": "command",
+ "scope": "chipx",
+ "covers": "old shape",
+ "complete_against": "mame:src/devices/machine/chipx.cpp chipx_device::write",
+ "entries": [
+  {
+   "key": "0xE0..0xE7",
+   "name": "rotate on specific EOI",
+   "aliases": [
+    "rot"
+   ],
+   "description": "Rotates priority.",
+   "behaviour": "If the in-service bit is set it is cleared. The base moves up. A sentence nobody checked.",
+   "sources": []
+  }
+ ]
+}

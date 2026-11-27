@@ -1,0 +1,534 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "ins8250-device",
+ "title": "The INS8250 UART as a chip",
+ "kind": "device",
+ "scope": "chip",
+ "covers": "The INS8250 and INS8250-B UART as a chip: what it does and the state a Master Reset leaves in its registers and outputs",
+ "source": "official",
+ "documents": [
+  {
+   "name": "INS8250.raw.txt",
+   "variant": "8250"
+  }
+ ],
+ "official": {
+  "INS8250.raw.txt": [
+   "5-26",
+   "448-453",
+   "578-596"
+  ]
+ },
+ "defines": {
+  "dosbox-x": [
+   "SERIAL_DEBUG"
+  ]
+ },
+ "engine": [
+  "updateMSR",
+  "receive_register_reset",
+  "transmit_register_reset",
+  "update_msr",
+  "PIC_DeActivateIRQ",
+  "m_out_int_cb"
+ ],
+ "entries": [
+  {
+   "key": "ins8250",
+   "name": "INS8250 UART",
+   "aliases": [
+    "8250 UART"
+   ],
+   "regions": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "5-26"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "448-453"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "578-596"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "function": "ins8250_uart_device::device_reset"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "function": "Init_Registers"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "function": "ins8250_uart_device::update_interrupt"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The INS8250 is a serial data input/output interface in a microcomputer system, configured by system software over a TRI-STATE 8-bit bidirectional data bus.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "6-9",
+       "sha": "7a401ff8ca9a8f0173b693b84df57e4ed02e1f1bccefb1cf5b17de2a9afa8f43"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "is",
+     "of": "doc",
+     "text": "The UART converts serial data to parallel and parallel to serial, and the CPU can read its complete status, including parity, overrun, framing and break errors.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "10-17",
+       "sha": "1288129cfabc05b774d5b0c6f96571605cdd19f36248459853fa24948907e06b"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "is",
+     "of": "doc",
+     "text": "A programmable baud rate generator divides the timing clock by 1 to 2^16-1 and produces a 16 times clock for the transmitter, and optionally the receiver.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "18-22",
+       "sha": "c1eed4b42cb424a848b16b38dfe1ec75250ff9a2bfe5befc646deac55b4b9429"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "is",
+     "of": "doc",
+     "text": "The UART has complete MODEM-control capability and a processor-interrupt system whose interrupts can be programmed to the user's requirements.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "23-26",
+       "sha": "d163bb2375ee3cb8a0bea17e87858c136438e56a804a841ec47f80d93ab5ea97"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "reset",
+     "of": "doc",
+     "text": "A high Master Reset input clears all registers except the Receiver Buffer, Transmitter Holding and Divisor Latches, and the control logic.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "448-451",
+       "sha": "2dc7840e3e694c982abb7e8db67f460914aa5586efd0e6e02b6746056ec54ff2"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "reset",
+     "of": "doc",
+     "text": "A Master Reset affects the states of SOUT, INTR, OUT 1, OUT 2, RTS and DTR as Table I lists.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "451-453",
+       "sha": "6d0cd5ed7335d19a3a2f84df0245772e5f0a6300ab5ab768fe22a54e2a1dfda1"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "reset",
+     "of": "doc",
+     "text": "After a Master Reset the Interrupt Enable register is 0000 0000.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "580",
+       "sha": "76e8ad9562b89293ce260d5e29ce0fd7b262cec6a7309a129043ebd5e78e817c"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "reset",
+     "of": "doc",
+     "text": "After a Master Reset the Interrupt Identification register is 0000 0001.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "581",
+       "sha": "f290843c010dc76d8960165c6f2299763b6698cae6cd4972d12e2bac6afc9d20"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "reset",
+     "of": "doc",
+     "text": "After a Master Reset the Line Control register is 0000 0000.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "582",
+       "sha": "4174ba948f0f71ecffcc5caceea29260f385d543b950f56512c51ae09e9a31a3"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "reset",
+     "of": "doc",
+     "text": "After a Master Reset the MODEM Control register is 0000 0000.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "583",
+       "sha": "093bde3c6691eb5f272a336c7ca677db6e05d35505d11aa90530ba32e4e64f3f"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "reset",
+     "of": "doc",
+     "text": "After a Master Reset the Line Status register is 0110 0000.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "584",
+       "sha": "5d7acfcc377c79a48b4896b99d7b2e31aced8e1383fdbcc0a2e4fb598d31f932"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "reset",
+     "of": "doc",
+     "text": "After a Master Reset the MODEM Status register is XXXX 0000.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "585",
+       "sha": "4b197cfb974f689e3e11c8278e1d8bb6b7068af03363d13e79f7706daebacfc4"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "reset",
+     "of": "doc",
+     "text": "A Master Reset sets OUT 2, RTS, DTR and OUT 1 high.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "591-594",
+       "sha": "672cb10df8d8a1ab07bca909a770f5c8ea30d4c0859d1b117b323caf15383d9a"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "is",
+     "of": "doc",
+     "text": "In the Interrupt Enable register reset value the underlined bits are permanently low.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "595",
+       "sha": "5096478f4bbdd1a8f4dd59e2665291718965fbc9b715df08ca21d9213c85c352"
+      }
+     ]
+    },
+    {
+     "n": "15",
+     "on": "is",
+     "of": "doc",
+     "text": "In the MODEM Status register reset value, bits 7 to 4 are driven by the input signals.",
+     "quotes": [
+      {
+       "ref": "datasheet:INS8250.raw.txt",
+       "lines": "596",
+       "sha": "08274f8c7f24b77e34d7f02f848b2c67e99415ffa847e2da24651a73fc2d2815"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "By default reset also loads a divisor of 12 into the Divisor Latches through Write_THR and Write_IER, for 9600 baud.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "1010",
+       "sha": "4e01db5e14e9bb08b39208b5191ee2a62869026fce2f3a67e3eeea0b83630f05"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "1044",
+       "sha": "4bb17ac945abb8633a0af13bfedf7f0e50e8071fe90f608501a5622de1e815c9"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "1082-1085",
+       "sha": "43cd7f1b7967711d0e8ee128735da8e90e1c3929fdfb20edcb34dd17cb70dc75"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "1088-1090",
+       "sha": "d2e64ed333eb0dc592d6fe4a22672e7b720a4baf9beb3dc6e33c033b5e6a5e3e"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "9",
+     "text": "By default reset leaves the Line Control register at 8 data bits and no parity, loaded by Write_LCR.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "1054-1055",
+       "sha": "1f0230a9c5557a29c8e430d77d13d671d095636090d0f8b450c686b6625aeb74"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "1059-1061",
+       "sha": "9a35723428deacd300051a0e54f2d9ef2bf52ca0e76cf73994506100c4fa5a3b"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "1091",
+       "sha": "a40fde168c3154f357e57717076b1e33a7daffe013518e1fc93eb04704207c64"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "Reset presets the scratch register to 0xFF.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+       "lines": "1042",
+       "sha": "5b5f737b6d8e50c01dbf786ba1af5635a421693bc00ac35098a0f5e9565dfffa"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "5",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "578-579",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:INS8250.raw.txt",
+     "lines": "586-590",
+     "as": "electrical"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "703-714",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "703",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "704",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "705",
+     "as": "agrees",
+     "row": "9"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "706",
+     "as": "agrees",
+     "row": "10"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "707",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "709",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "715-719",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "710-711",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "216-226",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "216-226",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "716-719",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1017",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1018",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1032",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1087",
+     "as": "unfollowed",
+     "row": "10"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1087",
+     "as": "unfollowed",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1087",
+     "as": "unfollowed",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1094",
+     "as": "unfollowed",
+     "row": "6"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1092-1093",
+     "as": "unfollowed",
+     "row": "12"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1007-1008",
+     "as": "unseen",
+     "reason": "clears the pending-interrupt bookkeeping before the registers are preset"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1019",
+     "as": "unseen",
+     "reason": "clears LCR, which the Write_LCR call near the end sets again"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1021-1025",
+     "as": "unseen",
+     "reason": "internal modem line state that the Write_MCR call below rewrites"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1027-1029",
+     "as": "unseen",
+     "reason": "switches the 16550 FIFOs off, outside the INS8250 datasheet"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1033-1040",
+     "as": "unseen",
+     "reason": "sets line and delta flags that the Read_MSR call at the end reads and clears"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1048-1053",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1057-1078",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/serialport/serialport.cpp",
+     "lines": "1082",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "191",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "215",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/ins8250.cpp",
+     "lines": "197-212",
+     "as": "unseen",
+     "reason": "branch for an enabled pending interrupt; reset zeroes enable and pending first, so skipped"
+    }
+   ]
+  }
+ ]
+}

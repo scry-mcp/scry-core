@@ -1,0 +1,370 @@
+"""A quote: where a row's evidence sits in a pinned source, and the digest that says it is still
+there.
+
+A quote is `ref` (`<scheme>:<file>`), `lines` (`322-328`, or `259`) and `sha`, the SHA-256 of
+those lines with every run of white space folded to one space. The committed files hold no
+source text: a reader opens the lines through `Sources`, which reads each scheme at its pin.
+A seal keeps the digest of each row's quotes and not their `lines`, so `Quotes` is the
+committed index beside it: per tree, the digest the source gave each `(ref, lines)` a quote
+names, so a `lines` that moved while its text stayed is caught.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import io
+import json
+import posixpath
+import re
+import subprocess
+import zipfile
+from collections.abc import Mapping
+from dataclasses import dataclass
+from importlib import resources
+from pathlib import Path, PurePosixPath, PureWindowsPath
+
+from scry_core.knowledge.shared import PINS
+
+PARTY = {"mame": "mame", "dosbox-x": "dosbox-x", "rbil61": "doc", "datasheet": "doc"}
+QUOTE_LINES = 12
+BODY_LINES = 60
+DATASHEETS_FORMAT = "scry-knowledge-datasheets/1"
+DOCUMENT_CLASSES = ("maker-datasheet", "maker-guide", "second-source")
+DOCUMENT_TEXTS = ("layer", "ocr")
+_SPAN = re.compile(r"([1-9][0-9]*)(?:-([1-9][0-9]*))?")
+_SHA = re.compile(r"[0-9a-f]{64}")
+QUOTES_FORMAT = "scry-knowledge-quotes/1"
+QUOTES_NAME = "quotes.json"
+
+
+class Invalid(Exception):
+    """A source, a function or a rule that cannot give what a check needs: exit 3."""
+
+
+class Outside(Invalid):
+    """Lines the file does not have: a fault of the row that names them, not of the source."""
+
+
+def split_ref(ref: str) -> tuple[str, str]:
+    """The scheme and the file of a `ref`, or `ValueError`. The file is inside its tree: an
+    absolute path or one whose `..` climbs above the tree points at something no pin holds."""
+    scheme, colon, file = ref.partition(":")
+    if not colon or scheme not in PARTY or not file or file != file.strip():
+        raise ValueError(f"{ref!r} is `<scheme>:<file>` with a scheme of {', '.join(PARTY)}")
+    if (PurePosixPath(file).is_absolute() or PureWindowsPath(file).is_absolute()
+            or posixpath.normpath(file).split("/")[0] == ".."):
+        raise ValueError(f"{ref!r} names a file inside the tree: not an absolute path, and no "
+                         "`..` above it")
+    return scheme, file
+
+
+def span(lines: str) -> tuple[int, int]:
+    """The first and the last line of a `lines` text (`a-b`, or `a`), or `ValueError`."""
+    found = _SPAN.fullmatch(lines) if isinstance(lines, str) else None
+    if not found:
+        raise ValueError(f"`lines` is `a-b` or `a`, from line 1; got {lines!r}")
+    first = int(found.group(1))
+    last = int(found.group(2) or first)
+    if last < first:
+        raise ValueError(f"`lines` runs downward: {lines!r}")
+    return first, last
+
+
+def spelled(first: int, last: int) -> str:
+    """The one spelling of a span."""
+    return str(first) if first == last else f"{first}-{last}"
+
+
+def stamp(lines: list[str]) -> str:
+    """The digest of `lines`: their text with runs of white space folded."""
+    return hashlib.sha256(" ".join(" ".join(lines).split()).encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True)
+class Quote:
+    ref: str
+    lines: str
+    sha: str = ""
+
+    @property
+    def scheme(self) -> str:
+        return split_ref(self.ref)[0]
+
+    @property
+    def party(self) -> str:
+        return PARTY[self.scheme]
+
+    @property
+    def first(self) -> int:
+        return span(self.lines)[0]
+
+    @property
+    def last(self) -> int:
+        return span(self.lines)[1]
+
+    def as_json(self) -> dict[str, str]:
+        return {"ref": self.ref, "lines": self.lines, "sha": self.sha}
+
+
+@dataclass(frozen=True)
+class Datasheet:
+    """An official document held by identity: where it is (its URL and an archive copy), what it
+    is (`kind`: the maker's datasheet or guide, or a second source's datasheet; `text`: a text
+    layer or an OCR), and the digest of the PDF and of the one text capture a quote's lines are
+    numbered in, with the tool and version that made it (`pdftotext -raw` keeps a two-column
+    page in reading order where `-layout` puts both columns on one line)."""
+
+    title: str
+    url: str
+    archive: str
+    kind: str
+    text: str
+    tool: str
+    tool_version: str
+    pdf: str
+    capture: str
+
+
+_DATASHEET_FIELDS = {"title", "url", "archive", "class", "text", "tool", "tool_version", "pdf",
+                     "capture"}
+
+
+def _datasheet(name: str, raw: object, where: str) -> Datasheet:
+    if not (isinstance(raw, dict) and set(raw) == _DATASHEET_FIELDS
+            and all(isinstance(v, str) and v for v in raw.values())):
+        raise ValueError(f"{where}: {name!r} is {', '.join(sorted(_DATASHEET_FIELDS))}, all text")
+    if not (_SHA.fullmatch(raw["pdf"]) and _SHA.fullmatch(raw["capture"])):
+        raise ValueError(f"{where}: {name!r} holds the 64-digit `pdf` and `capture` digests")
+    if raw["class"] not in DOCUMENT_CLASSES:
+        raise ValueError(f"{where}: {name!r} `class` is one of {', '.join(DOCUMENT_CLASSES)}")
+    if raw["text"] not in DOCUMENT_TEXTS:
+        raise ValueError(f"{where}: {name!r} `text` is one of {', '.join(DOCUMENT_TEXTS)}")
+    if not (raw["url"].startswith("http") and raw["archive"].startswith("http")
+            and raw["url"] != raw["archive"]):
+        raise ValueError(f"{where}: {name!r} has a `url` and a different `archive` URL")
+    return Datasheet(raw["title"], raw["url"], raw["archive"], raw["class"], raw["text"],
+                     raw["tool"], raw["tool_version"], raw["pdf"], raw["capture"])
+
+
+def parse_datasheets(text: str, where: str = "datasheets") -> dict[str, Datasheet]:
+    """The document table, by capture file name, or `ValueError` naming what is wrong."""
+    try:
+        doc = json.loads(text)
+    except json.JSONDecodeError as bad:
+        raise ValueError(f"{where} is not JSON: {bad}") from bad
+    if not isinstance(doc, dict) or doc.get("format") != DATASHEETS_FORMAT:
+        raise ValueError(f"{where} is not a `{DATASHEETS_FORMAT}` document")
+    table = doc.get("datasheets")
+    if not isinstance(table, dict) or not table:
+        raise ValueError(f"{where}: `datasheets` is a non-empty object")
+    made = {name: _datasheet(name, raw, where) for name, raw in table.items()}
+    _one_each(made, where)
+    return made
+
+
+def _one_each(made: Mapping[str, Datasheet], where: str) -> None:
+    seen: dict[str, str] = {}
+    for name, held in made.items():
+        for identity in (held.title, held.url, held.pdf):
+            if seen.setdefault(identity, name) != name:
+                raise ValueError(f"{where}: {name!r} and {seen[identity]!r} are one document "
+                                 f"({identity}) held twice")
+
+
+def default_datasheets() -> dict[str, Datasheet]:
+    """The datasheets this package's index holds."""
+    name = "datasheets.json"
+    return parse_datasheets(
+        (resources.files("scry_core") / "knowledge_index" / name).read_text(encoding="utf-8"),
+        name)
+
+
+def table_for(dictionary: Path) -> dict[str, Datasheet]:
+    """The documents a dictionary may quote: this package's table and the one in the
+    `knowledge_index` of the package that holds the dictionary, or `ValueError` when the two hold
+    one document in two forms."""
+    table = default_datasheets()
+    for folder in dictionary.resolve().parents:
+        beside = folder / "knowledge_index" / "datasheets.json"
+        if beside.is_file():
+            where = f"{folder.name}/knowledge_index/datasheets.json"
+            for name, held in parse_datasheets(beside.read_text(encoding="utf-8"), where).items():
+                if table.setdefault(name, held) != held:
+                    raise ValueError(f"{where}: {name!r} is also in scry_core's table, in "
+                                     "another form")
+            _one_each(table, f"scry_core's table and {where}")
+            break
+    return table
+
+
+def _split(text: str) -> list[str]:
+    held = text.replace("\r\n", "\n").split("\n")
+    return held[:-1] if held and held[-1] == "" else held
+
+
+class Sources:
+    """Reads the lines of a quote's file at the pin: MAME from a tree of the tag's files, DOSBox-X
+    with `git show` at the pin, Ralf Brown's list from a folder holding its files or its
+    archives, a datasheet from its capture, whose digest must be the table's."""
+
+    def __init__(self, *, mame: Path | None = None, dosbox: Path | None = None,
+                 rbil: Path | None = None, datasheets: Path | None = None,
+                 pins: Mapping[str, str] | None = None,
+                 table: Mapping[str, Datasheet] | None = None) -> None:
+        self.roots = {"mame": mame, "dosbox-x": dosbox, "rbil61": rbil, "datasheet": datasheets}
+        self.pins = dict(PINS if pins is None else pins)
+        self.table = default_datasheets() if table is None else table
+        self._held: dict[str, list[str]] = {}
+
+    def lines(self, ref: str) -> list[str]:
+        """Every line of the file `ref` names, numbered from 1 as an editor does."""
+        if ref not in self._held:
+            scheme, file = split_ref(ref)
+            root = self.roots[scheme]
+            if root is None:
+                raise Invalid(f"no source for {scheme}: it needs its option (--mame, --dosbox, "
+                              "--rbil or --datasheets)")
+            reader = {"mame": self._mame, "dosbox-x": self._dosbox, "rbil61": self._rbil,
+                      "datasheet": self._datasheet}[scheme]
+            self._held[ref] = _split(reader(root, file))
+        return self._held[ref]
+
+    def _mame(self, root: Path, file: str) -> str:
+        path = root / file
+        if not path.is_file():
+            raise Invalid(f"{path} is not a file: the MAME tree holds the files of the pinned "
+                          "tag at their own paths")
+        return path.read_bytes().decode("utf-8", errors="replace")
+
+    def _dosbox(self, root: Path, file: str) -> str:
+        pin = self.pins["dosbox-x"]
+        done = subprocess.run(["git", "-C", str(root), "show", f"{pin}:{file}"],
+                              capture_output=True, check=False)
+        if done.returncode != 0:
+            raise Invalid(f"git show {pin}:{file} failed in {root}: "
+                          f"{done.stderr.decode(errors='replace').strip()}")
+        return done.stdout.decode("utf-8", errors="replace")
+
+    def _rbil(self, root: Path, file: str) -> str:
+        if (root / file).is_file():
+            return (root / file).read_bytes().decode("latin-1")
+        for archive in sorted(root.glob("inter61*.zip")):
+            try:
+                with zipfile.ZipFile(io.BytesIO(archive.read_bytes())) as z:
+                    if file in z.namelist():
+                        return z.read(file).decode("latin-1")
+            except zipfile.BadZipFile as bad:
+                raise Invalid(f"{archive} is not a zip archive: {bad}") from bad
+        raise Invalid(f"{file} is neither a file in {root} nor in one of its archives")
+
+    def _datasheet(self, root: Path, file: str) -> str:
+        known = self.table.get(file)
+        if known is None:
+            raise Invalid(f"{file} is no datasheet of the table: it holds "
+                          f"{', '.join(sorted(self.table))}")
+        path = root / file
+        if not path.is_file():
+            raise Invalid(f"{path} is not a file: rebuild the capture with {known.tool} "
+                          f"{known.tool_version}")
+        data = path.read_bytes()
+        if hashlib.sha256(data).hexdigest() != known.capture:
+            raise Invalid(f"{path} is not the capture the table records for {file}: the "
+                          f"{known.tool} {known.tool_version} text of the PDF it names")
+        return data.decode("utf-8", errors="replace")
+
+    def read(self, quote: Quote) -> list[str]:
+        """The lines a quote names; `Invalid` when the file lacks them."""
+        first, last = span(quote.lines)
+        held = self.lines(quote.ref)
+        if last > len(held):
+            raise Outside(f"{quote.ref}:{quote.lines} is outside the file, which has "
+                          f"{len(held)} lines")
+        return held[first - 1:last]
+
+    def stamped(self, ref: str, lines: str) -> Quote:
+        """The quote of `lines` of `ref`, with the digest of what the source holds there."""
+        split_ref(ref)
+        span(lines)
+        draft = Quote(ref, lines)
+        return Quote(ref, lines, stamp(self.read(draft)))
+
+    def faults(self, quote: Quote, limit: int = QUOTE_LINES) -> list[str]:
+        """What is wrong with `quote`: lines the file lacks, blank or too many, or a digest that
+        is not the lines'."""
+        where = f"{quote.ref}:{quote.lines}"
+        try:
+            first, last = span(quote.lines)
+            held = self.read(quote)
+        except ValueError as bad:
+            return [str(bad)]
+        except Outside as bad:
+            return [str(bad)]
+        out = []
+        if last - first + 1 > limit:
+            out.append(f"{where} is {last - first + 1} lines, over {limit}")
+        if not any(line.strip() for line in held):
+            out.append(f"{where} is blank")
+        if not _SHA.fullmatch(quote.sha):
+            out.append(f"{where} has no digest: `rows quote --stamp` writes it")
+        elif quote.sha != stamp(held):
+            out.append(f"{where} no longer gives its digest: the source changed or the row "
+                       "names other lines")
+        return out
+
+
+@dataclass(frozen=True)
+class Quotes:
+    """The index of a tree's quotes: `(ref, lines)` to the digest the pinned source gave them.
+    A quote's own `sha` and this entry change together when the source or the lines move, so a
+    `lines` edited with the text left alone is caught, where the seal cannot see it."""
+
+    held: Mapping[tuple[str, str], str]
+
+    def digest(self, ref: str, lines: str) -> str:
+        """The digest the index holds for `lines` of `ref`, or `""` when it does not hold them."""
+        return self.held.get((ref, lines), "")
+
+    def document(self) -> str:
+        """The index as its file holds it: one quote a line, sorted, so a diff shows the quotes
+        that were added, removed or moved."""
+        quotes = ",\n".join(
+            "  " + json.dumps([ref, lines, sha], ensure_ascii=False, separators=(", ", ": "))
+            for (ref, lines), sha in sorted(self.held.items()))
+        body = f"\n{quotes}\n " if quotes else ""
+        return ('{\n "format": "' + QUOTES_FORMAT + '",\n "quotes": [' + body + "]\n}\n")
+
+
+def parse_quotes(text: str, where: str = QUOTES_NAME) -> Quotes:
+    """The index a file holds, or `ValueError` naming what is wrong."""
+    try:
+        doc = json.loads(text)
+    except json.JSONDecodeError as bad:
+        raise ValueError(f"{where} is not JSON: {bad}") from bad
+    if not (isinstance(doc, dict) and set(doc) == {"format", "quotes"}
+            and doc["format"] == QUOTES_FORMAT and isinstance(doc["quotes"], list)):
+        raise ValueError(f"{where} is `format` {QUOTES_FORMAT} and `quotes`")
+    held: dict[tuple[str, str], str] = {}
+    for number, raw in enumerate(doc["quotes"]):
+        if not (isinstance(raw, list) and len(raw) == 3
+                and all(isinstance(x, str) for x in raw) and _SHA.fullmatch(raw[2])):
+            raise ValueError(f"{where}, quote {number + 1} is `[ref, lines, sha]`, the digest "
+                             "64 hex digits")
+        try:
+            split_ref(raw[0])
+            span(raw[1])
+        except ValueError as bad:
+            raise ValueError(f"{where}, quote {number + 1}: {bad}") from bad
+        if held.setdefault((raw[0], raw[1]), raw[2]) != raw[2]:
+            raise ValueError(f"{where}: {raw[0]}:{raw[1]} is held twice, with two digests")
+    return Quotes(held)
+
+
+def merge(*parts: Quotes) -> Quotes:
+    """One index of several, refusing lines two of them give two digests: a `(ref, lines)` has
+    one digest at a pin."""
+    held: dict[tuple[str, str], str] = {}
+    for part in parts:
+        for (ref, lines), sha in part.held.items():
+            if held.setdefault((ref, lines), sha) != sha:
+                raise ValueError(f"{ref}:{lines} is held with two digests")
+    return Quotes(held)

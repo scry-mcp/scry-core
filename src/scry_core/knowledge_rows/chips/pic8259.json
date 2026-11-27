@@ -1,0 +1,1556 @@
+{
+ "format": "scry-knowledge/2",
+ "dictionary": "pic8259",
+ "title": "The 8259A interrupt controller, its two ports",
+ "kind": "register",
+ "scope": "pic8259",
+ "covers": "The two ports of the 8259A: A0 = 0 and A0 = 1, each read and written",
+ "source": "official",
+ "documents": [
+  {
+   "name": "8259A.raw.txt",
+   "variant": "8259A"
+  }
+ ],
+ "official": {
+  "8259A.raw.txt": [
+   "383-385",
+   "406-426",
+   "437-485",
+   "498-503",
+   "508-512",
+   "641-647",
+   "685-690",
+   "696-721",
+   "728-739"
+  ]
+ },
+ "engine": [
+  "set_imr",
+  "check_for_irq",
+  "check_after_EOI",
+  "LOG_MSG",
+  "LOG",
+  "LOGICW",
+  "LOGOCW",
+  "adjust",
+  "m_out_int_func",
+  "update_active_irq",
+  "start_irq",
+  "TIMER_IRQ0Poll"
+ ],
+ "entries": [
+  {
+   "key": "0x00",
+   "name": "status read",
+   "aliases": [
+    "IRR ISR"
+   ],
+   "access": "read",
+   "regions": [
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "685-690"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "696-719"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "728-734"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "738-739"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "function": "pic8259_device::read",
+     "case": [
+      "0"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "read_command"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "A read returns the IRR or the ISR, as chosen by OCW3, or the word enabled onto the data bus during RD.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "696-698",
+       "sha": "4786998af9b73314bd8853c9a0483b9a4e2998cbc755b82f365093b4c6d64d87"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "709-710",
+       "sha": "47ac5feccac26c687f7bd0e5bd7b705696591e779d39870156ee3d979188ce9c"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "685-686",
+       "sha": "f23dbbffeb2ffcfe77b8edeab218c35bf7fa98e15843414e9e37718e63f89167"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "The IRR holds the levels requesting an interrupt; the highest request is reset when acknowledged, and the IMR does not affect it.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "711-715",
+       "sha": "9fa5ce4dd40d81294fec46596f53e6453ccd2872a1843c88ad839b7029ca4841"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "read",
+     "of": "doc",
+     "text": "The ISR holds the priority levels being serviced and is updated when an end of interrupt command is issued.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "716-719",
+       "sha": "0ba84cc7ad727f007611062bf7aa04ebe8abec2ce393f43e4efff1b909d72d0b"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "read",
+     "of": "doc",
+     "text": "The 8259A remembers whether OCW3 chose the IRR or the ISR, so no OCW3 is needed before each read, except with poll.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "728-733",
+       "sha": "e500adb1b6cc159c91412ed79bf022c04c07ced699167b88daebfba7a595c819"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "reset",
+     "of": "doc",
+     "text": "After initialization the 8259A is set to read the IRR.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "734",
+       "sha": "961dd182ce6371886721996524e933c7e599c178d024b504780b355e979814b3"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "when",
+     "of": "doc",
+     "text": "A poll overrides a status read when P = 1 and RR = 1 in OCW3.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "738-739",
+       "sha": "90ceafeb1f6d0af7c8c85780ec31bbed6346d66aa1e02e9df3aa66625fe7c748"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "read",
+     "of": "doc",
+     "text": "The word enabled onto the data bus during RD holds I in bit 7 and the binary code W2 W1 W0 of the highest requesting level in bits 2-0.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "685-690",
+       "sha": "8d71ac6d27085a7e14c6b0ec62e7da95347cfcf2bd14f89701899bdd64b5f4f1"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "read",
+     "of": "mame",
+     "vs": "differs",
+     "row": "3",
+     "text": "The ISR read returns the in-service bits with the masked ones removed.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "221",
+       "sha": "85ef29b11656f5f6cbdd8298da90f2de2a6bf407d8b24fe1acf029182924201e"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "reset",
+     "of": "mame",
+     "vs": "differs",
+     "row": "5",
+     "text": "ICW1 leaves the OCW3 register selection alone, so a read after it returns what was selected before.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "245-256",
+       "sha": "ea74390b1d609d3260a497e41898b55a9dcb970e4f441bb5d27dcc01fe2f618e"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "ICW1 does not reset the register selection, so a read after it returns what was selected before.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "249-256",
+       "sha": "60da514da6ca74abedbf2a3aff60a7ae57a4755dfb8563610247d0fb3a7ed383"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "when",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "6",
+     "text": "Poll is not handled: OCW3 with P = 1 only logs a message, so a read returns the selected register.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "258",
+       "sha": "36fef93f7067a184ceb4f8949a6ab06fa3fd6d895a5c0aa243d4ba4bdce4ffac"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "344-345",
+       "sha": "73a83d9095ab3d63f2c6ffea35e2c1599a84165d761b11651c550f31bdd78865"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "7",
+     "text": "A read after a poll command returns the selected register, not the poll word.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "258",
+       "sha": "36fef93f7067a184ceb4f8949a6ab06fa3fd6d895a5c0aa243d4ba4bdce4ffac"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "344-345",
+       "sha": "73a83d9095ab3d63f2c6ffea35e2c1599a84165d761b11651c550f31bdd78865"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "read",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "Reading the IRR of the master first brings the timer interrupt line up to date.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "349-351",
+       "sha": "2253392f19592a12b61e53077cdfaef648cee2797b2cd2998dcaee0e76aff901"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "read",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A poll read that finds a level clears its request bit unless level triggered or a slave sits on it, and sets its in-service bit unless auto EOI.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "198-208",
+       "sha": "1bb55c6183a5931a5b640d08293d341f64516f0f81dd7927efa4ebbd869d5420"
+      }
+     ]
+    },
+    {
+     "n": "104",
+     "on": "read",
+     "of": "mame",
+     "vs": "extra",
+     "text": "A poll read clears the poll bit of the stored OCW3 when side effects are enabled.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "191",
+       "sha": "c059df8a3453062eb996a88b9837e0e57a4fe025911dd0983a1370ed78c3e042"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "210-211",
+       "sha": "be3cec0d5e06b12c1b52149b7f07f1b9414e31be24c6d5ca782dd636dff83464"
+      }
+     ]
+    },
+    {
+     "n": "105",
+     "on": "when",
+     "of": "mame",
+     "vs": "differs",
+     "text": "A poll read is chosen by the P bit alone: the test is m_ocw3 & 0x04, with no test of the RR bit.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "191",
+       "sha": "c059df8a3453062eb996a88b9837e0e57a4fe025911dd0983a1370ed78c3e042"
+      }
+     ],
+     "row": "6"
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "217-219",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "354",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "344-345",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "194-196",
+     "as": "agrees",
+     "row": "7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "188",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "214",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "220",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "222",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "343",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "346",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "699-708",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "215-219",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "344-345",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "354",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "49",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "70",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "99",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "102",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "433-434",
+     "as": "unseen",
+     "reason": "resets to the power-on value, which the datasheet does not state"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "452",
+     "as": "unseen",
+     "reason": "resets to the power-on value, which the datasheet does not state"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "103",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "153",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "217",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "224",
+     "as": "parent",
+     "owner": "chip:device:pic8259"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "274",
+     "as": "parent",
+     "owner": "pic8259:command:0x60..0x67"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "616",
+     "as": "unseen",
+     "reason": "the debugger's own acknowledge, which the guest cannot issue"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "1025",
+     "as": "unseen",
+     "reason": "resets to the power-on value, which the datasheet does not state"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "437",
+     "as": "parent",
+     "owner": "pic8259:register:0x01:read"
+    }
+   ]
+  },
+  {
+   "key": "0x01",
+   "name": "mask read",
+   "aliases": [
+    "IMR"
+   ],
+   "access": "read",
+   "regions": [
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "720-721"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "735-737"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "function": "pic8259_device::read",
+     "case": [
+      "1"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "read_data"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "The IMR holds the interrupt request lines that are masked.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "720-721",
+       "sha": "ec1deec463253d0cdd7ac4d2b18b5fdccde5a2a133fad47903d77b810500bbb5"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "read",
+     "of": "doc",
+     "text": "Reading the IMR needs no OCW3: the data bus holds the IMR whenever RD is active and A0 = 1.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "735-737",
+       "sha": "1de6eda4c03e73aa0a3a48d1bb6def67c0025b9453cea8a5c56ff7cc8c70b66a"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "reset",
+     "of": "mame",
+     "vs": "extra",
+     "text": "The device reset stores 0 in the mask register.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "437",
+       "sha": "7ec67c0df204c8f00c01f8f6045afbba80864df76f1910fb5b436701130aefcd"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "reset",
+     "of": "dosbox-x",
+     "vs": "extra",
+     "text": "The controller reset stores 0xFF in the mask register.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "1026",
+       "sha": "afcd9ea3777125c2bb65d8ef95847172b2e1f351c27b8cd6dab9d1e3e5b79233"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "228",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "362",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "188",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "361",
+     "as": "decode"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "380",
+     "as": "parent",
+     "owner": "pic8259:register:0x01:write"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "169",
+     "as": "unseen",
+     "reason": "stores the OCW1 byte as the mask, as the OCW1 row of the write entry states"
+    }
+   ]
+  },
+  {
+   "key": "0x00",
+   "name": "command write",
+   "aliases": [
+    "ICW1 OCW2 OCW3"
+   ],
+   "access": "write",
+   "regions": [
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "383-385"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "498"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "500-503"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "function": "pic8259_device::write",
+     "case": [
+      "0"
+     ]
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "write_command"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "A write with A0 = 0 is ICW1, OCW2 or OCW3, told apart by bits D4 and D3.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "383-385",
+       "sha": "30a33f8d33a5b055b48c839112178c3a54109066925684a520fe9777b417bd25"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "500-503",
+       "sha": "de8a5f0982d3e84cd8a45a3fc9b04dc14ea64badb99d10807bdff83858c8df24"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "A command issued with A0 = 0 and D4 = 1 is interpreted as ICW1.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "383-385",
+       "sha": "30a33f8d33a5b055b48c839112178c3a54109066925684a520fe9777b417bd25"
+      }
+     ]
+    },
+    {
+     "n": "3",
+     "on": "write",
+     "of": "doc",
+     "text": "OCW2 is written with A0 = 0 as 0 R SL EOI 0 0 L2 L1 L0.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "500-501",
+       "sha": "2072ba616db3e6eafb6f0996450bb266e01f25c52cfc28c942eb7032592304f6"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "OCW3 is written with A0 = 0 as 0 0 ESMM SMM 0 1 P RR RIS.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "502-503",
+       "sha": "9ec38b9dfe1c140b7e882207ca67f4e261cea4f36cb8bbd5569fc29e0e11ff40"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "extra",
+     "text": "OCW2 and OCW3 are decoded only once the initialization sequence has finished and the state is READY.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "259",
+       "sha": "cd115ad5604f1244393990ad8b80e1b5ee65c9a21f080892d3e3e8e790fb3a45"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "237",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "241-258",
+     "as": "parent",
+     "owner": "pic8259:command:0x10..0x1F"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "276-283",
+     "as": "parent",
+     "owner": "pic8259:command:0x20..0x27"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "284-286",
+     "as": "parent",
+     "owner": "pic8259:command:0x00..0x07"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "299-304",
+     "as": "parent",
+     "owner": "pic8259:command:0x60..0x67"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "305-307",
+     "as": "parent",
+     "owner": "pic8259:command:0x80..0x87"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "308-318",
+     "as": "parent",
+     "owner": "pic8259:command:0xA0..0xA7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "319-321",
+     "as": "parent",
+     "owner": "pic8259:command:0xC0..0xC7"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "322-328",
+     "as": "parent",
+     "owner": "pic8259:command:0xE0..0xE7"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "247",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "250-256",
+     "as": "parent",
+     "owner": "pic8259:command:0x10..0x1F"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "258-262",
+     "as": "parent",
+     "owner": "pic8259:command:0x08..0x0F"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "263-269",
+     "as": "parent",
+     "owner": "pic8259:command:0x68..0x6F"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "271-277",
+     "as": "parent",
+     "owner": "pic8259:command:0x60..0x67"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "278-286",
+     "as": "parent",
+     "owner": "pic8259:command:0x20..0x27"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "498",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "240-245",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "249-256",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "274-277",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "270-274",
+     "as": "agrees",
+     "row": "3"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "261-272",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "257-265",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "266-269",
+     "as": "parent",
+     "owner": "pic8259:command:0x08..0x0F"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "271-272",
+     "as": "parent",
+     "owner": "pic8259:command:0x68..0x6F"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "287-296",
+     "as": "parent",
+     "owner": "pic8259:command:0x20..0x27"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "297-298",
+     "as": "parent",
+     "owner": "pic8259:command:0x40..0x47"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "287-290",
+     "as": "parent",
+     "owner": "pic8259:command:0x80..0x87"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "291-293",
+     "as": "parent",
+     "owner": "pic8259:command:0xC0..0xC7"
+    }
+   ]
+  },
+  {
+   "key": "0x01",
+   "name": "data write",
+   "aliases": [
+    "ICW2 ICW3 ICW4 OCW1"
+   ],
+   "access": "write",
+   "regions": [
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "406-426"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "437-485"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "499"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "508-512"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "641-647"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "function": "pic8259_device::write",
+     "case": [
+      "1"
+     ]
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "115"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "145-156"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "157"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "168-171"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "function": "write_data"
+    }
+   ],
+   "rows": [
+    {
+     "n": "1",
+     "on": "is",
+     "of": "doc",
+     "text": "A write with A0 = 1 sets the mask byte OCW1.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "499",
+       "sha": "68e3647c0624d98cb270a439acb3f4998fd5de894bb8a2dccdf50e146edb2eca"
+      }
+     ]
+    },
+    {
+     "n": "2",
+     "on": "write",
+     "of": "doc",
+     "text": "In an MCS 80/85 system the 8 levels call 8 locations 4 or 8 apart; the 8259A inserts the low address bits, the rest is programmed.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "406-412",
+       "sha": "3efa36eaa211ec07d3c87655115d5b4beb3c66ef112652cd09cb3acc16995f86"
+      },
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "413-418",
+       "sha": "899e153731d141a73dfb16c256acef77a51d40f3e60c472215ad3ce69c72a536"
+      }
+     ]
+    },
+    {
+     "n": "4",
+     "on": "write",
+     "of": "doc",
+     "text": "In an 8086 system A15-A11 go in the top five bits of the vectoring byte and the 8259A sets the low three from the level.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "422-426",
+       "sha": "bb76f3c428f6f448d6bfceb0c34f7ff3ecb7ff9ec2e72f5adb31b202b7f83973"
+      }
+     ]
+    },
+    {
+     "n": "5",
+     "on": "when",
+     "of": "doc",
+     "text": "ICW3 is written only when several 8259As are cascaded (SNGL = 0), and loads the 8-bit slave register.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "437-441",
+       "sha": "8d500e494a0e97401b007a487b76c5da0478a6b5d7f59cf8ee976ffc20146112"
+      }
+     ]
+    },
+    {
+     "n": "6",
+     "on": "write",
+     "of": "doc",
+     "text": "In a master a 1 is set for each slave; the master releases byte 1 and enables the slave to release bytes 2 and 3.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "442-448",
+       "sha": "94d969d682b18f02ff4d84aab3f430b91580d4b2ed379a4c09e727b9998770d5"
+      }
+     ]
+    },
+    {
+     "n": "7",
+     "on": "write",
+     "of": "doc",
+     "text": "In a slave bits 2-0 identify it; it compares them with its cascade input and, if equal, releases bytes 2 and 3.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "449-454",
+       "sha": "41f6a8c4f8aceb3046ba09be2417a046f9baf42a3e41781170b6e0d6ced96d4b"
+      }
+     ]
+    },
+    {
+     "n": "8",
+     "on": "bit 4",
+     "of": "doc",
+     "text": "SFNM = 1 programs the special fully nested mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "459-460",
+       "sha": "561615758cc505b845b66bfa8ad2a52e082fc90bedf6321199dc9b4a94caccda"
+      }
+     ]
+    },
+    {
+     "n": "9",
+     "on": "bit 3",
+     "of": "doc",
+     "text": "BUF = 1 programs the buffered mode, in which SP/EN becomes an enable output and the master or slave role comes from M/S.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "461-464",
+       "sha": "a555d10ef752be010aa786e3c2c6765f7ab00111d59d299dd2c100374dd3a0c5"
+      }
+     ]
+    },
+    {
+     "n": "10",
+     "on": "bit 2",
+     "of": "doc",
+     "text": "M/S = 1 programs a master and 0 a slave when buffered mode is selected; with BUF = 0 it has no function.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "465-469",
+       "sha": "96da1b53e829ed85bf748c8a67bb7b65fce87d631e3577cb04091a1a2608d659"
+      }
+     ]
+    },
+    {
+     "n": "11",
+     "on": "bit 1",
+     "of": "doc",
+     "text": "AEOI = 1 programs the automatic end of interrupt mode.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "470-471",
+       "sha": "636ddc3fc807251d96c3eb7aa0563dc9a70d32abb3440e35afe0729566af99cd"
+      }
+     ]
+    },
+    {
+     "n": "12",
+     "on": "bit 0",
+     "of": "doc",
+     "text": "mPM = 0 sets the 8259A for MCS-80, 85 system operation and mPM = 1 for 8086 system operation.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "472-475",
+       "sha": "440fe047a4ade5fd8841b307128a394840335e92ba2da277f45bfb8103fd4694"
+      }
+     ]
+    },
+    {
+     "n": "13",
+     "on": "write",
+     "of": "doc",
+     "text": "OCW1 sets and clears the IMR mask bits: M7-M0 are the mask bits, 1 inhibits the channel and 0 enables it.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "508-512",
+       "sha": "57dbdea0af8f2a415de3916cf94bfb704f0ac5cd884262c74a83207ee6d368a1"
+      }
+     ]
+    },
+    {
+     "n": "14",
+     "on": "when",
+     "of": "doc",
+     "text": "Each request input can be masked individually through OCW1, bit 0 for IR0; masking a channel does not affect the others.",
+     "quotes": [
+      {
+       "ref": "datasheet:8259A.raw.txt",
+       "lines": "641-647",
+       "sha": "24554afea8d4994af530741ac2fc0c2bdcaff601f177a5d29d04b0526c1c6118"
+      }
+     ]
+    },
+    {
+     "n": "101",
+     "on": "write",
+     "of": "mame",
+     "vs": "differs",
+     "row": "7",
+     "text": "The slave bits of ICW3 are tested together with m_master, so only a master acts on them in these lines.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "145-146",
+       "sha": "e8c8cdcf96563a2ec0d0c05510a8020793b43f5b5123c009bc867c75ee64ed13"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "154-155",
+       "sha": "e8c8cdcf96563a2ec0d0c05510a8020793b43f5b5123c009bc867c75ee64ed13"
+      }
+     ]
+    },
+    {
+     "n": "102",
+     "on": "bit 3",
+     "of": "mame",
+     "vs": "differs",
+     "row": "9",
+     "text": "MAME stores the buffered mode bit of ICW4 in m_mode with the master or slave bit, and takes the role from the SP input.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "369",
+       "sha": "d35c85e1f454f62b86162e758f77d27d47c55876839f190d6685ac143a9d08f4"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "455",
+       "sha": "c0b449a8332b6a74a6f224ccc95f0857ba3bc40d6cf1feda40e08185dc2db7f3"
+      }
+     ]
+    },
+    {
+     "n": "103",
+     "on": "bit 2",
+     "of": "mame",
+     "vs": "differs",
+     "row": "10",
+     "text": "The master or slave bit of ICW4 is stored in m_mode, and m_master is read from the SP input in the reset code.",
+     "quotes": [
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "369",
+       "sha": "d35c85e1f454f62b86162e758f77d27d47c55876839f190d6685ac143a9d08f4"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "455",
+       "sha": "c0b449a8332b6a74a6f224ccc95f0857ba3bc40d6cf1feda40e08185dc2db7f3"
+      }
+     ]
+    },
+    {
+     "n": "201",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "2",
+     "text": "MCS 80/85 mode is not handled: ICW4 with mPM = 0 only logs a message.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "329",
+       "sha": "1131afad8cfbb21527ecec1b6d422a275a487e0824d8a912380ebb95879db444"
+      }
+     ]
+    },
+    {
+     "n": "202",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "5",
+     "text": "ICW3 is accepted and logged, but its value is not stored, so no slave is identified.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "312-315",
+       "sha": "8d9725397fdcbb641e6555581ad1cab9404021ef4fa88ac136e70c3d5a99c7aa"
+      }
+     ]
+    },
+    {
+     "n": "203",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "6",
+     "text": "ICW3 is accepted and logged, but its value is not stored, so no slave bits are kept.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "312-315",
+       "sha": "8d9725397fdcbb641e6555581ad1cab9404021ef4fa88ac136e70c3d5a99c7aa"
+      }
+     ]
+    },
+    {
+     "n": "204",
+     "on": "write",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "7",
+     "text": "ICW3 is accepted and logged, but its value is not stored, so a slave has no identity.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "312-315",
+       "sha": "8d9725397fdcbb641e6555581ad1cab9404021ef4fa88ac136e70c3d5a99c7aa"
+      }
+     ]
+    },
+    {
+     "n": "205",
+     "on": "bit 4",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "8",
+     "text": "The special fully nested mode is not handled: ICW4 with SFNM = 1 only logs a message.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "330",
+       "sha": "49b4e32fa318f52b58e194fe81d8fa4fca193d381d9dbda819a835633aa857df"
+      }
+     ]
+    },
+    {
+     "n": "206",
+     "on": "bit 3",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "9",
+     "text": "The ICW4 branch stores no buffered-mode bit: it stores auto_eoi from bit 1, advances icw_index and logs the value.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "316-324",
+       "sha": "434e2c470d757c19b4e35da22f0d89f13abcd03af9ebde64b3f32cb5e18543dd"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "325-333",
+       "sha": "822fadcfaaf347cb0bfa16cf116d32ef3376d3fa86822e8f5e914a8756a98288"
+      }
+     ]
+    },
+    {
+     "n": "207",
+     "on": "bit 2",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "10",
+     "text": "The ICW4 branch stores no master/slave bit: it stores auto_eoi from bit 1, advances icw_index and logs the value.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "316-324",
+       "sha": "434e2c470d757c19b4e35da22f0d89f13abcd03af9ebde64b3f32cb5e18543dd"
+      },
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "325-333",
+       "sha": "822fadcfaaf347cb0bfa16cf116d32ef3376d3fa86822e8f5e914a8756a98288"
+      }
+     ]
+    },
+    {
+     "n": "208",
+     "on": "bit 0",
+     "of": "dosbox-x",
+     "vs": "differs",
+     "row": "12",
+     "text": "mPM = 0 only logs that 8085 mode is not handled.",
+     "quotes": [
+      {
+       "ref": "dosbox-x:src/hardware/pic.cpp",
+       "lines": "329",
+       "sha": "1131afad8cfbb21527ecec1b6d422a275a487e0824d8a912380ebb95879db444"
+      }
+     ]
+    }
+   ],
+   "closed": [
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "345",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "157",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "171",
+     "as": "agrees",
+     "row": "2"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "344",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "115",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "360",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "145-156",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "168-171",
+     "as": "agrees",
+     "row": "6"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "368",
+     "as": "agrees",
+     "row": "8"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "370",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "325",
+     "as": "agrees",
+     "row": "11"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "371",
+     "as": "agrees",
+     "row": "12"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "380",
+     "as": "agrees",
+     "row": "13"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "237",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "337-338",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "340",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "356",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "354",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "361",
+     "as": "unseen",
+     "reason": "advances to ICW4 when IC4 was set"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "362",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "364",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "372",
+     "as": "unseen",
+     "reason": "ends the initialization sequence"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "373",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "375",
+     "as": "structure"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "381",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "300",
+     "as": "decode"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "333",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "334",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "336",
+     "as": "structure"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "455-457",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "458",
+     "as": "layout"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "476-485",
+     "as": "layout"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "380",
+     "as": "agrees",
+     "row": "1"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "303-305",
+     "as": "unfollowed",
+     "row": "1"
+    },
+    {
+     "ref": "datasheet:8259A.raw.txt",
+     "lines": "419-421",
+     "as": "see-also"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "346-353",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "360",
+     "as": "agrees",
+     "row": "5"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "335",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "302",
+     "as": "structure"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "306-311",
+     "as": "agrees",
+     "row": "4"
+    },
+    {
+     "ref": "mame:src/devices/machine/pic8259.cpp",
+     "lines": "380",
+     "as": "agrees",
+     "row": "14"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "303-304",
+     "as": "unfollowed",
+     "row": "13"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "304",
+     "as": "unfollowed",
+     "row": "14"
+    },
+    {
+     "ref": "dosbox-x:src/hardware/pic.cpp",
+     "lines": "316",
+     "as": "structure"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,57 @@
+{
+ "id": "chipx:command:0xE0..0xE7",
+ "verdict": "CONFIRMED",
+ "statements": [
+  {
+   "field": "name",
+   "text": "rotate on specific EOI",
+   "supported": true,
+   "support": [
+    {
+     "file": "src/hardware/chipx.cpp",
+     "line": 4,
+     "quote": "Block * blk = &blocks[(port == 0x20) ? 0 : 1];"
+    }
+   ]
+  },
+  {
+   "field": "behaviour",
+   "text": "Rotation is logged as not supported.",
+   "supported": true,
+   "support": [
+    {
+     "file": "src/hardware/chipx.cpp",
+     "line": 10,
+     "quote": "LOG_MSG(\"rotation is not supported\");"
+    },
+    {
+     "file": "INTER.A",
+     "line": 3,
+     "quote": "CX = file attribute"
+    }
+   ]
+  },
+  {
+   "field": "behaviour",
+   "text": "Nothing quotes this.",
+   "supported": false,
+   "support": []
+  }
+ ],
+ "calls": [
+  {
+   "name": "make_temp",
+   "status": "opened",
+   "file": "src/ints/call.cpp",
+   "line": 29,
+   "quote": "static bool make_temp(char * name, uint16_t * entry) {"
+  },
+  {
+   "name": "strlen",
+   "status": "trivial",
+   "why": "libc"
+  }
+ ],
+ "problems": [],
+ "notes": ""
+}
