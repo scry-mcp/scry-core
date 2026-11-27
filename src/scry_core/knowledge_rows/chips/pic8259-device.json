@@ -1410,8 +1410,13 @@
       },
       {
        "ref": "mame:src/devices/machine/pic8259.cpp",
-       "lines": "164-165",
-       "sha": "c2a8eeffe7e565a9a7f61b04491802880420510fb4ccd4c84fc9e7729d706f20"
+       "lines": "125-127",
+       "sha": "8be31b9985af8efa5ffdff5c96002f13d930b4f4994680b7c67c2e850922b7fc"
+      },
+      {
+       "ref": "mame:src/devices/machine/pic8259.cpp",
+       "lines": "159-165",
+       "sha": "52918abe326385bbab45b0624b86f6dfa2c8fcf41a0e958eeba3bfe7751861e9"
       }
      ]
     },

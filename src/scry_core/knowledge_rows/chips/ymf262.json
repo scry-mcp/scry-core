@@ -6870,7 +6870,7 @@
      "n": "2",
      "on": "write",
      "of": "doc",
-     "text": "The second column of the register map repeats KSL and TL.",
+     "text": "The register map line gives a second KSL and TL after the first.",
      "quotes": [
       {
        "ref": "datasheet:YMF262.raw.txt",
@@ -7166,7 +7166,7 @@
      "n": "2",
      "on": "write",
      "of": "doc",
-     "text": "The second column of the register map repeats AR and DR.",
+     "text": "The register map line gives a second AR and DR after the first.",
      "quotes": [
       {
        "ref": "datasheet:YMF262.raw.txt",
@@ -7462,7 +7462,7 @@
      "n": "2",
      "on": "write",
      "of": "doc",
-     "text": "The second column of the register map repeats SL and RR.",
+     "text": "The register map line gives a second SL and RR after the first.",
      "quotes": [
       {
        "ref": "datasheet:YMF262.raw.txt",
@@ -7762,7 +7762,7 @@
      "n": "2",
      "on": "write",
      "of": "doc",
-     "text": "The second column of the register map repeats F NUMBER(L).",
+     "text": "The register map line gives a second F NUMBER(L) after the first.",
      "quotes": [
       {
        "ref": "datasheet:YMF262.raw.txt",
@@ -8394,7 +8394,7 @@
      "n": "2",
      "on": "write",
      "of": "doc",
-     "text": "The second column of the register map repeats CHD, CHC, CHB, CHA, FB and CNT.",
+     "text": "The register map line gives a second CHD, CHC, CHB, CHA, FB and CNT after the first.",
      "quotes": [
       {
        "ref": "datasheet:YMF262.raw.txt",
@@ -8702,7 +8702,7 @@
      "n": "2",
      "on": "write",
      "of": "doc",
-     "text": "The second column of the register map repeats WS.",
+     "text": "The register map line gives a second WS after the first.",
      "quotes": [
       {
        "ref": "datasheet:YMF262.raw.txt",
@@ -8978,7 +8978,7 @@
      "n": "2",
      "on": "write",
      "of": "doc",
-     "text": "The register map lists a further LSI TEST register on that line.",
+     "text": "The register map lists an LSI TEST register on that line.",
      "quotes": [
       {
        "ref": "datasheet:YMF262.raw.txt",

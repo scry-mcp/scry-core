@@ -977,7 +977,7 @@
      "n": "202",
      "on": "reset",
      "of": "dosbox-x",
-     "text": "The channel constructor body stores no Idle cycle state.",
+     "text": "The channel constructor stores masked, masked_by, channum, the page, address and count bases and the flags, and logs the channel at 428-429; it stores no Idle cycle state.",
      "quotes": [
       {
        "ref": "dosbox-x:src/hardware/dma.cpp",
@@ -995,7 +995,7 @@
        "sha": "1517bc20fe6e11bc0bed31d1136bfd0f7cb9a28e5647b126ed8dfa32ad91b1df"
       }
      ],
-     "vs": "absent",
+     "vs": "differs",
      "row": "4"
     },
     {

@@ -24,7 +24,7 @@
  "closed": [
   {
    "ref": "datasheet:SAA1099.raw.txt",
-   "lines": "375-377",
+   "lines": "375-376",
    "as": "layout"
   },
   {
@@ -98,6 +98,10 @@
    "regions": [
     {
      "ref": "datasheet:SAA1099.raw.txt",
+     "lines": "377"
+    },
+    {
+     "ref": "datasheet:SAA1099.raw.txt",
      "lines": "378-384"
     },
     {
@@ -129,8 +133,8 @@
      "quotes": [
       {
        "ref": "datasheet:SAA1099.raw.txt",
-       "lines": "378-384",
-       "sha": "399c205d0917122913cbe1fa65bc84741b262890dea9891780a17596f838cdcc"
+       "lines": "377-384",
+       "sha": "4d20fe224740a5823903c5a3d53b9212b28a91b528ec1f43d8ee1be10d21ccd8"
       }
      ]
     },
@@ -395,7 +399,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Registers 10 to 12 hold two octaves each: O2-O0 in D2-D0 and D6-D4.",
+     "text": "Registers 10 to 12 hold two octaves each, labelled O12-O10 for one and O02-O00 for the other on the capture line.",
      "quotes": [
       {
        "ref": "datasheet:SAA1099.raw.txt",
@@ -497,7 +501,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Register 14 switches the six frequency generators on and off, one bit per channel in D5-D0.",
+     "text": "Register 14 switches the six frequency generators on and off, one bit per channel (FE5 to FE0).",
      "quotes": [
       {
        "ref": "datasheet:SAA1099.raw.txt",
@@ -582,7 +586,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Register 15 switches noise on for the six channels, one bit per channel in D5-D0.",
+     "text": "Register 15 switches noise on for the six channels, one bit per channel (NE5 to NE0).",
      "quotes": [
       {
        "ref": "datasheet:SAA1099.raw.txt",
@@ -693,7 +697,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Register 16 holds two noise generator fields: N01 and N00 in D1-D0 and N11 and N10 in D5-D4.",
+     "text": "Register 16 holds two noise generator fields, N11 and N10 for one generator and N01 and N00 for the other.",
      "quotes": [
       {
        "ref": "datasheet:SAA1099.raw.txt",
@@ -1071,7 +1075,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Register 1C has SE in D0 and RST in D1, its other bits unused.",
+     "text": "Register 1C holds the RST and SE bits.",
      "quotes": [
       {
        "ref": "datasheet:SAA1099.raw.txt",

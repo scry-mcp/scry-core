@@ -24,7 +24,8 @@
    "970-972",
    "981-983",
    "993-1052",
-   "1053-1100"
+   "1053-1100",
+   "653-660"
   ]
  },
  "engine": [
@@ -45,6 +46,10 @@
     "seconds"
    ],
    "regions": [
+    {
+     "ref": "datasheet:MC146818A.raw.txt",
+     "lines": "653-660"
+    },
     {
      "ref": "datasheet:MC146818A.raw.txt",
      "lines": "661"
@@ -95,8 +100,8 @@
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
-       "lines": "661",
-       "sha": "ddfb5b608b05b5712f46fea9b3bf5b233ee47a1268df7816a436c305f30a8ef9"
+       "lines": "653-661",
+       "sha": "9bbdd2f26d0fc386ec1a95778adc98a820fb780d778ebfc588684c0b5f0a3627"
       }
      ]
     },
@@ -108,8 +113,8 @@
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
-       "lines": "661",
-       "sha": "ddfb5b608b05b5712f46fea9b3bf5b233ee47a1268df7816a436c305f30a8ef9"
+       "lines": "653-661",
+       "sha": "9bbdd2f26d0fc386ec1a95778adc98a820fb780d778ebfc588684c0b5f0a3627"
       }
      ]
     },
@@ -121,8 +126,8 @@
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
-       "lines": "661",
-       "sha": "ddfb5b608b05b5712f46fea9b3bf5b233ee47a1268df7816a436c305f30a8ef9"
+       "lines": "653-661",
+       "sha": "9bbdd2f26d0fc386ec1a95778adc98a820fb780d778ebfc588684c0b5f0a3627"
       }
      ]
     },
@@ -333,7 +338,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 3 lists the seconds alarm location with decimal range 0 to 59 (the capture reads 0 as o).",
+     "text": "Table 3's line for the seconds alarm location gives the range o-59 (the capture reads 0 as o).",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -346,7 +351,7 @@
      "n": "2",
      "on": "read",
      "of": "doc",
-     "text": "A read of the seconds alarm location returns a value of the decimal range Table 3 lists.",
+     "text": "A read of the seconds alarm location returns a value in the range o-59 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -359,7 +364,7 @@
      "n": "3",
      "on": "write",
      "of": "doc",
-     "text": "A write to the seconds alarm location sets it to a value of the decimal range Table 3 lists.",
+     "text": "A write to the seconds alarm location sets it to a value in the range o-59 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -492,7 +497,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 3 lists the minutes location with decimal range 0 to 59 (the capture reads 0 as o).",
+     "text": "Table 3's line for the minutes location gives the range o-59 (the capture reads 0 as o).",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -505,7 +510,7 @@
      "n": "2",
      "on": "read",
      "of": "doc",
-     "text": "A read of the minutes location returns a value of the decimal range Table 3 lists.",
+     "text": "A read of the minutes location returns a value in the range o-59 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -518,7 +523,7 @@
      "n": "3",
      "on": "write",
      "of": "doc",
-     "text": "A write to the minutes location sets it to a value of the decimal range Table 3 lists.",
+     "text": "A write to the minutes location sets it to a value in the range o-59 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -676,7 +681,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 3 lists the minutes alarm location with decimal range 0 to 59 (the capture reads 0 as o).",
+     "text": "Table 3's line for the minutes alarm location gives the range o-59 (the capture reads 0 as o).",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -689,7 +694,7 @@
      "n": "2",
      "on": "read",
      "of": "doc",
-     "text": "A read of the minutes alarm location returns a value of the decimal range Table 3 lists.",
+     "text": "A read of the minutes alarm location returns a value in the range o-59 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -702,7 +707,7 @@
      "n": "3",
      "on": "write",
      "of": "doc",
-     "text": "A write to the minutes alarm location sets it to a value of the decimal range Table 3 lists.",
+     "text": "A write to the minutes alarm location sets it to a value in the range o-59 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -1523,7 +1528,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 3 lists the date of the month location with decimal range 1 to 31.",
+     "text": "Table 3's line for the date of the month location gives the range 1-31.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -1536,7 +1541,7 @@
      "n": "2",
      "on": "read",
      "of": "doc",
-     "text": "A read of the date of the month location returns a value of the decimal range Table 3 lists.",
+     "text": "A read of the date of the month location returns a value in the range 1-31 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -1549,7 +1554,7 @@
      "n": "3",
      "on": "write",
      "of": "doc",
-     "text": "A write to the date of the month location sets it to a value of the decimal range Table 3 lists.",
+     "text": "A write to the date of the month location sets it to a value in the range 1-31 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -1715,7 +1720,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 3 lists the month location with decimal range 1 to 12.",
+     "text": "Table 3's line for the month location gives the range 1-12.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -1728,7 +1733,7 @@
      "n": "2",
      "on": "read",
      "of": "doc",
-     "text": "A read of the month location returns a value of the decimal range Table 3 lists.",
+     "text": "A read of the month location returns a value in the range 1-12 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -1741,7 +1746,7 @@
      "n": "3",
      "on": "write",
      "of": "doc",
-     "text": "A write to the month location sets it to a value of the decimal range Table 3 lists.",
+     "text": "A write to the month location sets it to a value in the range 1-12 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -1907,7 +1912,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 3 lists the year location with decimal range 0 to 99 (the capture reads 0 as o).",
+     "text": "Table 3's line for the year location gives the range o-99 (the capture reads 0 as o).",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -1920,7 +1925,7 @@
      "n": "2",
      "on": "read",
      "of": "doc",
-     "text": "A read of the year location returns a value of the decimal range Table 3 lists.",
+     "text": "A read of the year location returns a value in the range o-99 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",
@@ -1933,7 +1938,7 @@
      "n": "3",
      "on": "write",
      "of": "doc",
-     "text": "A write to the year location sets it to a value of the decimal range Table 3 lists.",
+     "text": "A write to the year location sets it to a value in the range o-99 that Table 3's line lists.",
      "quotes": [
       {
        "ref": "datasheet:MC146818A.raw.txt",

@@ -22,7 +22,8 @@
    "586-606",
    "637-657",
    "672-748",
-   "865-927"
+   "865-927",
+   "577-585"
   ],
   "SY6545.raw.txt": [
    "354-356",
@@ -42,6 +43,10 @@
     "horizontal total"
    ],
    "regions": [
+    {
+     "ref": "datasheet:MC6845.raw.txt",
+     "lines": "577-585"
+    },
     {
      "ref": "datasheet:MC6845.raw.txt",
      "lines": "586"
@@ -86,8 +91,8 @@
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
-       "lines": "586",
-       "sha": "c344e21119148fdfb67f5ca8ac082f7bd8d57c75bdfdd989317684afd86ca577"
+       "lines": "577-586",
+       "sha": "ff456db942726b66be57e2eb884e4396251e2152809bbc469d7cc10005a6793b"
       }
      ]
     },
@@ -270,7 +275,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R1 as Horizontal Displayed, in characters, with Read No and Write Yes (the capture garbles the name).",
+     "text": "Table 2's R1 line lists Horizontal Displayed (the capture garbles Rl and Horizontal).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -471,7 +476,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R2 as H. Sync Position, in characters, with Read No and Write Yes (the capture garbles the name).",
+     "text": "Table 2's R2 line lists H. Sync Position (the capture garbles the name).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -695,7 +700,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R3 as Sync Width, with Read No and Write Yes (the capture garbles the line).",
+     "text": "Table 2's R3 line lists Sync Width (the capture garbles the line).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -1018,7 +1023,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R4 as Vertical Total, in character rows, with Read No and Write Yes (the capture garbles the name).",
+     "text": "Table 2's R4 line lists Vertical Total (the capture garbles the name).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -1234,7 +1239,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R5 as V. Total Adjust, in scan lines; the same capture line lists R6 as Vertical Displayed, in character rows; both Read No and Write Yes.",
+     "text": "Table 2's line lists R5 as V. Total Adjust and, on the same line, R6 as Vertical Displayed (the capture garbles the line).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -1630,7 +1635,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R7 as V. Sync Position, in character rows, with Read No and Write Yes (the capture garbles the name).",
+     "text": "Table 2's R7 line lists V. Sync Position (the capture garbles the name).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -1848,7 +1853,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R8 as Interlace Mode and Skew, with Note 1, Read No and Write Yes (the capture garbles the line).",
+     "text": "Table 2's R8 line lists Interlace Mode and Skew with Note 1 (the capture garbles the line).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -2283,7 +2288,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R9 as Max Scan Line Address, in scan lines, with Read No and Write Yes (the capture garbles the line).",
+     "text": "Table 2's R9 line lists Max Scan Line Address (the capture garbles the line).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -2522,7 +2527,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R10 as Cursor Start, in scan lines, with Read No and Write Yes (the capture garbles the name); its Note 2 is claimed below.",
+     "text": "Table 2's R10 line lists Cursor Start with Note 2 (the capture garbles the name).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -2950,7 +2955,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R11 as Cursor End, in scan lines, with Read No and Write Yes (the capture garbles the name).",
+     "text": "Table 2's R11 line lists Cursor End (the capture garbles the name).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -3179,7 +3184,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R12 as Start Address (H), with Read No and Write Yes; the capture line ends with 0 0, whose column meaning is unclear.",
+     "text": "Table 2's R12 line lists Start Address (H) and ends 'No Yes 0 0' (the capture garbles H).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -3557,7 +3562,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R13 as Start Address (L), with Read No and Write Yes (the capture garbles the line).",
+     "text": "Table 2's R13 line lists Start Address (L) (the capture garbles the line).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -3811,7 +3816,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R14 as Cursor (H), with Read Yes and Write Yes; the capture line ends with 0 0, whose column meaning is unclear.",
+     "text": "Table 2's R14 line lists Cursor (H) and ends 'Yes Yes 0 0' (the capture garbles H).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -4073,7 +4078,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R15 as Cursor (L), with Read Yes and Write Yes (the capture garbles the line).",
+     "text": "Table 2's R15 line lists Cursor (L) (the capture garbles the line).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -4309,7 +4314,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R16 as Light Pen (H), with Read Yes and Write No; the capture line ends with 0 0, whose column meaning is unclear.",
+     "text": "Table 2's R16 line lists Light Pen (H) and ends 'Yes No 0 0' (the capture garbles H).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
@@ -4658,7 +4663,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2 lists R17 as Light Pen (L), with Read Yes and Write No (the capture garbles the line).",
+     "text": "Table 2's R17 line lists Light Pen (L) (the capture garbles the line).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",
