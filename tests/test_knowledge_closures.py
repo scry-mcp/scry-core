@@ -410,6 +410,22 @@ def test_an_owner_holds_the_lines_by_a_closure_of_its_own(tmp_path: Any) -> None
     assert check(world, "0x77/0x20", partial=False).faults == []
 
 
+def test_an_owner_that_holds_a_document_line_only_by_its_own_closure_is_red(
+        tmp_path: Any) -> None:
+    """`official.check` is the gate: a document line held by a region, never by the owner's own
+    closure, or cover says green on what the gate refuses."""
+    def change(doc_: dict[str, Any]) -> None:
+        of("0x77/0x20")(doc_)["closed"] = [
+            shut("11-12", "2", nothing=True),
+            {"ref": LIST_REF, "lines": "5", "as": "elsewhere", "owner": "dos:call:0x77/0x10"}]
+        of("0x77/0x10")(doc_)["closed"] = [
+            {"ref": REF, "lines": "4", "as": "key"},
+            {"ref": LIST_REF, "lines": "5", "as": "key"}]
+    faults = check(keep_world(tmp_path, change), "0x77/0x20", partial=False).faults
+    assert any("has no row on those lines and closes none of them itself" in f
+               for f in faults), faults
+
+
 def test_an_owner_that_hands_the_lines_on_in_turn_holds_none_of_them(tmp_path: Any) -> None:
     def circle(doc_: dict[str, Any]) -> None:
         owned("dos:call:0x77/0x10")(doc_)

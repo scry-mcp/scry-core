@@ -277,10 +277,18 @@ def _owned(closure: Closure, known: Mapping[str, Entry], report: Report, partial
                              "or check with --partial while the dictionary is not whole")
         return
     first, last = span(closure.lines)
-    held = _claims(owner).get(closure.ref, {})
-    if not any(n in held for n in range(first, last + 1)) and not any(
+    if PARTY[split_ref(closure.ref)[0]] == "doc":
+        # `official.check` is the gate: it holds a line of an official document by the owner's
+        # region, never by the owner's own closure, and cover must answer as the gate does.
+        holds_it = any(
+            r.ref == closure.ref and r.lines and span(r.lines)[0] <= n <= span(r.lines)[1]
+            for r in owner.regions for n in range(first, last + 1))
+    else:
+        held = _claims(owner).get(closure.ref, {})
+        holds_it = any(n in held for n in range(first, last + 1)) or any(
             c.ref == closure.ref and c.first <= last and first <= c.last
-            and c.reason not in OWNED for c in owner.closed):
+            and c.reason not in OWNED for c in owner.closed)
+    if not holds_it:
         report.faults.append(f"closed {closure.ref}:{closure.lines}: {closure.owner} has no "
                              "row on those lines and closes none of them itself")
 
