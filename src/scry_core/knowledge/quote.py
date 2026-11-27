@@ -14,13 +14,14 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import posixpath
 import re
 import subprocess
 import zipfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import resources
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from scry_core.knowledge.shared import PINS
 
@@ -45,10 +46,15 @@ class Outside(Invalid):
 
 
 def split_ref(ref: str) -> tuple[str, str]:
-    """The scheme and the file of a `ref`, or `ValueError`."""
+    """The scheme and the file of a `ref`, or `ValueError`. The file is inside its tree: an
+    absolute path or one whose `..` climbs above the tree points at something no pin holds."""
     scheme, colon, file = ref.partition(":")
     if not colon or scheme not in PARTY or not file or file != file.strip():
         raise ValueError(f"{ref!r} is `<scheme>:<file>` with a scheme of {', '.join(PARTY)}")
+    if (PurePosixPath(file).is_absolute() or PureWindowsPath(file).is_absolute()
+            or posixpath.normpath(file).split("/")[0] == ".."):
+        raise ValueError(f"{ref!r} names a file inside the tree: not an absolute path, and no "
+                         "`..` above it")
     return scheme, file
 
 

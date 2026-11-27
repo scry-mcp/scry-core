@@ -50,6 +50,19 @@ def test_a_ref_without_a_scheme_of_the_set_and_a_file_is_refused(ref: str) -> No
         quote.split_ref(ref)
 
 
+@pytest.mark.parametrize("ref", ["mame:/etc/hosts", "mame:../../etc/hosts",
+                                 "dosbox-x:src/../../../etc/hosts", "mame:C:/Windows/x.c"])
+def test_a_ref_that_points_outside_its_tree_is_refused(ref: str) -> None:
+    with pytest.raises(ValueError, match="inside the tree"):
+        quote.split_ref(ref)
+
+
+@pytest.mark.parametrize("ref", ["mame:src/x.cpp", "dosbox-x:src/ints/keep.cpp",
+                                 "mame:src/../src/x.cpp"])
+def test_a_ref_that_stays_inside_its_tree_is_read(ref: str) -> None:
+    assert quote.split_ref(ref) == tuple(ref.split(":", 1))
+
+
 def test_each_scheme_names_the_party_it_speaks_for() -> None:
     got = {s: Quote(f"{s}:f", "1").party for s in ("mame", "dosbox-x", "rbil61", "datasheet")}
     assert got == {"mame": "mame", "dosbox-x": "dosbox-x", "rbil61": "doc", "datasheet": "doc"}
