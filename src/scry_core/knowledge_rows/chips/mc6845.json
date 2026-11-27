@@ -1023,7 +1023,7 @@
      "n": "1",
      "on": "is",
      "of": "doc",
-     "text": "Table 2's R4 line lists Vertical Total (the capture garbles the name).",
+     "text": "Table 2's R4 line lists Vertical Total (the capture garbles the number-of-bits column).",
      "quotes": [
       {
        "ref": "datasheet:MC6845.raw.txt",

@@ -4209,6 +4209,33 @@
    }
   },
   "mc6845:register:0x04": {
+   "doc": {
+    "seal": "f53c9590719d0ff752d9c376160f2ce55a3519edb0c33e1860f8b1afc9197d96",
+    "by": "L1 core reader",
+    "writer": "L1 core writer",
+    "rows": {
+     "1": {
+      "digest": "f001da661567e5988b8d5920cddf0e78a02b9d209727bbd419223f370fa135ad",
+      "by": "L1 core reader"
+     },
+     "2": {
+      "digest": "b70fa9d32aea4a35af2819422d5b8271f4ad59b1b27c8d48761bdd5109952938",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "89c379ecf56087a52dab587eb066319f217280386a90a71b2769ca594c1f055a",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "bcd12f8ef8cbfb6f5f0e26b41d5c1f63ab08f44f58c221f26b8e079dc0bcab03",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "250ce1b46e875763f3c6700ff92622b62c75376de4b96456d6df3e038b325f2a",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "a9d5527ab6a32afaf23a7a767eba09227c17b35731bd4542ead6a48200e8733e",
     "by": "slice core-board2-02 reader",
