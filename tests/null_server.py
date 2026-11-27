@@ -85,6 +85,19 @@ class NoFullscreenServer(NullServer):
         return super().start(shared, display, None, background)
 
 
+class RefusesFullscreenServer(NullServer):
+    """Takes `fullscreen` because its emulator can, and refuses it by name on this host."""
+
+    shows_fullscreen = False
+
+    def start(self, shared: bool = False, display: int | None = None,
+              fullscreen: bool | None = None, background: bool | None = None) -> dict[str, Any]:
+        if fullscreen and shared:
+            return Invalid("bad_argument", "fullscreen: this host shows no full-screen window"
+                           ).reply()
+        return super().start(shared, display, fullscreen, background)
+
+
 class WithoutWindowTool(NullServer):
     """Has no `window` tool: the call is refused as an unknown argument, whatever the session."""
 

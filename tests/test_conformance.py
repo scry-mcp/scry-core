@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 from null_promoter import NullPromoter
-from null_server import NullServer
+from null_server import NullServer, RefusesFullscreenServer
 
 from scry_core import conformance
 
@@ -31,6 +31,14 @@ class TestNullServer(conformance.SessionContract):
     @pytest.fixture
     def subject(self) -> NullServer:
         return NullServer()
+
+
+class TestRefusesFullscreen(conformance.SessionContract):
+    """Its emulator has the argument and cannot show a full-screen window on this host."""
+
+    @pytest.fixture
+    def subject(self) -> RefusesFullscreenServer:
+        return RefusesFullscreenServer()
 
 
 class TestNullPromoter(conformance.PromoteContract):

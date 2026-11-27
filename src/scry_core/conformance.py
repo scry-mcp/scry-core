@@ -432,7 +432,7 @@ def _rows_asked(subject: KnowledgeSubject) -> list[str]:
             if dictionary is None:
                 continue
             for entry in dictionary.entries:
-                for said in (entry.name, *(r.text for r in entry.rows)):
+                for said in (entry.name, *entry.aliases, *(r.text for r in entry.rows)):
                     words = text.words(said)
                     if not words:
                         continue
@@ -542,7 +542,9 @@ class KnowledgeContract:
         records one reader who did not write the part, and no second check. The declaration
         names the systems, devices and chips a server answers for, and the rows dictionaries
         go further (a board's chips, a set of ports), so the two are not held to each other
-        here.
+        here. The declaration is the registry of what the code depends on, not of what the base
+        holds: a scope it names needs no dictionary, and the old half's `owed_dictionaries` and
+        `undeclared` rules have no meaning in rows.
         """
         whole = _rows_whole(subject)
         assert whole.dictionaries, "INVALID: no dictionary of rows was examined"
@@ -589,9 +591,14 @@ class KnowledgeContract:
     def test_the_rows_fallback_answers_as_fts5_does(self, subject: KnowledgeSubject) -> None:
         if not subject.rows_base(None).uses_fts5:
             pytest.skip("this host's SQLite has no FTS5, so the fallback is the only path")
+        asked = _rows_asked(subject)
+        assert asked, (
+            "INVALID: no query was compared: the dictionaries' names, aliases and rows hold "
+            "no word to search by"
+        )
         _none(
             check.fallback_differs(
-                lambda fts5: subject.rows_base(fts5).unfiltered(), _rows_asked(subject)
+                lambda fts5: subject.rows_base(fts5).unfiltered(), asked
             )
         )
 

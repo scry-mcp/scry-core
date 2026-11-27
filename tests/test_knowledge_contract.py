@@ -223,6 +223,44 @@ def test_a_row_with_no_word_is_skipped_when_the_searches_are_chosen(tmp_path: Pa
     assert {"x", "x*"} <= set(conformance._rows_asked(subject))
 
 
+def test_a_word_only_an_alias_carries_is_asked(tmp_path: Path) -> None:
+    def alias(doc: dict[str, Any]) -> None:
+        entry(doc, "0x20..0x27")["aliases"] = ["umbrella"]
+    assert "umbrella" in conformance._rows_asked(rows_copy(tmp_path, alias))
+
+
+def test_a_fallback_that_drops_the_alias_field_fails_the_fallback_case(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The alias is a field the base indexes: the comparison asks it, so a fallback without it
+    goes red."""
+    def alias(doc: dict[str, Any]) -> None:
+        entry(doc, "0x20..0x27")["aliases"] = ["umbrella"]
+    subject = rows_copy(tmp_path, alias)
+    if not subject.rows_base().uses_fts5:
+        pytest.skip("this host's SQLite has no FTS5")
+    found = text.Fallback._in
+
+    def without_aliases(self: text.Fallback, field: str,
+                        term: text.Term) -> set[int]:
+        return set() if field == "aliases" else found(self, field, term)
+    monkeypatch.setattr(text.Fallback, "_in", without_aliases)
+    assert run(subject) == {ROWS_FALLBACK}
+
+
+def test_names_and_rows_that_hold_no_word_compare_no_query(tmp_path: Path) -> None:
+    """An empty query set is INVALID, never a green that compared nothing."""
+    folder = tmp_path / "rows"
+    write_rows(folder, "errors", "error", "ibm-pc", [
+        {"key": "1", "name": "!!!", "regions": [], "closed": [],
+         "rows": [a_row(1, "is", "...")]}])
+    subject = NullKnowledge(rows=folder)
+    if not subject.rows_base().uses_fts5:
+        pytest.skip("this host's SQLite has no FTS5")
+    assert conformance._rows_asked(subject) == []
+    with pytest.raises(AssertionError, match="no query was compared"):
+        conformance.KnowledgeContract().test_the_rows_fallback_answers_as_fts5_does(subject)
+
+
 def test_the_query_shapes_cover_a_call_a_memory_area_and_a_device(tmp_path: Path) -> None:
     folder = tmp_path / "rows"
     write_rows(folder, "calls", "call", "ibm-pc", [
