@@ -2,7 +2,7 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
-## Unreleased
+## 0.123.0
 
 - A dictionary can be written as rows that carry their evidence (`scry-knowledge/2`), with
   `python -m scry_core.knowledge.rows`, the official source first: a `doc` row says what the
