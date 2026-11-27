@@ -4793,6 +4793,25 @@
    }
   },
   "mc6845:register:0x0D": {
+   "doc": {
+    "seal": "1554666a0648d619e804270a483aee7b6c809d7f6aad2239dae487a44091de97",
+    "by": "R3 reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "2301c8ebf113f17a37aa7b1563be09410db376884b1119f3fb2011569eec3cd0",
+      "by": "R3 reader"
+     },
+     "2": {
+      "digest": "cb6a0aeb2f78c5ccfe31e70713df170c67ef82fffe3c8cffe09e82ee31a0c96c",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "20f15c55e34f5a52202d613f0449db528afa0471e03eb013fb6c407014db4d97",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "76725fe8b00eb6beb8d8f17c1eed2b1fc6a626c39244e85ebb25d04f11ab1340",
     "by": "slice core-board2-02 reader",
@@ -4871,6 +4890,29 @@
    }
   },
   "mc6845:register:0x0F": {
+   "doc": {
+    "seal": "120a4fa33e17029995aa026bb2d307b41453eb8f8e68e931eca2cfa23108800f",
+    "by": "R3 reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "d2606de4398985df68174e50f42b91d7003c6f302b6edfff89e6c1e85a284d4a",
+      "by": "R3 reader"
+     },
+     "2": {
+      "digest": "27d07979ba8df325d80869abab9865a047a9fb267851760121828fee87c03ec1",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "52b050e57936ff1840f2109cf09b0fa550075fe225b392228fb0d9cc715c7766",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "7b406fdd32f2bc7954fe248a2f4767ca7fa156ed2bec71cb680f77b32362a8ec",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "a8dd0c00ab1f163783f6a8cbf12e7cf61cd2759a0f9a98b9244b28cbee7f8b92",
     "by": "slice core-board2-02 reader",
@@ -4964,6 +5006,25 @@
    }
   },
   "mc6845:register:0x11": {
+   "doc": {
+    "seal": "36aa4ee199d13ced943f7033247b009c32745fea07bdf5b2e31b75682f406cc9",
+    "by": "R3 reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "c6321e2675af4255675777565576f56b6705a97a7b1550497c6f3696cacf3fb0",
+      "by": "R3 reader"
+     },
+     "2": {
+      "digest": "bf0a6b624ea22a0a28da1a924dbac6c2c108e89447ee9b7180115cc4a343affc",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "3d6191e28a59219da2546f614c4842b39df79aad82767b35ebf460f51dc8573f",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "16234e3af4797370131cc77e6afbcf45224086457bedba5f252370556034fd98",
     "by": "slice core-board2-02 reader",
