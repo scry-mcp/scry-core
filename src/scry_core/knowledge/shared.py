@@ -13,7 +13,8 @@ if TYPE_CHECKING:
 
 _INDEX = "knowledge_index"
 
-#: `rbil61` has no pin: its archives are checked by hash.
+#: `rbil61` has no pin of its own: the reader opens a folder or its archives, and `fetch.py
+#: --verify` checks them against `sources.tsv` before a run reads them.
 PINS = {
     "dosbox-x": "2a43c7335efd91f87bf5582245abdd5b3f18d5d4",
     "mame": "mame0289",
