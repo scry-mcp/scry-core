@@ -565,13 +565,30 @@ def test_stamp_over_a_file_with_no_quote_is_invalid(cli: Cli, world: World) -> N
     assert code == 3 and "nothing was examined" in err
 
 
+@pytest.mark.parametrize("body", [
+    "{",
+    "[]",
+    '{"entries": [5]}',
+    '{"entries": [{"rows": [{"quotes": [{"ref": 5, "lines": "1"}]}]}]}'])
+def test_stamp_over_a_file_that_does_not_parse_is_invalid_and_not_a_crash(
+        cli: Cli, tmp_path: Path, body: str) -> None:
+    path = tmp_path / "bad.json"
+    path.write_text(body, encoding="utf-8")
+    code, _, err = cli("quote", "--stamp", str(path), callees=False)
+    assert code == 3 and "INVALID" in err
+
+
 @pytest.mark.parametrize(("region", "fault"), [
     ("text", "is `ref` with `function`"),
     ({"function": "f"}, "is `ref` with `function`"),
     ({"ref": "mame:x.cpp", "lines": "0"}, "lines"),
     ({"ref": "nowhere", "function": "f"}, "scheme"),
     ({"ref": "mame:x.cpp", "function": "f", "case": "0"}, "`case` is a list of labels"),
-    ({"ref": "mame:x.cpp", "function": "f", "case": [""]}, "`case` is a list of labels")])
+    ({"ref": "mame:x.cpp", "function": "f", "case": [""]}, "`case` is a list of labels"),
+    ({"ref": "mame:x.cpp", "function": "f", "preamble": "false"},
+     "`preamble` is true or false"),
+    ({"ref": "mame:x.cpp", "function": 5}, "`function` and `value` are text"),
+    ({"ref": "mame:x.cpp", "function": "f", "value": 5}, "`function` and `value` are text")])
 def test_a_region_that_is_not_one_is_refused(world: World, region: Any, fault: str) -> None:
     _, faults = rows.read(world.edit("command", set_entry(regions=[region])))
     assert any(fault in f for f in faults), faults
@@ -584,6 +601,16 @@ def test_a_region_that_is_not_one_is_refused(world: World, region: Any, fault: s
 def test_a_closure_that_is_not_one_is_refused(world: World, closed: Any, fault: str) -> None:
     _, faults = rows.read(world.edit("command", set_entry(closed=[closed])))
     assert any(fault in f for f in faults), faults
+
+
+@pytest.mark.parametrize(("name", "value"), [("command", "readwrite"), ("call", "read")])
+def test_an_access_is_read_or_write_and_only_where_the_format_allows_it(
+        world: World, name: str, value: str) -> None:
+    """A wrong `access` is a fault and never a suffix that joins the entry's id."""
+    dictionary, faults = rows.read(world.edit(name, set_entry(access=value)))
+    assert any("`access` is `read` or `write`" in f for f in faults), faults
+    assert dictionary is not None
+    assert all(not e.id.endswith(":" + value) for e in dictionary.entries)
 
 
 def test_an_entry_that_is_not_an_object_and_a_header_without_text_are_refused(
@@ -787,6 +814,16 @@ def test_the_index_command_names_a_quote_whose_source_it_could_not_read(
     code = rows.main(["--datasheets", str(world.datasheets), "index", str(world.root)])
     out = capsys.readouterr().out
     assert code == 1 and "no source for mame" in out, out
+
+
+def test_the_index_command_names_a_dictionary_that_does_not_parse_and_keeps_going(
+        cli: Cli, world: World, tmp_path: Path) -> None:
+    folder = tmp_path / "rows"
+    folder.mkdir()
+    (folder / "broken.json").write_text('{"format": "scry-knowledge/2",}',
+                                        encoding="utf-8")
+    code, out, _ = cli("index", str(folder), "--out", str(tmp_path / "q.json"))
+    assert code == 1 and "broken.json" in out, out
 
 
 def test_the_index_command_with_no_dictionary_is_invalid(cli: Cli, tmp_path: Path) -> None:

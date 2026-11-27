@@ -25,7 +25,14 @@ from typing import Any
 from scry_core.knowledge import keys
 from scry_core.knowledge.callees import Callees
 from scry_core.knowledge.callees import parse as parse_callees
-from scry_core.knowledge.entry import ALIAS_MAX, ALIASES_MAX, NAME_MAX, entry_id
+from scry_core.knowledge.entry import (
+    ACCESS,
+    ALIAS_MAX,
+    ALIASES_MAX,
+    NAME_MAX,
+    WITH_ACCESS,
+    entry_id,
+)
 from scry_core.knowledge.quote import (
     BODY_LINES,
     PARTY,
@@ -265,8 +272,15 @@ def _region(raw: object, where: str, faults: list[str]) -> Region | None:
     if not (isinstance(case, list) and all(isinstance(c, str) and c for c in case)):
         faults.append(f"{where}: `case` is a list of labels")
         return None
-    return Region(raw["ref"], str(raw.get("function", "")), tuple(case), str(raw.get("value", "")),
-                  bool(raw.get("preamble", False)), str(raw.get("lines", "")))
+    function, value = raw.get("function", ""), raw.get("value", "")
+    if not (isinstance(function, str) and isinstance(value, str)):
+        faults.append(f"{where}: `function` and `value` are text")
+        return None
+    preamble = raw.get("preamble", False)
+    if not isinstance(preamble, bool):
+        faults.append(f"{where}: `preamble` is true or false")
+        return None
+    return Region(raw["ref"], function, tuple(case), value, preamble, str(raw.get("lines", "")))
 
 
 def _quote(raw: object, where: str, faults: list[str], limit: int = QUOTE_LINES) -> Quote | None:
@@ -415,8 +429,13 @@ def _entry(raw: object, header: Header, where: str, faults: list[str]) -> Entry 
     if key != raw["key"]:
         faults.append(f"{where}: the key is written {key}")
     access = raw.get("access", "")
-    ident = entry_id(header.scope, header.kind, key, access if isinstance(access, str) else "")
+    judged = isinstance(access, str) and (
+        not access or (access in ACCESS and header.kind in WITH_ACCESS))
+    ident = entry_id(header.scope, header.kind, key, access if judged else "")
     where = ident
+    if not judged:
+        faults.append(f"{where}: `access` is `read` or `write`, and only for a port, a register "
+                      "or a command")
     name, aliases = raw.get("name"), raw.get("aliases", [])
     if not (isinstance(name, str) and name and len(name) <= NAME_MAX and name.isascii()
             and name.isprintable()):
@@ -667,21 +686,38 @@ def _chosen(dictionary: Dictionary, wanted: Sequence[str]) -> list[Entry]:
     return [by_id[w] for w in wanted]
 
 
+def _objects(value: object, name: str, path: Path) -> list[dict[str, Any]]:
+    """The objects `value` holds, or `Invalid`: a file whose shape `--stamp` cannot walk is a
+    bad file, not a traceback."""
+    if not (isinstance(value, list) and all(isinstance(v, dict) for v in value)):
+        raise Invalid(f"{path.name}: `{name}` is a list of objects")
+    return value
+
+
 def _stamp_file(path: Path, sources: Sources) -> tuple[int, int]:
     """Writes the digest into every quote of `path` that has none; returns how many it stamped
-    and how many already held one."""
-    doc = json.loads(path.read_text(encoding="utf-8"))
+    and how many already held one. The file is parsed before it is walked, so a wrong type is
+    `Invalid` and never an `AttributeError`."""
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as bad:
+        raise Invalid(f"{path.name} is not JSON: {bad}") from bad
+    if not isinstance(doc, dict):
+        raise Invalid(f"{path.name}: a dictionary is a JSON object")
     stamped = held = 0
-    for entry in doc.get("entries", []):
-        for row in entry.get("rows", []):
-            for q in row.get("quotes", []):
+    for entry in _objects(doc.get("entries", []), "entries", path):
+        for row in _objects(entry.get("rows", []), "rows", path):
+            for q in _objects(row.get("quotes", []), "quotes", path):
+                if not (isinstance(q.get("ref"), str) and isinstance(q.get("lines"), str)):
+                    raise Invalid(f"{path.name}: a quote is `ref` and `lines`, both text")
                 if q.get("sha"):
                     held += 1
                     continue
                 q["sha"] = sources.stamped(q["ref"], q["lines"]).sha
                 stamped += 1
     if stamped:
-        path.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+        path.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8",
+                        newline="\n")
     return stamped, held
 
 
@@ -853,7 +889,7 @@ def _run_index(got: argparse.Namespace) -> int:
         raise Invalid("nothing was examined: the dictionaries hold no quote")
     text = quote.Quotes(held).document()
     if got.out:
-        got.out.write_text(text, encoding="utf-8")
+        got.out.write_text(text, encoding="utf-8", newline="\n")
         print(f"{got.out.name}: {quotes} quotes, {len(held)} lines of source")
     else:
         sys.stdout.write(text)
