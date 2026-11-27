@@ -863,6 +863,89 @@
      }
     }
    },
+   "dosbox-x": {
+    "seal": "5d186e0450d97c6fd1bcf886f52078a15a4aed9fbef9dc21c2c18589c890790f",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "201": {
+      "digest": "6b2d8f847042cf4fe9462f36561389d7f213ec8747f7d3298acf171e6fe8fe78",
+      "by": "slice core-board1-02 reader"
+     },
+     "202": {
+      "digest": "c672fcec8c78da0f8b3667568ebc57569e203cdc69c5b3c147b132b532812da0",
+      "by": "S2 core reader"
+     },
+     "203": {
+      "digest": "fd3e72c3a41e288d3ff53f16b876dc33e96908723dd32c41327fd633275d031c",
+      "by": "slice core-board1-02 reader"
+     },
+     "204": {
+      "digest": "81afd5a688e986ffbe309edd759f38f956a999b2b7de17b684c8b9b684fc34db",
+      "by": "slice core-board1-02 reader"
+     },
+     "205": {
+      "digest": "b1148119998fa5f004d1653e4b29811cbd1c3c8ae6165b2500f67ecedcfa67f2",
+      "by": "slice core-board1-02 reader"
+     },
+     "206": {
+      "digest": "3021adb9bcb635f68d492b42c2599bc2e3c89dc12e61a6c8552373ce47b15692",
+      "by": "slice core-board1-02 reader"
+     },
+     "207": {
+      "digest": "170376ce2f7ac032bc641c3e556aabbbaa8b37001aeafa3f427cba54c508d6ec",
+      "by": "slice core-board1-02 reader"
+     },
+     "208": {
+      "digest": "b9425ba03e0b12b5864910bb4f10e577ad6e41e69c816a82628e001c43bc6c11",
+      "by": "slice core-board1-02 reader"
+     },
+     "209": {
+      "digest": "785a94ed3b3db9ea1b40f0e8958bc845d6b80e37b88d2bbdfa70554707a98786",
+      "by": "slice core-board1-02 reader"
+     },
+     "210": {
+      "digest": "5e7430e54562d077474ada39ec10bfd46b1673f44ccb31e14917cc094d2d20f6",
+      "by": "slice core-board1-02 reader"
+     },
+     "211": {
+      "digest": "e597b693de81e7654aed1190c1cfb482edd3fe6bae696fe05f90b8cad6f2e139",
+      "by": "slice core-board1-02 reader"
+     },
+     "212": {
+      "digest": "b6ce15c96ae9dcb63f4fad2802c07d036e8a7e12147ad4356bc320328ceabca8",
+      "by": "slice core-board1-02 reader"
+     },
+     "213": {
+      "digest": "ef304d18ea20a8631b5b488ed839d7668d2345758d345f0b3bf4e1263391811a",
+      "by": "slice core-board1-02 reader"
+     },
+     "214": {
+      "digest": "01c0a3411fa3a3d50e08c5dbb9fe9e0a68cf13f7a74ce2f788bfe019280812d9",
+      "by": "slice core-board1-02 reader"
+     },
+     "215": {
+      "digest": "f2cb8fe55cfc2b24220f5fb5d98a905a0d8e1c5708aeaefbc29406be2f2911e3",
+      "by": "slice core-board1-02 reader"
+     },
+     "216": {
+      "digest": "1c35c4f22819f3aa3a6a64bb4bdf301248d3c47289f9f02c6cec14bc08eb9375",
+      "by": "slice core-board1-02 reader"
+     },
+     "217": {
+      "digest": "5b1ac29145efa15ebecaaaa5915e5e0ed62372a89793fd2cc8bde13010e1e9df",
+      "by": "slice core-board1-02 reader"
+     },
+     "218": {
+      "digest": "eb4e307f56cfbfc4317c5f0010e322bf4fb0f3cb8bb7388545fd27d4a87a1202",
+      "by": "slice core-board1-02 reader"
+     },
+     "219": {
+      "digest": "a81857ac757b28531b2cbe187a2b8ea97e3c3e0283c4f404e9543accc2531830",
+      "by": "slice core-board1-02 reader"
+     }
+    }
+   },
    "mame": {
     "seal": "0dac62f6ccdadd0e185cb2ab3de4c3816e1e1fe37a1ad87724845c2c6e9324e5",
     "by": "slice core-board1-02 reader",
@@ -1436,6 +1519,77 @@
      "228": {
       "digest": "7b8cfcaa37687c1e32a662bf07240bab5a1e09f245e112b80a0c83ac66a26a35",
       "by": "slice core-board1-01 reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "4fc6884c77f504fdf7be10f700b3a7ac47b6ef61df33a8507b979f0b6095a24a",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "101": {
+      "digest": "fcb97fd067367c881d760c3ce66b4c0784609411dd5bc9e51f683025b6f197f4",
+      "by": "slice core-board1-01 reader"
+     },
+     "102": {
+      "digest": "57600df1a49d5625bfe36b53f87a8ff9fea0154dc61d0dbced5e0f338e8475d5",
+      "by": "slice core-board1-01 reader"
+     },
+     "103": {
+      "digest": "3d3824a2db8e40cd76faeff6e0b6cad0f3c373efc9050b51080fd6685ef840c5",
+      "by": "slice core-board1-01 reader"
+     },
+     "104": {
+      "digest": "baac7766099563a7c09be05529595b669fb58dddddb39adbe5e53db65782afed",
+      "by": "slice core-board1-01 reader"
+     },
+     "105": {
+      "digest": "97d4dfb67b42b50952843e1f8d87f3a45ce73cbbfc85bc84e1b11026e052ba57",
+      "by": "slice core-board1-01 reader"
+     },
+     "106": {
+      "digest": "5f43df267747b452e3704f742631e2971123fcf25efaab672a44f6ff39db3570",
+      "by": "slice core-board1-01 reader"
+     },
+     "107": {
+      "digest": "3752c89b71bb7d968a9d8aa68948eb5e2ecf71d66feeec1a2c916782484cfe1e",
+      "by": "slice core-board1-01 reader"
+     },
+     "108": {
+      "digest": "2cfa9807b8fa4c4e25001edbc18b009f30ccc82854d32c91260556abbc8bba91",
+      "by": "slice core-board1-01 reader"
+     },
+     "109": {
+      "digest": "98243e9fe7f11f13c86c40a288691a0c339bd1f417baf32df5b00fc6ccfc2254",
+      "by": "slice core-board1-01 reader"
+     },
+     "110": {
+      "digest": "8b74a3c104a413ca604ab647798775ce88492ee384fb43423654cb35d8dfc9b0",
+      "by": "slice core-board1-01 reader"
+     },
+     "111": {
+      "digest": "a4acf3036ba74b3b853e4e80a2b77522c114e382ad9003a05da4940308039d34",
+      "by": "slice core-board1-01 reader"
+     },
+     "113": {
+      "digest": "c2788e3574503806d2e517ab0e687af7a2b18bd42274d64e5dd0ae01ad4a3f39",
+      "by": "slice core-board1-01 reader"
+     },
+     "114": {
+      "digest": "6927f9831cce1f8df981a02821dc278bf373f60eec3576a3404fbb14ec1c8cf2",
+      "by": "slice core-board1-01 reader"
+     },
+     "115": {
+      "digest": "354517d01cf99c26178c516bd8e4e92db1d7553982e027f0cebfe93e1b82edc1",
+      "by": "slice core-board1-01 reader"
+     },
+     "116": {
+      "digest": "391c8760b4ae242d1b894b92d01c03c2a310d983fa3e71f66fabbdd734d5e4c9",
+      "by": "slice core-board1-01 reader"
+     },
+     "117": {
+      "digest": "b18b561390f0b3423854ba80900629ce6ed990b34b7774210d47a837b72d63d9",
+      "by": "S2 core reader"
      }
     }
    }
@@ -2824,6 +2978,180 @@
     }
    }
   },
+  "mc146818:register:0x00": {
+   "doc": {
+    "seal": "3c50dbe1f2fed9b4acc7332a081b878a2d6b06892a12c7dc7f3f83ecbf244a40",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "39f4c6424ea23c66f6e518aa35a7d8db6e8ef36d43360161a6798319b4e15329",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "efbfce22a7cb70e459006e7cbb39aac6b884b65a64fc8f56c1fb4f9aa45735a2",
+      "by": "S2 core reader"
+     },
+     "3": {
+      "digest": "d37528144c4864930ac0a1240793920e067ce24d5e47118f18903a0625981e57",
+      "by": "S2 core reader"
+     },
+     "4": {
+      "digest": "2ee62a8ee9fa3671292fc84ce03a1191f88ca363ff7d6d6d2d93e8b2487e0f68",
+      "by": "slice core-board2-01 reader"
+     },
+     "5": {
+      "digest": "97df9fc853ae180335f12f84769587fcefb1b437bac93694fdcf1fe94f616f19",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "22bc857b55820bc411af8c264951f9522304d7b6be789d2379902fb8b4c6582d",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "201": {
+      "digest": "1d554590d89d81e90285b0a64cccf1139a1c148e4519d342a04a7a6772bd14b7",
+      "by": "slice core-board2-01 reader"
+     },
+     "202": {
+      "digest": "6a34160ab79ff5946f4db96161fbf14765206a96b991cf3eee9dac9e271c6315",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "f844674e28f4e02ef4c48324daf0198124efbc8a97780f32b29383642a7b94fb",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "101": {
+      "digest": "5d89a71a5c86dcbc66105e1dcc48f1c31f1d8bef2857193f987673ce9d118026",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   }
+  },
+  "mc146818:register:0x01": {
+   "doc": {
+    "seal": "e5e2c7ca333594cee1875fe7872547f1653265601031f8bdef27ba96ca5f61e9",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "f0a28538e290f3ab4893f630cd39e189fc0f050b1b093faa7b413745142f94cd",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "bcf9b8d0dedb24925032a5132cdef9fa80bb5b75a13bdc6beaacf5671508237d",
+      "by": "S2 core reader"
+     },
+     "3": {
+      "digest": "b5b0ba645c4d03b203ec4908793c11d05a5e20b83b92d0235fd17e995c69fee1",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "f8cce5041ee12218a6191d8aef9940978d31d071044fdb6939072bbabdda111e",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "35a91922d5758eb463473ae2451b0e9d74ad685d5fdc7565ea9550a0a61330f3",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "101": {
+      "digest": "dd369ff7d29504ff5f32ef57b9b3d994e6ca184b18d5711f04d0c9a84b744cd6",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   }
+  },
+  "mc146818:register:0x02": {
+   "doc": {
+    "seal": "f694f24618c4c333d8ca2afab9870ff952a23d91e9f9bce1357805641f4cf327",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "d1884c0ff616ba8eedb86e5aaac597718beee9d6c3fa5bff25d04679a1d195a1",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "a37ff22034e2231707b2715889baf2fa135b5f7bf8cc5d72b309f328368e1962",
+      "by": "S2 core reader"
+     },
+     "3": {
+      "digest": "a2dd5a2fd08032c9e70aae0e0ae20038a59da55e44e4e85e2f63c434ea43ed5f",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "b9575a9ec91c4688486b69a75b2f26b41d76bd79aacaca94530525b8003ac43e",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "201": {
+      "digest": "809333302660e902e754cedba07089993e9dc785004a23fde2fa67d34f36c3b4",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "8e93336ba4cf015188831f86508b8fe0f3aca61e539a78a5c27db52cd3251a46",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "101": {
+      "digest": "dd369ff7d29504ff5f32ef57b9b3d994e6ca184b18d5711f04d0c9a84b744cd6",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   }
+  },
+  "mc146818:register:0x03": {
+   "doc": {
+    "seal": "8e70f3bf6ec479a7459441708e107a7da7b76fb7f6c646aeb6bbe1be5613aeef",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "fe0ed813d740bda0e3b6093e0b911100245d992c6c457f59da306b78406c5e9e",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "27086f1df4ab0eaf248e2824196f227e0a76728c652192e9a69fb76b07d605ee",
+      "by": "S2 core reader"
+     },
+     "3": {
+      "digest": "0f353b8c6cf79d8e62ca75eadcd3f423042ccedf55ea5882f1c3f5ceacd1dbd7",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "ec0f6202eba0844b243ceccad66e5a22b2d6445ea303bbd163040d5331a2db6a",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "a9e6bb22da154d090f8eebbdbf212ee6898b1e9766d7dbd8ffd60f2d662fa9d8",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "101": {
+      "digest": "dd369ff7d29504ff5f32ef57b9b3d994e6ca184b18d5711f04d0c9a84b744cd6",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   }
+  },
   "mc146818:register:0x04": {
    "doc": {
     "seal": "e756336023eea579406be33986b5ba1d243692230a783247f0ad897750598b92",
@@ -2969,6 +3297,143 @@
     "seal": "067e8f1cbae7f3b83fc936109c2c8716c2232e2822b0e9d998298577110f40c0",
     "by": "slice core-board2-01 reader",
     "writer": "slice core-board2-01 writer",
+    "rows": {
+     "101": {
+      "digest": "dd369ff7d29504ff5f32ef57b9b3d994e6ca184b18d5711f04d0c9a84b744cd6",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   }
+  },
+  "mc146818:register:0x07": {
+   "doc": {
+    "seal": "c9f6d036ac2cd18991a2b4a6482375544b092b5edf180c9ed6df7a24d0cb77e8",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "0906ba71977ab1d1345e1f97351b64a62d4e88462757b6c8d21090e69a16d8c6",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "814b05d3a58fb29aa35e82a4c969d135fc576952bd37cf24ae43fc2fa80fd39b",
+      "by": "S2 core reader"
+     },
+     "3": {
+      "digest": "0d4e97f1275dd5b88e4a99fa46681da8313cbdadafa9292da4b961822269f0d2",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "181915c5b90642c896661aed1856926d6f074cd3bc05535dd338eaf196d960ae",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "201": {
+      "digest": "bfca41bc4612772c68ad81717baa7b5708ee46bc4782c12b9231541fc1634112",
+      "by": "slice core-board2-01 reader"
+     },
+     "202": {
+      "digest": "8ff56ee6d37dd1667d48a801e5bd00e450c0b7a8867a0df0345d31f7723350fd",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "ba468272a412c32771fece6d5cb40a61cee312231f0ea10fffe5fc34b387c610",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "101": {
+      "digest": "dd369ff7d29504ff5f32ef57b9b3d994e6ca184b18d5711f04d0c9a84b744cd6",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   }
+  },
+  "mc146818:register:0x08": {
+   "doc": {
+    "seal": "d7a33f22e39f77535b2ded036aa1a581c23f8648b588481fa13ff4c9dea9c7ca",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "e61d25c16323c66ad77f4bddf271a178ab9e9b0f5407b9721bd3c8fbc23449fa",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "f5c0c6357e507e34fe56274eeab7a2c86f914755189d34a695cf5687244f78e6",
+      "by": "S2 core reader"
+     },
+     "3": {
+      "digest": "2398b90315d226e6f39608daf1e129319ef788e7f85fc88639c8057e2923c0ea",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "77a803ade533573cdb01a2aa3b2fcfb3f6cd75ddfcb14788fb1dbfecf1b458bc",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "201": {
+      "digest": "afb9f77e83cca305d4659a5ada0765a56d4145b8e1ca30210e5fecf78fa884f3",
+      "by": "slice core-board2-01 reader"
+     },
+     "202": {
+      "digest": "e094cc0a7396ab50786843d183de137398fb7f2cfcfda492bffeda4f0098aac9",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "10efd533eef68bceb29901bd23d82fd3faec16934df5e0ab30d5cf58f6b9790e",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "101": {
+      "digest": "dd369ff7d29504ff5f32ef57b9b3d994e6ca184b18d5711f04d0c9a84b744cd6",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   }
+  },
+  "mc146818:register:0x09": {
+   "doc": {
+    "seal": "f7111bf54c4cfa292ba5b4d67d7040e85869589cec5eceed8fce974beb253de7",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "8db55919f99e0a97ca58b3c6f5401869c14624b159d2774fca2fd4cd436d6126",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "207c3e8c81075fec0360792769ade9cd91465ea286c54a7f2dd1ff752b85c218",
+      "by": "S2 core reader"
+     },
+     "3": {
+      "digest": "54e26eba499b9933a3204f09918492f2e6e49bc2ceb4c45a49acb335d63403b3",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "2e6bac32ae607dfe7c47fcfb63b5ff19249d377b5a2f9600fd48759f39adc019",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "201": {
+      "digest": "6a014ce636988b523a006b97365db4af965f19dd711ce9961d06b762b12b1012",
+      "by": "slice core-board2-01 reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "30e4f62ba7b7a2e3cfabe05deefd9af890e6b4bd605c765781b93c15ff3bcb65",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
     "rows": {
      "101": {
       "digest": "dd369ff7d29504ff5f32ef57b9b3d994e6ca184b18d5711f04d0c9a84b744cd6",
@@ -3508,6 +3973,29 @@
    }
   },
   "mc6845:register:0x00": {
+   "doc": {
+    "seal": "423bec707c373f81e8dbc3223d95e9a2b795f79becc9461fdc3f86aef3d31f56",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "5d558622403360ebb6022d48fb586cea84778f15070f7eab9a4dbaf4f21f86a9",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "61f4e42e95587cdb74f78c584cc5b6ab77227247960000e887ea588f5e2fdff8",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "1981a94f6db8a4db65ff520dfc0f0f84e73006d87319be622128926245c1b5bf",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "24bd135a7c90fe7de1586f44a72a78560c5c3e325239a7240a72c3cb35c70241",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "d4cbc43402229d065f3cdaa97b1b455b2ce7ef9bd6a30415c32c654f2b286d56",
     "by": "slice core-board2-02 reader",
@@ -3536,6 +4024,33 @@
    }
   },
   "mc6845:register:0x01": {
+   "doc": {
+    "seal": "5af4ab60fbf7b06ef2771f6f6e4a0a5b871705efe0fdaa8f8fe7419cf4b80570",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "1e544f9518f8fdc3337a6aa8ea1dd0cf542e0be92e1fa2325d9a6154e4f749f2",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "dfed968e85d691486830a07d332d9101a2164b9f518a25f80601d21bb6de3018",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "dc5a5b923c8079769298bc05c4aa44c624833132f1fdec6c45a04a29ad54867c",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "4bdef5364490a969486762e4b89669e80f872fe342474d8b990ec61c37e38abb",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "a53490e4baa576ef72596f6c92572d7d06c50addc081d861f6e151824ff10186",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "b048813f764a2752c96bd594b4c9dcc322948f7e7c135843de95c86fe694dc78",
     "by": "slice core-board2-02 reader",
@@ -3564,6 +4079,37 @@
    }
   },
   "mc6845:register:0x02": {
+   "doc": {
+    "seal": "110c677346d3876dfd49e0b7460762ef5ad318d74d8bd8c8e693028cc88af9e9",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "97b0133245368e741ac606bd4f16fc2a476325830973bd757fad3b20be657a55",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "3b24832a247f2d40da56513f0b85b08c4c6d3099ef3affee6e31a9151f6e3295",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "9ab0ae45e48d3c2c879039961c13b723e222c2806d8ee6aa681d2cd6e375c376",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "0e9b54fa77b5fcc5311a33fac8fd308b3a8a10069b9154a560ba9154f592eb67",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "e743c001d8bbfe5c6dd6042924640ad69f811eaf382fdb7d423c1ff63c54daf8",
+      "by": "slice core-board2-02 reader"
+     },
+     "6": {
+      "digest": "645446b6a9945dade22b9f49c865db664de5ab13ff43306a7c4e0991a5c304cc",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "ff16d487052d6908f56a3f6e05214889b68c7d64b28804dc72f09af1147a4387",
     "by": "slice core-board2-02 reader",
@@ -3588,6 +4134,41 @@
    }
   },
   "mc6845:register:0x03": {
+   "doc": {
+    "seal": "36dc4f0282650b609347f4f7ebcaeb36506664b2cfe3c1aa0b2f3550d9397ac0",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "a4544dc43132eaac8c784e68bcc50d7c4d32add9da7f7c23618ae05ac98ab26d",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "e4eb49054e4a6da1f8a868ad226fca004e342d48e43008b32b2b15bacbdc95e5",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "29ab5cd892e59fbdee37a8279a8bcdba51f4722f9ff2ecc940ae7cd62ebc5d0b",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "5adc651ba4a80a840f4e20908493da9500d2e3f0fc679b11efcefc78e224c9da",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "c168ad360a028ce6d315f487d44d4868e86a1def2ef9dc67eff7f4361335e260",
+      "by": "slice core-board2-02 reader"
+     },
+     "6": {
+      "digest": "8dee2e69f727fe41ec33c61b7a591a5507006f2439de11bf62ae14c0847accea",
+      "by": "slice core-board2-02 reader"
+     },
+     "7": {
+      "digest": "e5ad97f4dbb642421960a1eadfcfbda95165f798c66e12027a163f1fbc08c2ed",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "5dd157091a572b04071868de9d453e4f9310743db9a4942191ad8ff47615ba83",
     "by": "slice core-board2-02 reader",
@@ -3660,6 +4241,29 @@
    }
   },
   "mc6845:register:0x05": {
+   "doc": {
+    "seal": "2501b02d3ebaa4118360243c17d13276e250186aa194a56fdfd3b9d654b388cc",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "34a3629f3b91b8eba692c6b9b97b10b63ea9d2e6863838e7e0ba8b7431b4a04f",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "6e04a1329a9e9b570415fe938fab4421a4138dd68503cfdff092bfc620b39755",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "35b0b80963e61277b3fd4b6f0b3d036fa8368aaf53ae1668729aaf46cd0abdb1",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "d6791dd6f4d1238484fcb354c01d5ac6ea456200a546e173d6a11fbc7e414c95",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "98ea8ebada19b0cf0e4ce2b852fadffc0f23c6badfbd849d1dcc8bfe8fe3d40c",
     "by": "slice core-board2-02 reader",
@@ -3747,6 +4351,37 @@
    }
   },
   "mc6845:register:0x07": {
+   "doc": {
+    "seal": "59d232d80af44133e7ebdeeb6afe1da79eb5a73d180022e7b2ee0d42fcc7d11d",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "82a59d6364b6589a8b0a46547e45835eb9fb85e98ff622d00b1c9026c34b26cb",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "ac19e76871b86f060460ba449eb21832ce0d213b62f209c24e1d31a5823e67fa",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "0039f81e901bb615548ce5d3e787bb085eefc792a715608b09a4172517992b92",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "ea04f23e0b294345df0b044aa18880041ac18ef5da017068fca73db76a7e9b55",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "a568364951141d63f3549cd6b73f853487dae74562a356f0130824f53a6dfe3f",
+      "by": "slice core-board2-02 reader"
+     },
+     "6": {
+      "digest": "ee939d8cede74ed87734d4ad2e80e61b7ff8681359bcca10d7ffb57d45b50517",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "56bf5c1c9874dd182044c9fba09d813effbb6dd096508e9b49c5edc943c53f99",
     "by": "slice core-board2-02 reader",
@@ -3775,6 +4410,73 @@
    }
   },
   "mc6845:register:0x08": {
+   "doc": {
+    "seal": "b2563971ee14ccdb1f5039d7d7a64507af9bb9a9fae0a0f0394342ff5ba8aff0",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "f00e82605bbd98dd33c129df2644e7e9b54fd50507f15d95d5859acc35dd2544",
+      "by": "S2 core reader"
+     },
+     "10": {
+      "digest": "9fe0735ba0936242a71617655e912672aad6d3e7d7d29baa4e7e030612a06b20",
+      "by": "slice core-board2-02 reader"
+     },
+     "11": {
+      "digest": "d8c0bed0fd199721e1b8d8ba846736fb8488e12a16678871d793523f80b3fc2d",
+      "by": "slice core-board2-02 reader"
+     },
+     "12": {
+      "digest": "7bcff9aa03df6c18263ac4d4302390ad0df2fd8f2b540b32cc7e3e863bdb407b",
+      "by": "slice core-board2-02 reader"
+     },
+     "13": {
+      "digest": "2098989ea6eda1b0be2387fb23446ef874b2c7384ad02a404ba6bca7359e3823",
+      "by": "slice core-board2-02 reader"
+     },
+     "14": {
+      "digest": "d5af86ecf528452bdf7651649b84d02b71c03ef289ef34c477c80b37bc650de4",
+      "by": "slice core-board2-02 reader"
+     },
+     "15": {
+      "digest": "39180a09a5814e74e619b5f9fea31312919f8afad210e0deeab2a584a4f06293",
+      "by": "slice core-board2-02 reader"
+     },
+     "2": {
+      "digest": "7c5a05ab56624aa80aa7296a482f590a3bec19a51017141ddf33d2b9558dd72e",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "90835c84fd42c1fd075a91748b431c8eff518ea4e4977d5fc5e0621848203475",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "846a2db15a58e28f70084c26487a7b1c5cba700b6e799990f281d59db93bde71",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "6557ed9f496f86c44da59c3dfd2c7d979e371e01608596e966e47f89799d6e0a",
+      "by": "slice core-board2-02 reader"
+     },
+     "6": {
+      "digest": "a84ee359b725696108623c442f6d0825f787b4b40c0ba7c0ef32e28038b51ec3",
+      "by": "slice core-board2-02 reader"
+     },
+     "7": {
+      "digest": "69801ded327af1714949f2de68b1b653dd6b497bd1984c20c92361b7ba0116a3",
+      "by": "slice core-board2-02 reader"
+     },
+     "8": {
+      "digest": "0d4b862b28d05138bccae1346daf046abba0b164aed1a5e1c2953588becd7788",
+      "by": "slice core-board2-02 reader"
+     },
+     "9": {
+      "digest": "b5e9a7407e57babb219c175e9d2cbc91521b1e2f62d91d81b502712a84cfae02",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "4dff5a1b35c01b5cdb45741cb27371a52b3c7cc819695a7ef1a514a815dd62a3",
     "by": "slice core-board2-02 reader",
@@ -3823,6 +4525,33 @@
    }
   },
   "mc6845:register:0x09": {
+   "doc": {
+    "seal": "3cfebefada0e45019852448a191eefcc9a5392b2be68ce491dea421c65c69a13",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "96d1b3d04c77d0c0dd3e836b4ced5bd65bebb3be0aceb28a188875d0e194ffbb",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "491ca4e71072bb06fd5976e21ae50510f415772312855c7fa3b517de422c1861",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "c30b23e1063d3c6464d4757212a14fd959c2623dd2bdf675ab2a3217e257f381",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "f6358b9759c519d93c335e1bfc02ea656738f4c3410c2c0ed80e73dadc50e482",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "019ff07045298da88311bc28f520c69ce82b37fb16e62323f11a5889cf8b47ff",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "3c30057fc089ba74ef8fe625b026c522d9ac4db86321b8027f62012c2e5175e8",
     "by": "slice core-board2-02 reader",
@@ -3851,6 +4580,57 @@
    }
   },
   "mc6845:register:0x0A": {
+   "doc": {
+    "seal": "bcd29c74403647361e2b2c66538a22e505138a51921c7687928228a4caa456a8",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "f1e6840b640ce72c3285b919a381b1f76119e743d44c8818383b1e7d209911c5",
+      "by": "S2 core reader"
+     },
+     "10": {
+      "digest": "e0785ec1cb7683d33bf25c0ba7a55d2e00702276a998a9d9fdd0fb4e8b8c9299",
+      "by": "slice core-board2-02 reader"
+     },
+     "11": {
+      "digest": "ca5ee95b16e05d36be894eeb2d09426beff92eb4248f2926efd69f90991d5b3e",
+      "by": "slice core-board2-02 reader"
+     },
+     "2": {
+      "digest": "b43db4ccce86e4f3cb9e8617a44f5f4134d13f600f6bbf9392c1f4f61ec8b932",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "b237a8e8268faf3b8f1dcee2cddb9f8cc688e27d7283ffac94e9732cf9c81ab1",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "08a91e8b96911fc187634bd0dce3a8aa36e8597b9da187f8aec6972add143cf6",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "ad116dea907885fff9cf8c798b3a6a930c6d73462b4e44521a26899e59f11452",
+      "by": "slice core-board2-02 reader"
+     },
+     "6": {
+      "digest": "a14f1275bc33faab5d4656cafaea8f3644f12a5444914df4910aa7959e58ddcf",
+      "by": "slice core-board2-02 reader"
+     },
+     "7": {
+      "digest": "6cb187b6712ff6df8bf8d7036b4ecd97fb96a3eef87285bef6dcc628770b3ef3",
+      "by": "slice core-board2-02 reader"
+     },
+     "8": {
+      "digest": "a400aa6603854eaeaa9f0356948f89f40274d5fc4f4cbe94f602b0df6d22200b",
+      "by": "slice core-board2-02 reader"
+     },
+     "9": {
+      "digest": "2ec88e1861f2242c4c68b195cf6134f49ffbf682a1de096a98d81d48589e9d25",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "fe7919e355687b8cd9a047016ba9f934cd92d3040106aeb4751f8861c24bb755",
     "by": "slice core-board2-02 reader",
@@ -3899,6 +4679,29 @@
    }
   },
   "mc6845:register:0x0B": {
+   "doc": {
+    "seal": "b3a973b747c121a0008ddbbabf5c294c232bdb36f7556ab75e588382739c9dbe",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "0d1d245f8463f4fa3d9d6b4f23c7251210926fc2a8ab2625f10129f756e0c008",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "11729dc547f4d45f5440caf897756a458ff7fb1a899a113779e21b85996d243a",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "afd65ed476bf06e992f24532b35696d3411d6ebd9dca4d1c0ef8a7905840f2d1",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "1a73903bf09c83bad17c6633b888f1147e68f42dc6861e2ce6a6e9f1dbf8f951",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "7293871bbdf9d7243d71b97d2c1fc633aade347aac0381505363bbabbd9c971c",
     "by": "slice core-board2-02 reader",
@@ -3923,6 +4726,41 @@
    }
   },
   "mc6845:register:0x0C": {
+   "doc": {
+    "seal": "563ca3047f1d94cd63242fcf2fdaf41ca045ace443c8a456cb34478f241d948f",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "03dd44d0efec5ba04dcbabb89f63aa72c3a624461a8783df86cdd56e5eeb7f88",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "b6c39d3b9080868352e4937b645f527994514c049f527abe4908e6eef17c63e3",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "1ff70fb005973ade31dfe981804cda41090e1d5f5ca1363c4d550e741ab07580",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "b753b27f9097b6cddacaa4746f90a943dabd692f8e23b8d4a0b9fcd0418a76c3",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "61465005e7ce3e7f67ca9f4759bd7a63ae730267b66d486ae292c9ed1652c96e",
+      "by": "slice core-board2-02 reader"
+     },
+     "6": {
+      "digest": "7a45e0efc6e64f8886ca7468ca787fc2fef0d79e26e0889c25122a71dbbe059d",
+      "by": "slice core-board2-02 reader"
+     },
+     "7": {
+      "digest": "214b03cdc896d2738139ca6c5b6b5ba03e4f206b9777215b66081fcfc7bb159a",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "b0469778998ca783740528c0c7db03bb790665953b1114482daf3fe020bdc72d",
     "by": "slice core-board2-02 reader",
@@ -3979,6 +4817,33 @@
    }
   },
   "mc6845:register:0x0E": {
+   "doc": {
+    "seal": "93bd51ae78cd6c1d785c6cb27d491640e77d8e914c93116c40893526e6d74b0b",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "8ef2a3af0c5b8ce962ad029c0175cca021266c5a2031fb5882224b6b1d8b097e",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "6a306df040259e57ab1a1e05d699285c7c366195c6273eff1862c642234f3557",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "221a432376c9a5800b4a7a12d3d4919b998b29c5113923f24c5e277ef5757292",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "8c8368f8e278fa1771764820c800f06c9cdd766eb6679ecbf0b1e032b55e37ce",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "f4f5a7a0adec4a4d2abd80b4639009a31ee03a0cca1a787bcf0a7e6f11dc6a2a",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "c2d36ba21327123eb9ed7e5c4b4630dbbc73739f11c30a54e5b57864d1b0ba98",
     "by": "slice core-board2-02 reader",
@@ -4020,6 +4885,45 @@
    }
   },
   "mc6845:register:0x10": {
+   "doc": {
+    "seal": "c3849ba0ce81f500dc9710cb112ac08f1ed1a995c54f8b673efafe69570a0241",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "ea0b3015b99ae28c770b206b38921523b1279b01fbd313f0af01e27b9aa324bd",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "e3bc12356815d08e49fb27fe84c339c2f2e2c3eb646db1af75df9d1439b12a61",
+      "by": "slice core-board2-02 reader"
+     },
+     "3": {
+      "digest": "c141521286c564b50dfd0d55333fa6b725609f50af7e825de9834434f3c5950d",
+      "by": "slice core-board2-02 reader"
+     },
+     "4": {
+      "digest": "fe4b8bc0477e47d584f3cfd93abdc4b2fde3e45ddcf7731bf751225f75418d6e",
+      "by": "slice core-board2-02 reader"
+     },
+     "5": {
+      "digest": "734c369f4e534462b6f06c869c2231678e4d008edfdf47cc38cf701ae0e545ef",
+      "by": "slice core-board2-02 reader"
+     },
+     "6": {
+      "digest": "0d3ea704f8202496a8142213f83a1def9b7c8bbc9e1e2aed479a0e27c8d05c3c",
+      "by": "slice core-board2-02 reader"
+     },
+     "7": {
+      "digest": "d9905255ece761acc2b8807eea7581828613e7e50213619a73a0cbb72ec306f0",
+      "by": "slice core-board2-02 reader"
+     },
+     "8": {
+      "digest": "5284058bfd2709f19153bb2b0426b6e5d43a9cb190c38474c5e38421ac191509",
+      "by": "slice core-board2-02 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "a3a93f1b2793fe4e65d1ef29ba528f6ef450246ef22a6558b8d355920fd5b7f7",
     "by": "slice core-board2-02 reader",
@@ -4985,6 +5889,45 @@
      }
     }
    },
+   "dosbox-x": {
+    "seal": "606dd0d2520ffc9ca27a111d736416a1e57403f5ff0132a1dd30d084d23774df",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "201": {
+      "digest": "c8c4a7a764e58d2cbaa6d610951a47028992cb68a2e5ae8a5cd9f40f7b30ef2c",
+      "by": "P0 unsealed reader"
+     },
+     "202": {
+      "digest": "0e53218a2f321c36ea619f7a8e5ab925729ef6142ce264723322447dfd84f52b",
+      "by": "P0 unsealed reader"
+     },
+     "203": {
+      "digest": "8eae51498860fa5ba7f2a83b435f92bdeb424883fa8eb433bc7f94e51fc6a481",
+      "by": "P0 unsealed reader"
+     },
+     "204": {
+      "digest": "13747bec934c5b518905c54dd2bf08ad3971bc2a1300b85e4ffe533ad352d29a",
+      "by": "P0 unsealed reader"
+     },
+     "205": {
+      "digest": "fdf8b5421289bd2869729f2b1e98af5d077d929e58f461313a9442661aedd623",
+      "by": "P0 unsealed reader"
+     },
+     "206": {
+      "digest": "ccad614d0943713c6f68953721deb9dc454f75d07fc023af315fc4da6f092486",
+      "by": "S2 core reader"
+     },
+     "207": {
+      "digest": "9562c23cb29ec03fda62a2620e4f5c8dfbe852a3aaad6eb7e7c0180fff256ffa",
+      "by": "S2 core reader"
+     },
+     "208": {
+      "digest": "4f68bfaf23b61a7055dfae54a6aa27487e6f3652b4487d92a80d9b5d04cb32f5",
+      "by": "P0 unsealed reader"
+     }
+    }
+   },
    "mame": {
     "seal": "fc1d46500a00083a78ca8ef767b85045f662527ab86a9a02f61744e540bd0327",
     "by": "P0 unsealed reader",
@@ -5416,6 +6359,37 @@
    }
   },
   "saa1099:register:0x00..0x05": {
+   "doc": {
+    "seal": "fd4f5d52dad86cb7441ca7a9e4c4e1c73153f40c5f0a2833dd31d978deace04c",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "7777d3014893df36d0d447ea149588f40dcb8a7f1fa3e24b7f7391c5cfacbd29",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "18e0f62187ca8797d767c886249c76ba84d8d5582538c63149484da1ccb7d5c3",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "bcdd1fe41de0fda78f95158f43c46a352f079ad5864ffff11b6c26c4aba1f360",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "d8b5512e11a3a0a33bf18fa2fe67bef5180fb526ff78f789855cad310393a1d0",
+      "by": "slice core-sound-03 reader"
+     },
+     "5": {
+      "digest": "bf93393b6382eca6fc76bbd79a3262860caf2c8dfe8eb6c8b9425485a44ded6a",
+      "by": "slice core-sound-03 reader"
+     },
+     "6": {
+      "digest": "c4bfc942116e16cf2c4e7d33a1694b7dfa9587b8898cc78a8200874cc7f3e318",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "c55ce771a6ea1628e0a54362baccc5ff95d5b016b9ce6b1c9514edd05572f499",
     "by": "slice core-sound-03 reader",
@@ -5471,6 +6445,29 @@
    }
   },
   "saa1099:register:0x10..0x12": {
+   "doc": {
+    "seal": "8f1d0600d985871fe64ca91cd8c9e78b2e88a5f77d6d7e63f201773ec4ea1e29",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "2f8529412cb79f188bb04d422b0113abde70b2ac58583ebf4eb8f44ace13d513",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "5152bca66307d6d3d03f9bc9d33166928e35493756a934d003c60f35cd071c44",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "d3674e5c4cabd63e29a3ff24d4b828e6541bd4aebd582212e9f6a6004df75cd8",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "ad974714a01b99e83f3d22dc85301d251267e9604c26d0e20e9612807f47334e",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "89af819a7ca8c38b382797473ad37bdfb5dc1d748fad6fbb11de8e33076ce235",
     "by": "slice core-sound-03 reader",
@@ -5485,6 +6482,21 @@
    }
   },
   "saa1099:register:0x14": {
+   "doc": {
+    "seal": "50bb03d5be2154a6e25124a6dc9de78e0f0098b2ef398cc387ae168fed9cb015",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "5a4e47b8a1b7c8af0c5e0a33b04519361ad6a134fa43e3f11f7e2769cdb53fba",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "6b885470172bfa7d6c6c94eb6c9e208885b4c2a5127499e76ab05254553f6edc",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "8ada6c3b0acd51c72ba5b794b714a4946903ba93671c992df6865c2a65a51a55",
     "by": "slice core-sound-03 reader",
@@ -5499,6 +6511,29 @@
    }
   },
   "saa1099:register:0x15": {
+   "doc": {
+    "seal": "eecd7cb78a5f6155425742896b9ee63ea162604d4ba5111d33296dcf36a94153",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "d80e485d1b1bf1b90129263f5ef3fb28365f8068f309e0aea98fa4af8e2bc869",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "d7ae8238d23e31c7aa74346b0e6ecbd63bfa8d26d0a447fd83361ac9376cbf51",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "a493a888909af1e3ba937ad7b97da9f167a277c7635811f7ff7ea5b0c43eec82",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "242fe3312bb7906cc248237d3ecca96719185777e56cccc041c302744e25a574",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "a255cf4fce8a0eccae8321393f3f218492f30470730e631a68b8d32843ee45a2",
     "by": "slice core-sound-03 reader",
@@ -5513,6 +6548,37 @@
    }
   },
   "saa1099:register:0x16": {
+   "doc": {
+    "seal": "e02c9b7b3e383b5f6a28219b9bdbae74b7195508479ccba8ce5946c79da91e28",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "b43571a60506c2ebc63b6153811271d90fc3aed62b9dba054797571bc625ef85",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "52c76826f3ad8510d86f73ab76af38abd512526e0c07153ac99571002abf5a18",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "a0e22246e8bbbf8063c641a04d6d3f2b2b68e0c6546fffc9ea04f22c337eafa7",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "a617f7df8466d4aab0835f583b8532eb2eae5173c0a77964dcfb17b66b38aad7",
+      "by": "slice core-sound-03 reader"
+     },
+     "5": {
+      "digest": "765bfdbb31fe3ffe7422a1e2823dcc8dadf0b0a863c280e6e9e0b78a3ac35c9f",
+      "by": "slice core-sound-03 reader"
+     },
+     "6": {
+      "digest": "ee63ea00a30b18f5e89385b6d5f3a168e6a6ffdd1147441e1699a524c12a6ff8",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "cc73a41d347e7eb0e94687cc611329c2697267d0f08750a2a4531534718ffa53",
     "by": "slice core-sound-03 reader",
@@ -5596,6 +6662,29 @@
    }
   },
   "saa1099:register:0x1C": {
+   "doc": {
+    "seal": "cb2972e33b988b813f0714d605c18786f8390e6d934ab66a2462337736c13be0",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "3715ba11474e27c858cbc8e44b2e462eac7ad238e0df038acc3f4a7486765ab1",
+      "by": "S2 core reader"
+     },
+     "2": {
+      "digest": "f57a0f2833c5c0925a5ec9a42e28e08915183f1f7182ec72d22838408a36748c",
+      "by": "slice core-sound-03 reader"
+     },
+     "3": {
+      "digest": "fa79bff0771991c67ce01876224413208a888bf4d8484a32dd267f49ef6fc10d",
+      "by": "slice core-sound-03 reader"
+     },
+     "4": {
+      "digest": "ca15dc01ba732c63b7f05f023c20fa99c45f42887fa04d18805f4095be4c17df",
+      "by": "slice core-sound-03 reader"
+     }
+    }
+   },
    "dosbox-x": {
     "seal": "3b9a9b3a08daa6e901ed895848c2c6cd61b3d6c1370c62f2e22baf051a04f8c6",
     "by": "slice core-sound-03 reader",
@@ -6774,6 +7863,40 @@
     }
    }
   },
+  "ymf262:register:0x101": {
+   "doc": {
+    "seal": "c955d6b540bd9195a644a993a722da05e3f30c34eb905a3b8cd4f7d2d9d9a23f",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "11e8341907d7a69edc6e00df41c034e56ce213f360f03bc3cc6d54bd63bc8d97",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "12bdcf60b8ee9a8e7a649c53910c003a398a8bdae349cd63c548adc1264cfd49",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "6c2ec7b767b8b008981c5b5912927d6b4fe777cc9fc73f170e7ae0b0a491d135",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "101": {
+      "digest": "0018cf23014830511dbeddf3e5220fae09a99fb69d24651a18c878148fb07559",
+      "by": "slice core-sound-02 reader"
+     }
+    }
+   },
+   "mame": {
+    "seal": "52df3f15c52565b11d26b52fadd32f23d681367bbb56b870151547ae6c3daaeb",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   }
+  },
   "ymf262:register:0x104": {
    "doc": {
     "seal": "a1bc664c8d6e91be84cc3b3702b5c7d9f5ae1b2f1a8bf2655f19576c8107f580",
@@ -6888,6 +8011,122 @@
     "rows": {}
    }
   },
+  "ymf262:register:0x140..0x155": {
+   "doc": {
+    "seal": "dbb87b7fa1c2898900ae428eaf95842e044fa07c343d48024dbe5581f805ff88",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "08a0ae840c3e3acec6a358cd5649af52103e300feb6eb0bd65c4062782a7034b",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "91bd9dfbf1f2876ca6e2c2ce649cef206faf4b9d90b57c12594c09f8c2d6ae38",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "87ffa053565f3bac0eccf106018f5ac714b1d803c0c168a0486e2e651c271070",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "3a9bc2027472e93ab9abffee7380e70b3635a83b57adad5ab2a79e7b4ede1285",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   }
+  },
+  "ymf262:register:0x160..0x175": {
+   "doc": {
+    "seal": "c0f8e6b1720962b4c3c5c2deeef805359ab6e12b62e2d88a0c4bf3365534d5b0",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "5d26481fe2935aa45b23ef93c5d949ca208f464b07ce994b802825f76df367a8",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "ff5e0a4231c410155d0495d2921e16d77a393c257481f9738acc5d08deaf4fab",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "cd111da133215828380d16e40c05a5bed6b0290433a0a3866d9606c9732cd70e",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "9e26b3fd2143fe4fe71379995d60c2e60f22f39f3c1a13ce8041841ebb9e3caf",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   }
+  },
+  "ymf262:register:0x180..0x195": {
+   "doc": {
+    "seal": "84125bf764516faed923cec6b9fdb712d526cb30767860d5b2f4f81f320f5074",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "67dd1f376908106eb7ba4c22b78b07f5eb52fd09531bfcb7136df0e1cf9f010b",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "fe79e04f17fe2dfebb78194e12c97687d713423ef5f4d814fcf04e633e84a076",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "77198435b33f11ee7a0ad42137ab2f02e5f074b0ee713c0166b5d969cc919e0b",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "ba364b800b73aa434e4094481891084e730e2be90cba8e1b0d6bd1d06ddf1ba4",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   }
+  },
+  "ymf262:register:0x1A0..0x1A8": {
+   "doc": {
+    "seal": "a81311abbe42d9c996c796a481a318bc0cd9f9841e2f366c20b2873dbeaef511",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "b4974e03d9be546ffac41bf082bda8a7b481e81095a67ba4c6bf14742f4c9551",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "483dc2681959f7dcbe18a2050033d02d6bf0b69a96b28f33bbf883758b4aeb26",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "16c82f040f393ec0f5230d3eaa1cc19d2877b8101c36dc51a20468bd0b48118c",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "522094b766bced0caebc4878e3815ef4e635cc45bb0a52af63eed7c961c85d13",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   }
+  },
   "ymf262:register:0x1B0..0x1B8": {
    "doc": {
     "seal": "2fd5fb3cd68105c434eebe82dddf6228505eb6e739cff077047c9e2a01931481",
@@ -6914,6 +8153,64 @@
     "seal": "f8a4be1082d33d066185037231c2a39dcf0ee8fd4547556bff9f30909e9ea5b4",
     "by": "slice core-sound-02 reader",
     "writer": "slice core-sound-02 writer",
+    "rows": {}
+   }
+  },
+  "ymf262:register:0x1C0..0x1C8": {
+   "doc": {
+    "seal": "861b234447223ba146f9baefbeabee3b3598980012b3217f94e22837e1a1a896",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "74ee6327009845afedbf8bf84be66726b27a2b927aee0d8176b43d6b04e6b5e4",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "72716a735464d47c42f9370feefdc2ea11177e22cb7158e7a3cab99df8444e8a",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "74f5b7297a22e474c60decb13a7b53edb0addd6da136939c5892d8768731f793",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "1c30f21148bdf4515e12dddd5e65180605da41c6a727f6be3cdc842cd5c2e034",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   }
+  },
+  "ymf262:register:0x1E0..0x1F5": {
+   "doc": {
+    "seal": "06ae115a7229e1b42c28a07919c027464a17c80b179ae45fdc235c568ab7a648",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {
+     "1": {
+      "digest": "ebbed733dc030c3cbbcea8d89278478f6a070f4174012b992bb5aa8e4cf9696f",
+      "by": "slice core-sound-02 reader"
+     },
+     "2": {
+      "digest": "7aaa129abeeb070d6b75ffe9339a02efdf0e8e182fd17d8aca63217b45ce32f4",
+      "by": "S2 core reader"
+     }
+    }
+   },
+   "dosbox-x": {
+    "seal": "ecaa741a7ce550c5992e2e824d3143c1bc28ee28576cf28b70e9317f31813378",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
+    "rows": {}
+   },
+   "mame": {
+    "seal": "055c07ad3ef4abb384e429b6f72e6c1e24cd0507ccb7f2f4d3bd1bb319483364",
+    "by": "S2 core reader",
+    "writer": "W2 core writer",
     "rows": {}
    }
   },
