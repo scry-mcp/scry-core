@@ -16,9 +16,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from typing import Any, Required, cast
-
-from typing_extensions import TypedDict
+from typing import Any, Required, TypedDict, cast
 
 from scry_core.knowledge import callees, keys, quote, rows, sealed, shared
 from scry_core.knowledge.index import Found, Index, files
