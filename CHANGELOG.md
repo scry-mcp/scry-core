@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.123.1
+
+- `scry_core.knowledge.base` takes `TypedDict` from the standard library: a program that reads
+  the base with the package's sources alone on its path loads it without the package's
+  dependencies.
+
 ## 0.123.0
 
 - A dictionary can be written as rows that carry their evidence (`scry-knowledge/2`), with
