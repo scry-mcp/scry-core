@@ -351,6 +351,10 @@ declaration; `scry_core.knowledge` loads, searches and checks them, and
     - A row about what a stored bit is for is closed on the store, and its sentence says the bit
       is stored: the purpose is the document's, and the code that reads the bit lies outside the
       entry.
+    - A note describes what happens; its subject is the hardware the code names (`The PIT
+      reloads`, `The VGA DAC latches`) and the action alone where the code names none (`logs the
+      unhandled interrupt and returns`). "The emulator" is never the subject: the notes are
+      already the emulator's, and saying it every time loses the reader.
   - Reading a verdict, the test of each in one sentence:
     - `agrees`: the cited lines, read alone, do every part of the row and nothing it excludes.
     - `differs`: the cited lines show the emulator doing something observable that the row's
