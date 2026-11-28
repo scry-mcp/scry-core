@@ -437,15 +437,22 @@ def _leaves(value: Any) -> Iterator[str]:
         yield value if isinstance(value, str) else json.dumps(value)
 
 
+#: Tools whose reply is the answer itself, every row and citation kept: abridging one would
+#: hide the rows a reader came for.
+WHOLE_REPLIES = frozenset({"knowledge_find"})
+
+
 def _spelled(rec: Mapping[str, Any], norm: demo.Normaliser) -> tuple[dict[str, Any], Any]:
     """A record's call and reply as a page spells them: a demo's transcript already hides what
     its run decides, a live run's records are spelled here."""
     args = dict(rec.get("args") or {})
     reply = {k: v for k, v in rec["reply"].items() if k not in LEFT_OUT}
+    whole = rec.get("tool") in WHOLE_REPLIES
     if rec.get("normalised"):
-        return args, shape.abridged(reply)
+        return args, reply if whole else shape.abridged(reply)
     return (_steady(norm.reply(args, RUN_KEYS)),
-            shape.abridged(_steady(norm.reply(reply, RUN_KEYS))))
+            _steady(norm.reply(reply, RUN_KEYS)) if whole
+            else shape.abridged(_steady(norm.reply(reply, RUN_KEYS))))
 
 
 def _candidate(rec: Mapping[str, Any], tools: set[str], skip: re.Pattern[str] | None) -> bool:
@@ -484,7 +491,8 @@ def examples_from(records: Iterable[Mapping[str, Any]], tools: set[str],
     `wanted` names takes only a cell whose call is the one its ask is written for, with the
     second call its ask names as the same run made it later. Every tool takes its first `ok`
     reply, else its first refusal. Paths are spelled host-independently, `LEFT_OUT` dropped,
-    the run's own values (`RUN_KEYS`, clock readings) hidden, long values abridged."""
+    the run's own values (`RUN_KEYS`, clock readings) hidden, long values abridged except a
+    `WHOLE_REPLIES` tool's, which is the answer itself."""
     records = list(records)
     wanted = wanted or {}
     ok: dict[str, dict[str, Any]] = {}

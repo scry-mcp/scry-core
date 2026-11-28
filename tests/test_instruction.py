@@ -35,10 +35,17 @@ def test_a_note_from_the_base_is_its_own_key_beside_the_comment() -> None:
         TypeAdapter(StopInstruction).validate_python({**_PLACED, "note": 5})
 
 
+def test_a_note_from_the_registers_says_so_apart_from_the_note() -> None:
+    TypeAdapter(StopInstruction).validate_python(
+        {**_PLACED, "note": "port 0x3C8", "note_live": True})
+    with pytest.raises(ValidationError):
+        TypeAdapter(StopInstruction).validate_python({**_PLACED, "note_live": "yes"})
+
+
 def test_a_platform_adds_its_own_keys_beside_the_common_ones() -> None:
     class Extended(StopInstruction):  # a platform's own subclass
-        flow: str
+        platform_key: str
 
-    TypeAdapter(Extended).validate_python({**_PLACED, "flow": "branch"})
+    TypeAdapter(Extended).validate_python({**_PLACED, "platform_key": "x"})
     with pytest.raises(ValidationError):
         TypeAdapter(Extended).validate_python(_PLACED)

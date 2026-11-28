@@ -717,6 +717,21 @@ def test_an_example_keeps_the_shape_of_a_long_reply_and_spells_the_host_s_paths(
     assert shown["reply"]["pid"] == demo.VOLATILE_MARK, "a pid is the run's, not the tool's"
 
 
+def test_a_knowledge_reply_is_kept_whole_and_every_other_one_keeps_its_shape(
+        tmp_path: Path) -> None:
+    """A knowledge reply is the answer a reader came for: every row and its citation stay."""
+    norm = Normaliser(tmp_path, Path.home(), {})
+    rows = [{"n": str(i), "text": "x" * 400,
+             "cites": [{"document": "d", "lines": str(i)}]} for i in range(20)]
+    reply = {"status": "ok", "entries": [{"id": "z80:vector:0x66", "rows": rows}]}
+    shown = reference.examples_from([_record("knowledge_find", "OK", reply)],
+                                    {"knowledge_find"}, norm)["knowledge_find"]
+    assert shown["reply"]["entries"][0]["rows"] == rows
+    kept = reference.examples_from([_record("peek", "OK", reply)], {"peek"}, norm)["peek"]
+    assert kept["reply"]["entries"][0]["rows"][-1] == (
+        f"... {20 - example.ABRIDGED_ITEMS} more"), "another tool's reply keeps its shape"
+
+
 def test_an_example_leaves_out_the_envelope_and_the_base_s_backlog(tmp_path: Path) -> None:
     """`session` is documented once, and the base's served and held-back counts are not a
     reader's."""

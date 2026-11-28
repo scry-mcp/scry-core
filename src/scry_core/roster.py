@@ -90,10 +90,12 @@ DOC_VALUES: Mapping[str, str] = {"RECORD_ARGS": RECORD_ARGS, "RECORD_CUT": RECOR
 
 #: The family of every tool both servers have, declared once: a model reading the two rosters
 #: sees one surface, and a server that files a shared name elsewhere is refused by `misfiled`.
+#: The order its families first appear in is the canonical order both rosters list them in.
 SHARED_FAMILIES: Mapping[str, str] = {
     **dict.fromkeys(("start", "status", "window", "close"), "Session"),
     **dict.fromkeys(("machine_map", "log", "log_wait"), "Machine"),
-    "symbols_find": "Names",
+    "symbols_find": "Symbols",
+    "knowledge_find": "Knowledge",
     **dict.fromkeys(("run_to", "run_for", "step", "resume", "stop", "trace", "screen_wait"),
                     "Run"),
     **dict.fromkeys(("breakpoint_at", "regpoint_add", "watch_add", "declaration_list",

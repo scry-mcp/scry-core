@@ -103,7 +103,7 @@ def test_a_shared_tool_filed_under_another_family_is_named() -> None:
 def test_the_shared_declaration_names_each_tool_in_one_family() -> None:
     assert roster.SHARED_FAMILIES["debug"] == "Write"
     families = set(roster.SHARED_FAMILIES.values())
-    assert {"Captures", "Machine", "Names", "Screen"} <= families
+    assert {"Captures", "Knowledge", "Machine", "Screen", "Symbols"} <= families
 
 
 @pytest.mark.parametrize(("tool", "family"), [
