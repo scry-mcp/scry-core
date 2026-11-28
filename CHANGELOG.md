@@ -2,6 +2,19 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.124.0
+
+- `knowledge_find` declares `kinds` on its `no_channel` refusal and `image_compare` declares
+  `series` on `control_silent`, so the published `outputSchema` accepts the reply the tool
+  really sends and a client that validates replies no longer refuses it whole.
+- `StopInstruction` declares `note_live` and the three fields a platform that decodes the
+  instruction itself answers (`bytes_from`, `code_bits`, `flow`), so both servers answer one
+  shape and a reader learns one.
+- `SHARED_FAMILIES` adds the `Symbols` and `Knowledge` families and fixes the order both rosters
+  list the shared families in, which is the order each reference page shows.
+- A stored `knowledge_find` example is the answer itself: its rows and their citations stay
+  whole, while every other reply keeps its abridged shape.
+
 ## 0.123.2
 
 - `knowledge_find` answers an `id` the base does not hold with `nearest` as entries (`id`,
