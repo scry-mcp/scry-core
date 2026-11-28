@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.124.2
+
+- A disassembled line names an instruction's vector on the 68000 and the V30: `notes` asks the
+  base in the spelling that kind is held under, its number as the dictionary writes it or its
+  slot's address, so a vector keyed by number answers as one keyed by address does.
+
 ## 0.124.1
 
 - `knowledge_find` and `image_compare` name, in their descriptions, the `kinds` their
