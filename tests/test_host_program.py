@@ -32,7 +32,9 @@ def test_a_fifo_blocks_its_reader_until_it_is_released(tmp_path: Path) -> None:
     reader.start()
     reader.join(0.2)
     assert reader.is_alive(), "the control: an unreleased FIFO holds its reader"
-    host_program.release_fifo(path)
+    # Being alive says the thread exists, not that it reached its `open`: a loaded host starts
+    # it late, and a bound of a second can expire before it arrives.
+    host_program.release_fifo(path, seconds=5)
     reader.join(5)
     assert read == [b""], "the reader was not released"
 
@@ -40,7 +42,8 @@ def test_a_fifo_blocks_its_reader_until_it_is_released(tmp_path: Path) -> None:
 def test_a_release_sent_before_the_reader_opens_still_releases_it(tmp_path: Path) -> None:
     path = tmp_path / "f"
     host_program.fifo(path)
-    releaser = threading.Thread(target=host_program.release_fifo, args=(path,), daemon=True)
+    releaser = threading.Thread(target=host_program.release_fifo,
+                                args=(path,), kwargs={"seconds": 5}, daemon=True)
     releaser.start()
     time.sleep(0.2)
     read: list[bytes] = []
