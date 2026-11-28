@@ -198,8 +198,7 @@ def _find(base: Answers, live: Live, id: str, kind: str, key: str, text: str, de
     if device and not tag and device not in base.device_keys() and not base.unconfirmed(
             device=device):
         raise Invalid("unknown_ref", f"device {device!r} is not one the base holds; it has "
-                      f"{', '.join(base.device_keys())}", nearest=difflib.get_close_matches(
-                          device, base.device_keys(), n=5, cutoff=0.0))
+                      f"{', '.join(base.device_keys())}")
     scopes = (scope,) if scope else live.scopes()
     if scopes and not scope:
         held = base.scopes()
@@ -231,8 +230,10 @@ def _by_id(base: Answers, id: str) -> dict[str, Any]:
                 "truncated": False, "examined": len(base),
                 "note": _unconfirmed_note(hidden, 0), "unconfirmed": hidden}
     if got is None:
+        near = _nearest_ids(base, id)
         raise Invalid("unknown_ref", f"id {id!r} names no entry; the nearest are "
-                      f"{', '.join(_nearest_ids(base, id))}", nearest=_nearest_ids(base, id))
+                      f"{', '.join(near)}",
+                      nearest=[one.short() for one in map(base.by_id, near) if one is not None])
     return {"query": {"id": id}, "scope": [got.scope], "entries_total": 1,
             "entries": [dict(base.whole(got))], "truncated": False, "examined": len(base)}
 

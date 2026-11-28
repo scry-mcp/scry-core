@@ -159,13 +159,15 @@ def test_a_number_the_base_does_not_hold_is_an_answer_and_stays_a_number(
 
 def test_an_id_the_base_does_not_hold_names_the_nearest(base: rows_base.Base) -> None:
     caught = refused(base, "unknown_ref", id="ibm-pc:port:0x3C7")
-    assert "ibm-pc:port:0x3C4" in caught.fields["nearest"] and len(caught.fields["nearest"]) == 5
+    near = caught.fields["nearest"]
+    assert len(near) == 5 and "ibm-pc:port:0x3C4" in [e["id"] for e in near]
+    assert set(near[0]) == {"id", "kind", "key", "name", "scope"}
     assert "the nearest are" in str(caught)
 
 
 def test_a_device_the_base_does_not_hold_names_those_it_has(base: rows_base.Base) -> None:
     caught = refused(base, "unknown_ref", device="sbx")
-    assert "vga-seq" in str(caught) and caught.fields["nearest"]
+    assert "vga-seq" in str(caught) and "nearest" not in caught.fields
 
 
 def test_a_kind_the_server_holds_nothing_of_names_the_kinds_it_has(base: rows_base.Base) -> None:
