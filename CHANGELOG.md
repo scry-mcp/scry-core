@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.124.3
+
+- `regpoint.hit` takes the `note` its own emulator earns instead of carrying one sentence for
+  both servers: one stops at every instruction where the condition holds (`STILL_ARMED`), the
+  other as it comes true and not again while it holds (`WAITS_WHILE_HELD`).
+
 ## 0.124.2
 
 - A disassembled line names an instruction's vector on the 68000 and the V30: `notes` asks the
