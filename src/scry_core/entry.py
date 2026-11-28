@@ -35,6 +35,8 @@ from scry_core.reply_schema import own_fields
 
 TRY, ARGUMENTS, RETURNS = "### Try it", "### Arguments", "### What comes back"
 REFUSES, WHY, RELATED = "### What it refuses", "### Why it works this way", "### Related tools"
+#: The entry's last part: one sentence naming what the tool stands on in the emulator.
+STANDING = "### Built on"
 #: The fold `reply_differences` reads each tool's fields from, and one field's line in it.
 FIELDS_FOLD = re.compile(r"<details><summary>All \d+ reply fields</summary>")
 FIELD_LINE = re.compile(r"- `([^`]+)` \(")
@@ -206,8 +208,10 @@ def _contract(tool: Tool) -> list[str]:
 
 
 def tool_block(tool: Tool, model: type, envelope: type, ask: Ask,
-               example: Mapping[str, Any] | None, link: Callable[[str], str]) -> str:
-    """One tool's generated block; `link` gives the address of another tool's entry."""
+               example: Mapping[str, Any] | None, link: Callable[[str], str],
+               standing: str = "") -> str:
+    """One tool's generated block; `link` gives the address of another tool's entry, and
+    `standing` the sentence the entry ends with (`reference.standing_sentence`)."""
     lines = [f"## `{tool.name}`", "", ask.what, "", "```text", signature(tool), "```", "", TRY, ""]
     lines += (example_lines(tool.name, ask, example) if example is not None
               else [ask.on, "", *shape.asked(ask.ask), "",
@@ -225,4 +229,7 @@ def tool_block(tool: Tool, model: type, envelope: type, ask: Ask,
                       *"\n\n".join(ask.why_more).split("\n"), "", "</details>"]
     if ask.related:
         lines += ["", RELATED, "", *(f"- [`{name}`]({link(name)})" for name in ask.related)]
-    return "\n".join([*lines, "", *_contract(tool)])
+    lines += ["", *_contract(tool)]
+    if standing:
+        lines += ["", STANDING, "", standing]
+    return "\n".join(lines)

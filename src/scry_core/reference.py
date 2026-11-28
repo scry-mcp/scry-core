@@ -32,7 +32,7 @@ import json
 import os
 import re
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, get_type_hints
 
@@ -70,16 +70,52 @@ def end_marker(name: str) -> str:
 _MARKER = re.compile(begin_marker("(?P<begin>\\S+)") + "|" + end_marker("(?P<end>\\S+)"))
 
 
+#: Whose a facility is: the emulator's own, one our build adds to it, or the host's.
+EMULATOR, BUILD, HOST = "emulator", "build", "host"
+
+
+@dataclass(frozen=True)
+class Facility:
+    """One thing a tool stands on to reach its answer, in the reader's words: `name` is a noun
+    phrase (`debugger commands`, "the `RUNSTATE` debugger command"), and `whose` says whether
+    the emulator ships it, our build adds it, or it is the host's and not the emulator's at
+    all."""
+
+    name: str
+    whose: str = EMULATOR
+
+
+def standing_sentence(facilities: Sequence[Facility], emulator: str) -> str:
+    """The one sentence a tool's entry ends with: what it stands on in the emulator."""
+    if not facilities:
+        raise Invalid("a tool that stands on nothing is not a declaration")
+    said = []
+    for facility in facilities:
+        if facility.whose == HOST:
+            said.append(facility.name)
+        elif facility.whose == BUILD:
+            said.append(f"{facility.name}, which our build adds to {emulator}")
+        elif facility.whose == EMULATOR:
+            said.append(f"{emulator}'s own {facility.name}")
+        else:
+            raise Invalid(f"unknown owner {facility.whose!r} for {facility.name!r}")
+    tail = f" and {said[-1]}" if len(said) > 1 else said[-1]
+    return f"It stands on {', '.join(said[:-1])}{tail}."
+
+
 @dataclass(frozen=True)
 class Registry:
     """What a reference is generated from: the server (after `strict_arguments`, so its schemas
-    are the ones a client sees), reply models, roster, envelope and repository root."""
+    are the ones a client sees), reply models, roster, envelope, the emulator's name, what each
+    tool stands on, and repository root."""
 
     server: MCPServer
     models: Mapping[str, type]
     roster: Roster
     envelope: type
     root: Path
+    emulator: str = ""
+    standing: Mapping[str, Sequence[Facility]] = field(default_factory=dict)
 
 
 def _page(family: str) -> str:
@@ -201,18 +237,26 @@ def _generated(reg: Registry, examples: Mapping[str, Any], said: Asks) -> _Pages
             ask, example = said.tools.get(n), examples.get(n)
             if ask is None:
                 continue  # `asks.faults` names it
+            if not reg.standing.get(n):
+                unbuilt.append(f"`{n}` declares nothing it stands on")
+                continue
             if example is not None and (faults := _example_faults(n, ask, example)):
                 unbuilt += faults
                 continue
             try:
                 block = entry.tool_block(tools[n], reg.models[n], reg.envelope, ask, example,
-                                         _link(page_of, here))
+                                         _link(page_of, here),
+                                         standing_sentence(reg.standing[n], reg.emulator))
             except (ValueError, KeyError) as e:
                 unbuilt.append(f"`{n}`'s entry: {e}")
                 continue
             blocks[n] = block
         # a page titled `# Lua` would take the anchor `#lua` its own tool needs.
         pages[here] = _Expected(f"# The {family} tools", blocks, family)
+    if reg.standing and not reg.emulator:
+        unbuilt.append("the registry names no emulator, so what a tool stands on cannot be said")
+    unbuilt += [f"`{n}` declares what it stands on, and is no tool of the roster"
+                for n in sorted(set(reg.standing) - set(tools))]
     return _Pages(pages, unbuilt)
 
 

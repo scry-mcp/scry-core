@@ -3,6 +3,7 @@ held to both by `drift`, and its examples picked from a run's transcript."""
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 import subprocess
@@ -63,7 +64,9 @@ def _registry(root: Path, families: tuple[tuple[str, tuple[str, ...]], ...] = (
         ("Read", ("peek",)), ("Write memory", ("poke",)))) -> reference.Registry:
     return reference.Registry(server=_server(), models={"peek": PeekReply, "poke": PokeReply},
                               roster=roster.Roster(families=families, answering=()),
-                              envelope=FixtureEnvelope, root=root)
+                              envelope=FixtureEnvelope, root=root, emulator="FixtureBox",
+                              standing={"peek": (reference.Facility("debugger commands"),),
+                                        "poke": (reference.Facility("memory writes"),)})
 
 
 def _one_page(root: Path) -> reference.Registry:
@@ -221,8 +224,79 @@ def test_the_contract_is_the_description_as_the_client_receives_it_folded(
     description = next(t for t in registered(reg.server) if t.name == "peek").description
     assert description and "a <ref> as typed, `x<y` kept in a code span" in description
     assert text.endswith(f"<details><summary>{entry.CONTRACT}</summary>\n\n```text\n"
-                         f"{description.strip()}\n```\n\n</details>\n"
-                         + end_marker("peek")), text
+                         f"{description.strip()}\n```\n\n</details>\n\n"
+                         f"{entry.STANDING}\n\nIt stands on FixtureBox's own debugger "
+                         f"commands.\n" + end_marker("peek")), text
+
+
+def test_an_entry_ends_with_the_sentence_saying_what_the_tool_stands_on(
+        tmp_path: Path) -> None:
+    _written(_registry(tmp_path))
+    text = _block(_read(tmp_path), "peek")
+    assert text.index(entry.STANDING) > text.index(entry.CONTRACT), text
+    assert text.split(entry.STANDING)[1].strip().startswith(
+        "It stands on FixtureBox's own debugger commands."), text
+
+
+def test_a_tool_that_declares_nothing_it_stands_on_is_drift_naming_it(
+        tmp_path: Path) -> None:
+    reg = _written(_registry(tmp_path))
+    thin = dataclasses.replace(reg, standing={"peek": reg.standing["peek"]})
+    found = reference.drift(thin)
+    assert "`poke` declares nothing it stands on" in found, found
+
+
+def test_a_declaration_of_no_tool_and_a_registry_with_no_emulator_are_drift(
+        tmp_path: Path) -> None:
+    reg = _written(_registry(tmp_path))
+    extra = dataclasses.replace(reg, standing={**reg.standing,
+                                               "gone": (reference.Facility("nothing"),)})
+    assert "`gone` declares what it stands on, and is no tool of the roster" in \
+        reference.drift(extra)
+    nameless = dataclasses.replace(reg, emulator="")
+    assert "the registry names no emulator, so what a tool stands on cannot be said" in \
+        reference.drift(nameless)
+
+
+@pytest.mark.parametrize(("facilities", "said"), [
+    ((reference.Facility("debugger commands"),),
+     "It stands on MAME's own debugger commands."),
+    ((reference.Facility("the `BPIF` debugger command", reference.BUILD),),
+     "It stands on the `BPIF` debugger command, which our build adds to MAME."),
+    ((reference.Facility("nothing in the emulator: it compares two files", reference.HOST),),
+     "It stands on nothing in the emulator: it compares two files."),
+    ((reference.Facility("debugger commands"),
+      reference.Facility("the gdbstub's thread patch", reference.BUILD)),
+     "It stands on MAME's own debugger commands and the gdbstub's thread patch, which our "
+     "build adds to MAME."),
+    ((reference.Facility("debugger commands"), reference.Facility("Lua console"),
+      reference.Facility("save states", reference.BUILD)),
+     "It stands on MAME's own debugger commands, MAME's own Lua console and save states, which "
+     "our build adds to MAME."),
+])
+def test_the_sentence_names_each_facility_and_whose_it_is(
+        facilities: tuple[reference.Facility, ...], said: str) -> None:
+    assert reference.standing_sentence(facilities, "MAME") == said
+
+
+@pytest.mark.parametrize(("facilities", "why"), [
+    ((), "stands on nothing is not a declaration"),
+    ((reference.Facility("Lua", "elsewhere"),), "unknown owner 'elsewhere' for 'Lua'"),
+])
+def test_a_declaration_the_sentence_cannot_say_is_invalid(
+        facilities: tuple[reference.Facility, ...], why: str) -> None:
+    with pytest.raises(Invalid, match=why):
+        reference.standing_sentence(facilities, "MAME")
+
+
+def test_a_block_without_a_standing_sentence_ends_at_the_contract() -> None:
+    tool = next(t for t in registered(_server()) if t.name == "peek")
+    plain = entry.tool_block(tool, PeekReply, FixtureEnvelope, _ask(tool), None,
+                             lambda name: f"#{name}")
+    assert entry.STANDING not in plain, plain
+    said = entry.tool_block(tool, PeekReply, FixtureEnvelope, _ask(tool), None,
+                            lambda name: f"#{name}", "It stands on the fixture.")
+    assert said.endswith(f"{entry.STANDING}\n\nIt stands on the fixture."), said
 
 
 def test_an_argument_s_bounds_its_alternatives_its_items_and_a_constant_are_named() -> None:
@@ -1009,7 +1083,9 @@ def ping() -> dict[str, Any]:
 strict_arguments(server)
 REGISTRY = reference.Registry(server=server, models={"ping": reply_schema.ReplyEnvelope},
                               roster=roster.Roster(families=(("Net", ("ping",)),), answering=()),
-                              envelope=reply_schema.ReplyEnvelope, root=Path(__file__).parent)
+                              envelope=reply_schema.ReplyEnvelope, root=Path(__file__).parent,
+                              emulator="FixtureBox",
+                              standing={"ping": (reference.Facility("nothing at all"),)})
 '''
 _COMMAND_ASKS = {"families": {"Net": "The tool that asks whether anybody is there."},
                  "tools": {"ping": {

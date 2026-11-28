@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.125.0
+
+- `reference.Registry` takes what each tool stands on (`standing`, a `Facility` per tool) and the
+  emulator's name, and every entry ends with the one generated sentence those give: a tool with
+  no declaration is a drift finding that names it, and one naming a tool the roster lacks is too.
+
 ## 0.124.3
 
 - `regpoint.hit` takes the `note` its own emulator earns instead of carrying one sentence for
