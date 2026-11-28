@@ -46,33 +46,42 @@ def note(base: Index[E], scope: str, operands: Sequence[Operand], *, names_on: b
     if not names_on:
         return None
     parts: dict[str, bool] = {}
+    named: dict[str, str] = {}
     for operand in operands:
-        for text, live in _named(base, scope, operand):
-            parts[text] = parts.get(text, True) and live
+        for text, live, ident in _named(base, scope, operand):
+            at = named.setdefault(ident, text)
+            parts[at] = parts.get(at, True) and live
     return Note("; ".join(parts), any(parts.values())) if parts else None
 
 
-def _named(base: Index[E], scope: str, o: Operand) -> list[tuple[str, bool]]:
+def _named(base: Index[E], scope: str, o: Operand) -> list[tuple[str, bool, str]]:
+    """The pieces `o` names: text, whether a register gave it, and the entry's id."""
     try:
         if o.kind == "port":
-            return [(t, o.live) for t in _entry(base, "port", o.value, scope, o.access)]
+            return [(t, o.live, i)
+                    for i, t in _entry(base, "port", o.value, scope, o.access)]
         if o.kind == "interrupt":
-            return [*((t, False) for t in _entry(base, "vector", o.value, scope)),
+            return [*((t, False, i) for i, t in _entry(base, "vector", o.value, scope)),
                     *_call(base, scope, o)]
         found = base.at(o.value, scope) if keyspelling.fits(o.value) else None
-        return [(_text(e.name, o.value, delta), o.live) for e, delta in [found]] if found else []
+        return [(_text(found[0].name, o.value, found[1]), o.live, found[0].id)] if found else []
     except KeyFault:
         return []
 
 
-def _entry(base: Index[E], kind: str, value: int, scope: str, access: Access = "") -> list[str]:
-    key = keyspelling.canonical(kind, f"0x{value:X}")
-    found = (base.get(kind, key, scope, access) if access else None) \
-        or base.get(kind, key, scope)
-    return [_text(found.name, value)] if found else []
+def _entry(base: Index[E], kind: str, value: int, scope: str,
+           access: Access = "") -> list[tuple[str, str]]:
+    """`value`'s entry as (id, text), in each spelling its kind may be held under; the first
+    that answers is the one the base keys it by."""
+    for key in keyspelling.spellings(kind, f"0x{value:X}"):
+        found = (base.get(kind, key, scope, access) if access else None) \
+            or base.get(kind, key, scope)
+        if found:
+            return [(found.id, _text(found.name, value))]
+    return []
 
 
-def _call(base: Index[E], scope: str, o: Operand) -> list[tuple[str, bool]]:
+def _call(base: Index[E], scope: str, o: Operand) -> list[tuple[str, bool, str]]:
     known = dict(o.registers)
     for name, byte in zip(("AH", "AL"), o.function, strict=False):
         known.setdefault(name, byte)
@@ -83,10 +92,10 @@ def _call(base: Index[E], scope: str, o: Operand) -> list[tuple[str, bool]]:
     if not got.selected or picked is None:
         function = calls.register_value(known, "AH")
         assert function is not None
-        return [(_text(got.entry.name, function), o.live)]
+        return [(_text(got.entry.name, function), o.live, got.entry.id)]
     value = calls.register_value(known, picked.register)
     assert value is not None
-    return [(_text(got.entry.name, f"{picked.register}=0x{value:02X}"), True)]
+    return [(_text(got.entry.name, f"{picked.register}=0x{value:02X}"), True, got.entry.id)]
 
 
 def _text(name: str, number: int | str, delta: int = 0) -> str:

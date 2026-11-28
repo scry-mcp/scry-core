@@ -176,6 +176,19 @@ def canonical(kind: str, key: str) -> str:
     return _shown(_hex(key, f"a {kind} key"))
 
 
+def spellings(kind: str, key: str) -> tuple[str, ...]:
+    """The canonical spellings a base may hold `key` of `kind` under, the first the one that
+    asks for it; a `vector` has two, since one dictionary keys it by the number and another by
+    the slot's address."""
+    canon = canonical(kind, key)
+    if kind != "vector":
+        return (canon,)
+    number = span(kind, canon).lo
+    assert number is not None
+    other = _shown(number) if _DECIMAL.fullmatch(canon) else str(number)
+    return (canon, other) if other != canon else (canon,)
+
+
 def span(kind: str, key: str) -> Span:
     """The numbers a canonical `key` of `kind` covers: nothing for `input` and `device`, the
     interrupt of a `call` (its parts beside), the linear address of `SEG:OFF`."""

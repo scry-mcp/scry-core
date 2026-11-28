@@ -81,6 +81,19 @@ def test_an_interrupt_is_named_by_its_vector_and_by_its_function_when_the_regist
         Note("DOS (0x21); get return code (0x4D)", False)
 
 
+def test_a_vector_is_named_by_the_spelling_its_base_holds_it_under(tmp_path: Path) -> None:
+    """A dictionary keys a vector either by its number or by its slot's address, and both answer
+    the one number the instruction states."""
+    write_rows(tmp_path, "m68000-vectors", "vector", "m68000", [a_named("2", "bus error")])
+    write_rows(tmp_path, "m6809-vectors", "vector", "m6809", [a_named("0xFFF2", "SWI3")])
+    loaded = Base((tmp_path,), None)
+    assert loaded.faults() == []
+    assert notes.note(loaded, "m68000", [Operand("interrupt", 0x02)], names_on=True) == \
+        Note("bus error (0x02)", False)
+    assert notes.note(loaded, "m6809", [Operand("interrupt", 0xFFF2)], names_on=True) == \
+        Note("SWI3 (0xFFF2)", False)
+
+
 def test_an_address_the_instruction_names_outright_is_named_with_how_far_in_it_is(
         base: Base) -> None:
     assert _note(base, Operand("address", 0x449)) == Note("video mode (0x449)", False)
