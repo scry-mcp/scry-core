@@ -305,6 +305,7 @@ class KnowledgeFindReply(ReplyEnvelope, total=False):
     entries_total: Required[int]
     examined: Required[int]
     held_back: Required[int]
+    kinds: Annotated[list[str], When("a kind it holds none of")]
     nearest: Annotated[list[dict[str, Any]], When("nothing matched")]
     query: Required[dict[str, Any]]
     scope: Required[list[str]]

@@ -59,6 +59,7 @@ class ImageCompareReply(ReplyEnvelope, total=False):
     only_in_b: Annotated[list[Any], When("series")]
     pairs: Annotated[int, When("series")]
     path: Annotated[str, When("region")]
+    series: Annotated[str, When("a series that cannot differ")]
     shift: list[Any]
     start: Annotated[list[Any] | dict[str, Any], When("region")]
     tolerance: int
