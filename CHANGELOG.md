@@ -2,6 +2,12 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.124.1
+
+- `knowledge_find` and `image_compare` name, in their descriptions, the `kinds` their
+  `no_channel` refusal carries and the `series` a `control_silent` refusal names, so the
+  documentation check reads each field's condition instead of leaving it unchecked.
+
 ## 0.124.0
 
 - `knowledge_find` declares `kinds` on its `no_channel` refusal and `image_compare` declares
