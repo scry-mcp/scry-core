@@ -251,7 +251,8 @@ def image_compare(method: Annotated[str, vocab.enum(tuple(IMAGE_METHODS))], a: s
     0..255. Reply: `differing_pixels`, `bbox`, `max_delta`, `width`, `height`.
 
     `series`: `scry-series/1` manifests `a`, `b`. Reply: `pairs`, `identical`, `differing`,
-    `first_differing`, `only_in_a`, `only_in_b`.
+    `first_differing`, `only_in_a`, `only_in_b`; `control_silent` names the `series` when a
+    series that cannot differ stopped it.
 
     `region`: `crop` of `manifest` by `measure`: `signature`, `changed_pixels`, or `match`
     against `ref` at `threshold` (0.98). Reply: `start`, `transitions`, `gaps`,

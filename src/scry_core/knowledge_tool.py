@@ -305,7 +305,7 @@ class KnowledgeFindReply(ReplyEnvelope, total=False):
     entries_total: Required[int]
     examined: Required[int]
     held_back: Required[int]
-    kinds: Annotated[list[str], When("a kind it holds none of")]
+    kinds: Annotated[list[str], When("no_channel")]
     nearest: Annotated[list[dict[str, Any]], When("nothing matched")]
     query: Required[dict[str, Any]]
     scope: Required[list[str]]
@@ -321,7 +321,7 @@ def knowledge_find(id: str = "", kind: Annotated[str, vocab.enum(("", *KINDS))] 
     DOS or BIOS call, IRQ, memory address, input, device, register or command. One match, or an
     `id`, answers the entry: its `rows`, the document's first with each emulator's `verdicts`,
     then the emulators' notes (`vs`); `id=<id>#<n>`: a row, with URLs. More: a list. No session
-    is needed except for a device by tag, inputs and memory.
+    except for a tag, inputs or memory.
 
     `id`: an entry's id. `kind`: `vector`, `call`, `error`, `port`, `irq`, `memory`, `input`,
     `device`, `register` or `command`; empty searches all. `key`: the number as a reply prints it,
@@ -340,7 +340,7 @@ def knowledge_find(id: str = "", kind: Annotated[str, vocab.enum(("", *KINDS))] 
 
     Reply: `query`, `scope`, `entries_total`, `entries`, `truncated`, `examined`, `served`,
     `held_back`; nothing matched: no entry, `nearest` and a `note`: it stays a number.
-    `unconfirmed` lists ids held back."""
+    `unconfirmed` lists ids held back. `kinds` on `no_channel`."""
     raise NotImplementedError("a server registers `register`'s bound body, not this signature")
 
 
