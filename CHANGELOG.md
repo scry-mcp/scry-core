@@ -2,6 +2,13 @@
 
 What a server author notices. A client's view of each server is in that server's own changelog.
 
+## 0.123.2
+
+- `knowledge_find` answers an `id` the base does not hold with `nearest` as entries (`id`,
+  `kind`, `key`, `name`, `scope`), the shape its published reply declares; an unknown `device`
+  names the devices it holds in its message and carries no `nearest`. A client that validates
+  replies refused the old refusal whole, and the caller never saw which ids to try.
+
 ## 0.123.1
 
 - `scry_core.knowledge.base` takes `TypedDict` from the standard library: a program that reads
